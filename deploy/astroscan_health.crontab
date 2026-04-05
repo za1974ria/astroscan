@@ -1,0 +1,4 @@
+# AstroScan — healthcheck HTTP toutes les 5 minutes
+# Installation : sudo ./deploy/install_astroscan_health_cron.sh
+# Journal : /var/log/astroscan_health.log (compte root requis pour /var/log)
+*/5 * * * * /root/astro_scan/deploy/astroscan_health.sh >> /var/log/astroscan_health.log 2>&1

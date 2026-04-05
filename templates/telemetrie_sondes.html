@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroScan-Chohra - Télémétrie sondes spatiales</title>
+<style>
+:root {
+  --bg: #040914;
+  --card: rgba(8,14,30,0.92);
+  --cyan: #00d8ff;
+  --gold: #ffd060;
+  --vio: #9b6cff;
+  --red: #ff2c3a;
+  --green: #00ff88;
+  --txt: #d4e8ff;
+  --muted: #7e9db9;
+  --border: rgba(0,216,255,0.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{
+  width:100%;height:100%;min-height:100vh;
+  background:var(--bg);color:var(--txt);
+  font-family:Segoe UI,system-ui,sans-serif;
+  overflow-x:hidden;overflow-y:auto;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 10% 10%, rgba(155,108,255,.12), transparent 60%),
+    radial-gradient(ellipse 50% 30% at 90% 80%, rgba(0,216,255,.08), transparent 60%),
+    radial-gradient(ellipse 40% 25% at 50% 50%, rgba(255,208,96,.04), transparent 60%);
+}
+
+/* ── Header ── */
+.header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(4,9,20,0.97);
+  border-bottom:1px solid var(--border);
+  padding:14px 24px;
+  display:flex;align-items:center;gap:16px;
+}
+.header h1{font:700 15px/1 monospace;letter-spacing:.2em;color:var(--gold)}
+.header .sub{font:400 11px/1 monospace;color:var(--muted);letter-spacing:.1em}
+.badge-live{
+  background:var(--red);color:#fff;
+  padding:3px 10px;border-radius:4px;
+  font:700 10px/1 monospace;letter-spacing:.15em;
+  animation:blink 1.1s infinite;margin-left:auto;
+}
+@keyframes blink{50%{opacity:.5}}
+.last-update{font:400 10px/1 monospace;color:var(--muted)}
+
+/* ── Grid 4 cartes ── */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:16px;
+  padding:20px 20px 24px;
+  position:relative;z-index:1;
+}
+@media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.grid{grid-template-columns:1fr}}
+
+/* ── Carte sonde ── */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  overflow:hidden;
+  backdrop-filter:blur(10px);
+  display:flex;flex-direction:column;
+  transition:border-color .3s;
+}
+.card:hover{border-color:rgba(0,216,255,.4)}
+
+.card-head{
+  padding:14px 16px 10px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.card-icon{font-size:22px}
+.card-title{font:700 12px/1.2 monospace;letter-spacing:.12em;color:var(--gold)}
+.card-sub{font:400 10px/1 monospace;color:var(--muted);margin-top:2px}
+.card-live{
+  margin-left:auto;
+  background:var(--red);color:#fff;
+  padding:2px 8px;border-radius:3px;
+  font:700 9px/1 monospace;letter-spacing:.1em;
+  animation:blink 1.1s infinite;
+}
+.card-live.veille{background:#444;animation:none}
+
+.card-body{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:12px}
+
+/* ── Métriques ── */
+.metric{display:flex;flex-direction:column;gap:3px}
+.metric-label{font:600 9px/1 monospace;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+.metric-value{font:700 20px/1 monospace;color:var(--cyan)}
+.metric-value.gold{color:var(--gold)}
+.metric-value.violet{color:var(--vio)}
+.metric-value.green{color:var(--green)}
+.metric-unit{font:400 10px/1 monospace;color:var(--muted)}
+
+/* ── Jauge distance ── */
+.gauge-wrap{margin-top:2px}
+.gauge-label{font:600 9px/1 monospace;color:var(--muted);letter-spacing:.1em;margin-bottom:4px}
+.gauge-bar{height:6px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden}
+.gauge-fill{height:100%;border-radius:6px;transition:width 1s ease}
+.gauge-fill.cyan{background:linear-gradient(90deg,#00d8ff,#0077ff)}
+.gauge-fill.gold{background:linear-gradient(90deg,#ffd060,#ff8800)}
+.gauge-fill.vio{background:linear-gradient(90deg,#9b6cff,#ff2c8a)}
+.gauge-fill.green{background:linear-gradient(90deg,#00ff88,#00d8ff)}
+
+/* ── Mini graphique ── */
+.mini-chart{margin-top:4px}
+.mini-chart-label{font:600 9px/1 monospace;color:var(--muted);letter-spacing:.1em;margin-bottom:4px}
+.mini-chart canvas{width:100%!important;height:48px!important;display:block}
+
+/* ── Statut ── */
+.status-row{display:flex;align-items:center;gap:8px;margin-top:4px}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-dot.active{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse-dot 2s infinite}
+.status-dot.veille{background:#666}
+.status-dot.comm{background:var(--gold);box-shadow:0 0 8px var(--gold);animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{50%{opacity:.4}}
+.status-text{font:600 10px/1 monospace;color:var(--txt);letter-spacing:.08em}
+
+/* ── Scrollbars ── */
+*{scrollbar-width:thin;scrollbar-color:#00ffff #0a0a1a}
+*::-webkit-scrollbar{width:6px}
+*::-webkit-scrollbar-track{background:#0a0a1a}
+*::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#00ffff,#7700ff);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header h1">📡 TÉLÉMÉTRIE SONDES SPATIALES</div>
+    <div class="sub">Voyager 1 &amp; 2 · James Webb · New Horizons — Données NASA JPL en temps réel</div>
+  </div>
+  <div class="badge-live">● LIVE</div>
+  <div class="last-update">MàJ : <span id="last-update">—</span></div>
+</div>
+
+<div class="grid">
+
+  <!-- VOYAGER 1 -->
+  <div class="card" id="card-v1">
+    <div class="card-head">
+      <span class="card-icon">🔭</span>
+      <div>
+        <div class="card-title">VOYAGER 1</div>
+        <div class="card-sub">Interstellaire · Lancée 1977</div>
+      </div>
+      <span class="card-live" id="v1-badge">ACTIF</span>
+    </div>
+    <div class="card-body">
+      <div class="metric">
+        <span class="metric-label">Distance Terre</span>
+        <span class="metric-value" id="v1-dist">—</span>
+        <span class="metric-unit" id="v1-dist-au">— UA</span>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-label">Distance max connue (250 UA)</div>
+        <div class="gauge-bar"><div class="gauge-fill cyan" id="v1-gauge" style="width:0%"></div></div>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Vitesse</span>
+        <span class="metric-value gold" id="v1-speed">—</span>
+        <span class="metric-unit">km/s</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Délai signal (aller)</span>
+        <span class="metric-value violet" id="v1-delay">—</span>
+      </div>
+      <div class="status-row">
+        <div class="status-dot active" id="v1-dot"></div>
+        <span class="status-text" id="v1-status">MISSION ACTIVE</span>
+      </div>
+      <div class="mini-chart">
+        <div class="mini-chart-label">Vitesse 24h (km/s)</div>
+        <canvas id="chart-v1" height="48"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- VOYAGER 2 -->
+  <div class="card" id="card-v2">
+    <div class="card-head">
+      <span class="card-icon">🛸</span>
+      <div>
+        <div class="card-title">VOYAGER 2</div>
+        <div class="card-sub">Interstellaire · Lancée 1977</div>
+      </div>
+      <span class="card-live" id="v2-badge">ACTIF</span>
+    </div>
+    <div class="card-body">
+      <div class="metric">
+        <span class="metric-label">Distance Terre</span>
+        <span class="metric-value" id="v2-dist">—</span>
+        <span class="metric-unit" id="v2-dist-au">— UA</span>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-label">Distance max connue (210 UA)</div>
+        <div class="gauge-bar"><div class="gauge-fill gold" id="v2-gauge" style="width:0%"></div></div>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Vitesse</span>
+        <span class="metric-value gold" id="v2-speed">—</span>
+        <span class="metric-unit">km/s</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Délai signal (aller)</span>
+        <span class="metric-value violet" id="v2-delay">—</span>
+      </div>
+      <div class="status-row">
+        <div class="status-dot active" id="v2-dot"></div>
+        <span class="status-text" id="v2-status">MISSION ACTIVE</span>
+      </div>
+      <div class="mini-chart">
+        <div class="mini-chart-label">Vitesse 24h (km/s)</div>
+        <canvas id="chart-v2" height="48"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAMES WEBB -->
+  <div class="card" id="card-webb">
+    <div class="card-head">
+      <span class="card-icon">🌌</span>
+      <div>
+        <div class="card-title">JAMES WEBB</div>
+        <div class="card-sub">Point L2 · Lancé 2021</div>
+      </div>
+      <span class="card-live" id="webb-badge">ACTIF</span>
+    </div>
+    <div class="card-body">
+      <div class="metric">
+        <span class="metric-label">Distance Terre</span>
+        <span class="metric-value" id="webb-dist">—</span>
+        <span class="metric-unit">km · Point L2</span>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-label">Position orbitale L2 (1,5M km)</div>
+        <div class="gauge-bar"><div class="gauge-fill vio" id="webb-gauge" style="width:0%"></div></div>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Température miroir</span>
+        <span class="metric-value green" id="webb-temp">—</span>
+        <span class="metric-unit">°C (côté ombre)</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Délai signal</span>
+        <span class="metric-value violet" id="webb-delay">—</span>
+      </div>
+      <div class="status-row">
+        <div class="status-dot comm" id="webb-dot"></div>
+        <span class="status-text" id="webb-status">EN OBSERVATION</span>
+      </div>
+      <div class="mini-chart">
+        <div class="mini-chart-label">Température miroir 24h (°C)</div>
+        <canvas id="chart-webb" height="48"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW HORIZONS -->
+  <div class="card" id="card-nh">
+    <div class="card-head">
+      <span class="card-icon">🪐</span>
+      <div>
+        <div class="card-title">NEW HORIZONS</div>
+        <div class="card-sub">Ceinture Kuiper · Lancée 2006</div>
+      </div>
+      <span class="card-live" id="nh-badge">VEILLE</span>
+    </div>
+    <div class="card-body">
+      <div class="metric">
+        <span class="metric-label">Distance Terre</span>
+        <span class="metric-value" id="nh-dist">—</span>
+        <span class="metric-unit" id="nh-dist-au">— UA</span>
+      </div>
+      <div class="gauge-wrap">
+        <div class="gauge-label">Distance max prévue (100 UA)</div>
+        <div class="gauge-bar"><div class="gauge-fill green" id="nh-gauge" style="width:0%"></div></div>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Vitesse</span>
+        <span class="metric-value gold" id="nh-speed">—</span>
+        <span class="metric-unit">km/s</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Délai signal (aller)</span>
+        <span class="metric-value violet" id="nh-delay">—</span>
+      </div>
+      <div class="status-row">
+        <div class="status-dot veille" id="nh-dot"></div>
+        <span class="status-text" id="nh-status">MODE HIBERNATION</span>
+      </div>
+      <div class="mini-chart">
+        <div class="mini-chart-label">Vitesse 24h (km/s)</div>
+        <canvas id="chart-nh" height="48"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Historique 24 points pour les mini-graphiques ──
+const history = {
+  v1: [], v2: [], webb: [], nh: []
+};
+const MAX_HIST = 24;
+
+function pushHistory(key, val) {
+  if (val === null || val === undefined || isNaN(val)) return;
+  history[key].push(val);
+  if (history[key].length > MAX_HIST) history[key].shift();
+}
+
+// ── Mini-graphique ligne ──
+function drawChart(canvasId, data, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || data.length < 2) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 220;
+  const H = 48;
+  canvas.width = W;
+  canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, color + '88');
+  grad.addColorStop(1, color + '11');
+
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - ((v - min) / range) * (H - 6) - 3;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  const lastX = W;
+  const lastY = H - ((data[data.length-1] - min) / range) * (H - 6) - 3;
+  ctx.lineTo(lastX, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - ((v - min) / range) * (H - 6) - 3;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+// ── Formatage délai signal ──
+function formatDelay(seconds) {
+  if (!seconds) return '—';
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.round(seconds % 60);
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  return `${m}m ${s}s`;
+}
+
+// ── Formatage distance ──
+function fmtDist(km) {
+  if (!km) return '—';
+  if (km >= 1e9) return (km / 1e9).toFixed(3) + ' Mrd km';
+  if (km >= 1e6) return (km / 1e6).toFixed(2) + ' M km';
+  return Math.round(km).toLocaleString('fr-FR') + ' km';
+}
+
+// ── Mise à jour interface ──
+function updateUI(data) {
+  const now = new Date().toLocaleTimeString('fr-FR');
+  document.getElementById('last-update').textContent = now;
+
+  // VOYAGER 1
+  const v1 = data.voyager_1 || {};
+  if (v1.dist_km) {
+    document.getElementById('v1-dist').textContent = fmtDist(v1.dist_km);
+    document.getElementById('v1-dist-au').textContent = (v1.dist_au || '—') + ' UA';
+    document.getElementById('v1-gauge').style.width = Math.min((v1.dist_au || 0) / 250 * 100, 100) + '%';
+  }
+  if (v1.speed_km_s) document.getElementById('v1-speed').textContent = v1.speed_km_s.toFixed(2);
+  if (v1.signal_delay_s) document.getElementById('v1-delay').textContent = formatDelay(v1.signal_delay_s);
+  document.getElementById('v1-status').textContent = v1.status || 'MISSION ACTIVE';
+  pushHistory('v1', v1.speed_km_s);
+  drawChart('chart-v1', history.v1, '#00d8ff');
+
+  // VOYAGER 2
+  const v2 = data.voyager_2 || {};
+  if (v2.dist_km) {
+    document.getElementById('v2-dist').textContent = fmtDist(v2.dist_km);
+    document.getElementById('v2-dist-au').textContent = (v2.dist_au || '—') + ' UA';
+    document.getElementById('v2-gauge').style.width = Math.min((v2.dist_au || 0) / 210 * 100, 100) + '%';
+  }
+  if (v2.speed_km_s) document.getElementById('v2-speed').textContent = v2.speed_km_s.toFixed(2);
+  if (v2.signal_delay_s) document.getElementById('v2-delay').textContent = formatDelay(v2.signal_delay_s);
+  document.getElementById('v2-status').textContent = v2.status || 'MISSION ACTIVE';
+  pushHistory('v2', v2.speed_km_s);
+  drawChart('chart-v2', history.v2, '#ffd060');
+
+  // JAMES WEBB
+  const wb = data.james_webb || {};
+  if (wb.dist_km) {
+    document.getElementById('webb-dist').textContent = fmtDist(wb.dist_km);
+    document.getElementById('webb-gauge').style.width = Math.min((wb.dist_km || 0) / 1_600_000 * 100, 100) + '%';
+  }
+  if (wb.mirror_temp_c !== undefined) {
+    document.getElementById('webb-temp').textContent = wb.mirror_temp_c.toFixed(1);
+    pushHistory('webb', wb.mirror_temp_c);
+    drawChart('chart-webb', history.webb, '#9b6cff');
+  }
+  if (wb.signal_delay_s) document.getElementById('webb-delay').textContent = formatDelay(wb.signal_delay_s);
+  document.getElementById('webb-status').textContent = wb.status || 'EN OBSERVATION';
+
+  // NEW HORIZONS
+  const nh = data.new_horizons || {};
+  if (nh.dist_km) {
+    document.getElementById('nh-dist').textContent = fmtDist(nh.dist_km);
+    document.getElementById('nh-dist-au').textContent = (nh.dist_au || '—') + ' UA';
+    document.getElementById('nh-gauge').style.width = Math.min((nh.dist_au || 0) / 100 * 100, 100) + '%';
+  }
+  if (nh.speed_km_s) document.getElementById('nh-speed').textContent = nh.speed_km_s.toFixed(2);
+  if (nh.signal_delay_s) document.getElementById('nh-delay').textContent = formatDelay(nh.signal_delay_s);
+  const nhDot = document.getElementById('nh-dot');
+  const nhStatus = nh.status || 'MODE HIBERNATION';
+  document.getElementById('nh-status').textContent = nhStatus;
+  const nhBadge = document.getElementById('nh-badge');
+  if (nhStatus.includes('ACTIF') || nhStatus.includes('EVEIL')) {
+    nhDot.className = 'status-dot active';
+    nhBadge.className = 'card-live';
+    nhBadge.textContent = 'ACTIF';
+  } else {
+    nhDot.className = 'status-dot veille';
+    nhBadge.className = 'card-live veille';
+    nhBadge.textContent = 'VEILLE';
+  }
+  pushHistory('nh', nh.speed_km_s);
+  drawChart('chart-nh', history.nh, '#00ff88');
+}
+
+// ── Fetch API ──
+async function fetchSondes() {
+  try {
+    const r = await fetch('/api/sondes/live');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    updateUI(data);
+  } catch(e) {
+    console.warn('Sondes fetch:', e);
+  }
+}
+
+fetchSondes();
+setInterval(fetchSondes, 30000);
+
+// Redessiner les charts au resize
+window.addEventListener('resize', () => {
+  drawChart('chart-v1', history.v1, '#00d8ff');
+  drawChart('chart-v2', history.v2, '#ffd060');
+  drawChart('chart-webb', history.webb, '#9b6cff');
+  drawChart('chart-nh', history.nh, '#00ff88');
+});
+</script>
+</body>
+</html>

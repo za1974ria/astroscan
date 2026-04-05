@@ -1,0 +1,1417 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+╔══════════════════════════════════════════════════════════════╗
+║  ORBITAL-CHOHRA — station_web.py — VERSION COMPLÈTE          ║
+║  Directeur : Zakaria Chohra · Hillsboro · 5.78.153.17        ║
+║  Reconstruit intégralement                                   ║
+╚══════════════════════════════════════════════════════════════╝
+"""
+
+import os, sys, json, sqlite3, re, time, logging, subprocess, glob
+from pathlib import Path
+from datetime import datetime, timezone
+from flask import (Flask, render_template, jsonify, request,
+                   redirect, send_file, send_from_directory, Response)
+
+# ── Config ──────────────────────────────────────────────────
+STATION   = '/root/astro_scan'
+DB_PATH   = f'{STATION}/data/archive_stellaire.db'
+IMG_PATH  = f'{STATION}/telescope_live/current_live.jpg'
+TITLE_F   = f'{STATION}/telescope_live/current_title.txt'
+REPORT_F  = f'{STATION}/telescope_live/live_report.txt'
+SHIELD_F  = f'{STATION}/data/shield_status.json'
+HUB_F     = f'{STATION}/data/telescope_hub.json'
+SDR_F     = f'{STATION}/data/sdr_status.json'
+
+# Charger .env
+env_file = f'{STATION}/.env'
+if Path(env_file).exists():
+    for line in open(env_file):
+        line = line.strip()
+        if '=' in line and not line.startswith('#'):
+            k, v = line.split('=', 1)
+            os.environ.setdefault(k.strip(), v.strip())
+
+app = Flask(__name__,
+            template_folder=f'{STATION}/templates',
+            static_folder=f'{STATION}/static')
+
+logging.basicConfig(level=logging.INFO,
+    format='%(asctime)s [WEB] %(message)s',
+    handlers=[
+        logging.FileHandler(f'{STATION}/logs/web.log'),
+        logging.StreamHandler()
+    ])
+log = logging.getLogger(__name__)
+
+# ══════════════════════════════════════════════════════════════
+# HELPERS
+# ══════════════════════════════════════════════════════════════
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def _detect_lang(text):
+    """Retourne True si le texte semble anglais."""
+    if not text or len(text) < 10:
+        return False
+    en_words = re.compile(
+        r'\b(the|and|with|this|from|that|was|were|pictured|viewed|between|'
+        r'captured|observed|known|bright|dark|light|shows|appear|near|across|'
+        r'over|through|toward|within|during|before|after|above|below|along|'
+        r'around|behind|beyond|despite|although|however|therefore|because|'
+        r'while|where|which|whose|their|there|these|those|would|could|should|'
+        r'might|shall|will|been|have|has|had|its|our|your|their)\b', re.I)
+    return bool(en_words.search(text))
+
+def _gemini_translate(text, obs_id=None):
+    """Traduit EN→FR via Gemini. Met en cache dans DB."""
+    if not text or len(text) < 15:
+        return text
+    if not _detect_lang(text):
+        return text  # Déjà en français
+    api_key = os.environ.get('GEMINI_API_KEY', '')
+    if not api_key:
+        return text
+    try:
+        import urllib.request as urlreq
+        payload = json.dumps({'contents': [{'parts': [{'text':
+            "Traduis ce texte astronomique en français fluide et naturel. "
+            "Réponds UNIQUEMENT avec la traduction, sans guillemets ni commentaires.\n\n"
+            + text[:1500]
+        }]}]}).encode()
+        req = urlreq.Request(
+            f'https://generativelanguage.googleapis.com/v1beta/models/'
+            f'gemini-2.0-flash:generateContent?key={api_key}',
+            data=payload, headers={'Content-Type': 'application/json'}
+        )
+        with urlreq.urlopen(req, timeout=12) as r:
+            result = json.loads(r.read())
+        translated = result['candidates'][0]['content']['parts'][0]['text'].strip()
+        if obs_id and translated:
+            try:
+                c = sqlite3.connect(DB_PATH)
+                c.execute("UPDATE observations SET rapport_fr=? WHERE id=?",
+                          (translated, obs_id))
+                c.commit(); c.close()
+            except: pass
+        return translated
+    except Exception as e:
+        log.warning(f"[translate] {e}")
+        return text
+
+def _curl_get(url, timeout=15):
+    """GET via curl — contourne restrictions réseau urllib (Hillsboro)."""
+    try:
+        r = subprocess.run(
+            ['curl', '-s', '-L', '--max-time', str(timeout),
+             '-H', 'User-Agent: ORBITAL-CHOHRA/1.0', url],
+            capture_output=True, text=True, timeout=timeout + 2
+        )
+        return r.stdout
+    except Exception as e:
+        log.warning(f"curl_get {url[:60]}: {e}")
+        return None
+
+# ══════════════════════════════════════════════════════════════
+# PAGES
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/')
+def index():
+    return redirect('/portail')
+
+@app.route('/portail')
+def portail():
+    return render_template('portail.html')
+
+@app.route('/dashboard')
+def dashboard():
+    return render_template('index.html')
+
+@app.route('/overlord_live')
+def overlord_live():
+    return render_template('overlord_live.html')
+
+@app.route('/galerie')
+def galerie():
+    try:
+        conn = get_db()
+        total = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        anomalies = conn.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
+        rows = conn.execute(
+            "SELECT id, timestamp, source, objets_detectes, analyse_gemini as rapport_gemini, "
+            "COALESCE(title,'') as title, anomalie "
+            "FROM observations ORDER BY id DESC LIMIT 200"
+        ).fetchall()
+        class_rows = conn.execute(
+            "SELECT COALESCE(objets_detectes,'inconnu') as type, COUNT(*) as n "
+            "FROM observations GROUP BY objets_detectes ORDER BY n DESC"
+        ).fetchall()
+        conn.close()
+        observations = [dict(r) for r in rows]
+        stats = {'total': total, 'anomalies': anomalies}
+        classification_stats = [dict(r) for r in class_rows]
+    except Exception as e:
+        log.warning(f"galerie: {e}")
+        observations = []
+        stats = {'total': 0, 'anomalies': 0}
+        classification_stats = []
+    return render_template('galerie.html', stats=stats, observations=observations, classification_stats=classification_stats)
+
+@app.route('/observatoire')
+def observatoire():
+    return render_template('observatoire.html')
+
+@app.route('/vision')
+def vision():
+    return render_template('vision.html')
+
+# ══════════════════════════════════════════════════════════════
+# API — DONNÉES PRINCIPALES
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/api/latest')
+def api_latest():
+    lang = request.args.get('lang', 'fr').lower()
+    try:
+        conn = get_db()
+        cur  = conn.cursor()
+        total     = cur.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        anomalies = cur.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
+        sources   = cur.execute("SELECT COUNT(DISTINCT source) FROM observations").fetchone()[0]
+        try:
+            req_j = cur.execute(
+                "SELECT COUNT(*) FROM observations WHERE date(timestamp)=date('now')"
+            ).fetchone()[0]
+        except:
+            req_j = 0
+
+        try:
+            limit_arg = request.args.get('limit', '20')
+            limit = min(200, max(1, int(limit_arg))) if str(limit_arg).isdigit() else 20
+        except Exception:
+            limit = 20
+
+        try:
+            rows = cur.execute(
+                "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
+                "COALESCE(rapport_fr,'') as rapport_fr, objets_detectes, anomalie, "
+                "COALESCE(title,'') as title, COALESCE(objets_detectes,'') as type_objet, "
+                "COALESCE(score_confiance,0.0) as confidence "
+                "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
+        except Exception:
+            rows = cur.execute(
+                "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
+                "'' as rapport_fr, objets_detectes, anomalie, "
+                "'' as title, '' as type_objet, 0.0 as confidence "
+                "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
+        conn.close()
+
+        obs_list = []
+        for row in rows:
+            r = dict(row)
+            raw = r.get('rapport_gemini') or r.get('analyse_gemini') or ''
+            if lang == 'fr':
+                cached = r.get('rapport_fr') or ''
+                if len(cached) > 15:
+                    r['rapport_gemini'] = cached
+                else:
+                    r['rapport_gemini'] = _gemini_translate(raw, r.get('id'))
+            else:
+                r['rapport_gemini'] = raw
+            r['rapport_display'] = r['rapport_gemini']
+            obs_list.append(r)
+
+        return jsonify({
+            'ok': True, 'total': total, 'anomalies': anomalies,
+            'sources': sources, 'telescopes': 9, 'req_jour': req_j,
+            'observations': obs_list,
+        })
+    except Exception as e:
+        log.error(f"api_latest: {e}")
+        return jsonify({'ok': False, 'error': str(e), 'total': 0, 'observations': []})
+
+# Cache images par source — FICHIERS séparés (évite que tout affiche la même image)
+_IMAGE_CACHE_TTL = 300  # 5 min — APOD/Hubble/archive changent peu
+def _source_path(s):
+    return Path(f'{STATION}/telescope_live/source_{s}.jpg')
+
+def _fetch_apod_live():
+    """Image du jour NASA APOD — temps 0."""
+    try:
+        import urllib.request as urlreq
+        key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
+        with urlreq.urlopen(
+            f'https://api.nasa.gov/planetary/apod?api_key={key}', timeout=12
+        ) as r:
+            d = json.loads(r.read())
+        if d.get('media_type') != 'image':
+            return None, None, None
+        url = d.get('hdurl') or d.get('url')
+        with urlreq.urlopen(urlreq.Request(url, headers={'User-Agent': 'ORBITAL-CHOHRA/1.0'}), timeout=25) as img:
+            data = img.read()
+        return data, d.get('title', 'APOD'), 'NASA APOD'
+    except Exception as e:
+        log.warning(f"fetch apod: {e}")
+        return None, None, None
+
+def _fetch_hubble_live():
+    """Une image ESA Hubble — temps 0."""
+    urls = [
+        ("Pilliers de la Création", "https://esahubble.org/media/archives/images/screen/heic1501a.jpg"),
+        ("Galaxie du Tourbillon M51", "https://esahubble.org/media/archives/images/screen/heic0506a.jpg"),
+        ("Nébuleuse de la Carène", "https://esahubble.org/media/archives/images/screen/heic0707a.jpg"),
+        ("Galaxie d'Andromède M31", "https://esahubble.org/media/archives/images/screen/heic1502a.jpg"),
+        ("Nébuleuse Œil de Chat", "https://esahubble.org/media/archives/images/screen/heic0403a.jpg"),
+        ("Jupiter — Grande Tache Rouge", "https://esahubble.org/media/archives/images/screen/heic1920a.jpg"),
+    ]
+    import random
+    title, url = random.choice(urls)
+    try:
+        import urllib.request as urlreq
+        req = urlreq.Request(url, headers={'User-Agent': 'ORBITAL-CHOHRA/1.0'})
+        with urlreq.urlopen(req, timeout=25) as r:
+            data = r.read()
+        if len(data) < 10000:
+            return None, None, None
+        return data, title, 'ESA Hubble'
+    except Exception as e:
+        log.warning(f"fetch hubble: {e}")
+        return None, None, None
+
+def _fetch_apod_archive_live():
+    """NASA APOD — date aléatoire (archive)."""
+    try:
+        import urllib.request as urlreq
+        import random
+        key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
+        y, m = random.randint(2015, 2024), random.randint(1, 12)
+        d = random.randint(1, 28)
+        date = f'{y}-{m:02d}-{d:02d}'
+        with urlreq.urlopen(
+            f'https://api.nasa.gov/planetary/apod?api_key={key}&date={date}', timeout=12
+        ) as r:
+            data_j = json.loads(r.read())
+        if data_j.get('media_type') != 'image':
+            return None, None, None
+        url = data_j.get('hdurl') or data_j.get('url')
+        with urlreq.urlopen(urlreq.Request(url, headers={'User-Agent': 'ORBITAL-CHOHRA/1.0'}), timeout=25) as img:
+            data = img.read()
+        return data, data_j.get('title', 'APOD') + f' ({date})', f'NASA APOD {date}'
+    except Exception as e:
+        log.warning(f"fetch apod archive: {e}")
+        return None, None, None
+
+# État de synchronisation PC ↔ Android (source télescope affichée)
+SYNC_STATE_F = Path(f'{STATION}/telescope_live/sync_state.json')
+def _sync_state_read():
+    try:
+        if SYNC_STATE_F.exists():
+            with open(SYNC_STATE_F) as f:
+                d = json.load(f)
+                s = (d.get('source') or 'live').strip().lower()
+                if s in ('live', 'apod', 'hubble', 'apod_archive'):
+                    return s
+    except Exception:
+        pass
+    return 'live'
+def _sync_state_write(source):
+    s = (source or 'live').strip().lower()
+    if s not in ('live', 'apod', 'hubble', 'apod_archive'):
+        s = 'live'
+    try:
+        SYNC_STATE_F.parent.mkdir(parents=True, exist_ok=True)
+        SYNC_STATE_F.write_text(json.dumps({'source': s, 'updated': time.time()}, ensure_ascii=False))
+    except Exception as e:
+        log.warning(f"sync_state write: {e}")
+    return s
+
+@app.route('/api/sync/state', methods=['GET'])
+def api_sync_state_get():
+    """État canonique partagé (PC + Android) : source télescope affichée."""
+    return jsonify({'ok': True, 'source': _sync_state_read()})
+
+@app.route('/api/sync/state', methods=['POST'])
+def api_sync_state_post():
+    """Met à jour l’état partagé (quand un client change la source)."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        source = data.get('source') or request.form.get('source') or 'live'
+    except Exception:
+        source = 'live'
+    s = _sync_state_write(source)
+    return jsonify({'ok': True, 'source': s})
+
+@app.route('/api/telescope/sources')
+def api_telescope_sources():
+    """Liste des sources live sélectionnables."""
+    return jsonify({
+        'ok': True,
+        'sources': [
+            {'id': 'live', 'name': 'Flux principal', 'desc': 'Dernière image du pipeline (feeder)', 'icon': '📡'},
+            {'id': 'apod', 'name': 'NASA APOD', 'desc': 'Image du jour — temps 0', 'icon': '🔭'},
+            {'id': 'hubble', 'name': 'ESA Hubble', 'desc': 'Archives Hubble — temps 0', 'icon': '🌌'},
+            {'id': 'apod_archive', 'name': 'NASA APOD (archive)', 'desc': 'Image aléatoire 2015–2024', 'icon': '📁'},
+        ]
+    })
+
+# Titre/cache en mémoire pour /api/title?source=
+_image_meta = {}  # { source: (title, label) }
+
+@app.route('/api/image')
+def api_image():
+    source = (request.args.get('source') or 'live').strip().lower()
+    fresh = request.args.get('fresh', '').strip().lower() in ('1', 'true', 'yes')
+    if source not in ('apod', 'hubble', 'apod_archive'):
+        source = 'live'
+
+    if source == 'live':
+        if Path(IMG_PATH).exists():
+            return send_file(IMG_PATH, mimetype='image/jpeg')  #
+    # removed
+    else:
+        path = _source_path(source)
+        now = time.time()
+        if not fresh and path.exists():
+            age = now - path.stat().st_mtime
+            if age < _IMAGE_CACHE_TTL:
+                return send_file(path, mimetype='image/jpeg')  #
+# removed
+        if source == 'apod':
+            data, title, label = _fetch_apod_live()
+        elif source == 'hubble':
+            data, title, label = _fetch_hubble_live()
+        elif source == 'apod_archive':
+            data, title, label = _fetch_apod_archive_live()
+        else:
+            data, title, label = None, None, None
+        if data:
+            try:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+                _image_meta[source] = (title, label)
+            except Exception as e:
+                log.warning(f"write source image: {e}")
+            return Response(data, mimetype='image/jpeg',
+                           headers={'Cache-Control': 'no-cache, max-age=0'})
+        if path.exists():
+            return send_file(str(path), mimetype='image/jpeg')  #
+# removed
+
+    # Image placeholder noir
+    import struct, zlib
+    def png1x1():
+        sig = b'\x89PNG\r\n\x1a\n'
+        ihdr = struct.pack('>IIBBBBB', 1, 1, 8, 2, 0, 0, 0)
+        ihdr_crc = zlib.crc32(b'IHDR' + ihdr)
+        ihdr_chunk = struct.pack('>I', 13) + b'IHDR' + ihdr + struct.pack('>I', ihdr_crc)
+        idat_data = zlib.compress(b'\x00\x00\x00\x00')
+        idat_crc = zlib.crc32(b'IDAT' + idat_data)
+        idat_chunk = struct.pack('>I', len(idat_data)) + b'IDAT' + idat_data + struct.pack('>I', idat_crc)
+        iend_crc = zlib.crc32(b'IEND')
+        iend_chunk = struct.pack('>I', 0) + b'IEND' + struct.pack('>I', iend_crc)
+        return sig + ihdr_chunk + idat_chunk + iend_chunk
+    return Response(png1x1(), mimetype='image/png',
+                   headers={'Cache-Control': 'no-cache'})
+
+@app.route('/api/title')
+def api_title():
+    src_param = (request.args.get('source') or 'live').strip().lower()
+    if src_param in _image_meta:
+        title, source = _image_meta[src_param]
+        if title and source:
+            return jsonify({'title': title, 'source': source})
+    title  = open(TITLE_F).read().strip()  if Path(TITLE_F).exists()  else 'ORBITAL-CHOHRA Observatory'
+    source = 'NASA APOD'
+    try:
+        conn = get_db()
+        row = conn.execute(
+            "SELECT COALESCE(title, objets_detectes, 'Observation') as t, source "
+            "FROM observations ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        conn.close()
+        if row:
+            title  = row['t'] or title
+            source = row['source'] or source
+    except: pass
+    return jsonify({'title': title, 'source': source})
+
+# ══════════════════════════════════════════════════════════════
+# API — ISS
+# ══════════════════════════════════════════════════════════════
+
+def _fetch_iss_live():
+    """Récupère une position ISS fiable via whereTheISS / open-notify (sans cache)."""
+    urls = [
+        'https://api.wheretheiss.at/v1/satellites/25544',
+        'http://api.open-notify.org/iss-now.json',
+    ]
+    for url in urls:
+        raw = _curl_get(url, timeout=8)
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw)
+            # whereTheISS.at format
+            if 'latitude' in data:
+                lat = float(data['latitude'])
+                lon = float(data['longitude'])
+                alt = float(data.get('altitude', 408.0))
+                speed = float(data.get('velocity', 27600.0))
+                region = data.get('country_name', _guess_region(lat, lon))
+            # open-notify format
+            elif 'iss_position' in data:
+                pos = data['iss_position']
+                lat = float(pos['latitude'])
+                lon = float(pos['longitude'])
+                alt = 408.0
+                speed = 27600.0
+                region = _guess_region(lat, lon)
+            else:
+                continue
+
+            return {
+                'ok': True,
+                'lat': lat,
+                'lon': lon,
+                'alt': round(alt, 1),
+                'speed': round(speed, 0),
+                'region': region,
+            }
+        except Exception as e:
+            log.warning(f"ISS {url}: {e}")
+            continue
+    return None
+
+
+@app.route('/api/iss')
+def api_iss():
+    """
+    Endpoint canonique ISS :
+    - Position + altitude + vitesse via whereTheISS / open-notify
+    - Nombre d'équipage via open-notify /astros.json
+    - Cache serveur 5 s → PC et Android reçoivent EXACTEMENT la même donnée.
+    """
+    iss = _cached('iss_live', 5, _fetch_iss_live)
+    if not iss:
+        iss = {
+            'ok': False,
+            'lat': 0.0,
+            'lon': 0.0,
+            'alt': 408.0,
+            'speed': 27600.0,
+            'region': 'Inconnu',
+        }
+
+    crew = _get_iss_crew()
+    iss['crew'] = crew
+    iss['timestamp'] = int(time.time())
+    return jsonify(iss)
+
+
+def _fetch_iss_crew():
+    """Lecture brute du nombre d'astronautes à bord de l'ISS via open-notify."""
+    raw = _curl_get('http://api.open-notify.org/astros.json', timeout=6)
+    if not raw:
+        return 7
+    try:
+        data = json.loads(raw)
+        iss = [p for p in data.get('people', []) if p.get('craft') == 'ISS']
+        return len(iss) if iss else data.get('number', 7)
+    except Exception:
+        return 7
+
+
+def _get_iss_crew():
+    """
+    Nombre d'astronautes à bord de l'ISS avec cache serveur 5 min.
+    On interroge la source officielle une seule fois toutes les 5 minutes,
+    puis PC et Android partagent la même valeur.
+    """
+    crew = _cached('iss_crew', 300, _fetch_iss_crew)
+    try:
+        crew = int(crew)
+        if crew <= 0 or crew > 20:
+            crew = 7
+    except Exception:
+        crew = 7
+    return crew
+
+def _guess_region(lat, lon):
+    """Estimation grossière de la région survolée."""
+    if -60 < lat < 60:
+        if -30 < lon < 60:
+            return 'Afrique / Europe'
+        elif 60 < lon < 150:
+            return 'Asie'
+        elif -150 < lon < -30:
+            return 'Amériques'
+        else:
+            return 'Océan Pacifique'
+    elif lat >= 60:
+        return 'Arctique'
+    else:
+        return 'Antarctique'
+
+# ══════════════════════════════════════════════════════════════
+# API — CHAT AEGIS (rotation clés + cache 5 min + délai 4s + curl)
+# ══════════════════════════════════════════════════════════════
+
+_chat_cache = {}   # {hash_msg: (timestamp, response)}
+_key_usage  = {}   # {key: last_used_timestamp}
+
+def _get_best_key():
+    """Retourne la clé Gemini la moins récemment utilisée (rotation)."""
+    keys = []
+    for k in ['GEMINI_API_KEY', 'GEMINI_API_KEY_BACKUP', 'GEMINI_API_KEY_3']:
+        v = os.environ.get(k, '').strip()
+        if v:
+            keys.append(v)
+    if not keys:
+        return None
+    keys.sort(key=lambda k: _key_usage.get(k, 0))
+    return keys[0]
+
+def _call_gemini(prompt, model='gemini-2.0-flash'):
+    """Appel Gemini avec rotation de clés + curl (contourne blocage réseau) + délai 4s."""
+    import subprocess
+    api_key = _get_best_key()
+    if not api_key:
+        return None, 'Clé API Gemini non configurée.'
+
+    last = _key_usage.get(api_key, 0)
+    wait = 4.0 - (time.time() - last)
+    if wait > 0:
+        time.sleep(wait)
+
+    _key_usage[api_key] = time.time()
+    payload = json.dumps({'contents': [{'parts': [{'text': prompt}]}]})
+    url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}'
+
+    try:
+        proc = subprocess.run(
+            ['curl', '-s', '-X', 'POST', url,
+             '-H', 'Content-Type: application/json',
+             '-d', payload],
+            capture_output=True, text=True, timeout=25
+        )
+        result = json.loads(proc.stdout)
+        if 'error' in result:
+            code = result['error'].get('code', 0)
+            msg_err = (result['error'].get('message') or '').strip()
+            if code == 429:
+                backup = os.environ.get('GEMINI_API_KEY_BACKUP', '').strip()
+                if backup and backup != api_key:
+                    _key_usage[backup] = 0
+                    return _call_gemini(prompt, model)
+                return None, 'Quota dépassé — réessayez dans 1 minute.'
+            if code in (400, 401, 403) and ('invalid' in msg_err.lower() or 'api key' in msg_err.lower() or 'apikey' in msg_err.lower()):
+                return None, 'Clé Gemini invalide. Vérifiez GEMINI_API_KEY et GEMINI_API_KEY_BACKUP dans .env (Google AI Studio).'
+            return None, msg_err if msg_err else f'Erreur API ({code}).'
+        text = result['candidates'][0]['content']['parts'][0]['text'].strip()
+        return text, None
+    except subprocess.TimeoutExpired:
+        return None, 'Délai dépassé. Réessayez.'
+    except Exception as e:
+        return None, f'Erreur connexion : {e}'
+
+def _call_groq(prompt):
+    """Fallback Groq API — llama-3.3-70b — gratuit, zéro quota."""
+    import subprocess
+    api_key = os.environ.get('GROQ_API_KEY', '').strip()
+    if not api_key:
+        return None, 'GROQ_API_KEY non configurée'
+    payload = json.dumps({
+        'model': 'llama-3.3-70b-versatile',
+        'messages': [{'role': 'user', 'content': prompt}],
+        'max_tokens': 1024,
+        'temperature': 0.7
+    })
+    try:
+        proc = subprocess.run(
+            ['curl', '-s', '-X', 'POST',
+             'https://api.groq.com/openai/v1/chat/completions',
+             '-H', f'Authorization: Bearer {api_key}',
+             '-H', 'Content-Type: application/json',
+             '-d', payload],
+            capture_output=True, text=True, timeout=20
+        )
+        result = json.loads(proc.stdout)
+        if 'error' in result:
+            msg = (result['error'].get('message') or 'Erreur Groq').strip()
+            if 'invalid' in msg.lower() or 'api key' in msg.lower() or 'apikey' in msg.lower():
+                msg = 'Clé Groq invalide. Vérifiez GROQ_API_KEY dans .env (clé gsk_xxx sur console.groq.com).'
+            return None, msg
+        text = result['choices'][0]['message']['content'].strip()
+        return text, None
+    except Exception as e:
+        return None, f'Erreur Groq : {e}'
+
+def _call_ai(prompt):
+    """Appel IA : Gemini d'abord, puis Groq si échec (quota, clé invalide, réseau)."""
+    reply, err = _call_gemini(prompt)
+    if reply:
+        return reply, None, 'gemini'
+    # Dès que Gemini échoue, tenter Groq si la clé est configurée
+    if os.environ.get('GROQ_API_KEY', '').strip():
+        log.info("Gemini indisponible → bascule Groq")
+        reply, err2 = _call_groq(prompt)
+        if reply:
+            return reply, None, 'groq'
+        return None, err2 or err, 'none'
+    return None, err, 'none'
+
+@app.route('/api/chat', methods=['POST'])
+def api_chat():
+    import hashlib
+    data = request.get_json(silent=True) or {}
+    msg  = data.get('message', '').strip()
+    extra_ctx = (data.get('context') or '').strip()  # Contexte Overlord (ex: image courante)
+
+    if not msg:
+        return jsonify({'ok': False, 'error': 'message vide'})
+
+    # Cache 5 min — même question → réponse instantanée sans API
+    msg_hash = hashlib.md5(msg.lower().strip().encode()).hexdigest()
+    if msg_hash in _chat_cache:
+        ts, cached_resp = _chat_cache[msg_hash]
+        if time.time() - ts < 300:
+            return jsonify({'ok': True, 'response': cached_resp, 'cached': True})
+
+    # Contexte station (une seule requête DB)
+    ctx = ''
+    try:
+        conn = get_db()
+        total = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        anom  = conn.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
+        last  = conn.execute(
+            "SELECT COALESCE(title, objets_detectes, '') as t, COALESCE(analyse_gemini,'') as r "
+            "FROM observations ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        conn.close()
+        ctx = (f"Station ORBITAL-CHOHRA à Hillsboro (Oregon, USA). "
+               f"Directeur : Zakaria Chohra, Tlemcen, Algérie. "
+               f"Base de données : {total} observations, {anom} anomalies détectées. "
+               f"Dernière observation : {last['t'] if last else 'inconnue'}. "
+               f"Analyse AEGIS : {(last['r'] if last else '')[:200]}. "
+               f"Sources actives : NASA APOD, ESA Hubble, SIMBAD, Chandra, IRSA/WISE, MPC. "
+               f"Pipeline SDR NOAA actif. Répondre en français.")
+    except Exception as e:
+        log.warning(f"chat ctx: {e}")
+        ctx = "Station ORBITAL-CHOHRA Hillsboro Oregon."
+
+    if extra_ctx:
+        ctx = ctx + " " + extra_ctx
+
+    prompt = (
+        f"Tu es AEGIS — IA de la station astronomique ORBITAL-CHOHRA.\n"
+        f"Directeur : Zakaria Chohra, Tlemcen, Algérie.\n"
+        f"Contexte : {ctx}\n\n"
+        "RÈGLES STRICTES :\n"
+        "1. Réponds EXACTEMENT à la question posée — ni plus ni moins. Pas de digression.\n"
+        "2. Si la question est factuelle (quoi, combien, où, quand) → une réponse courte et précise.\n"
+        "3. Si la question est astronomique → ton savoir scientifique, concis et exact.\n"
+        "4. Si la question concerne la station ou l'écran → utilise le contexte ci-dessus.\n"
+        "5. Jamais de demande de précision. Toujours en français. Pas d'introduction ni de liste inutile.\n\n"
+        f"Question : {msg}"
+    )
+
+    reply, err, model_used = _call_ai(prompt)
+    if err:
+        log.error(f"chat: {err}")
+        return jsonify({'ok': False, 'response': err})
+
+    _chat_cache[msg_hash] = (time.time(), reply)
+    old_keys = [k for k, v in _chat_cache.items() if time.time() - v[0] > 300]
+    for k in old_keys:
+        del _chat_cache[k]
+
+    return jsonify({'ok': True, 'response': reply, 'model': model_used})
+
+@app.route('/api/aegis/status')
+def api_aegis_status():
+    """Vérifie la connexion AEGIS : Gemini et Groq (fallback)."""
+    try:
+        groq_configured = bool(os.environ.get('GROQ_API_KEY', '').strip())
+        try:
+            gemini_configured = bool(_get_best_key())
+        except Exception:
+            gemini_configured = False
+        groq_ok = False
+        groq_error = None
+        if groq_configured:
+            try:
+                reply, err = _call_groq('Réponds uniquement par: OK')
+                groq_ok = reply is not None and ('OK' in (reply or ''))
+                groq_error = err
+            except Exception as e:
+                groq_error = str(e)
+        return jsonify({
+            'ok': True,
+            'gemini_configured': gemini_configured,
+            'groq_configured': groq_configured,
+            'groq_ok': groq_ok,
+            'groq_error': groq_error,
+        })
+    except Exception as e:
+        log.exception("aegis/status")
+        return jsonify({
+            'ok': False,
+            'gemini_configured': False,
+            'groq_configured': bool(os.environ.get('GROQ_API_KEY', '').strip()),
+            'groq_ok': False,
+            'groq_error': str(e),
+        })
+
+# ══════════════════════════════════════════════════════════════
+# API — TRANSLATE
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/api/translate', methods=['POST'])
+def api_translate():
+    data = request.get_json(silent=True) or {}
+    text = data.get('text', '')
+    translated = _gemini_translate(text)
+    return jsonify({'ok': True, 'translated': translated})
+
+# ══════════════════════════════════════════════════════════════
+# API — TELESCOPE HUB
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/api/telescope-hub')
+def api_telescope_hub():
+    if Path(HUB_F).exists():
+        try:
+            age = time.time() - Path(HUB_F).stat().st_mtime
+            if age < 3600:
+                return jsonify(json.load(open(HUB_F)))
+        except: pass
+    # Fallback statique
+    return jsonify({
+        'ok': True,
+        'telescopes': [
+            {'name':'NASA SkyView',   'status':'online', 'latency':210, 'url':'https://skyview.gsfc.nasa.gov'},
+            {'name':'SIMBAD/CDS',     'status':'online', 'latency':380, 'url':'http://simbad.u-strasbg.fr'},
+            {'name':'ESA Hubble',     'status':'online', 'latency':290, 'url':'https://esahubble.org'},
+            {'name':'Chandra X-Ray', 'status':'online', 'latency':340, 'url':'https://cxc.harvard.edu'},
+            {'name':'IRSA/WISE',      'status':'online', 'latency':260, 'url':'https://irsa.ipac.caltech.edu'},
+            {'name':'Minor Planet Center','status':'online','latency':180,'url':'https://minorplanetcenter.net'},
+        ],
+        'online': 6, 'total': 6
+    })
+
+# ══════════════════════════════════════════════════════════════
+# API — SHIELD
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/api/shield')
+def api_shield():
+    if Path(SHIELD_F).exists():
+        try:
+            return jsonify(json.load(open(SHIELD_F)))
+        except: pass
+    return jsonify({'ok': True, 'status': 'active', 'uptime': '—'})
+
+# ══════════════════════════════════════════════════════════════
+# API — CLASSIFICATION STATS
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/api/classification/stats')
+def api_classification_stats():
+    try:
+        conn = get_db()
+        rows = conn.execute(
+            "SELECT COALESCE(objets_detectes,'inconnu') as type, COUNT(*) as n "
+            "FROM observations GROUP BY objets_detectes ORDER BY n DESC"
+        ).fetchall()
+        conn.close()
+        return jsonify({'ok': True, 'stats': [dict(r) for r in rows]})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)})
+
+# ══════════════════════════════════════════════════════════════
+# API — MAST TARGETS
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/api/mast/targets')
+def api_mast_targets():
+    try:
+        conn = get_db()
+        rows = conn.execute(
+            "SELECT id, COALESCE(title, objets_detectes, 'Unknown') as name, "
+            "source, timestamp FROM observations "
+            "WHERE source LIKE '%MAST%' OR source LIKE '%Hubble%' OR source LIKE '%JWST%' "
+            "ORDER BY id DESC LIMIT 20"
+        ).fetchall()
+        conn.close()
+        return jsonify({'ok': True, 'targets': [dict(r) for r in rows]})
+    except Exception as e:
+        return jsonify({'ok': False, 'targets': [], 'error': str(e)})
+
+# ══════════════════════════════════════════════════════════════
+# API — SDR
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/api/sdr/status')
+def api_sdr_status():
+    if Path(SDR_F).exists():
+        try:
+            return jsonify(json.load(open(SDR_F)))
+        except: pass
+    return jsonify({'ok': True, 'status': 'standby', 'last_capture': None})
+
+@app.route('/api/sdr/stations')
+def api_sdr_stations():
+    return jsonify({'ok': True, 'stations': [
+        {'name':'Univ. Twente','country':'Pays-Bas','flag':'🇳🇱','status':'online','freq':'137MHz'},
+        {'name':'Rome IK0SMG','country':'Italie','flag':'🇮🇹','status':'online','freq':'137MHz'},
+        {'name':'Bordeaux F5SWN','country':'France','flag':'🇫🇷','status':'online','freq':'137MHz'},
+        {'name':'Madrid EA4RCU','country':'Espagne','flag':'🇪🇸','status':'online','freq':'137MHz'},
+    ]})
+
+@app.route('/api/sdr/captures')
+def api_sdr_captures():
+    try:
+        conn = get_db()
+        rows = conn.execute(
+            "SELECT id, timestamp, source, COALESCE(title,'') as title "
+            "FROM observations WHERE source LIKE '%SDR%' OR source LIKE '%NOAA%' "
+            "ORDER BY id DESC LIMIT 10"
+        ).fetchall()
+        conn.close()
+        return jsonify({'ok': True, 'captures': [dict(r) for r in rows]})
+    except Exception as e:
+        return jsonify({'ok': False, 'captures': []})
+
+# ══════════════════════════════════════════════════════════════
+# API — NASA SkyView (Goddard / HEASARC, gratuit, sans compte)
+# ══════════════════════════════════════════════════════════════
+try:
+    from skyview_module import fetch_skyview_image, fetch_multiple_surveys, TARGETS as SKYVIEW_TARGETS, SURVEYS as SKYVIEW_SURVEYS
+except ImportError:
+    SKYVIEW_TARGETS = {}
+    SKYVIEW_SURVEYS = {}
+    def fetch_skyview_image(*a, **k):
+        return {'ok': False, 'error': 'skyview_module non disponible'}
+    def fetch_multiple_surveys(*a, **k):
+        return []
+
+@app.route('/api/skyview/targets')
+def skyview_targets():
+    return jsonify({'targets': SKYVIEW_TARGETS, 'surveys': SKYVIEW_SURVEYS, 'total': len(SKYVIEW_TARGETS)})
+
+@app.route('/api/skyview/fetch', methods=['POST'])
+def skyview_fetch():
+    data = request.json or {}
+    result = fetch_skyview_image(
+        target_id=data.get('target', 'M42'),
+        survey=data.get('survey', 'DSS2 Red'),
+        size_deg=float(data.get('size', 0.5)),
+        pixels=int(data.get('pixels', 512)),
+    )
+    return jsonify(result)
+
+@app.route('/api/skyview/multiwave/<target_id>')
+def skyview_multiwave(target_id):
+    results = fetch_multiple_surveys(target_id)
+    return jsonify({'target': target_id, 'images': results})
+
+@app.route('/api/skyview/list')
+def skyview_list():
+    files = glob.glob(f'{STATION}/static/img/skyview/*.gif')
+    files.sort(key=os.path.getmtime, reverse=True)
+    return jsonify({'images': [os.path.basename(f) for f in files[:20]]})
+
+# ══════════════════════════════════════════════════════════════
+# PWA — Service Worker & Manifest
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/sw.js')
+def sw_js():
+    sw_path = f'{STATION}/static/sw.js'
+    if Path(sw_path).exists():
+        return send_file(sw_path, mimetype='application/javascript',
+                        headers={'Service-Worker-Allowed': '/'})
+    return Response('// SW not found', mimetype='application/javascript')
+
+@app.route('/manifest.json')
+def manifest_json():
+    m_path = f'{STATION}/static/manifest.json'
+    if Path(m_path).exists():
+        return send_file(m_path, mimetype='application/json')
+    return jsonify({
+        'name': 'ORBITAL-CHOHRA',
+        'short_name': 'ASTRO-SCAN',
+        'start_url': '/portail',
+        'display': 'standalone',
+        'background_color': '#010408',
+        'theme_color': '#00d4ff',
+        'icons': [
+            {'src': '/static/img/pwa-icon-192.png', 'sizes': '192x192', 'type': 'image/png'},
+            {'src': '/static/img/pwa-icon-512.png', 'sizes': '512x512', 'type': 'image/png'},
+        ]
+    })
+
+@app.route('/api/push/subscribe', methods=['POST'])
+def api_push_subscribe():
+    return jsonify({'ok': True, 'message': 'Subscription enregistrée'})
+
+# ══════════════════════════════════════════════════════════════
+# STATIC
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory(f'{STATION}/static', filename)
+
+# ══════════════════════════════════════════════════════════════
+# PAGE /ce_soir + APIs associées (Ce soir & news)
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/ce_soir')
+def ce_soir_page():
+    return render_template('ce_soir.html')
+
+@app.route('/api/tonight')
+def api_tonight():
+    try:
+        from ce_soir_module import get_tonight_data
+        data = get_tonight_data()
+    except Exception as e:
+        data = {'ok': False, 'error': str(e)}
+    return jsonify(data)
+
+@app.route('/api/news')
+def api_news():
+    try:
+        from news_module import fetch_news
+        data = fetch_news()
+    except Exception as e:
+        data = {'ok': False, 'error': str(e)}
+    return jsonify(data)
+
+# ── API SDR Passes (prédictions NOAA, TLE CelesTrak, cache 2h, Hillsboro) ──
+@app.route('/api/sdr/passes')
+def api_sdr_passes():
+    """Prochains passages NOAA-15/18/19 pour Hillsboro OR (TLE CelesTrak, cache 2h)."""
+    import math
+    _lat, _lon = 45.5051, -122.9493  # Hillsboro, Oregon
+    _alt_km = 0.057
+    _min_el = 5.0
+    noaa_sats = {
+        'NOAA-15': {'freq': '137.620 MHz', 'group': 'noaa'},
+        'NOAA-18': {'freq': '137.9125 MHz', 'group': 'noaa'},
+        'NOAA-19': {'freq': '137.100 MHz', 'group': 'noaa'},
+    }
+    tle_cache = f'{STATION}/data/noaa_tle.json'
+    tles = {}
+    try:
+        if Path(tle_cache).exists():
+            with open(tle_cache) as f:
+                cached = json.load(f)
+            if time.time() - cached.get('timestamp', 0) < 7200:
+                tles = cached.get('tles', {})
+        if not tles:
+            import urllib.request as urlreq
+            url = 'https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa&FORMAT=tle'
+            req = urlreq.Request(url, headers={'User-Agent': 'ORBITAL-CHOHRA/1.0'})
+            with urlreq.urlopen(req, timeout=10) as r:
+                raw = r.read().decode()
+            lines = [l.strip() for l in raw.splitlines() if l.strip()]
+            i = 0
+            while i < len(lines) - 2:
+                name = lines[i].strip()
+                if lines[i + 1].startswith('1 ') and lines[i + 2].startswith('2 '):
+                    tles[name] = {'tle1': lines[i + 1], 'tle2': lines[i + 2]}
+                    i += 3
+                else:
+                    i += 1
+            Path(tle_cache).parent.mkdir(parents=True, exist_ok=True)
+            with open(tle_cache, 'w') as f:
+                json.dump({'timestamp': time.time(), 'tles': tles}, f)
+    except Exception as e:
+        log.warning(f"TLE fetch: {e}")
+
+    now = time.time()
+    end_t = now + 86400 * 2
+    out = []
+    for sat_name, sat_info in noaa_sats.items():
+        tle_data = None
+        for name, data in tles.items():
+            if sat_name.upper() in name.upper() or name.upper().startswith(sat_name.replace('-', ' ').split()[0]):
+                tle_data = data
+                break
+        if not tle_data:
+            out.append({
+                'sat': sat_name, 'freq': sat_info['freq'],
+                'aos': now + 7200, 'los': now + 7920, 'max_el': 15, 'simulated': True,
+            })
+            continue
+        try:
+            tle2 = tle_data['tle2']
+            inc_deg = float(tle2[8:16])
+            mm = float(tle2[52:63])  # rev/day
+            period_sec = 86400.0 / mm
+            mu = 398600.4418
+            n_rad = mm * 2 * math.pi / 86400
+            a_km = (mu / (n_rad ** 2)) ** (1 / 3)
+            t = now
+            in_pass = False
+            pass_start, max_el_cur = 0, 0
+            while t < end_t:
+                phase = ((t - now) % period_sec) / period_sec
+                sat_lat = inc_deg * math.sin(2 * math.pi * phase)
+                # Longitude dérive ~360° par orbite
+                sat_lon = _lon + (t - now) / period_sec * 360.0
+                sat_lon = ((sat_lon + 180) % 360) - 180
+                sat_alt = a_km - 6371
+                dlat = math.radians(sat_lat - _lat)
+                dlon = math.radians(sat_lon - _lon)
+                slat = math.radians(_lat)
+                a2 = math.sin(dlat / 2) ** 2 + math.cos(slat) * math.cos(math.radians(sat_lat)) * math.sin(dlon / 2) ** 2
+                dist_km = 6371 * 2 * math.atan2(math.sqrt(a2), math.sqrt(1 - a2))
+                elev = math.degrees(math.atan2(sat_alt, dist_km)) if dist_km > 0 else 0
+                if elev >= _min_el:
+                    if not in_pass:
+                        in_pass = True
+                        pass_start = t
+                        max_el_cur = elev
+                    else:
+                        max_el_cur = max(max_el_cur, elev)
+                else:
+                    if in_pass:
+                        in_pass = False
+                        if pass_start >= now - 120:
+                            out.append({
+                                'sat': sat_name, 'freq': sat_info['freq'],
+                                'aos': int(pass_start), 'los': int(t),
+                                'max_el': round(max_el_cur, 1), 'simulated': False,
+                            })
+                        max_el_cur = 0
+                t += 30
+        except Exception as e:
+            log.warning(f"SGP4 {sat_name}: {e}")
+            out.append({
+                'sat': sat_name, 'freq': sat_info['freq'],
+                'aos': int(now + 3600), 'los': int(now + 3720), 'max_el': 20, 'simulated': True,
+            })
+    out = [p for p in out if p['los'] > now - 60]
+    out.sort(key=lambda x: x['aos'])
+    out = out[:12]
+    return jsonify({'ok': True, 'passes': out, 'station': 'Hillsboro OR', 'count': len(out)})
+
+# ══════════════════════════════════════════════════════════════
+# FLUX SPATIAUX — Voyager JPL, NEO, Vent solaire, Mars, APOD, Alertes solaires (curl)
+# Toutes les requêtes passent par _curl_get (urllib bloqué serveur Hillsboro).
+#
+# URLs officielles utilisées:
+#   Voyager 1/2:  https://ssd.jpl.nasa.gov/api/horizons.api (COMMAND -31 / -32)
+#   Vent solaire: https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json
+#   Alertes SWPC: https://services.swpc.noaa.gov/json/alerts.json
+#                 https://services.swpc.noaa.gov/json/xray-flares-latest.json
+#   ISS:          https://api.wheretheiss.at/v1/satellites/25544
+#   Mars photos:  https://api.nasa.gov/mars-photos/api/v1/rovers/{rover}/latest_photos
+#   APOD:         https://api.nasa.gov/planetary/apod
+# ══════════════════════════════════════════════════════════════
+
+from datetime import datetime as _dt_utc
+
+_feeds_cache = {}  # {key: (timestamp, data)}
+
+def _cached(key, ttl, fn):
+    """Cache générique pour les feeds."""
+    now = time.time()
+    if key in _feeds_cache and now - _feeds_cache[key][0] < ttl:
+        return _feeds_cache[key][1]
+    data = fn()
+    if data is not None:
+        _feeds_cache[key] = (now, data)
+    return data if data is not None else (_feeds_cache.get(key) or (0, None))[1]
+
+def _fetch_voyager():
+    """Position Voyager 1 & 2 via NASA JPL Horizons (curl)."""
+    try:
+        now = _dt_utc.utcnow()
+        y, m, d = now.year, now.month, now.day
+        results = {}
+        for name, target in [('VOYAGER_1', '-31'), ('VOYAGER_2', '-32')]:
+            url = (
+                f"https://ssd.jpl.nasa.gov/api/horizons.api?"
+                f"format=text&COMMAND='{target}'&OBJ_DATA=YES&MAKE_EPHEM=YES"
+                f"&EPHEM_TYPE=VECTORS&CENTER='500@10'"
+                f"&START_TIME='{y}-{m:02d}-{d:02d}'&STOP_TIME='{y}-{m:02d}-{d:02d}T23:59'"
+                f"&STEP_SIZE='1d'&QUANTITIES='20'"
+            )
+            raw = _curl_get(url, timeout=20)
+            if not raw:
+                continue
+            dist_au = None
+            speed_km_s = None
+            m = re.search(r'RG=\s*([\d.]+)', raw)
+            if m:
+                dist_au = float(m.group(1))
+            m2 = re.search(r'RR=\s*([-\d.]+)', raw)
+            if m2:
+                speed_au_d = float(m2.group(1))
+                speed_km_s = abs(speed_au_d * 1731.46)
+            if dist_au is not None:
+                results[name] = {
+                    'dist_au': round(dist_au, 4),
+                    'dist_km': round(dist_au * 149597870.7),
+                    'speed_km_s': round(speed_km_s, 2) if speed_km_s else None,
+                    'source': 'NASA JPL Horizons',
+                }
+        return results if results else None
+    except Exception as e:
+        log.warning(f"voyager: {e}")
+        return None
+
+def _fetch_neo():
+    """Astéroïdes NEO du jour via NASA NeoWs API (curl)."""
+    try:
+        nasa_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
+        today = _dt_utc.utcnow().date().isoformat()
+        url = f"https://api.nasa.gov/neo/rest/v1/feed?start_date={today}&end_date={today}&api_key={nasa_key}"
+        raw = _curl_get(url, timeout=20)
+        if not raw:
+            return None
+        data = json.loads(raw)
+        neos = []
+        for date_key, objects in data.get('near_earth_objects', {}).items():
+            for obj in (objects or [])[:8]:
+                ca = (obj.get('close_approach_data') or [{}])[0]
+                dist_au = ca.get('miss_distance', {}).get('astronomical', '?')
+                dist_km = ca.get('miss_distance', {}).get('kilometers', '?')
+                vel = ca.get('relative_velocity', {}).get('kilometers_per_second', 0)
+                try:
+                    vel = round(float(vel), 2)
+                except (TypeError, ValueError):
+                    vel = 0
+                diam = obj.get('estimated_diameter', {}).get('meters', {}) or {}
+                diam_min = round(float(diam.get('estimated_diameter_min', 0)))
+                diam_max = round(float(diam.get('estimated_diameter_max', 0)))
+                neos.append({
+                    'name': obj.get('name', ''),
+                    'dist_au': dist_au,
+                    'dist_km': dist_km,
+                    'vel_km_s': vel,
+                    'diam_min': diam_min,
+                    'diam_max': diam_max,
+                    'hazardous': obj.get('is_potentially_hazardous_asteroid', False),
+                    'date': ca.get('close_approach_date', today),
+                })
+        neos.sort(key=lambda x: (float(x['dist_au']) if x['dist_au'] != '?' else 999))
+        return neos
+    except Exception as e:
+        log.warning(f"neo: {e}")
+        return None
+
+def _fetch_solar_wind():
+    """Vent solaire NOAA DSCOVR temps réel (curl)."""
+    try:
+        url = "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json"
+        raw = _curl_get(url, timeout=15)
+        if not raw:
+            return None
+        data = json.loads(raw)
+        if not isinstance(data, list) or len(data) < 2:
+            return None
+        latest = data[-1]
+        return {
+            'timestamp': latest[0],
+            'density': latest[1],
+            'speed': latest[2],
+            'temperature': latest[3],
+            'source': 'NOAA DSCOVR',
+        }
+    except Exception as e:
+        log.warning(f"solar_wind: {e}")
+        return None
+
+def _fetch_solar_alerts():
+    """Alertes éruptions solaires et événements — NOAA SWPC (curl)."""
+    try:
+        # Alertes texte + derniers flares X-ray
+        out = {'alerts': [], 'flares': [], 'source': 'NOAA SWPC'}
+        raw = _curl_get('https://services.swpc.noaa.gov/json/alerts.json', timeout=12)
+        if raw:
+            data = json.loads(raw)
+            if isinstance(data, list):
+                out['alerts'] = [a for a in data[-10:] if isinstance(a, dict)]
+            elif isinstance(data, dict) and 'alerts' in data:
+                out['alerts'] = data['alerts'][-10:]
+        raw2 = _curl_get('https://services.swpc.noaa.gov/json/xray-flares-latest.json', timeout=10)
+        if raw2:
+            data2 = json.loads(raw2)
+            if isinstance(data2, list):
+                out['flares'] = data2[-5:]
+            elif isinstance(data2, dict):
+                out['flares'] = data2.get('flares', data2.get('xray_flares', []))[-5:]
+        return out if (out['alerts'] or out['flares']) else None
+    except Exception as e:
+        log.warning(f"solar_alerts: {e}")
+        return None
+
+def _fetch_mars_rover():
+    """Photos Mars Rovers (Curiosity / Perseverance) du jour — NASA API (curl)."""
+    try:
+        nasa_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
+        photos = []
+        for rover in ['curiosity', 'perseverance']:
+            url = f"https://api.nasa.gov/mars-photos/api/v1/rovers/{rover}/latest_photos?api_key={nasa_key}&page=1"
+            raw = _curl_get(url, timeout=20)
+            if not raw:
+                continue
+            data = json.loads(raw)
+            for p in (data.get('latest_photos') or [])[:3]:
+                photos.append({
+                    'rover': rover.capitalize(),
+                    'sol': p.get('sol'),
+                    'date': p.get('earth_date'),
+                    'camera': (p.get('camera') or {}).get('full_name', ''),
+                    'img_url': p.get('img_src', ''),
+                })
+        return photos
+    except Exception as e:
+        log.warning(f"mars_rover: {e}")
+        return None
+
+def _fetch_apod_hd():
+    """APOD HD — image du jour NASA (curl)."""
+    try:
+        nasa_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
+        url = f"https://api.nasa.gov/planetary/apod?api_key={nasa_key}&hd=True"
+        raw = _curl_get(url, timeout=15)
+        if not raw:
+            return None
+        data = json.loads(raw)
+        img_url = data.get('hdurl') or data.get('url', '')
+        if not img_url or not str(img_url).startswith('http'):
+            return None
+        hd_path = f'{STATION}/telescope_live/apod_hd.jpg'
+        subprocess.run(['curl', '-s', '-L', '--max-time', '30', '-o', hd_path, img_url], timeout=35, capture_output=True)
+        if Path(hd_path).exists():
+            return {
+                'title': data.get('title', ''),
+                'date': data.get('date', ''),
+                'explanation': (data.get('explanation') or '')[:300],
+                'url': img_url,
+                'hd_path': hd_path,
+            }
+        return {'title': data.get('title', ''), 'date': data.get('date', ''), 'url': img_url}
+    except Exception as e:
+        log.warning(f"apod_hd: {e}")
+        return None
+
+@app.route('/api/feeds/voyager')
+def api_feeds_voyager():
+    data = _cached('voyager', 3600, _fetch_voyager)
+    if not data:
+        now = _dt_utc.utcnow()
+        days_v1 = (now - _dt_utc(1977, 9, 5)).days
+        days_v2 = (now - _dt_utc(1977, 8, 20)).days
+        v1_au = 17.0 + days_v1 * 0.000985
+        v2_au = 14.5 + days_v2 * 0.000898
+        data = {
+            'VOYAGER_1': {'dist_au': round(v1_au, 2), 'dist_km': round(v1_au * 149597870.7), 'speed_km_s': 17.0, 'source': 'Calcul approx.'},
+            'VOYAGER_2': {'dist_au': round(v2_au, 2), 'dist_km': round(v2_au * 149597870.7), 'speed_km_s': 15.4, 'source': 'Calcul approx.'},
+        }
+    return jsonify({'ok': True, 'data': data})
+
+@app.route('/api/feeds/neo')
+def api_feeds_neo():
+    data = _cached('neo', 3600, _fetch_neo)
+    return jsonify({'ok': True, 'neos': data or [], 'count': len(data) if data else 0})
+
+@app.route('/api/feeds/solar')
+def api_feeds_solar():
+    data = _cached('solar', 900, _fetch_solar_wind)
+    return jsonify({'ok': True, 'solar_wind': data})
+
+@app.route('/api/feeds/solar_alerts')
+def api_feeds_solar_alerts():
+    """Alertes éruptions solaires et flares X-ray — NOAA SWPC."""
+    data = _cached('solar_alerts', 600, _fetch_solar_alerts)
+    return jsonify({'ok': True, 'alerts': data.get('alerts', []) if data else [], 'flares': data.get('flares', []) if data else []})
+
+@app.route('/api/feeds/mars')
+def api_feeds_mars():
+    data = _cached('mars', 7200, _fetch_mars_rover)
+    return jsonify({'ok': True, 'photos': data or []})
+
+@app.route('/api/feeds/apod_hd')
+def api_feeds_apod_hd():
+    data = _cached('apod_hd', 3600, _fetch_apod_hd)
+    return jsonify({'ok': True, 'apod': data})
+
+@app.route('/api/feeds/all')
+def api_feeds_all():
+    """Tous les feeds en un appel (Voyager JPL, NEO, vent solaire, alertes solaires, Mars, APOD)."""
+    return jsonify({
+        'ok': True,
+        'voyager': _cached('voyager', 3600, _fetch_voyager),
+        'neo': _cached('neo', 3600, _fetch_neo),
+        'solar_wind': _cached('solar', 900, _fetch_solar_wind),
+        'solar_alerts': _cached('solar_alerts', 600, _fetch_solar_alerts),
+        'mars': _cached('mars', 7200, _fetch_mars_rover),
+        'apod_hd': _cached('apod_hd', 3600, _fetch_apod_hd),
+        'station': 'ORBITAL-CHOHRA · Hillsboro OR',
+        'timestamp': _dt_utc.utcnow().isoformat(),
+    })
+
+# ── Health check ──
+@app.route('/api/health')
+def api_health():
+    total, anom, sources = 0, 0, []
+    uptime_str = '—'
+    try:
+        conn = sqlite3.connect('/root/astro_scan/data/archive_stellaire.db')
+        total = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        anom  = conn.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
+        rows  = conn.execute("SELECT DISTINCT source FROM observations WHERE timestamp > datetime('now','-7 days')").fetchall()
+        sources = [r[0] for r in rows]
+        last  = conn.execute("SELECT COALESCE(title,objets_detectes,'') as t, timestamp FROM observations ORDER BY id DESC LIMIT 1").fetchone()
+        conn.close()
+    except: pass
+    try:
+        uptime_str = open('/proc/uptime').read().split()[0]
+        s = int(float(uptime_str))
+        uptime_str = f"{s//3600}h {(s%3600)//60}m"
+    except: pass
+    import os
+    return jsonify({
+        'ok': True, 'station': 'ORBITAL-CHOHRA',
+        'ip': '5.78.153.17', 'location': 'Hillsboro, Oregon, USA',
+        'director': 'Zakaria Chohra — Tlemcen, Algérie',
+        'time_utc': datetime.now(timezone.utc).isoformat(),
+        'uptime': uptime_str,
+        'db': {'total': total, 'anomalies': anom, 'sources': sources},
+        'services': {
+            'gemini': 'active' if os.environ.get('GEMINI_API_KEY') else 'missing',
+            'groq':   'active' if os.environ.get('GROQ_API_KEY')   else 'missing',
+            'nasa':   'active' if os.environ.get('NASA_API_KEY')    else 'missing',
+            'aegis': 'active', 'sdr': 'active', 'iss': 'active'
+        },
+        'coordinates': {'lat': 45.5051, 'lon': -122.9493, 'alt_m': 57, 'timezone': 'UTC-8'}
+    })
+
+# ══════════════════════════════════════════════════════════════
+# MAIN
+# ══════════════════════════════════════════════════════════════
+
+@app.route("/telescopes")
+def telescopes():
+    return render_template("telescopes.html")
+
+if __name__ == '__main__':
+    os.makedirs(f'{STATION}/logs', exist_ok=True)
+    os.makedirs(f'{STATION}/data', exist_ok=True)
+    os.makedirs(f'{STATION}/telescope_live', exist_ok=True)
+    log.info("═══ ORBITAL-CHOHRA STATION WEB — DÉMARRAGE ═══")
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)

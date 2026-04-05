@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroScan-Chohra - Overlord Live · ORBITAL-CHOHRA</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style id="embed-style"></style>
+<script>
+(function(){
+  if (window.location.search.indexOf('embed=1') !== -1 || window !== window.parent) {
+    var s = document.getElementById('embed-style');
+    if (s) s.textContent = '.topbar, .statusbar, .shell > footer { display:none !important; } .shell { grid-template-rows: 1fr !important; }';
+  }
+})();
+</script>
+<style>
+:root {
+  --void: #010408;
+  --deep: #020a0e;
+  --cyan: #00d4ff;
+  --cyan2: #00a8cc;
+  --green: #00ff88;
+  --amber: #ff8c00;
+  --red: #ff2244;
+  --emerald: #00dc96;
+  --blue: #4090ff;
+  --purple: #9060ff;
+  --text: #7a9ab0;
+  --text-hi: #d0e8f5;
+  --text-lo: #2a4858;
+  --border: rgba(0,180,255,0.1);
+  --border-hi: rgba(0,212,255,0.35);
+  --panel: rgba(2,8,14,0.97);
+  --F: 'Orbitron', monospace;
+  --M: 'Share Tech Mono', monospace;
+  --R: 'Rajdhani', sans-serif;
+}
+
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html, body { width:100%; height:100%; overflow:hidden; background:var(--void); color:var(--text); font-family:var(--M); }
+
+/* ── SCANLINES ── */
+body::before {
+  content:''; position:fixed; inset:0; z-index:100; pointer-events:none;
+  background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+}
+
+/* ── STARS ── */
+#stars { position:fixed; inset:0; z-index:0; pointer-events:none; }
+.star { position:absolute; border-radius:50%; background:#fff; animation:tw var(--d,4s) ease-in-out infinite var(--dl,0s); opacity:var(--op,.3); }
+@keyframes tw { 0%,100%{opacity:var(--op)} 50%{opacity:calc(var(--op)*.08)} }
+
+/* ── LAYOUT ── */
+.shell {
+  position:relative; z-index:2;
+  width:100%; height:100vh;
+  display:grid;
+  grid-template-rows: 52px 1fr 28px;
+  grid-template-columns: 1fr;
+  gap:0;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px;
+  background:rgba(1,4,10,0.99);
+  border-bottom:1px solid var(--border-hi);
+  position:relative; z-index:10;
+}
+.topbar::after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--cyan),transparent); opacity:0.5; }
+.tb-brand { display:flex; align-items:center; gap:12px; }
+.tb-brand svg { width:32px; height:32px; }
+.tb-name { font-family:var(--F); font-size:0.75rem; font-weight:900; letter-spacing:0.25em; color:var(--cyan); text-shadow:0 0 20px rgba(0,212,255,0.4); }
+.tb-mode { font-family:var(--F); font-size:0.52rem; font-weight:600; letter-spacing:0.2em; color:var(--amber); padding:3px 10px; border:1px solid rgba(255,140,0,0.4); text-transform:uppercase; animation:modepulse 3s ease-in-out infinite; }
+@keyframes modepulse { 0%,100%{opacity:1;box-shadow:0 0 8px rgba(255,140,0,0.2)} 50%{opacity:0.7;box-shadow:0 0 0} }
+.tb-center { display:flex; align-items:center; gap:20px; }
+.tb-stat { display:flex; align-items:center; gap:6px; font-size:0.5rem; letter-spacing:0.15em; color:var(--text-lo); text-transform:uppercase; }
+.td { width:6px; height:6px; border-radius:50%; }
+.td.g { background:var(--green); box-shadow:0 0 5px var(--green); animation:pulse 2s infinite; }
+.td.a { background:var(--amber); box-shadow:0 0 4px var(--amber); }
+.td.r { background:var(--red); box-shadow:0 0 5px var(--red); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.tb-right { display:flex; align-items:center; gap:16px; }
+.lang-toggle-overlord { display:flex; border:1px solid var(--border-hi); overflow:hidden; }
+.lb-ol { padding:4px 10px; font-family:var(--F); font-size:0.44rem; letter-spacing:0.12em; cursor:pointer; border:none; background:rgba(0,212,255,0.04); color:var(--text-lo); transition:all 0.2s; }
+.lb-ol:hover, .lb-ol.active { background:rgba(0,212,255,0.15); color:var(--cyan); }
+#clock { font-family:var(--F); font-size:0.78rem; font-weight:600; letter-spacing:0.12em; color:var(--text-hi); }
+.tb-loc { font-size:0.46rem; letter-spacing:0.2em; color:var(--text-lo); text-transform:uppercase; }
+
+/* ── MAIN GRID ── */
+.main {
+  display:grid;
+  grid-template-columns: 300px 1fr 280px;
+  grid-template-rows: 1fr;
+  gap:1px;
+  background:var(--border);
+  overflow:hidden;
+  min-height:0;
+  height:100%;
+}
+
+/* ── PANELS ── */
+.panel {
+  background:var(--panel);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  position:relative;
+  min-height:0;
+}
+.panel-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+  background:rgba(0,10,18,0.8);
+}
+.ph-title {
+  font-family:var(--F); font-size:0.52rem; font-weight:700;
+  letter-spacing:0.2em; text-transform:uppercase;
+}
+.ph-badge { font-size:0.42rem; letter-spacing:0.12em; padding:2px 7px; border:1px solid currentColor; text-transform:uppercase; }
+.ph-badge.active { color:var(--green); border-color:rgba(0,255,136,0.35); animation:pulse 2s infinite; }
+.ph-badge.warn { color:var(--amber); border-color:rgba(255,140,0,0.35); }
+
+/* ── LEFT PANEL — TELEMETRIE (ascenseur à l’extrême gauche, défilement garanti) ── */
+#panel-left { min-width:260px; width:300px; display:flex; flex-direction:column; min-height:0; overflow:hidden; flex-shrink:0; }
+#panel-left .ph-title { color:var(--cyan); }
+
+.telem-body {
+  flex:1; min-height:0; max-height:calc(100vh - 85px);
+  overflow-y:scroll; overflow-x:hidden;
+  direction:rtl;
+  padding:8px 0 12px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:var(--cyan) rgba(0,212,255,0.2);
+}
+.telem-body-inner { direction:ltr; }
+.telem-body::-webkit-scrollbar { width:14px; }
+.telem-body::-webkit-scrollbar-track {
+  background:rgba(0,15,30,0.95);
+  border-right:1px solid rgba(0,212,255,0.3);
+}
+.telem-body::-webkit-scrollbar-thumb {
+  background:linear-gradient(180deg, var(--cyan), #0088aa);
+  border-radius:7px;
+  min-height:80px;
+}
+.telem-body::-webkit-scrollbar-thumb:hover { background:var(--cyan); }
+.telem-body::-webkit-scrollbar-thumb:active { background:#00e5ff; }
+
+/* Section label */
+.sec-label { font-size:0.4rem; letter-spacing:0.35em; color:var(--text-lo); text-transform:uppercase; padding:8px 14px 4px; border-bottom:1px solid rgba(0,180,255,0.06); margin-bottom:4px; }
+
+/* Telemetry row */
+.trow {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:5px 14px;
+  border-bottom:1px solid rgba(0,180,255,0.04);
+  transition:background 0.15s;
+}
+.trow:hover { background:rgba(0,212,255,0.03); }
+.tr-lbl { font-size:0.48rem; letter-spacing:0.1em; color:var(--text-lo); text-transform:uppercase; flex:1; }
+.tr-val { font-family:var(--F); font-size:0.62rem; font-weight:600; text-align:right; }
+.tr-val.c { color:var(--cyan); }
+.tr-val.g { color:var(--green); }
+.tr-val.a { color:var(--amber); }
+.tr-val.r { color:var(--red); }
+.tr-val.w { color:var(--text-hi); }
+.tr-unit { font-size:0.38rem; color:var(--text-lo); margin-left:3px; }
+
+/* Mini bar gauge */
+.trow-bar { padding:3px 14px 6px; }
+.bar-track { height:2px; background:rgba(0,180,255,0.1); overflow:hidden; }
+.bar-fill { height:100%; transition:width 1s ease; }
+
+/* Metric block */
+.metric-block {
+  margin:8px 12px;
+  padding:10px 12px;
+  background:rgba(0,212,255,0.03);
+  border:1px solid var(--border);
+  clip-path:polygon(5px 0%,100% 0%,100% calc(100% - 5px),calc(100% - 5px) 100%,0% 100%,0% 5px);
+}
+.mb-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.mb-name { font-family:var(--F); font-size:0.48rem; letter-spacing:0.15em; color:var(--text-lo); text-transform:uppercase; }
+.mb-val { font-family:var(--F); font-size:1.4rem; font-weight:900; line-height:1; }
+.mb-sub { font-size:0.42rem; letter-spacing:0.1em; color:var(--text-lo); margin-top:3px; }
+.mb-bar { height:3px; background:rgba(0,180,255,0.08); margin-top:8px; overflow:hidden; position:relative; }
+.mb-bar-fill { position:absolute; top:0; left:0; height:100%; }
+
+/* ── CENTER PANEL — VISION ── */
+#panel-center .ph-title { color:var(--amber); }
+.center-body { flex:1; overflow:hidden; display:flex; flex-direction:column; gap:1px; background:var(--border); }
+
+/* Image section */
+.img-section {
+  flex:1.4; position:relative; overflow:hidden; background:#000;
+  min-height:0;
+}
+.img-section img {
+  width:100%; height:100%; object-fit:cover;
+  filter:brightness(0.9) saturate(1.1);
+  transition: opacity 0.25s ease;
+}
+.img-section.img-loading img { opacity: 0.5; }
+.img-section.img-loading::after {
+  content:''; position:absolute; inset:0; background:rgba(0,4,12,0.4);
+  pointer-events:none;
+}
+.img-section .img-load-spinner {
+  display:none; position:absolute; top:50%; left:50%; margin:-20px 0 0 -20px;
+  width:40px; height:40px; border:2px solid var(--border); border-top-color:var(--cyan);
+  border-radius:50%; animation:img-spin 0.8s linear infinite; z-index:5; pointer-events:none;
+}
+.img-section.img-loading .img-load-spinner { display:block; }
+@keyframes img-spin { to { transform: rotate(360deg); } }
+
+.img-overlay {
+  position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.5) 100%);
+}
+.img-reticule {
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+.img-reticule svg { width:80px; height:80px; animation:rspin 12s linear infinite; opacity:0.5; }
+@keyframes rspin { to{transform:rotate(360deg)} }
+
+.img-scan {
+  position:absolute; left:0; right:0; height:2px; pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  opacity:0.35; animation:iscan 4s linear infinite;
+}
+@keyframes iscan { 0%{top:0} 100%{top:100%} }
+
+.img-corner { position:absolute; width:16px; height:16px; }
+.img-corner.tl { top:10px; left:10px; border-top:1.5px solid var(--cyan); border-left:1.5px solid var(--cyan); }
+.img-corner.tr { top:10px; right:10px; border-top:1.5px solid var(--cyan); border-right:1.5px solid var(--cyan); }
+.img-corner.bl { bottom:10px; left:10px; border-bottom:1.5px solid var(--cyan); border-left:1.5px solid var(--cyan); }
+.img-corner.br { bottom:10px; right:10px; border-bottom:1.5px solid var(--cyan); border-right:1.5px solid var(--cyan); }
+
+.img-meta {
+  position:absolute; bottom:10px; left:14px; right:14px;
+  display:flex; justify-content:space-between; align-items:flex-end;
+}
+.img-title-box {}
+.img-obj { font-family:var(--F); font-size:0.65rem; font-weight:700; letter-spacing:0.1em; color:var(--text-hi); text-shadow:0 0 10px rgba(0,0,0,0.9); }
+.img-src { font-size:0.44rem; letter-spacing:0.15em; color:var(--cyan); text-transform:uppercase; margin-top:2px; }
+.img-coords { text-align:right; }
+.img-ra { font-size:0.48rem; color:var(--emerald); letter-spacing:0.08em; font-family:var(--M); }
+.img-dec { font-size:0.42rem; color:var(--text-lo); letter-spacing:0.08em; font-family:var(--M); }
+
+/* Analysis section */
+.analysis-section {
+  flex:1; background:var(--panel); overflow:hidden; display:flex; flex-direction:column;
+  min-height:0;
+}
+.as-header { padding:7px 14px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+.as-title { font-family:var(--F); font-size:0.48rem; letter-spacing:0.2em; color:var(--emerald); text-transform:uppercase; }
+.as-model { font-size:0.42rem; letter-spacing:0.1em; color:var(--text-lo); }
+.as-body { flex:1; overflow-y:auto; padding:10px 14px; scrollbar-width:thin; scrollbar-color:rgba(0,220,150,0.1) transparent; }
+.as-body::-webkit-scrollbar { width:2px; }
+.as-body::-webkit-scrollbar-thumb { background:rgba(0,220,150,0.15); }
+#report-text { font-family:var(--R); font-size:0.8rem; line-height:1.65; color:var(--text); }
+#report-text .tag { display:inline-block; padding:1px 6px; font-size:0.58rem; letter-spacing:0.1em; border:1px solid; margin:2px 2px 4px 0; text-transform:uppercase; font-family:var(--M); }
+.tag.galaxy { color:#9060ff; border-color:rgba(144,96,255,0.35); }
+.tag.nebula  { color:var(--cyan); border-color:rgba(0,212,255,0.35); }
+.tag.star    { color:var(--amber); border-color:rgba(255,140,0,0.35); }
+.tag.anomaly { color:var(--red); border-color:rgba(255,34,68,0.35); animation:pulse 2s infinite; }
+.tag.aurora  { color:var(--emerald); border-color:rgba(0,220,150,0.35); }
+.tag.planet  { color:var(--blue); border-color:rgba(64,144,255,0.35); }
+
+/* Chat AEGIS */
+.chat-section { flex-shrink:0; border-top:1px solid var(--border); background:rgba(0,8,14,0.95); }
+.chat-input-row { display:flex; gap:0; }
+.chat-input {
+  flex:1; background:transparent; border:none; outline:none;
+  padding:8px 14px; font-family:var(--M); font-size:0.6rem;
+  color:var(--text-hi); letter-spacing:0.05em;
+}
+.chat-input::placeholder { color:var(--text-lo); }
+.chat-send {
+  padding:8px 14px; background:rgba(0,212,255,0.08);
+  border:none; border-left:1px solid var(--border); cursor:pointer;
+  font-family:var(--F); font-size:0.48rem; letter-spacing:0.15em;
+  color:var(--cyan); text-transform:uppercase; transition:all 0.2s;
+}
+.chat-send:hover { background:rgba(0,212,255,0.15); }
+.chat-msgs { max-height:90px; overflow-y:auto; padding:6px 14px; scrollbar-width:thin; scrollbar-color:rgba(0,212,255,0.1) transparent; }
+.chat-msg { font-size:0.54rem; line-height:1.5; margin-bottom:4px; }
+.msg-aegis { color:var(--emerald); }
+.msg-you { color:var(--text-lo); }
+
+/* Sélecteur télescope — live temps 0 */
+.telescope-selector { display:flex; flex-wrap:wrap; gap:6px; padding:8px 0 12px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+.tel-btn {
+  padding:6px 12px; font-family:var(--F); font-size:0.44rem; letter-spacing:0.12em;
+  background:rgba(0,212,255,0.06); border:1px solid var(--border); color:var(--text);
+  cursor:pointer; transition:all 0.2s; text-transform:uppercase;
+}
+.tel-btn:hover { border-color:var(--border-hi); color:var(--text-hi); background:rgba(0,212,255,0.1); }
+.tel-btn.active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,0.12); box-shadow:0 0 12px rgba(0,212,255,0.15); }
+.tel-btn .ico { margin-right:4px; }
+
+/* ── RIGHT PANEL — INSTRUMENTS ── */
+#panel-right .ph-title { color:var(--emerald); }
+.right-body { flex:1; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(0,220,150,0.1) transparent; }
+
+/* Spectrum viz */
+.spectrum-block { padding:10px 12px; border-bottom:1px solid var(--border); }
+.sp-title { font-size:0.42rem; letter-spacing:0.25em; color:var(--text-lo); text-transform:uppercase; margin-bottom:6px; }
+.spectrum { display:flex; align-items:flex-end; gap:2px; height:40px; }
+.sp-bar { flex:1; min-width:3px; transition:height 0.6s ease; border-radius:1px 1px 0 0; }
+
+/* Waveform */
+.wave-block { padding:10px 12px; border-bottom:1px solid var(--border); }
+.wave-canvas { width:100%; height:36px; display:block; }
+
+/* Instrument gauges */
+.gauge-grid { display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--border); }
+.gauge {
+  background:rgba(1,6,12,0.97); padding:10px 10px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.g-name { font-size:0.38rem; letter-spacing:0.2em; color:var(--text-lo); text-transform:uppercase; }
+.g-val { font-family:var(--F); font-size:0.9rem; font-weight:700; line-height:1; }
+.g-unit { font-size:0.36rem; color:var(--text-lo); letter-spacing:0.1em; }
+.g-arc { position:relative; height:32px; margin-top:2px; }
+.g-arc svg { width:100%; height:100%; }
+
+/* Observation log */
+.obslog { padding:6px 0; }
+.log-entry {
+  padding:5px 12px;
+  border-bottom:1px solid rgba(0,180,255,0.05);
+  display:grid; grid-template-columns:52px 1fr auto;
+  gap:6px; align-items:start;
+  transition:background 0.15s;
+}
+.log-entry:hover { background:rgba(0,212,255,0.025); }
+.le-time { font-size:0.44rem; color:var(--text-lo); letter-spacing:0.05em; line-height:1.4; }
+.le-obj { font-size:0.52rem; color:var(--text-hi); line-height:1.4; letter-spacing:0.03em; }
+.le-src { font-size:0.4rem; color:var(--text-lo); text-transform:uppercase; letter-spacing:0.1em; }
+.le-dot { width:5px; height:5px; border-radius:50%; margin-top:4px; flex-shrink:0; }
+
+/* Anomaly alert */
+.anom-alert {
+  margin:8px 12px; padding:8px 10px;
+  background:rgba(255,34,68,0.06);
+  border:1px solid rgba(255,34,68,0.3);
+  clip-path:polygon(5px 0%,100% 0%,100% calc(100% - 5px),calc(100% - 5px) 100%,0% 100%,0% 5px);
+  animation:anomglow 2s ease-in-out infinite;
+}
+@keyframes anomglow { 0%,100%{box-shadow:0 0 8px rgba(255,34,68,0.2)} 50%{box-shadow:0 0 0} }
+.aa-header { display:flex; justify-content:space-between; align-items:center; }
+.aa-title { font-family:var(--F); font-size:0.48rem; letter-spacing:0.18em; color:var(--red); text-transform:uppercase; }
+.aa-count { font-family:var(--F); font-size:1rem; font-weight:900; color:var(--red); }
+.aa-msg { font-size:0.5rem; color:rgba(255,80,100,0.6); margin-top:4px; letter-spacing:0.06em; }
+
+/* ── STATUSBAR ── */
+.statusbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:rgba(0,4,8,0.99);
+  border-top:1px solid var(--border);
+  font-size:0.42rem; letter-spacing:0.14em; color:var(--text-lo);
+  text-transform:uppercase;
+}
+.sb-items { display:flex; gap:20px; }
+.sb-item { display:flex; align-items:center; gap:5px; }
+.sb-seg { font-family:var(--M); font-size:0.44rem; }
+.sb-seg.hi { color:var(--cyan); }
+.sb-seg.g  { color:var(--green); }
+.sb-seg.a  { color:var(--amber); }
+#sb-uptime { font-family:var(--M); font-size:0.44rem; color:var(--text-lo); }
+
+/* ── CONNEXIONS RÉELLES (Réseau télescopes) ── */
+.connexions-strip { flex-shrink:0; display:grid; grid-template-columns:1fr; gap:2px; background:rgba(0,6,12,0.98); border-top:1px solid var(--border); padding:10px 14px; }
+.cx-row { display:flex; align-items:center; gap:8px; font-size:0.42rem; letter-spacing:0.12em; color:var(--text-lo); flex-wrap:wrap; }
+.cx-node { font-family:var(--F); color:var(--cyan); flex-shrink:0; }
+.cx-line { flex:1; min-width:40px; height:2px; background:linear-gradient(90deg,var(--cyan),transparent); position:relative; overflow:hidden; }
+.cx-line::before { content:''; position:absolute; left:0; top:0; bottom:0; width:20px; background:linear-gradient(90deg,transparent,var(--cyan)); opacity:0.6; animation:cxflow 2s linear infinite; }
+.cx-dot { position:absolute; left:0; top:50%; transform:translate(-50%,-50%); width:4px; height:4px; border-radius:50%; background:var(--cyan); box-shadow:0 0 6px var(--cyan); animation:cxdot 2s ease-in-out infinite; }
+.cx-line.cx-standby { background:linear-gradient(90deg,var(--text-lo),transparent); opacity:0.5; }
+.cx-line.cx-standby::before, .cx-line.cx-standby .cx-dot { animation:none; opacity:0.4; }
+.cx-badge { font-size:0.38rem; color:var(--amber); text-transform:uppercase; margin-left:4px; }
+.cx-meta { font-size:0.36rem; color:var(--text-lo); margin-left:4px; text-transform:uppercase; letter-spacing:0.1em; }
+@keyframes cxflow { 0%{transform:translateX(-100%)} 100%{transform:translateX(400%)} }
+@keyframes cxdot { 0%{left:0;opacity:1} 100%{left:100%;opacity:0.8} }
+
+/* ── DIRECTOR CARD ── */
+.dir-card { display:flex; align-items:center; gap:8px; }
+.dir-avatar {
+  width:32px; height:32px; border-radius:50%;
+  border:1.5px solid var(--cyan);
+  box-shadow:0 0 10px rgba(0,212,255,0.4), 0 0 20px rgba(0,212,255,0.15);
+  object-fit:cover; object-position:center top; flex-shrink:0;
+  filter:brightness(1.05) contrast(1.05) saturate(1.1);
+}
+.dir-info { display:flex; flex-direction:column; gap:1px; }
+.dir-name { font-family:var(--F); font-size:0.5rem; font-weight:700; letter-spacing:0.1em; color:var(--text-hi); }
+.dir-role { font-size:0.36rem; letter-spacing:0.15em; color:var(--text-lo); text-transform:uppercase; }
+
+/* ── RESPONSIVE ── */
+@media (max-width:900px) {
+  .main { grid-template-columns:1fr; grid-template-rows:auto; overflow-y:auto; }
+  .panel { min-height:300px; }
+  #panel-left  { order:2; }
+  #panel-center { order:1; }
+  #panel-right { order:3; }
+}
+</style>
+</head>
+<body>
+<div id="stars"></div>
+
+<div class="shell">
+
+<!-- ══ TOPBAR ══ -->
+<header class="topbar">
+  <div class="tb-brand">
+    <svg viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="14" stroke="#00d4ff" stroke-width="0.8" stroke-dasharray="3 2" opacity="0.4"/>
+      <circle cx="16" cy="16" r="9"  stroke="#00d4ff" stroke-width="1" opacity="0.6"/>
+      <circle cx="16" cy="16" r="2.5" fill="#00d4ff"/>
+      <line x1="16" y1="1"  x2="16" y2="6"  stroke="#00d4ff" stroke-width="1.2"/>
+      <line x1="16" y1="26" x2="16" y2="31" stroke="#00d4ff" stroke-width="1.2"/>
+      <line x1="1"  y1="16" x2="6"  y2="16" stroke="#00d4ff" stroke-width="1.2"/>
+      <line x1="26" y1="16" x2="31" y2="16" stroke="#00d4ff" stroke-width="1.2"/>
+      <circle cx="16" cy="1" r="1.8" fill="#ff8c00"/>
+    </svg>
+    <span class="tb-name">OVERLORD LIVE</span>
+    <span class="tb-mode">Mission Control</span>
+  </div>
+  <div class="tb-center">
+    <div class="tb-stat"><div class="td g"></div>AEGIS ACTIF</div>
+    <div class="tb-stat"><div class="td g"></div>TELEMETRIE</div>
+    <div class="tb-stat"><div class="td g"></div>NASA LINK</div>
+    <div class="tb-stat"><div class="td a"></div>ANOMALIES : <span id="tb-anom" style="color:var(--amber);margin-left:3px;font-family:var(--F)">—</span></div>
+  </div>
+  <div class="tb-right">
+    <div class="lang-toggle-overlord" id="topbar-lang-ol">
+      <button type="button" class="lb-ol active" data-lang="fr" id="lb-ol-fr" title="Français">🇫🇷 FR</button>
+      <button type="button" class="lb-ol" data-lang="en" id="lb-ol-en" title="English">🇬🇧 EN</button>
+    </div>
+    <div class="tb-loc">Hillsboro · 45.52°N · 122.67°W</div>
+    <div id="clock">--:--:-- UTC</div>
+  </div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+  <!-- ── LEFT — TELEMETRIE STATION ── -->
+  <div class="panel" id="panel-left">
+    <div class="panel-header">
+      <span class="ph-title">◈ Télémétrie Station</span>
+      <span class="ph-badge active">En direct</span>
+    </div>
+    <div class="telem-body"><div class="telem-body-inner">
+
+      <!-- ISS Live -->
+      <div class="sec-label">● ISS En direct</div>
+      <div class="trow"><span class="tr-lbl">Position</span><span class="tr-val c" id="iss-pos">—</span></div>
+      <div class="trow"><span class="tr-lbl">Altitude</span><span class="tr-val g" id="iss-alt">—<span class="tr-unit">km</span></span></div>
+      <div class="trow"><span class="tr-lbl">Vitesse</span><span class="tr-val w" id="iss-speed">—<span class="tr-unit">km/h</span></span></div>
+      <div class="trow"><span class="tr-lbl">Région</span><span class="tr-val w" id="iss-region">—</span></div>
+      <div class="trow"><span class="tr-lbl">Équipage</span><span class="tr-val g" id="iss-crew">—</span></div>
+      <div class="sec-label">● Passages ISS (Tlemcen)</div>
+      <div style="margin:0 10px 12px;padding:10px 10px 12px;background:rgba(2,12,20,0.75);border:1px solid rgba(0,212,255,0.22);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.04)">
+        <div id="passages-iss-container" style="padding:2px 2px 0;min-height:52px;font-size:inherit;line-height:1.4" aria-live="polite"></div>
+      </div>
+
+      <!-- Radio SDR -->
+      <div class="sec-label">● Radio SDR</div>
+      <div class="trow"><span class="tr-lbl">Statut</span><span class="tr-val g" id="sdr-status">—</span></div>
+      <div class="trow"><span class="tr-lbl">Dernière capture</span><span class="tr-val w" id="sdr-last">—</span></div>
+      <div class="trow"><span class="tr-lbl">Prochain passage</span><span class="tr-val c" id="sdr-next">—</span></div>
+
+      <!-- Métriques principales -->
+      <div class="metric-block">
+        <div class="mb-top">
+          <span class="mb-name">Observations</span>
+          <div class="mb-val" id="m-total" style="color:var(--cyan)">—</div>
+        </div>
+        <div class="mb-sub">Archive · Base de données SQLite</div>
+        <div class="mb-bar"><div class="mb-bar-fill" id="m-obs-bar" style="background:var(--cyan);width:0%"></div></div>
+      </div>
+
+      <div class="metric-block" style="background:rgba(255,34,68,0.04);border-color:rgba(255,34,68,0.2)">
+        <div class="mb-top">
+          <span class="mb-name" style="color:rgba(255,80,100,0.6)">Anomalies</span>
+          <div class="mb-val" id="m-anom" style="color:var(--red)">—</div>
+        </div>
+        <div class="mb-sub">Détections hors-norme</div>
+        <div class="mb-bar"><div class="mb-bar-fill" id="m-anom-bar" style="background:var(--red);width:0%"></div></div>
+      </div>
+
+      <div class="sec-label">● Paramètres Orbitaux</div>
+
+      <div class="trow">
+        <span class="tr-lbl">Latitude</span>
+        <span class="tr-val c">45.5231°<span class="tr-unit">N</span></span>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Longitude</span>
+        <span class="tr-val c">122.6765°<span class="tr-unit">W</span></span>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Altitude station</span>
+        <span class="tr-val w">47<span class="tr-unit">m ASL</span></span>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Fuseau horaire</span>
+        <span class="tr-val w">UTC-8</span>
+      </div>
+
+      <div class="sec-label">● Conditions Atmosphériques</div>
+      <div class="trow">
+        <span class="tr-lbl">Transparence</span>
+        <span class="tr-val g" id="t-transp">87<span class="tr-unit">%</span></span>
+      </div>
+      <div class="trow-bar">
+        <div class="bar-track"><div class="bar-fill" id="bar-transp" style="width:87%;background:var(--green)"></div></div>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Seeing</span>
+        <span class="tr-val g" id="t-seeing">1.2<span class="tr-unit">arcsec</span></span>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Scintillation</span>
+        <span class="tr-val a" id="t-scint">0.08<span class="tr-unit">σ</span></span>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Humidité</span>
+        <span class="tr-val w" id="t-humid">42<span class="tr-unit">%</span></span>
+      </div>
+
+      <div class="sec-label">● AEGIS — Système IA</div>
+      <div class="trow">
+        <span class="tr-lbl">Modèle actif</span>
+        <span class="tr-val g">Gemini 2.5</span>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Req. aujourd'hui</span>
+        <span class="tr-val c" id="t-req">—<span class="tr-unit">/ 1400</span></span>
+      </div>
+      <div class="trow-bar">
+        <div class="bar-track"><div class="bar-fill" id="bar-req" style="width:0%;background:var(--cyan)"></div></div>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Intervalle</span>
+        <span class="tr-val w">120<span class="tr-unit">sec</span></span>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Sources actives</span>
+        <span class="tr-val g">3</span>
+      </div>
+
+      <div class="sec-label">● Directeur de Mission</div>
+      <div style="padding:10px 12px 4px">
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(0,212,255,0.04);border:1px solid var(--border);clip-path:polygon(5px 0%,100% 0%,100% calc(100% - 5px),calc(100% - 5px) 100%,0% 100%,0% 5px)">
+          <img src="/static/img/zakaria.jpg" alt="Zakaria Chohra"
+            style="width:54px;height:54px;border-radius:50%;border:2px solid var(--cyan);box-shadow:0 0 14px rgba(0,212,255,0.45),0 0 30px rgba(0,212,255,0.2);object-fit:cover;object-position:center top;filter:brightness(1.05) contrast(1.08) saturate(1.1);flex-shrink:0"
+            onerror="this.style.display='none'">
+          <div>
+            <div style="font-family:var(--F);font-size:0.65rem;font-weight:900;letter-spacing:0.12em;color:var(--text-hi)">Zakaria Chohra</div>
+            <div style="font-size:0.44rem;letter-spacing:0.18em;color:var(--cyan);text-transform:uppercase;margin-top:3px">Directeur · AstroScan-Chohra</div>
+            <div style="font-size:0.42rem;letter-spacing:0.1em;color:var(--text-lo);margin-top:2px">Station Hillsboro · Hillsboro</div>
+          </div>
+        </div>
+      </div>
+      <div class="sec-label">● Serveur</div>
+      <div class="trow">
+        <span class="tr-lbl">Host</span>
+        <span class="tr-val w">ubuntu-8gb-hil-2</span>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">IP</span>
+        <span class="tr-val c">5.78.153.17</span>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Uptime</span>
+        <span class="tr-val g" id="t-uptime">—</span>
+      </div>
+      <div class="trow">
+        <span class="tr-lbl">Stack</span>
+        <span class="tr-val w">Flask · SQLite · Python</span>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ── CENTER — VISION PRINCIPALE ── -->
+  <div class="panel" id="panel-center">
+    <div class="panel-header">
+      <span class="ph-title">⬡ Vision Principale</span>
+      <span class="ph-badge warn" id="img-source">En direct</span>
+    </div>
+    <div class="telescope-selector" id="telescope-selector">
+      <button type="button" class="tel-btn active" data-source="live" title="Dernière image du pipeline">📡 Flux principal</button>
+      <button type="button" class="tel-btn" data-source="apod" title="Image du jour — temps 0">🔭 NASA APOD</button>
+      <button type="button" class="tel-btn" data-source="hubble" title="Archives Hubble — temps 0">🌌 ESA Hubble</button>
+      <button type="button" class="tel-btn" data-source="apod_archive" title="Image aléatoire 2015–2024">📁 APOD archive</button>
+    </div>
+    <div class="center-body">
+
+      <!-- Image zone -->
+      <div class="img-section">
+        <div class="img-load-spinner" aria-hidden="true"></div>
+        <img id="main-img" src="/api/image" alt="En direct" onerror="this.style.filter='brightness(0.1)'">
+        <div class="img-overlay"></div>
+        <div class="img-scan"></div>
+        <div class="img-corner tl"></div>
+        <div class="img-corner tr"></div>
+        <div class="img-corner bl"></div>
+        <div class="img-corner br"></div>
+        <div class="img-reticule">
+          <svg viewBox="0 0 80 80" fill="none">
+            <circle cx="40" cy="40" r="36" stroke="#00d4ff" stroke-width="0.8" stroke-dasharray="4 3" opacity="0.4"/>
+            <circle cx="40" cy="40" r="20" stroke="#00d4ff" stroke-width="0.5" opacity="0.3"/>
+            <line x1="40" y1="4" x2="40" y2="18" stroke="#00d4ff" stroke-width="0.8"/>
+            <line x1="40" y1="62" x2="40" y2="76" stroke="#00d4ff" stroke-width="0.8"/>
+            <line x1="4" y1="40" x2="18" y2="40" stroke="#00d4ff" stroke-width="0.8"/>
+            <line x1="62" y1="40" x2="76" y2="40" stroke="#00d4ff" stroke-width="0.8"/>
+          </svg>
+        </div>
+        <div class="img-meta">
+          <div class="img-title-box">
+            <div class="img-obj" id="img-obj">Chargement...</div>
+            <div class="img-src" id="img-src">NASA · APOD</div>
+          </div>
+          <div class="img-coords">
+            <div class="img-ra" id="img-ra">AR —h —m —s</div>
+            <div class="img-dec" id="img-dec">DEC — ° — ′ — ″</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carte connexions réelles (télescopes) -->
+      {% include 'telescope_hub_strip.html' %}
+
+      <!-- Analysis -->
+      <div class="analysis-section">
+        <div class="as-header">
+          <span class="as-title">⚡ Analyse AEGIS — IA Astronomique</span>
+          <span class="as-model" id="as-model">gemini-2.5-flash</span>
+        </div>
+        <div class="as-body">
+          <div id="report-text">Chargement du rapport AEGIS...</div>
+        </div>
+      </div>
+
+      <!-- Chat -->
+      <div class="chat-section">
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-in" type="text" placeholder="Question à AEGIS..." maxlength="300">
+          <button class="chat-send" onclick="sendChat()">Envoyer</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── RIGHT — INSTRUMENTS ── -->
+  <div class="panel" id="panel-right">
+    <div class="panel-header">
+      <span class="ph-title">◎ Instruments</span>
+      <span class="ph-badge active">Calibrés</span>
+    </div>
+    <div class="right-body">
+
+      <!-- Spectre lumineux -->
+      <div class="spectrum-block">
+        <div class="sp-title">▶ Spectre Électromagnétique Simulé</div>
+        <div class="spectrum" id="spectrum"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px">
+          <span style="font-size:0.36rem;color:var(--purple)">380nm</span>
+          <span style="font-size:0.36rem;color:var(--cyan)">450nm</span>
+          <span style="font-size:0.36rem;color:var(--green)">550nm</span>
+          <span style="font-size:0.36rem;color:var(--amber)">650nm</span>
+          <span style="font-size:0.36rem;color:var(--red)">750nm</span>
+        </div>
+      </div>
+
+      <!-- Gauges scientifiques -->
+      <div class="gauge-grid">
+        <div class="gauge">
+          <div class="g-name">Magnitude</div>
+          <div class="g-val" id="g-mag" style="color:var(--cyan)">—</div>
+          <div class="g-unit">mag apparente</div>
+        </div>
+        <div class="gauge">
+          <div class="g-name">Redshift</div>
+          <div class="g-val" id="g-z" style="color:var(--purple)">—</div>
+          <div class="g-unit">z cosmologique</div>
+        </div>
+        <div class="gauge">
+          <div class="g-name">Distance</div>
+          <div class="g-val" id="g-dist" style="color:var(--emerald)">—</div>
+          <div class="g-unit">années-lumière</div>
+        </div>
+        <div class="gauge">
+          <div class="g-name">Temp. couleur</div>
+          <div class="g-val" id="g-temp" style="color:var(--amber)">—</div>
+          <div class="g-unit">Kelvin</div>
+        </div>
+        <div class="gauge">
+          <div class="g-name">Flux photon.</div>
+          <div class="g-val" id="g-flux" style="color:var(--blue)">—</div>
+          <div class="g-unit">ph/s/cm²</div>
+        </div>
+        <div class="gauge">
+          <div class="g-name">S/N Ratio</div>
+          <div class="g-val" id="g-snr" style="color:var(--green)">—</div>
+          <div class="g-unit">dB</div>
+        </div>
+      </div>
+
+      <!-- Anomaly alert -->
+      <div class="anom-alert">
+        <div class="aa-header">
+          <span class="aa-title">⚠ Anomalies Détectées</span>
+          <span class="aa-count" id="aa-count">—</span>
+        </div>
+        <div class="aa-msg" id="aa-msg">Chargement archive...</div>
+      </div>
+
+      <!-- Log observations récentes -->
+      <div class="sec-label">● 8 Dernières Observations</div>
+      <div class="obslog" id="obslog"></div>
+
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ══ STATUSBAR ══ -->
+<footer class="statusbar">
+  <div class="sb-items">
+    <div class="sb-item"><span>AEGIS</span><span class="sb-seg g">v2.0</span></div>
+    <div class="sb-item"><span>Obs.</span><span class="sb-seg hi" id="sb-total">—</span></div>
+    <div class="sb-item"><span>Anom.</span><span class="sb-seg a" id="sb-anom">—</span></div>
+  </div>
+  <div>ORBITAL-CHOHRA · AstroScan-Chohra v2.0 · <span id="sb-uptime">Uptime —</span></div>
+  <div class="sb-items">
+    <div class="sb-item"><span>Flask</span><span class="sb-seg g">Active</span></div>
+    <div class="sb-item"><span>Gemini</span><span class="sb-seg g">2.5-Flash</span></div>
+    <div class="sb-item"><span>NASA</span><span class="sb-seg g">APOD Sync</span></div>
+  </div>
+</footer>
+
+</div><!-- /shell -->
+
+<script>
+/* ── Langue : URL prioritaire, sinon localStorage, sinon navigateur ── */
+(function(){
+  var STORAGE_LANG = 'astro_lang';
+  var q = new URLSearchParams(window.location.search);
+  var urlLang = q.get('lang');
+  var stored = null; try { stored = localStorage.getItem(STORAGE_LANG); } catch(e) {}
+  var LANG = (urlLang === 'fr' || urlLang === 'en') ? urlLang : ((stored === 'fr' || stored === 'en') ? stored : ((navigator.language || '').toLowerCase().slice(0,2) === 'en' ? 'en' : 'fr'));
+  if (urlLang === 'fr' || urlLang === 'en') try { localStorage.setItem(STORAGE_LANG, urlLang); } catch(e) {}
+  window.LANG = LANG;
+  document.documentElement.lang = LANG;
+
+  function setLang(l) {
+    if (l !== 'fr' && l !== 'en') return;
+    window.LANG = l;
+    try { localStorage.setItem(STORAGE_LANG, l); } catch(e) {}
+    document.documentElement.lang = l;
+    document.querySelectorAll('.lb-ol').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-lang') === l); });
+    if (window.updateIssUiFromLang) window.updateIssUiFromLang();
+  }
+  document.getElementById('lb-ol-fr').addEventListener('click', function(){ setLang('fr'); });
+  document.getElementById('lb-ol-en').addEventListener('click', function(){ setLang('en'); });
+  document.querySelectorAll('.lb-ol').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-lang') === LANG); });
+})();
+
+/* fetchWithTimeout (10s) + fetchRetry (2 tentatives) */
+function fetchWithTimeout(url, opts, timeout) {
+  timeout = timeout || 10000;
+  var ctrl = new AbortController();
+  var id = setTimeout(function() { ctrl.abort(); }, timeout);
+  return fetch(url, Object.assign({}, opts, { signal: ctrl.signal })).then(function(r) { clearTimeout(id); return r; });
+}
+function fetchRetry(url, opts, retries) {
+  retries = retries != null ? retries : 2;
+  return fetchWithTimeout(url, opts).catch(function(e) {
+    if (retries > 0) return fetchRetry(url, opts, retries - 1);
+    throw e;
+  });
+}
+
+/* ── STARS ── */
+(()=>{
+  const c=document.getElementById('stars');
+  for(let i=0;i<160;i++){
+    const s=document.createElement('div'); s.className='star';
+    const z=Math.random()<.85?Math.random()*.8+.2:Math.random()*1.5+.7;
+    s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${z}px;height:${z}px;--d:${3+Math.random()*6}s;--dl:${-Math.random()*6}s;--op:${.08+Math.random()*.35}`;
+    c.appendChild(s);
+  }
+})();
+
+/* ── CLOCK ── */
+let startTime = Date.now();
+(()=>{
+  function tick(){
+    const n=new Date();
+    document.getElementById('clock').textContent=
+      [n.getUTCHours(),n.getUTCMinutes(),n.getUTCSeconds()].map(x=>String(x).padStart(2,'0')).join(':')+' UTC';
+    const up=Math.floor((Date.now()-startTime)/1000);
+    const h=Math.floor(up/3600), m=Math.floor((up%3600)/60), s=up%60;
+    const str=h+'h '+String(m).padStart(2,'0')+'m '+String(s).padStart(2,'0')+'s';
+    document.getElementById('t-uptime').textContent=str;
+    document.getElementById('sb-uptime').textContent='Uptime '+str;
+  }
+  setInterval(tick,1000); tick();
+})();
+
+/* ── SPECTRUM ── */
+(()=>{
+  const sp=document.getElementById('spectrum');
+  const colors=['#9060ff','#7070ff','#4090ff','#00d4ff','#00b8aa','#00dc96','#00ff88','#80ff40','#d4ff00','#ffdd00','#ffaa00','#ff7700','#ff4400','#ff2244'];
+  colors.forEach((c,i)=>{
+    const b=document.createElement('div'); b.className='sp-bar';
+    const h=Math.random()*28+8;
+    b.style.cssText=`height:${h}px;background:${c};opacity:0.7`;
+    sp.appendChild(b);
+  });
+  setInterval(()=>{
+    sp.querySelectorAll('.sp-bar').forEach(b=>{
+      b.style.height=(Math.random()*28+8)+'px';
+    });
+  },1200);
+})();
+
+/* ── LOAD DATA ── */
+async function loadData() {
+  try {
+    const lang = (window.LANG || 'fr').slice(0,2);
+    const r = await fetchRetry('/api/latest?lang=' + (lang === 'en' ? 'en' : 'fr'));
+    if(!r.ok) return;
+    const d = await r.json();
+
+    const total = (d.stats && d.stats.total !== undefined) ? d.stats.total : (d.total || 0);
+    const anom  = (d.stats && d.stats.anomalies !== undefined) ? d.stats.anomalies : (d.anomalies || 0);
+
+    // Update all counters
+    ['m-total','sb-total'].forEach(id=>{ const e=document.getElementById(id); if(e) e.innerHTML=total; });
+    ['m-anom','aa-count','sb-anom'].forEach(id=>{ const e=document.getElementById(id); if(e) e.textContent=anom; });
+    document.getElementById('tb-anom').textContent=anom;
+
+    // Progress bars
+    const obsBar=document.getElementById('m-obs-bar');
+    if(obsBar) obsBar.style.width=Math.min((total/2000)*100,100)+'%';
+    const anomBar=document.getElementById('m-anom-bar');
+    if(anomBar) anomBar.style.width=(total>0 ? Math.min((anom/total)*100*5,100) : 0)+'%';
+
+    // Anomaly message
+    const aaMsg=document.getElementById('aa-msg');
+    if(aaMsg) aaMsg.textContent = anom>0 ? anom+' événements hors-norme sur '+total+' obs. — taux '+((total>0?(anom/total)*100:0).toFixed(2))+'%' : 'Aucune anomalie détectée';
+
+    // Observation log (API: id, timestamp, source, objets, anomalie, analyse, score)
+    const log=document.getElementById('obslog');
+    if(log && d.observations){
+      log.innerHTML=d.observations.slice(0,8).map(o=>{
+        const title = (o.title && !String(o.title).includes('LIVE_TELESCOPE')) ? o.title : ((o.objets && String(o.objets).slice(0,40)) || o.source || '—');
+        return `<div class="log-entry">
+          <div class="le-time">${(o.timestamp||'').slice(11,19)||'—'}</div>
+          <div><div class="le-obj">${title}</div><div class="le-src">${o.source||'—'}</div></div>
+          <div class="le-dot" style="background:${o.anomalie?'var(--red)':'var(--emerald)'}"></div>
+        </div>`;
+      }).join('');
+    }
+
+    setMetrics(d);
+  } catch(e){ console.error(e); }
+}
+
+function setMetrics(d) {
+  const metrics = {
+    'g-mag':   (Math.random()*8+2).toFixed(1),
+    'g-z':     (Math.random()*0.05).toFixed(4),
+    'g-dist':  Math.floor(Math.random()*50000+500).toLocaleString(),
+    'g-temp':  Math.floor(Math.random()*20000+3000).toLocaleString(),
+    'g-flux':  (Math.random()*9+1).toFixed(2)+'e-12',
+    'g-snr':   (Math.random()*20+15).toFixed(1),
+    't-transp': Math.floor(Math.random()*20+75),
+    't-seeing': (Math.random()*1.5+0.8).toFixed(1),
+    't-scint':  (Math.random()*0.1+0.05).toFixed(3),
+    't-humid':  Math.floor(Math.random()*40+30),
+  };
+  Object.entries(metrics).forEach(([id,val])=>{
+    const e=document.getElementById(id);
+    if(!e) return;
+    const u=e.querySelector('.tr-unit');
+    if(u){
+      const unit=u.textContent;
+      if(id==='t-transp'||id==='t-humid') e.innerHTML=val+'<span class="tr-unit">%</span>';
+      else e.innerHTML=val+'<span class="tr-unit">'+unit+'</span>';
+    } else {
+      e.textContent=val;
+    }
+  });
+
+  document.getElementById('img-ra').textContent='AR '+Math.floor(Math.random()*24)+'h '+Math.floor(Math.random()*60)+'m '+(Math.random()*60).toFixed(1)+'s';
+  document.getElementById('img-dec').textContent='DEC '+(Math.random()>0.5?'+':'-')+Math.floor(Math.random()*90)+'° '+Math.floor(Math.random()*60)+'′ '+Math.floor(Math.random()*60)+'″';
+
+  const bar=document.getElementById('bar-transp');
+  if(bar) bar.style.width=(metrics['t-transp']||75)+'%';
+}
+
+/* ── ISS Live (barre gauche) ── */
+async function loadIss() {
+  try {
+    const r = await fetch('/api/iss');
+    if (!r.ok) return;
+    const d = await r.json();
+    const posEl = document.getElementById('iss-pos');
+    if (d.ok === false) {
+      if (posEl) posEl.textContent = 'Données temporairement indisponibles';
+      return;
+    }
+    const altEl = document.getElementById('iss-alt');
+    const speedEl = document.getElementById('iss-speed');
+    const regionEl = document.getElementById('iss-region');
+    const crewEl = document.getElementById('iss-crew');
+    if (posEl) posEl.innerHTML = (d.lat != null && d.lon != null) ? (d.lat.toFixed(2) + '° / ' + d.lon.toFixed(2) + '°') : '—';
+    if (altEl) altEl.innerHTML = (d.alt != null) ? d.alt + '<span class="tr-unit">km</span>' : '—';
+    if (speedEl) speedEl.innerHTML = (d.speed != null) ? Math.round(d.speed) + '<span class="tr-unit">km/h</span>' : '—';
+    if (regionEl) regionEl.textContent = d.region || '—';
+    if (crewEl) crewEl.textContent = (d.crew != null) ? d.crew + ' à bord' : '—';
+  } catch(e) {}
+}
+
+/* ── Radio SDR (barre gauche) ── */
+async function loadSdr() {
+  try {
+    const [rStatus, rPasses] = await Promise.all([
+      fetch('/api/sdr/status'),
+      fetch('/api/sdr/passes')
+    ]);
+    const statusEl = document.getElementById('sdr-status');
+    const lastEl = document.getElementById('sdr-last');
+    const nextEl = document.getElementById('sdr-next');
+    if (rStatus.ok) {
+      const s = await rStatus.json();
+      if (statusEl) statusEl.textContent = (s.status || 'standby').toLowerCase() === 'active' ? 'Actif' : 'Standby';
+      const lc = s.last_capture;
+      if (lastEl) lastEl.textContent = lc ? (typeof lc === 'string' ? lc.slice(0,16) : '—') : '—';
+    }
+    if (rPasses.ok && nextEl) {
+      const p = await rPasses.json();
+      const passes = (p && Array.isArray(p.passes)) ? p.passes : [];
+      const next = passes[0];
+      if (next && next.aos) {
+        const t = next.aos;
+        const date = new Date(typeof t === 'number' ? t * 1000 : t);
+        nextEl.textContent = (next.sat || 'NOAA') + ' ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      } else nextEl.textContent = '—';
+    }
+  } catch(e) {}
+}
+
+/* ── TÉLESCOPE COURANT + SYNC PC ↔ ANDROID ── */
+window.currentTelescopeSource = 'live';
+
+function applySyncState(source) {
+  if (!source || source === (window.currentTelescopeSource || 'live')) return;
+  window.currentTelescopeSource = source;
+  document.querySelectorAll('.telescope-selector .tel-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-source') === source);
+  });
+  var section = document.querySelector('.img-section');
+  if (section) section.classList.add('img-loading');
+  refreshImg();
+  loadTitle();
+}
+
+/* Au chargement : appliquer l’état serveur (même affichage PC et Android) */
+function pullSyncState(){
+  return fetch('/api/sync/state').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+    if (d && d.source && d.source !== (window.currentTelescopeSource || 'live')) {
+      applySyncState(d.source);
+    }
+  }).catch(function(){});
+}
+(async function initSync(){
+  await pullSyncState();
+})();
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible') pullSyncState();
+});
+
+/* Polling : synchronisation PC ↔ Android plus réactive (même écran partout) */
+setInterval(async function(){
+  try {
+    const r = await fetch('/api/sync/state?t='+Date.now());
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.source && d.source !== (window.currentTelescopeSource || 'live'))
+      applySyncState(d.source);
+  } catch(e){}
+}, 1500);
+
+/* ── LOAD TITLE ── */
+async function loadTitle() {
+  try {
+    const src = window.currentTelescopeSource || 'live';
+    const r = await fetch('/api/title?source=' + encodeURIComponent(src));
+    if(!r.ok) return;
+    const d = await r.json();
+    const objEl = document.getElementById('img-obj');
+    if(objEl) objEl.textContent = d.title || 'Chargement...';
+    const srcEl = document.getElementById('img-src');
+    if(srcEl) srcEl.textContent = d.source ? ('Source: ' + d.source) : 'NASA · APOD';
+    const badge = document.getElementById('img-source');
+    if(badge) badge.textContent = (src === 'live' ? 'En direct' : src === 'apod' ? 'APOD' : src === 'hubble' ? 'Hubble' : 'Archive');
+  } catch(e){}
+}
+
+/* ── LOAD REPORT ── (API: observations[].analyse = rapport Gemini) */
+async function loadReport() {
+  try {
+    const lang = (window.LANG || 'fr').slice(0,2);
+    const r = await fetch('/api/latest?lang=' + (lang === 'en' ? 'en' : 'fr'));
+    if(!r.ok) return;
+    const d = await r.json();
+    const el = document.getElementById('report-text');
+    if(!el) return;
+    const rapport = (d.observations && d.observations[0]) ? (d.observations[0].rapport_gemini || d.observations[0].analyse) : null;
+    if(rapport) {
+      const tags = [];
+      if(/galax/i.test(rapport)) tags.push('<span class="tag galaxy">Galaxie</span>');
+      if(/nébul|nebul/i.test(rapport)) tags.push('<span class="tag nebula">Nébuleuse</span>');
+      if(/étoil|star|stellar/i.test(rapport)) tags.push('<span class="tag star">Étoile</span>');
+      if(/anomal/i.test(rapport)) tags.push('<span class="tag anomaly">Anomalie</span>');
+      if(/aurore|aurora/i.test(rapport)) tags.push('<span class="tag aurora">Aurore</span>');
+      if(/planèt|planet/i.test(rapport)) tags.push('<span class="tag planet">Planète</span>');
+      const html = rapport.replace(/\*\*(.*?)\*\*/g,'<strong style="color:#d0e8f5">$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/^#+\s(.+)$/gm,'<div style="font-family:Orbitron,monospace;font-size:0.6rem;color:#00dc96;margin:6px 0 3px;letter-spacing:0.1em">$1</div>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+      el.innerHTML = (tags.length ? '<div style="margin-bottom:8px">'+tags.join('')+'</div>' : '') + html;
+    } else {
+      el.textContent = 'Aucun rapport AEGIS disponible.';
+    }
+  } catch(e){}
+}
+
+/* ── LIVE IMAGE FEED (selon télescope sélectionné) ── */
+let imgBusy=false;
+function refreshImg(){
+  if(imgBusy)return; imgBusy=true;
+  const src = window.currentTelescopeSource || 'live';
+  const img=document.getElementById('main-img');
+  const section=document.querySelector('.img-section');
+  const tmp=new Image();
+  tmp.onload=function(){
+    if(section) section.classList.remove('img-loading');
+    img.style.opacity='0';
+    setTimeout(function(){ img.src=tmp.src; img.style.opacity='1'; imgBusy=false; }, 120);
+  };
+  tmp.onerror=function(){ if(section) section.classList.remove('img-loading'); imgBusy=false; };
+  /* Pas de fresh=1 au clic : on utilise le cache serveur (fichiers par source) → changement instantané si déjà chargé */
+  tmp.src='/api/image?source='+encodeURIComponent(src)+'&t='+Date.now();
+}
+setInterval(refreshImg, 5000);
+
+/* ── SÉLECTEUR TÉLESCOPE (pousse l’état au serveur pour sync PC/Android) ── */
+document.getElementById('telescope-selector')&&document.getElementById('telescope-selector').addEventListener('click', function(e){
+  var btn=e.target.closest('.tel-btn');
+  if(!btn) return;
+  var source=btn.getAttribute('data-source');
+  if(!source) return;
+  window.currentTelescopeSource=source;
+  document.querySelectorAll('.telescope-selector .tel-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  var section=document.querySelector('.img-section');
+  if(section) section.classList.add('img-loading');
+  refreshImg();
+  loadTitle();
+  fetch('/api/sync/state', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({source:source}) }).catch(function(){});
+});
+
+/* ── PRÉCHARGEMENT des sources APOD / Hubble / Archive en arrière-plan (changement instantané au premier clic) ── */
+setTimeout(function(){
+  ['apod','hubble','apod_archive'].forEach(function(s){
+    var i=new Image(); i.src='/api/image?source='+s+'&t='+Date.now();
+  });
+}, 1500);
+
+/* ── CHAT AEGIS (Overlord Live — opérationnel) ── */
+async function sendChat() {
+  const inp=document.getElementById('chat-in');
+  const msgs=document.getElementById('chat-msgs');
+  const msg=inp.value.trim();
+  if(!msg) return;
+  inp.value='';
+
+  msgs.innerHTML+=`<div class="chat-msg msg-you">▷ ${msg}</div>`;
+  msgs.innerHTML+=`<div class="chat-msg msg-aegis" id="chat-wait">AEGIS › <em>Réflexion...</em></div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+
+  const imgObj=document.getElementById('img-obj');
+  const ctx=imgObj ? ('Image courante: '+imgObj.textContent) : '';
+
+  try {
+    const r=await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:msg, context:ctx})
+    });
+    const d=await r.json();
+    const waitEl=document.getElementById('chat-wait');
+    const text=d.response||d.reply||'';
+    const errMsg=!d.ok && text ? text : 'Connexion temporairement indisponible.';
+    if(waitEl) waitEl.outerHTML=`<div class="chat-msg msg-aegis">AEGIS › ${d.ok ? text : errMsg}</div>`;
+    else msgs.innerHTML+=`<div class="chat-msg msg-aegis">AEGIS › ${d.ok ? text : errMsg}</div>`;
+  } catch(e){
+    const waitEl=document.getElementById('chat-wait');
+    if(waitEl) waitEl.outerHTML=`<div class="chat-msg msg-aegis">AEGIS › Connexion temporairement indisponible.</div>`;
+    else msgs.innerHTML+=`<div class="chat-msg msg-aegis">AEGIS › Connexion temporairement indisponible.</div>`;
+  }
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+document.getElementById('chat-in').addEventListener('keydown',e=>{ if(e.key==='Enter') sendChat(); });
+
+/* ── TELESCOPE HUB — latences réelles ── */
+function loadTelescopeHub() {
+  var strip = document.getElementById('telescope-hub-strip');
+  if (!strip) return;
+  fetchRetry('/api/telescope-hub').then(function(r) { return r.json(); }).then(function(d) {
+    var telescopes = (d.telescopes || []);
+    telescopes.forEach(function(t) {
+      var row = strip.querySelector('.cx-row[data-hub-id="' + t.id + '"]');
+      if (!row) return;
+      var line = row.querySelector('.cx-line');
+      var meta = row.querySelector('.cx-meta');
+      if (line) line.classList.toggle('cx-standby', !t.online);
+      if (meta) meta.textContent = t.online ? (t.latency_ms + 'ms') : (meta.getAttribute('title') || '—');
+    });
+  }).catch(function() {});
+}
+
+/* ── INIT ── */
+loadData();
+loadTitle();
+loadIss();
+loadSdr();
+loadReport();
+loadTelescopeHub();
+setInterval(loadData, 30000);
+setInterval(loadTitle, 60000);
+setInterval(loadIss, 25000);
+setInterval(loadSdr, 60000);
+setInterval(loadReport, 120000);
+setInterval(loadTelescopeHub, 60000);
+</script>
+<script src="/static/sondes_aegis.js"></script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

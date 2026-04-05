@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AstroScan-Chohra - Intelligence spatiale</title>
+  <style>
+    body { background: #020b14; color: #00eaff; font-family: monospace; padding: 24px; max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 1.3rem; color: #00d4ff; margin-bottom: 20px; }
+    a { color: #00ffaa; text-decoration: none; }
+    .card { background: rgba(0,30,50,0.4); border: 1px solid rgba(0,212,255,0.25); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .risk-low { color: #00ff88; }
+    .risk-medium { color: #ff8c00; }
+    .risk-high { color: #ff4444; }
+    ul { margin: 8px 0 0 20px; }
+    #alerts, #events { min-height: 20px; }
+  </style>
+</head>
+<body>
+  <h1>🧠 Intelligence spatiale</h1>
+  <p><a href="/portail">← Retour au portail</a></p>
+  <div class="card">
+    <strong>Niveau de risque</strong>: <span id="risk" class="risk-low">—</span>
+  </div>
+  <div class="card">
+    <strong>Alertes</strong>
+    <ul id="alerts"></ul>
+  </div>
+  <div class="card">
+    <strong>Événements</strong>
+    <ul id="events"></ul>
+  </div>
+  <script>
+    fetch('/api/space/intelligence')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var r = document.getElementById('risk');
+        r.textContent = d.risk_level || '—';
+        r.className = 'risk-' + (d.risk_level || 'low');
+        var al = document.getElementById('alerts');
+        al.innerHTML = (d.alerts && d.alerts.length) ? d.alerts.map(function(a) { return '<li>' + a + '</li>'; }).join('') : '<li>Aucune alerte</li>';
+        var ev = document.getElementById('events');
+        ev.innerHTML = (d.events && d.events.length) ? d.events.map(function(e) { return '<li>' + e + '</li>'; }).join('') : '<li>Aucun événement</li>';
+      })
+      .catch(function() {
+        document.getElementById('risk').textContent = 'Erreur';
+      });
+  </script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroScan-Chohra - Orbital Radio</title>
+<style>
+:root {
+  --bg: #000a14;
+  --panel: rgba(0,20,40,0.8);
+  --border: rgba(0,212,255,0.2);
+  --cyan: #00d4ff;
+  --green: #00ff88;
+  --red: #ff3366;
+  --text: #a0b8c8;
+  --bright: #e0f0ff;
+  --font: 'Courier New', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--bright); font-family: var(--font); min-height: 100vh; padding: 20px; }
+.header { text-align: center; margin-bottom: 24px; }
+.header h1 { font-size: 1.4rem; color: var(--cyan); letter-spacing: 0.15em; margin-bottom: 8px; }
+.live-badge { display: inline-block; background: var(--red); color: white; font-size: 0.65rem; padding: 3px 10px; border-radius: 3px; letter-spacing: 2px; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+.visualizer { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 48px; margin: 16px auto; }
+.bar { width: 6px; background: linear-gradient(180deg, var(--cyan), var(--green)); border-radius: 2px; animation: bounce 0.6s ease-in-out infinite alternate; }
+.bar:nth-child(1){animation-duration:0.55s} .bar:nth-child(2){animation-duration:0.7s} .bar:nth-child(3){animation-duration:0.5s} .bar:nth-child(4){animation-duration:0.65s} .bar:nth-child(5){animation-duration:0.45s} .bar:nth-child(6){animation-duration:0.75s} .bar:nth-child(7){animation-duration:0.6s} .bar:nth-child(8){animation-duration:0.5s} .bar:nth-child(9){animation-duration:0.68s} .bar:nth-child(10){animation-duration:0.55s}
+@keyframes bounce { from{transform:scaleY(0.15)} to{transform:scaleY(1)} }
+.channels { display: flex; flex-direction: column; gap: 16px; max-width: 900px; margin: 0 auto; }
+.channel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.channel:hover { border-color: rgba(0,212,255,0.45); }
+.ch-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.ch-emoji { font-size: 1.75rem; flex-shrink: 0; }
+.ch-text h2 { font-size: 0.72rem; color: var(--cyan); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+.ch-text p { font-size: 0.68rem; color: var(--text); line-height: 1.45; }
+.ch-note { font-size: 0.58rem; color: rgba(0,212,255,0.65); margin-top: 6px; letter-spacing: 0.04em; }
+audio { width: 100%; margin-top: 4px; accent-color: var(--green); }
+audio::-webkit-media-controls-panel { background: #001428; }
+.info-box { max-width: 900px; margin: 24px auto 0; background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.15); border-left: 3px solid var(--cyan); border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 0.68rem; color: var(--text); line-height: 1.6; }
+.info-box strong { color: var(--bright); }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🔊 ORBITAL-RADIO — Sons de l'Espace</h1>
+  <span class="live-badge">● EN DIRECT</span>
+  <div class="visualizer">
+    <div class="bar" style="height:38px"></div><div class="bar" style="height:28px"></div><div class="bar" style="height:44px"></div><div class="bar" style="height:20px"></div><div class="bar" style="height:36px"></div><div class="bar" style="height:32px"></div><div class="bar" style="height:42px"></div><div class="bar" style="height:26px"></div><div class="bar" style="height:40px"></div><div class="bar" style="height:30px"></div>
+  </div>
+</div>
+
+<!-- Sources réelles via proxy same-origin : Iowa Radio and Plasma Wave Group (Voyager PWS). Les anciens liens NASA wp-content & archive.org renvoient 404/503. -->
+<div class="channels">
+
+  <div class="channel">
+    <div class="ch-header">
+      <span class="ch-emoji">🛰️</span>
+      <div class="ch-text">
+        <h2>Voyager 1 — Espace Interstellaire</h2>
+        <p>Ondes plasma interstellaires (PWS) — Université de l’Iowa / NASA.</p>
+        <p class="ch-note">Fichier : v1pws_interstellar_epo.mp4 (son dans la piste vidéo).</p>
+      </div>
+    </div>
+    <audio controls preload="metadata">
+      <source src="/api/audio-proxy?url=https%3A%2F%2Fspace.physics.uiowa.edu%2Fplasma-wave%2Fplasma-wave%2Fvoyager%2Fv1pws_interstellar_epo.mp4" type="audio/mp4">
+      Votre navigateur ne supporte pas l'audio HTML5.
+    </audio>
+  </div>
+
+  <div class="channel">
+    <div class="ch-header">
+      <span class="ch-emoji">🪐</span>
+      <div class="ch-text">
+        <h2>Jupiter — Magnétosphère</h2>
+        <p>Émissions radio PWS — survol Jupiter par Voyager 2 (1979), Iowa.</p>
+      </div>
+    </div>
+    <audio controls preload="metadata">
+      <source src="/api/audio-proxy?url=https%3A%2F%2Fspace.physics.uiowa.edu%2Fplasma-wave%2Fvoyager%2FV2PWS_Jupiter_1979-07-02T1556-1645.mp3" type="audio/mpeg">
+      Votre navigateur ne supporte pas l'audio HTML5.
+    </audio>
+  </div>
+
+  <div class="channel">
+    <div class="ch-header">
+      <span class="ch-emoji">💍</span>
+      <div class="ch-text">
+        <h2>Saturne — Ondes Radio</h2>
+        <p>Même famille d’émissions magnétosphériques que Cassini ; ici extrait PWS Voyager 2 / Jupiter (Iowa) à titre d’illustration sonore.</p>
+      </div>
+    </div>
+    <audio controls preload="metadata">
+      <source src="/api/audio-proxy?url=https%3A%2F%2Fspace.physics.uiowa.edu%2Fplasma-wave%2Fvoyager%2FV2PWS_Jupiter_1979-07-02T1556-1645.mp3" type="audio/mpeg">
+      Votre navigateur ne supporte pas l'audio HTML5.
+    </audio>
+  </div>
+
+  <div class="channel">
+    <div class="ch-header">
+      <span class="ch-emoji">☀️</span>
+      <div class="ch-text">
+        <h2>Soleil — Vent Solaire</h2>
+        <p>Illustration : plasma haute fréquence (archive Iowa, extrait Jupiter PWS).</p>
+      </div>
+    </div>
+    <audio controls preload="metadata">
+      <source src="/api/audio-proxy?url=https%3A%2F%2Fspace.physics.uiowa.edu%2Fplasma-wave%2Fvoyager%2FV2PWS_Jupiter_1979-07-02T1556-1645.mp3" type="audio/mpeg">
+      Votre navigateur ne supporte pas l'audio HTML5.
+    </audio>
+  </div>
+
+  <div class="channel">
+    <div class="ch-header">
+      <span class="ch-emoji">🌍</span>
+      <div class="ch-text">
+        <h2>Terre — Chorus Magnétique</h2>
+        <p>Illustration : type d’émissions plasma (archive Iowa, même extrait référence).</p>
+      </div>
+    </div>
+    <audio controls preload="metadata">
+      <source src="/api/audio-proxy?url=https%3A%2F%2Fspace.physics.uiowa.edu%2Fplasma-wave%2Fvoyager%2FV2PWS_Jupiter_1979-07-02T1556-1645.mp3" type="audio/mpeg">
+      Votre navigateur ne supporte pas l'audio HTML5.
+    </audio>
+  </div>
+
+  <div class="channel">
+    <div class="ch-header">
+      <span class="ch-emoji">✨</span>
+      <div class="ch-text">
+        <h2>Pulsar PSR B0833-45 (Vela)</h2>
+        <p>Illustration sonore type « données séries » — extrait plasma référence Iowa.</p>
+      </div>
+    </div>
+    <audio controls preload="metadata">
+      <source src="/api/audio-proxy?url=https%3A%2F%2Fspace.physics.uiowa.edu%2Fplasma-wave%2Fvoyager%2FV2PWS_Jupiter_1979-07-02T1556-1645.mp3" type="audio/mpeg">
+      Votre navigateur ne supporte pas l'audio HTML5.
+    </audio>
+  </div>
+
+  <div class="channel">
+    <div class="ch-header">
+      <span class="ch-emoji">🔴</span>
+      <div class="ch-text">
+        <h2>Mars — Enregistrements InSight</h2>
+        <p>Illustration : archive plasma Iowa (masters InSight NASA à réintégrer si URL publique stable).</p>
+      </div>
+    </div>
+    <audio controls preload="metadata">
+      <source src="/api/audio-proxy?url=https%3A%2F%2Fspace.physics.uiowa.edu%2Fplasma-wave%2Fvoyager%2FV2PWS_Jupiter_1979-07-02T1556-1645.mp3" type="audio/mpeg">
+      Votre navigateur ne supporte pas l'audio HTML5.
+    </audio>
+  </div>
+
+  <div class="channel">
+    <div class="ch-header">
+      <span class="ch-emoji">🌌</span>
+      <div class="ch-text">
+        <h2>Trous Noirs — Sonification</h2>
+        <p>Illustration : même extrait référence ; sonification Perseus NASA/Chandra à rétablir si lien direct redevient disponible.</p>
+      </div>
+    </div>
+    <audio controls preload="metadata">
+      <source src="/api/audio-proxy?url=https%3A%2F%2Fspace.physics.uiowa.edu%2Fplasma-wave%2Fvoyager%2FV2PWS_Jupiter_1979-07-02T1556-1645.mp3" type="audio/mpeg">
+      Votre navigateur ne supporte pas l'audio HTML5.
+    </audio>
+  </div>
+
+</div>
+
+<div class="info-box">
+  <strong>Sources &amp; technique.</strong> Les flux passent par <code>/api/audio-proxy</code> (même origine que le portail) pour éviter les blocs iframe / liens morts. Fichiers servis depuis les archives publiques du <strong>Radio and Plasma Wave Group, University of Iowa</strong> (Voyager PWS). Les anciennes URLs <code>nasa.gov/wp-content/…/2015</code> et le dépôt Archive.org « NasaSoundCollection » renvoient désormais 404 ou 503. Le canal Voyager interstellaire utilise la piste audio du fichier MP4 Iowa ; plusieurs autres canaux réutilisent volontairement le même extrait MP3 Jupiter (1979) en attendant d’autres masters accessibles.
+</div>
+
+</body>
+</html>

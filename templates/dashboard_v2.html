@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AstroScan-Chohra - Control Panel v2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0b0b;
+      --fg: #ffffff;
+      --accent: #00ff88;
+      --warn: #ffaa00;
+      --crit: #ff4444;
+      --card: #141418;
+      --border: #2a2a32;
+    }
+    * { box-sizing: border-box; }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #00ff88;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      perspective: 800px;
+      background-color: #030303;
+      background-image: radial-gradient(circle at 20% 20%, #111 0%, #0b0b0b 40%, #000 100%);
+      background-blend-mode: overlay;
+      color: var(--fg);
+      font-family: "JetBrains Mono", "SF Mono", "Consolas", monospace;
+      font-size: 14px;
+      line-height: 1.45;
+      position: relative;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 3px 3px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      box-shadow: inset 0 0 100px rgba(0,0,0,0.8);
+      background:
+        linear-gradient(rgba(0,255,136,0.03), rgba(0,255,136,0.01)),
+        linear-gradient(to bottom, transparent 0%, rgba(0,255,136,0.07) 45%, transparent 90%);
+      background-size: 100% 100%, 100% 400%;
+      background-position: 0 0, 0 0;
+      animation: scanLine 5s linear infinite;
+    }
+    @keyframes scanLine {
+      0% { background-position: 0 0, 0 0; }
+      100% { background-position: 0 0, 0 100%; }
+    }
+
+    h1, h2 {
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-shadow:
+        0 0 5px #00ff88,
+        0 0 10px #00ff88;
+    }
+
+    .top-bar {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .top-bar > span:first-child {
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      color: var(--accent);
+      text-shadow: 0 0 12px rgba(0, 255, 136, 0.35);
+    }
+    #last-update {
+      font-size: 0.8rem;
+      color: #8899aa;
+      letter-spacing: 0.06em;
+    }
+
+    .radar {
+      position: fixed;
+      top: 80px;
+      right: 30px;
+      width: 150px;
+      height: 150px;
+      border: 1px solid rgba(0,255,136,0.3);
+      border-radius: 50%;
+      overflow: hidden;
+      z-index: 50;
+      pointer-events: none;
+      box-shadow: 0 0 20px #00ff88;
+    }
+    .radar::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1px dashed rgba(0,255,136,0.2);
+      z-index: 1;
+    }
+    .radar-scan {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      left: 0;
+      top: 0;
+      border-radius: 50%;
+      background: conic-gradient(
+        rgba(0,255,136,0.4),
+        transparent
+      );
+      animation: rotateRadar 3s linear infinite;
+      transform-origin: 50% 50%;
+      z-index: 0;
+    }
+    @keyframes rotateRadar {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .radar::after {
+      content: "";
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #00ff88;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      margin: -5px 0 0 -5px;
+      z-index: 3;
+      animation: ping 2s infinite;
+      pointer-events: none;
+    }
+    @keyframes ping {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(6); opacity: 0; }
+    }
+
+    .container {
+      position: relative;
+      z-index: 2;
+      transform: rotateX(2deg) rotateY(-2deg);
+      transform-style: preserve-3d;
+    }
+    .container::before {
+      content: "";
+      position: absolute;
+      inset: -20px;
+      border-radius: 20px;
+      box-shadow: 0 0 60px rgba(0,255,136,0.05);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.12em;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-shadow:
+        0 0 5px #00ff88,
+        0 0 10px #00ff88,
+        0 0 24px rgba(0, 255, 136, 0.25);
+    }
+    header .sub {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: #8899aa;
+    }
+
+    .global-block {
+      text-align: center;
+      margin-bottom: 32px;
+      padding: 24px 20px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #101014 0%, #0c0c0e 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .global-block .global-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      color: #667788;
+      margin-bottom: 10px;
+    }
+    #global-status {
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+    #global-status.status.ok { color: #00ff88; text-shadow: 0 0 28px rgba(0, 255, 136, 0.35); }
+    #global-status.status.degraded { color: #ffaa00; text-shadow: 0 0 28px rgba(255, 170, 0, 0.25); }
+    #global-status.status.critical { color: #ff4444; text-shadow: 0 0 28px rgba(255, 68, 68, 0.3); }
+    #global-status.status.unknown { color: #8899aa; }
+
+    .status.ok {
+      animation: subtleFlicker 3s infinite;
+    }
+    .status.degraded {
+      animation: pulseOrange 2s infinite;
+    }
+    .status.critical {
+      animation: pulseRed 1s infinite;
+    }
+    @keyframes subtleFlicker {
+      0%, 100% { opacity: 1; }
+      98% { opacity: 0.8; }
+    }
+    @keyframes pulseOrange {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    @keyframes pulseRed {
+      0% { color: #ff4444; }
+      50% { color: #ffffff; }
+      100% { color: #ff4444; }
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .badge.ok { background: #00ff88; color: #000; box-shadow: 0 0 8px #00ff88; }
+    .badge.degraded { background: #ffaa00; color: #000; box-shadow: 0 0 8px #ffaa00; }
+    .badge.critical { background: #ff4444; color: #fff; box-shadow: 0 0 8px #ff4444; }
+    .badge.unknown { background: #3a3a44; color: #e0e0e0; }
+    .badge.stale-true { background: rgba(255, 170, 0, 0.25); color: #ffcc66; border: 1px solid rgba(255, 170, 0, 0.4); }
+    .badge.stale-false { background: rgba(0, 255, 136, 0.15); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.35); }
+
+    .grid-modules {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .card {
+      position: relative;
+      overflow: hidden;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 10px rgba(0,255,136,0.05);
+      transition: all 0.3s ease;
+    }
+    .card::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #00ff88, transparent);
+      animation: flow 2s infinite;
+      pointer-events: none;
+    }
+    @keyframes flow {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .card:hover {
+      transform: scale(1.02);
+      border-color: #3a3a48;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 0 20px rgba(0,255,136,0.2);
+    }
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 0.85rem;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      font-size: 0.82rem;
+    }
+    .row span:first-child { color: #8899aa; flex-shrink: 0; }
+    .row span:last-child { text-align: right; word-break: break-word; min-height: 1.4em; }
+
+    .alerts-card h2 { color: var(--warn); }
+    .alerts-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .alerts-list .alert {
+      padding: 10px;
+      margin: 5px 0;
+      border-left: 4px solid;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.82rem;
+    }
+    .alerts-list .alert.warning {
+      background: rgba(255, 170, 0, 0.1);
+      border-color: #ffaa00;
+      animation: fadeIn 0.5s ease;
+    }
+    .alerts-list .alert.critical {
+      background: rgba(255, 68, 68, 0.1);
+      border-color: #ff4444;
+      animation: shake 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes shake {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-2px); }
+      50% { transform: translateX(2px); }
+      75% { transform: translateX(-2px); }
+      100% { transform: translateX(0); }
+    }
+    .muted { color: #667788; font-style: italic; }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-start;
+      margin-top: 24px;
+    }
+    button.heal {
+      background: linear-gradient(180deg, #1a3d2e 0%, #0f2618 100%);
+      color: var(--accent);
+      border: 1px solid rgba(0, 255, 136, 0.35);
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    button.heal:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+    }
+    button.heal:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #heal-result {
+      flex: 1;
+      min-width: 200px;
+      font-size: 0.75rem;
+      color: #00ff88;
+      word-break: break-word;
+      white-space: pre-wrap;
+      font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+      background: #000;
+      border: 1px solid rgba(0,255,136,0.3);
+      border-radius: 10px;
+      padding: 10px;
+      max-height: 220px;
+      overflow: auto;
+    }
+    .tick {
+      font-size: 0.72rem;
+      color: #556677;
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    #welcome-screen {
+      display: none !important;
+    }
+
+    /* Au-dessus de body::after (z-index:1) sinon le scanline recouvre tout le dashboard */
+    .wrap,
+    .container {
+      position: relative;
+      z-index: 10;
+    }
+
+    .welcome-content {
+      text-align: center;
+      color: #00ff88;
+    }
+    .welcome-content h1 {
+      font-size: 48px;
+      letter-spacing: 4px;
+      text-shadow: 0 0 20px #00ff88;
+      margin: 0 0 8px;
+      font-family: inherit;
+    }
+    .welcome-content p {
+      opacity: 0.7;
+      margin-bottom: 20px;
+    }
+    #enter-btn {
+      padding: 10px 20px;
+      border: 1px solid #00ff88;
+      background: transparent;
+      color: #00ff88;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+    }
+    #enter-btn:hover {
+      background: #00ff88;
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+  <div id="debug-marker" style="
+  position:fixed;
+  top:10px;
+  left:10px;
+  color:red;
+  z-index:10000;
+  font-weight:bold;
+">
+DEBUG OK
+</div>
+
+  <div id="welcome-screen">
+    <div class="welcome-content">
+      <h1>AstroScan-Chohra</h1>
+      <p>Orbital Intelligence System</p>
+      <button id="enter-btn"
+        type="button"
+        onclick="this.closest('#welcome-screen').style.display='none'">
+        ENTER SYSTEM
+      </button>
+    </div>
+  </div>
+
+  <div class="top-bar">
+    <span>AstroScan-Chohra SYSTEM</span>
+    <span id="last-update"></span>
+  </div>
+
+  <div class="radar" aria-hidden="true">
+    <div class="radar-scan"></div>
+  </div>
+
+  <div class="container">
+  <div class="wrap">
+    <header>
+      <h1>AstroScan-Chohra CONTROL PANEL</h1>
+      <div class="sub">Passive cache telemetry · 5s refresh</div>
+    </header>
+
+    <div class="global-pill unknown" id="global-pill" hidden aria-hidden="true"></div>
+    <div class="global-block">
+      <div class="global-label">GLOBAL STATUS</div>
+      <div id="global-status" class="status unknown">—</div>
+    </div>
+
+    <div class="grid-modules">
+      <div class="card" id="card-dsn">
+        <h2>DSN</h2>
+        <div class="row"><span>status</span><span id="dsn-status">—</span></div>
+        <div class="row"><span>source</span><span id="dsn-source">—</span></div>
+        <div class="row"><span>stale</span><span id="dsn-stale">—</span></div>
+      </div>
+      <div class="card" id="card-weather">
+        <h2>WEATHER</h2>
+        <div class="row"><span>status</span><span id="weather-status">—</span></div>
+        <div class="row"><span>source</span><span id="weather-source">—</span></div>
+        <div class="row"><span>stale</span><span id="weather-stale">—</span></div>
+      </div>
+      <div class="card" id="card-skyview">
+        <h2>SKYVIEW</h2>
+        <div class="row"><span>status</span><span id="skyview-status">—</span></div>
+        <div class="row"><span>source</span><span id="skyview-source">—</span></div>
+        <div class="row"><span>stale</span><span id="skyview-stale">—</span></div>
+      </div>
+    </div>
+
+    <div class="card alerts-card">
+      <h2>ALERTS</h2>
+      <ul class="alerts-list" id="alerts-list">
+        <li class="muted">Loading…</li>
+      </ul>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="heal" id="btn-heal">Run heal</button>
+      <div id="heal-result"></div>
+    </div>
+
+    <p class="tick" id="last-tick">Last sync: —</p>
+  </div>
+  </div>
+
+  <script>
+(function () {
+  var baseRX = 2;
+  var baseRY = -2;
+
+  var audio = null;
+  try {
+    audio = new Audio('beep.mp3');
+  } catch (e1) { audio = null; }
+  function playAlertSound(level) {
+    if (level === 'critical' && audio) {
+      try { audio.play(); } catch (e2) {}
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function smoothUpdate(el, value, isHtml) {
+    if (!el) return;
+    el.style.transition = 'opacity 0.2s';
+    el.style.opacity = '0.5';
+    setTimeout(function () {
+      if (isHtml) el.innerHTML = value;
+      else el.innerText = value;
+      el.style.opacity = '1';
+    }, 100);
+  }
+
+  function updateClock() {
+    var el = document.getElementById('last-update');
+    if (el) {
+      el.innerText = 'Last update: ' + new Date().toLocaleTimeString();
+    }
+  }
+
+  function updateRadar(status) {
+    var radar = document.querySelector('.radar');
+    if (!radar) return;
+    var s = (status || 'unknown').toLowerCase();
+    radar.style.boxShadow =
+      s === 'critical' ? '0 0 20px red' :
+      s === 'degraded' ? '0 0 20px orange' :
+      '0 0 20px #00ff88';
+  }
+
+  function setGlobal(gs) {
+    var el = document.getElementById('global-status');
+    var t = (gs || 'unknown').toLowerCase();
+    var label = (gs || 'unknown').toUpperCase();
+    el.className = 'status ' + (t === 'ok' ? 'ok' : t === 'degraded' ? 'degraded' : t === 'critical' ? 'critical' : 'unknown');
+    var pill = document.getElementById('global-pill');
+    if (pill) {
+      pill.className = 'global-pill ' + (t === 'ok' ? 'ok' : t === 'degraded' ? 'degraded' : t === 'critical' ? 'critical' : 'unknown');
+    }
+    smoothUpdate(el, label, false);
+    updateRadar(gs);
+  }
+
+  function badgeForModuleStatus(status) {
+    var s = (status == null ? '' : String(status)).toLowerCase();
+    if (s === 'ok') return '<span class="badge ok">OK</span>';
+    if (s === 'cache') return '<span class="badge degraded">CACHE</span>';
+    if (s === 'fallback') return '<span class="badge critical">FALLBACK</span>';
+    return '<span class="badge unknown">' + escapeHtml(status != null ? String(status) : '—') + '</span>';
+  }
+
+  function badgeForStale(stale) {
+    if (stale === true) return '<span class="badge stale-true">STALE</span>';
+    if (stale === false) return '<span class="badge stale-false">FRESH</span>';
+    return '<span class="badge unknown">—</span>';
+  }
+
+  function updateStatus(d) {
+    if (!d) return;
+    setGlobal(d.global_status);
+    fillModule('dsn', d.dsn);
+    fillModule('weather', d.weather);
+    fillModule('skyview', d.skyview);
+    document.getElementById('last-tick').textContent = 'Last sync: ' + new Date().toISOString();
+  }
+
+  function fillModule(prefix, m) {
+    m = m || {};
+    smoothUpdate(document.getElementById(prefix + '-status'), badgeForModuleStatus(m.status), true);
+    smoothUpdate(document.getElementById(prefix + '-source'), m.source != null ? String(m.source) : '—', false);
+    smoothUpdate(document.getElementById(prefix + '-stale'), badgeForStale(m.stale), true);
+  }
+
+  function updateAlerts(data) {
+    var ul = document.getElementById('alerts-list');
+    ul.innerHTML = '';
+    var alerts = (data && data.alerts) ? data.alerts : [];
+    if (!alerts.length) {
+      var li = document.createElement('li');
+      li.className = 'muted';
+      li.textContent = 'No alerts';
+      ul.appendChild(li);
+      return;
+    }
+    alerts.forEach(function (a) {
+      var li = document.createElement('li');
+      var lvl = (a.level || '').toLowerCase();
+      li.className = 'alert ' + (lvl === 'critical' ? 'critical' : 'warning');
+      var parts = [];
+      if (a.level) parts.push(String(a.level).toUpperCase());
+      if (a.module) parts.push(a.module);
+      if (a.message) parts.push(a.message);
+      li.textContent = parts.join(' · ') || JSON.stringify(a);
+      ul.appendChild(li);
+    });
+  }
+
+  function loadData() {
+    fetch('/api/system-status/cache', { credentials: 'same-origin' })
+      .then(function (res) { return res.json(); })
+      .then(updateStatus)
+      .catch(function () {
+        setGlobal('unknown');
+      });
+
+    fetch('/api/system-alerts', { credentials: 'same-origin' })
+      .then(function (res) { return res.json(); })
+      .then(updateAlerts)
+      .catch(function () {
+        var ul = document.getElementById('alerts-list');
+        ul.innerHTML = '<li class="muted">Alerts unavailable</li>';
+      });
+
+    updateClock();
+  }
+
+  document.addEventListener('mousemove', function (e) {
+    var container = document.querySelector('.container');
+    if (!container) return;
+    var x = (e.clientX / window.innerWidth - 0.5) * 10;
+    var y = (e.clientY / window.innerHeight - 0.5) * 10;
+    container.style.transform =
+      'rotateX(' + (baseRX + y) + 'deg) rotateY(' + (baseRY + x) + 'deg)';
+  });
+
+  window.onload = function () {
+    loadData();
+    setInterval(loadData, 5000);
+  };
+
+  document.getElementById('btn-heal').addEventListener('click', function () {
+    var btn = document.getElementById('btn-heal');
+    var out = document.getElementById('heal-result');
+    btn.disabled = true;
+    out.textContent = 'Running…';
+    fetch('/api/system-heal', { method: 'POST', credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        out.innerText = JSON.stringify(data, null, 2);
+        setTimeout(loadData, 1000);
+      })
+      .catch(function (e) {
+        out.textContent = 'Error: ' + (e && e.message ? e.message : e);
+      })
+      .finally(function () {
+        btn.disabled = false;
+      });
+  });
+})();
+  </script>
+  <script>
+(function() {
+  const screen = document.getElementById("welcome-screen");
+
+  if (screen) {
+    // sécurité ultime : suppression forcée après 5 secondes
+    setTimeout(() => {
+      screen.style.display = "none";
+    }, 5000);
+  }
+})();
+  </script>
+</body>
+</html>

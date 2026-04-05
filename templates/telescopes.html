@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><title>AstroScan-Chohra - Télescopes</title></head>
+<body><h1>Telescopes</h1><p>Stub: run script with valid base64 (length multiple of 4).</p>
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body></html>

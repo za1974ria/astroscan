@@ -1,0 +1,6 @@
+@app.route("/ready")
+def ready():
+    try:
+        return jsonify({"ready": True})
+    except:
+        return jsonify({"ready": False})

@@ -1,0 +1,29 @@
+=================================================================
+  AEGIS : RADIOGRAPHIE GLOBALE ASTROSCAN (PRODUIT FINI)
+  Directeur : Zakaria Chohra | Mode : 100% Passif
+=================================================================
+
+--- 🖥️ CHARGE SYSTÈME ET MÉMOIRE ---
+ 04:55:40 up 10 days,  2:36,  2 users,  load average: 0.32, 0.28, 0.24
+Mem:           7.6Gi       2.1Gi       157Mi       5.0Mi       5.6Gi       5.4Gi
+Swap:             0B          0B          0B
+
+--- 🛡️ MATRICE DE DÉFENSE (UFW & NGINX) ---
+Status: active
+
+To                         Action      From
+--                         ------      ----
+Bouclier Nginx : ACTIF ET OPÉRATIONNEL
+
+--- ⚙️ GARDIEN AEGIS (DAEMON WATCHDOG) ---
+Processus Watchdog en tâche de fond : ACTIF (PID: 2418987)
+
+--- 📦 COFFRE-FORT D'ARCHIVAGE ---
+ 
+2.1G ASTROSCAN_MASTER_GOLD_20260318_044118.tar.gz
+
+--- 🌐 PORTS DE PRODUCTION ACTIFS ---
+LISTEN 0      128          0.0.0.0:5000       0.0.0.0:*          
+LISTEN 0      511          0.0.0.0:80         0.0.0.0:*          
+LISTEN 0      511          0.0.0.0:443        0.0.0.0:*          
+

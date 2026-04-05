@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AstroScan-Chohra - Labo numérique</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--acid:#00ff88;--blue:#00d4ff;--bg:#010408;--card:rgba(0,20,40,0.8)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:#ccd6f6;font-family:'Share Tech Mono',monospace;min-height:100vh}
+header{background:rgba(0,5,15,0.95);border-bottom:1px solid #00ff8833;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:Orbitron,monospace;font-size:16px;color:var(--acid);letter-spacing:3px}
+main{padding:24px;max-width:900px;margin:0 auto}
+.card{background:var(--card);border:1px solid #00ff8833;border-radius:8px;padding:16px;margin-bottom:16px}
+.card-title{font-family:Orbitron,monospace;font-size:11px;color:var(--blue);letter-spacing:2px;margin-bottom:12px;border-bottom:1px solid #00ff8822;padding-bottom:8px}
+input[type="file"]{margin:8px 0;font-size:11px;color:var(--acid)}
+button{background:rgba(0,255,136,0.1);border:1px solid var(--acid);color:var(--acid);padding:8px 16px;border-radius:4px;cursor:pointer;font-family:monospace;font-size:11px}
+button:hover{background:rgba(0,255,136,0.2)}
+button:disabled{opacity:0.5;cursor:not-allowed}
+#preview{max-width:100%;max-height:280px;margin-top:8px;background:#0a0a1a;border-radius:4px;display:none}
+#report{white-space:pre-wrap;font-size:11px;color:#aabbcc;line-height:1.6;margin-top:12px}
+#report.error{color:#ff4444}
+.err{color:#ff4444;font-size:11px;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🔬 LABO NUMÉRIQUE — AstroScan-Chohra</div>
+  <div style="font-size:10px;color:#4a7a8a">Pipeline d'analyse d'images · OpenCV · Astropy · scikit-image</div>
+  <a href="/portail" style="color:var(--blue);font-size:10px;text-decoration:none">← PORTAIL</a>
+</header>
+<main>
+  <div class="card">
+    <div class="card-title">📤 TELEVERSEMENT IMAGE</div>
+    <p style="font-size:11px;color:#8899aa;margin-bottom:8px">Televersez une image FITS ou raster (PNG, JPG) pour analyse. Stockage dans la base du laboratoire.</p>
+    <input type="file" id="file" accept="image/*,.fits,.fit" onchange="goToSkyViewFolderGlobal()">
+    <input type="file" id="astroFile" accept="image/*,.fits,.fit" style="margin-left:0" onchange="goToSkyViewFolderGlobal()">
+    <div><button type="button" id="btn-upload">Televerser (API)</button> <button type="button" onclick="uploadAstroImage()">Televerser</button></div>
+    <div id="upload-msg" class="err"></div>
+    <img id="preview" alt="Preview">
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚙️ ANALYSE</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <button type="button" id="btn-force-local" style="font-size:10px;padding:6px 10px">Forcer mode local</button>
+      <button type="button" id="btn-force-skyview" style="font-size:10px;padding:6px 10px">Forcer mode SkyView</button>
+      <button type="button" id="btn-force-auto" style="font-size:10px;padding:6px 10px">Mode auto</button>
+    </div>
+    <div id="active-source-indicator" style="font-size:10px;color:#00d4ff;margin-bottom:8px">Source actuelle : Aucune</div>
+    <div id="active-image-indicator" style="font-size:10px;color:#9ad7ff;margin-bottom:8px">Image analysee maintenant : Aucune</div>
+    <div id="operator-audit" style="font-size:10px;color:#7fb8d6;margin-bottom:8px;border:1px solid rgba(0,212,255,.25);border-radius:6px;padding:6px 8px;background:rgba(0,212,255,.06)">
+      Audit operateur: mode=none | fichier=aucun | ts=--
+    </div>
+    <p style="font-size:11px;color:#8899aa;margin-bottom:8px">Pipeline: load → denoise → detect stars → detect objects → photometry → report.</p>
+    <button type="button" id="btn-analyze" disabled>Lancer analyse</button>
+    <div id="analyze-msg" class="err"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 RAPPORT</div>
+    <div id="lab-meta" style="font-size:10px;color:#6a8a9a;margin-bottom:4px;display:none"></div>
+    <div id="clicked-image-indicator" style="font-size:10px;color:#9ad7ff;margin-bottom:6px;display:none">Image cliquee: --</div>
+    <img id="lab-image" style="max-width:600px;border-radius:8px;display:none;margin-bottom:8px">
+    <div id="report">Televersez une image puis lancez l'analyse pour voir le rapport.</div>
+    <button type="button" id="btn-toggle-report" style="margin-top:8px;font-size:10px">Afficher rapport technique</button>
+    <pre id="report-raw" style="display:none;margin-top:8px;font-size:10px;max-height:260px;overflow:auto;background:#020712;padding:8px;border-radius:4px;border:1px solid #00ff8833"></pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🗄️ BASE LABORATOIRE</div>
+    <p style="font-size:11px;color:#8899aa;margin-bottom:8px">Images telescope et televersements. Actualisation automatique.</p>
+    <div id="labDbStats">Chargement…</div>
+    <div id="labDbLatest" style="margin-top:8px;font-size:10px;color:#6a8a9a"></div>
+    <div id="labDbSources" style="margin-top:4px;font-size:10px;color:#6a8a9a"></div>
+  </div>
+
+  <div class="card" id="skyview-folder">
+    <div class="card-title">📁 Dernières images SkyView téléchargées</div>
+    <div style="margin-bottom:8px">
+      <button type="button" id="btn-clear-skyview-selection" style="font-size:10px;padding:6px 10px">Désélectionner l'image active</button>
+    </div>
+    <div id="skyview-feed" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+</main>
+<script>
+function goToSkyViewFolderGlobal() {
+  try {
+    if (window.location.hash !== '#skyview-folder') {
+      window.location.hash = 'skyview-folder';
+    }
+  } catch (e) {}
+  setTimeout(function () {
+    var target = document.getElementById('skyview-folder');
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.style.transition = 'box-shadow .2s ease, transform .2s ease, border-color .2s ease';
+    target.style.borderColor = 'rgba(0,212,255,.65)';
+    target.style.transform = 'scale(1.01)';
+    target.style.boxShadow = '0 0 0 1px rgba(0,212,255,.55), 0 0 36px rgba(0,212,255,.30)';
+    setTimeout(function () {
+      target.style.boxShadow = '';
+      target.style.transform = '';
+      target.style.borderColor = '';
+    }, 2000);
+  }, 120);
+}
+
+async function uploadAstroImage() {
+  var file = document.getElementById('astroFile').files[0] || document.getElementById('file').files[0];
+  if (!file) { alert('Selectionnez une image'); return; }
+  try {
+    // En mode upload manuel, on neutralise toute selection SkyView memorisee.
+    localStorage.removeItem('lab_selected_skyview_file');
+  } catch (e) {}
+  if (typeof window.__labSelectSkyview === 'function') {
+    window.__labSelectSkyview(null);
+  }
+  var form = new FormData();
+  form.append('image', file);
+  try {
+    var r = await fetch('/lab/upload', { method: 'POST', body: form });
+    var d = await r.json();
+    if (d.error) { alert(d.error); return; }
+    alert('Image enregistrée dans la base de données du laboratoire');
+    refreshLabDb();
+    if (typeof goToSkyViewFolderGlobal === 'function') goToSkyViewFolderGlobal();
+  } catch (e) { alert('Televersement echoue: ' + e.message); }
+}
+async function runAnalysis() {
+  var reportEl = document.getElementById('report');
+  var imgEl = document.getElementById('lab-image');
+  var metaEl = document.getElementById('lab-meta');
+  var rawEl = document.getElementById('report-raw');
+  reportEl.textContent = 'Analyse laboratoire en cours...';
+  reportEl.classList.remove('error');
+  if (rawEl) { rawEl.style.display = 'none'; rawEl.textContent = ''; }
+  try {
+    var selectedSkyView = '';
+    try { selectedSkyView = (localStorage.getItem('lab_selected_skyview_file') || '').trim(); } catch (e) {}
+    var r = selectedSkyView
+      ? await fetch('/api/lab/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw_file: selectedSkyView })
+        })
+      : await fetch('/api/lab/run_analysis', { method: 'POST' });
+    var data = await r.json();
+    if (!r.ok || data.error) {
+      reportEl.textContent = 'Analyse echouee: ' + (data.error || r.statusText);
+      reportEl.classList.add('error');
+    } else {
+      var filename = data.filename || selectedSkyView || 'image recente';
+      if (imgEl && data.filename) {
+        imgEl.src = '/lab/raw/' + data.filename;
+        imgEl.style.display = 'block';
+      }
+      if (metaEl) {
+        var m = data.metadata || {};
+        var provider = m.source_provider || m.source || '';
+        var mission = m.mission || '';
+        var instrument = m.instrument || m.telescope || '';
+        var objType = m.object_type || '';
+        var title = m.title || m.object_name || '';
+        var badgeParts = [];
+        if (provider) badgeParts.push(provider);
+        if (mission) badgeParts.push(mission);
+        if (instrument) badgeParts.push(instrument);
+        if (objType) badgeParts.push(objType);
+        metaEl.textContent = badgeParts.join(' · ') + (title ? ' — ' + title : '');
+        metaEl.style.display = badgeParts.length ? 'block' : 'none';
+      }
+      var rep = data.report || {};
+      var brightness = rep.brightness || {};
+      var anomalies = rep.anomalies || {};
+      var stars = rep.stars || rep.stars_detected || 0;
+      var starsDetected = Array.isArray(stars) ? stars.length : (stars | 0);
+      if (!starsDetected && rep.sections) {
+        rep.sections.forEach(function (s) {
+          if (s.title === 'Detection' && s.content && s.content.stars_detected != null) {
+            starsDetected = s.content.stars_detected;
+          }
+        });
+      }
+      var anomalyCount = anomalies.anomaly_count || 0;
+      if (!anomalyCount && rep.sections) {
+        rep.sections.forEach(function (s) {
+          if (s.title === 'Anomalies' && s.content && s.content.count != null) {
+            anomalyCount = s.content.count;
+          }
+        });
+      }
+      var globalMean = brightness.global_mean;
+      if (globalMean == null && rep.sections) {
+        rep.sections.forEach(function (s) {
+          if (s.title === 'Brightness' && s.content && s.content.global_mean != null) {
+            globalMean = s.content.global_mean;
+          }
+        });
+      }
+      globalMean = Number(globalMean) || 0;
+
+      var brightnessLevel = 'Faible';
+      if (globalMean >= 0.4) brightnessLevel = 'Eleve';
+      else if (globalMean >= 0.15) brightnessLevel = 'Moyen';
+
+      var conclusion = 'Aucune anomalie detectee.';
+      if (anomalyCount > 0 && anomalyCount < 3) {
+        conclusion = 'Artefacts capteur mineurs detectes.';
+      } else if (anomalyCount >= 3) {
+        conclusion = 'Champ complexe ou objets brillants detectes.';
+      }
+
+      var summary = '';
+      summary += 'LECTURE SIMPLIFIEE (debutant)\\n';
+      summary += 'Image analysee: ' + filename + '\\n';
+      summary += '- Etoiles detectees: ' + starsDetected + '\\n';
+      summary += '- Luminosite: ' + brightnessLevel + '\\n';
+      summary += '- Anomalies detectees: ' + anomalyCount + '\\n';
+      summary += '- Conclusion simple: ' + conclusion + '\\n\\n';
+      summary += '--- Details techniques ---\\n';
+      summary += 'global_mean=' + globalMean.toFixed(4);
+
+      reportEl.textContent = summary;
+      if (rawEl) {
+        rawEl.textContent = JSON.stringify(data.report || data, null, 2);
+      }
+      refreshLabDb();
+    }
+  } catch (e) {
+    reportEl.textContent = 'Analyse echouee: ' + e.message;
+    reportEl.classList.add('error');
+  }
+}
+
+function buildBeginnerReading(reportObj, fallbackImageName) {
+  var rep = reportObj || {};
+  var brightness = rep.brightness || {};
+  var anomalies = rep.anomalies || {};
+  var stars = rep.stars || rep.stars_detected || 0;
+  var starsDetected = Array.isArray(stars) ? stars.length : (stars | 0);
+  if (!starsDetected && rep.sections) {
+    rep.sections.forEach(function (s) {
+      if ((s.title === 'Detection' || s.title === 'Detection des etoiles') && s.content && s.content.stars_detected != null) {
+        starsDetected = s.content.stars_detected;
+      }
+    });
+  }
+  var anomalyCount = anomalies.anomaly_count || 0;
+  if (!anomalyCount && rep.sections) {
+    rep.sections.forEach(function (s) {
+      if ((s.title === 'Anomalies' || s.title === 'Anomaly') && s.content && s.content.count != null) {
+        anomalyCount = s.content.count;
+      }
+    });
+  }
+  var globalMean = brightness.global_mean;
+  if (globalMean == null && rep.sections) {
+    rep.sections.forEach(function (s) {
+      if ((s.title === 'Brightness' || s.title === 'Luminosite') && s.content && s.content.global_mean != null) {
+        globalMean = s.content.global_mean;
+      }
+    });
+  }
+  globalMean = Number(globalMean) || 0;
+  var brightnessLevel = 'faible';
+  if (globalMean >= 0.4) brightnessLevel = 'elevee';
+  else if (globalMean >= 0.15) brightnessLevel = 'moyenne';
+
+  var conclusion = 'Image globalement stable.';
+  if (anomalyCount > 0 && anomalyCount < 3) conclusion = 'Petites anomalies possibles (souvent normales).';
+  else if (anomalyCount >= 3) conclusion = 'Image complexe : verifier avec une seconde analyse.';
+
+  var filename = fallbackImageName || 'image courante';
+  var simple = '';
+  simple += 'LECTURE SIMPLIFIEE (debutant)\\n';
+  simple += 'Image: ' + filename + '\\n';
+  simple += '- Etoiles detectees: ' + starsDetected + '\\n';
+  simple += '- Luminosite: ' + brightnessLevel + '\\n';
+  simple += '- Anomalies: ' + anomalyCount + '\\n';
+  simple += '- Interpretation simple: ' + conclusion + '\\n';
+  simple += '\\n--- Rapport technique ---\\n';
+  return simple;
+}
+
+function refreshLabDb() {
+  fetch('/lab/dashboard').then(function(r){ return r.json(); }).then(function(d){
+    var el = document.getElementById('labDbStats');
+    var latest = document.getElementById('labDbLatest');
+    var sources = document.getElementById('labDbSources');
+    if (el) el.textContent = 'Images: ' + (d.number_of_images || 0);
+    if (latest) latest.textContent = 'Récente : ' + ((d.latest_images || []).slice(0, 5).join(', ') || '—');
+    if (sources) sources.textContent = 'Sources: ' + (d.sources || []).join(', ');
+  }).catch(function(){ document.getElementById('labDbStats').textContent = 'Erreur de chargement du dashboard'; });
+}
+function loadSkyViewImages() {
+  fetch('/api/lab/images')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var feed = document.getElementById('skyview-feed');
+      if (!feed) return;
+      feed.innerHTML = '';
+      var images = (d.images || []).slice(0, 20);
+      images.forEach(function(item){
+        if (!item.url) return;
+        var file = item.file || '';
+        var wrap = document.createElement('div');
+        wrap.style.flex = '0 0 auto';
+        wrap.style.width = '220px';
+        wrap.style.border = '1px solid rgba(0,255,136,0.2)';
+        wrap.style.borderRadius = '6px';
+        wrap.style.padding = '6px';
+        wrap.setAttribute('data-skyview-card', '1');
+        var img = document.createElement('img');
+        img.src = item.url;
+        img.alt = file || 'Lab image';
+        img.style.width = '100%';
+        img.style.borderRadius = '4px';
+        img.style.objectFit = 'cover';
+        img.style.background = '#000';
+        img.style.border = '1px solid rgba(0,255,136,0.2)';
+        img.style.cursor = 'pointer';
+        var badge = document.createElement('div');
+        badge.className = 'lab-image-badge';
+        badge.style.fontSize = '10px';
+        badge.style.color = '#6a8a9a';
+        badge.style.marginTop = '4px';
+        badge.style.maxHeight = '2.2em';
+        badge.style.overflow = 'hidden';
+        badge.style.textOverflow = 'ellipsis';
+        badge.textContent = '—';
+        wrap.appendChild(img);
+        wrap.appendChild(badge);
+        var btnPick = document.createElement('button');
+        btnPick.type = 'button';
+        btnPick.textContent = 'Choisir cette image';
+        btnPick.style.marginTop = '6px';
+        btnPick.style.width = '100%';
+        wrap.appendChild(btnPick);
+        var activeBadge = document.createElement('div');
+        activeBadge.setAttribute('data-active-badge', '1');
+        activeBadge.textContent = 'IMAGE ACTIVE';
+        activeBadge.style.marginTop = '4px';
+        activeBadge.style.fontSize = '10px';
+        activeBadge.style.textAlign = 'center';
+        activeBadge.style.padding = '3px 6px';
+        activeBadge.style.borderRadius = '999px';
+        activeBadge.style.border = '1px solid rgba(0,212,255,.65)';
+        activeBadge.style.color = '#00d4ff';
+        activeBadge.style.background = 'rgba(0,212,255,.10)';
+        activeBadge.style.display = 'none';
+        wrap.appendChild(activeBadge);
+        feed.appendChild(wrap);
+        function selectThisImage() {
+          if (!file) return;
+          if (typeof window.__labSelectSkyview === 'function') {
+            window.__labSelectSkyview(file);
+          }
+          // Affichage immediat de l'image cliquee pour confirmer visuellement la selection.
+          try {
+            var topPreview = document.getElementById('preview');
+            if (topPreview) {
+              topPreview.src = item.url;
+              topPreview.style.display = 'block';
+            }
+            var reportPreview = document.getElementById('lab-image');
+            if (reportPreview) {
+              reportPreview.src = item.url;
+              reportPreview.style.display = 'block';
+            }
+          } catch (e) {}
+          var allCards = feed.querySelectorAll('[data-skyview-card="1"]');
+          allCards.forEach(function(c){
+            c.style.boxShadow = '';
+            c.style.transform = '';
+            c.style.borderColor = 'rgba(0,255,136,0.2)';
+            var b = c.querySelector('[data-active-badge="1"]');
+            if (b) b.style.display = 'none';
+          });
+          wrap.style.transition = 'all .2s ease';
+          wrap.style.borderColor = 'rgba(0,212,255,.75)';
+          wrap.style.boxShadow = '0 0 0 1px rgba(0,212,255,.55), 0 0 20px rgba(0,212,255,.30)';
+          wrap.style.transform = 'translateY(-1px)';
+          activeBadge.style.display = 'block';
+        }
+        img.addEventListener('click', selectThisImage);
+        btnPick.addEventListener('click', selectThisImage);
+        try {
+          var remembered = localStorage.getItem('lab_selected_skyview_file') || '';
+          if (remembered && file === remembered) {
+            selectThisImage();
+          }
+        } catch (e) {}
+        if (file) {
+          fetch('/api/lab/metadata/' + encodeURIComponent(file))
+            .then(function(mr){ return mr.json(); })
+            .then(function(m){
+              var parts = [];
+              if (m.source_provider) parts.push(m.source_provider);
+              if (m.mission) parts.push(m.mission);
+              if (m.instrument) parts.push(m.instrument);
+              if (m.object_type) parts.push(m.object_type);
+              var text = parts.join(' · ');
+              if (m.title) text += (text ? ' — ' : '') + m.title;
+              badge.textContent = text || file;
+            })
+            .catch(function(){ badge.textContent = file; });
+        }
+      });
+    })
+    .catch(function(){ /* silent */ });
+}
+(function(){
+  var uploadId = null;
+  var selectedSkyviewFile = null;
+  var activeSourceMode = 'none'; // 'none' | 'skyview' | 'local' | 'upload'
+  var lastLocalPicker = null; // 'file' | 'astro'
+  var forcedMode = 'auto'; // 'auto' | 'local' | 'skyview'
+  var fileInput = document.getElementById('file');
+  var astroFileInput = document.getElementById('astroFile');
+  var btnUpload = document.getElementById('btn-upload');
+  var btnAnalyze = document.getElementById('btn-analyze');
+  var btnForceLocal = document.getElementById('btn-force-local');
+  var btnForceSkyview = document.getElementById('btn-force-skyview');
+  var btnForceAuto = document.getElementById('btn-force-auto');
+  var btnToggleReport = document.getElementById('btn-toggle-report');
+  var btnClearSkyviewSelection = document.getElementById('btn-clear-skyview-selection');
+  var activeSourceIndicator = document.getElementById('active-source-indicator');
+  var activeImageIndicator = document.getElementById('active-image-indicator');
+  var operatorAudit = document.getElementById('operator-audit');
+  var uploadMsg = document.getElementById('upload-msg');
+  var analyzeMsg = document.getElementById('analyze-msg');
+  var reportEl = document.getElementById('report');
+  var preview = document.getElementById('preview');
+  var clickedImageIndicator = document.getElementById('clicked-image-indicator');
+
+  function goToSkyViewFolder() { goToSkyViewFolderGlobal(); }
+  function setSelectedSkyviewFile(name) {
+    selectedSkyviewFile = name || null;
+    try {
+      if (selectedSkyviewFile) localStorage.setItem('lab_selected_skyview_file', selectedSkyviewFile);
+      else localStorage.removeItem('lab_selected_skyview_file');
+    } catch (e) {}
+    // Ne bascule vers SkyView que lorsqu'une image est vraiment choisie.
+    // Si name est vide (clear), on conserve l'upload API actif.
+    if (selectedSkyviewFile) {
+      activeSourceMode = 'skyview';
+      uploadId = null;
+      // Evite les conflits d'etat visuel avec un ancien fichier local choisi.
+      try {
+        if (fileInput) fileInput.value = '';
+        if (astroFileInput) astroFileInput.value = '';
+      } catch (e) {}
+    }
+    if (uploadMsg && selectedSkyviewFile) {
+      // Evite l'ambiguite: en mode SkyView, on masque le dernier message d'upload API.
+      uploadMsg.textContent = '';
+    }
+    if (analyzeMsg) {
+      analyzeMsg.textContent = selectedSkyviewFile ? ('Image SkyView selectionnee: ' + selectedSkyviewFile) : '';
+    }
+    if (btnAnalyze) {
+      var hasLocalFile = !!(fileInput && fileInput.files && fileInput.files.length);
+      btnAnalyze.disabled = !(selectedSkyviewFile || uploadId || hasLocalFile);
+    }
+    updateActiveSourceIndicator();
+  }
+  window.__labSelectSkyview = setSelectedSkyviewFile;
+  function updateActiveSourceIndicator() {
+    if (!activeSourceIndicator) return;
+    var hasLocalFile = !!(fileInput && fileInput.files && fileInput.files.length);
+    var effectiveMode = activeSourceMode;
+    if (forcedMode === 'local') effectiveMode = 'local';
+    else if (forcedMode === 'skyview') effectiveMode = 'skyview';
+    var label = 'Aucune';
+    var color = '#9aa7b3';
+    var border = 'rgba(154,167,179,.45)';
+    var bg = 'rgba(154,167,179,.10)';
+    if (effectiveMode === 'local' && hasLocalFile) {
+      var localName = (fileInput && fileInput.files && fileInput.files[0] && fileInput.files[0].name) ? fileInput.files[0].name : 'fichier local';
+      label = 'Televersement local (en attente) (' + localName + ')';
+    } else if (effectiveMode === 'upload' && uploadId) {
+      label = 'Televersement API (' + uploadId + ')';
+    } else if (effectiveMode === 'skyview' && selectedSkyviewFile) {
+      label = 'SkyView (' + selectedSkyviewFile + ')';
+    } else if (hasLocalFile) {
+      var localNameFallback = (fileInput && fileInput.files && fileInput.files[0] && fileInput.files[0].name) ? fileInput.files[0].name : 'fichier local';
+      label = 'Televersement local (en attente) (' + localNameFallback + ')';
+    } else if (uploadId) {
+      label = 'Televersement API (' + uploadId + ')';
+    } else if (selectedSkyviewFile) {
+      label = 'SkyView (' + selectedSkyviewFile + ')';
+    }
+    if (effectiveMode === 'skyview' && selectedSkyviewFile) {
+      color = '#00d4ff';
+      border = 'rgba(0,212,255,.60)';
+      bg = 'rgba(0,212,255,.10)';
+    } else if (effectiveMode === 'upload' && uploadId) {
+      color = '#00ff88';
+      border = 'rgba(0,255,136,.60)';
+      bg = 'rgba(0,255,136,.10)';
+    } else if (effectiveMode === 'local' && hasLocalFile) {
+      color = '#ffb347';
+      border = 'rgba(255,179,71,.60)';
+      bg = 'rgba(255,179,71,.10)';
+    }
+    activeSourceIndicator.textContent = 'Source actuelle : ' + label;
+    activeSourceIndicator.style.color = color;
+    activeSourceIndicator.style.border = '1px solid ' + border;
+    activeSourceIndicator.style.background = bg;
+    activeSourceIndicator.style.borderRadius = '6px';
+    activeSourceIndicator.style.padding = '6px 8px';
+    if (activeImageIndicator) {
+      var imgLabel = 'Aucune';
+      if (selectedSkyviewFile) imgLabel = selectedSkyviewFile;
+      else if (uploadId) imgLabel = uploadId;
+      else if (hasLocalFile) {
+        imgLabel = (fileInput && fileInput.files && fileInput.files[0] && fileInput.files[0].name) ? fileInput.files[0].name : 'fichier local';
+      }
+      activeImageIndicator.textContent = 'Image analysee maintenant : ' + imgLabel;
+    }
+    if (clickedImageIndicator) {
+      if (selectedSkyviewFile) {
+        clickedImageIndicator.textContent = 'Image cliquee: ' + selectedSkyviewFile;
+        clickedImageIndicator.style.display = 'block';
+      } else {
+        clickedImageIndicator.style.display = 'none';
+      }
+    }
+    if (operatorAudit) {
+      var mode = effectiveMode || 'none';
+      var file = 'aucun';
+      if (mode === 'skyview' && selectedSkyviewFile) file = selectedSkyviewFile;
+      else if (mode === 'upload' && uploadId) file = uploadId;
+      else if (mode === 'local' && hasLocalFile) {
+        file = (lastLocalPicker === 'astro'
+          ? (astroFileInput && astroFileInput.files && astroFileInput.files[0] && astroFileInput.files[0].name)
+          : (fileInput && fileInput.files && fileInput.files[0] && fileInput.files[0].name)) || 'fichier_local';
+      }
+      var ts = new Date().toLocaleTimeString('fr-FR');
+      operatorAudit.textContent = 'Audit operateur: mode=' + mode + ' | fichier=' + file + ' | ts=' + ts;
+    }
+    if (btnForceLocal && btnForceSkyview && btnForceAuto) {
+      btnForceLocal.style.borderColor = (forcedMode === 'local') ? 'rgba(255,179,71,.9)' : 'rgba(0,255,136,.45)';
+      btnForceSkyview.style.borderColor = (forcedMode === 'skyview') ? 'rgba(0,212,255,.9)' : 'rgba(0,255,136,.45)';
+      btnForceAuto.style.borderColor = (forcedMode === 'auto') ? 'rgba(0,255,136,.9)' : 'rgba(0,255,136,.45)';
+    }
+  }
+
+  function clearSkyviewVisualSelection() {
+    var feed = document.getElementById('skyview-feed');
+    if (!feed) return;
+    var allCards = feed.querySelectorAll('[data-skyview-card="1"]');
+    allCards.forEach(function(c){
+      c.style.boxShadow = '';
+      c.style.transform = '';
+      c.style.borderColor = 'rgba(0,255,136,0.2)';
+      var b = c.querySelector('[data-active-badge="1"]');
+      if (b) b.style.display = 'none';
+    });
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener('change', function () {
+      if (fileInput.files && fileInput.files.length) goToSkyViewFolder();
+      if (fileInput.files && fileInput.files.length) {
+        lastLocalPicker = 'file';
+        try { if (astroFileInput) astroFileInput.value = ''; } catch (e) {}
+      }
+      if (fileInput.files && fileInput.files.length && typeof window.__labSelectSkyview === 'function') {
+        window.__labSelectSkyview(null);
+        activeSourceMode = 'local';
+      }
+      if (fileInput.files && fileInput.files.length && preview) {
+        var f = fileInput.files[0];
+        if (f && f.type && f.type.indexOf('image') === 0) {
+          preview.src = URL.createObjectURL(f);
+          preview.style.display = 'block';
+        }
+      }
+      updateActiveSourceIndicator();
+    });
+  }
+  if (astroFileInput) {
+    astroFileInput.addEventListener('change', function () {
+      if (astroFileInput.files && astroFileInput.files.length) goToSkyViewFolder();
+      if (astroFileInput.files && astroFileInput.files.length) {
+        lastLocalPicker = 'astro';
+        try { if (fileInput) fileInput.value = ''; } catch (e) {}
+      }
+      if (astroFileInput.files && astroFileInput.files.length && typeof window.__labSelectSkyview === 'function') {
+        window.__labSelectSkyview(null);
+        activeSourceMode = 'local';
+      }
+      if (astroFileInput.files && astroFileInput.files.length && preview) {
+        var f = astroFileInput.files[0];
+        if (f && f.type && f.type.indexOf('image') === 0) {
+          preview.src = URL.createObjectURL(f);
+          preview.style.display = 'block';
+        }
+      }
+      updateActiveSourceIndicator();
+    });
+  }
+  if (btnClearSkyviewSelection) {
+    btnClearSkyviewSelection.addEventListener('click', function () {
+      setSelectedSkyviewFile(null);
+      activeSourceMode = (uploadId ? 'upload' : ((fileInput && fileInput.files && fileInput.files.length) ? 'local' : 'none'));
+      clearSkyviewVisualSelection();
+      if (analyzeMsg) analyzeMsg.textContent = 'Sélection SkyView effacée. Mode upload manuel actif.';
+      updateActiveSourceIndicator();
+    });
+  }
+  if (btnForceLocal) {
+    btnForceLocal.addEventListener('click', function () {
+      forcedMode = 'local';
+      if (analyzeMsg) analyzeMsg.textContent = 'Mode force: LOCAL';
+      updateActiveSourceIndicator();
+    });
+  }
+  if (btnForceSkyview) {
+    btnForceSkyview.addEventListener('click', function () {
+      forcedMode = 'skyview';
+      if (analyzeMsg) analyzeMsg.textContent = 'Mode force: SKYVIEW';
+      updateActiveSourceIndicator();
+    });
+  }
+  if (btnForceAuto) {
+    btnForceAuto.addEventListener('click', function () {
+      forcedMode = 'auto';
+      if (analyzeMsg) analyzeMsg.textContent = 'Mode force: AUTO';
+      updateActiveSourceIndicator();
+    });
+  }
+
+  btnUpload.addEventListener('click', function(){
+    var f = null;
+    if (lastLocalPicker === 'astro') f = (astroFileInput && astroFileInput.files && astroFileInput.files[0]) || null;
+    else if (lastLocalPicker === 'file') f = (fileInput && fileInput.files && fileInput.files[0]) || null;
+    if (!f) f = (fileInput && fileInput.files && fileInput.files[0]) || (astroFileInput && astroFileInput.files && astroFileInput.files[0]);
+    if(!f){ uploadMsg.textContent = 'Selectionnez un fichier d abord.'; return; }
+    if (typeof window.__labSelectSkyview === 'function') {
+      window.__labSelectSkyview(null);
+    }
+    uploadMsg.textContent = '';
+    var fd = new FormData();
+    fd.append('image', f);
+    fetch('/api/lab/upload', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.error){ uploadMsg.textContent = d.error; return; }
+        uploadId = d.id || d.path;
+        setSelectedSkyviewFile(null);
+        activeSourceMode = 'upload';
+        uploadMsg.textContent = 'Televersement: ' + (d.path || d.id);
+        btnAnalyze.disabled = false;
+        updateActiveSourceIndicator();
+        if(f.type.indexOf('image')===0){ preview.src = URL.createObjectURL(f); preview.style.display = 'block'; }
+        goToSkyViewFolder();
+      })
+      .catch(function(e){ uploadMsg.textContent = 'Televersement echoue: ' + e.message; });
+  });
+  updateActiveSourceIndicator();
+  refreshLabDb();
+  setInterval(refreshLabDb, 30000);
+  loadSkyViewImages();
+  setInterval(loadSkyViewImages, 30000);
+
+  btnAnalyze.addEventListener('click', function(){
+    analyzeMsg.textContent = '';
+    reportEl.textContent = 'Pipeline en cours...';
+    reportEl.classList.remove('error');
+    btnAnalyze.disabled = true;
+    var mode = activeSourceMode;
+    if (forcedMode === 'local') mode = 'local';
+    else if (forcedMode === 'skyview') mode = 'skyview';
+    var body = uploadId ? JSON.stringify({ upload_id: uploadId }) : null;
+    if (mode === 'local') {
+      body = null;
+    }
+    if (!body && mode === 'skyview' && selectedSkyviewFile) {
+      body = JSON.stringify({ raw_file: selectedSkyviewFile });
+    }
+    var opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body || '{}' };
+    if(!uploadId && !selectedSkyviewFile){
+      var f = null;
+      if (lastLocalPicker === 'astro') f = (astroFileInput && astroFileInput.files && astroFileInput.files[0]) || null;
+      else if (lastLocalPicker === 'file') f = (fileInput && fileInput.files && fileInput.files[0]) || null;
+      if (!f) f = (fileInput && fileInput.files && fileInput.files[0]) || (astroFileInput && astroFileInput.files && astroFileInput.files[0]);
+      if(!f){ reportEl.textContent = 'Televersez une image d abord.'; reportEl.classList.add('error'); btnAnalyze.disabled = false; return; }
+      var fd = new FormData();
+      fd.append('image', f);
+      opts = { method: 'POST', body: fd };
+    }
+    fetch('/api/lab/analyze', opts)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        btnAnalyze.disabled = false;
+        if(d.error){ reportEl.textContent = 'Erreur: ' + d.error; reportEl.classList.add('error'); return; }
+        var rep = d.report || d;
+        var effectiveName = selectedSkyviewFile || uploadId || ((lastLocalPicker === 'astro') ? (astroFileInput && astroFileInput.files && astroFileInput.files[0] && astroFileInput.files[0].name) : (fileInput && fileInput.files && fileInput.files[0] && fileInput.files[0].name)) || 'image courante';
+        var txt = buildBeginnerReading(rep, effectiveName);
+        txt += (rep.summary || JSON.stringify(rep, null, 2));
+        if(rep.sections && rep.sections.length) rep.sections.forEach(function(s){ txt += '\n\n' + s.title + ': ' + JSON.stringify(s.content); });
+        reportEl.textContent = txt;
+      })
+      .catch(function(e){ reportEl.textContent = 'Analyse echouee: ' + e.message; reportEl.classList.add('error'); btnAnalyze.disabled = false; });
+  });
+
+  if (btnToggleReport) {
+    btnToggleReport.addEventListener('click', function () {
+      var raw = document.getElementById('report-raw');
+      if (!raw) return;
+      if (raw.style.display === 'none' || raw.style.display === '') {
+        raw.style.display = 'block';
+        btnToggleReport.textContent = 'Masquer rapport technique';
+      } else {
+        raw.style.display = 'none';
+        btnToggleReport.textContent = 'Afficher rapport technique';
+      }
+    });
+  }
+})();
+</script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

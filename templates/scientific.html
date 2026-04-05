@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AstroScan-Chohra - Mode scientifique</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--acid:#00ff88;--blue:#00d4ff;--bg:#010408;--card:rgba(0,20,40,0.8)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:#ccd6f6;font-family:'Share Tech Mono',monospace;min-height:100vh}
+header{background:rgba(0,5,15,0.95);border-bottom:1px solid #00ff8833;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:Orbitron,monospace;font-size:16px;color:var(--acid);letter-spacing:3px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;padding:24px}
+.card{background:var(--card);border:1px solid #00ff8833;border-radius:8px;padding:16px}
+.card-title{font-family:Orbitron,monospace;font-size:11px;color:var(--blue);letter-spacing:2px;margin-bottom:12px;border-bottom:1px solid #00ff8822;padding-bottom:8px}
+.data-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px}
+.data-key{color:#4a7a8a}
+.data-val{color:var(--acid);font-weight:bold}
+.search-box{background:rgba(0,20,40,0.9);border:1px solid #00ff8833;border-radius:8px;padding:16px;margin:24px;margin-bottom:0}
+input{background:rgba(0,0,0,0.5);border:1px solid #00ff8833;color:var(--acid);padding:8px 12px;border-radius:4px;font-family:monospace;width:300px;margin-right:8px}
+button{background:rgba(0,255,136,0.1);border:1px solid var(--acid);color:var(--acid);padding:8px 16px;border-radius:4px;cursor:pointer;font-family:monospace}
+#results{margin:16px 24px}
+.obj-card{background:var(--card);border:1px solid #00ff8833;border-radius:8px;padding:12px;margin-bottom:8px;display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;align-items:center}
+.obj-id{font-family:Orbitron,monospace;font-size:14px;color:var(--acid)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⚗️ AstroScan-Chohra — MODE SCIENTIFIQUE</div>
+  <div style="font-size:10px;color:#4a7a8a">STATION ORBITAL-CHOHRA | TLEMCEN, ALGÉRIE</div>
+  <a href="/portail" style="color:var(--blue);font-size:10px;text-decoration:none">← PORTAIL</a>
+</header>
+
+<div class="grid">
+  <div class="card">
+    <div class="card-title">🛸 ISS — DONNÉES ORBITALES</div>
+    <div id="iss-sci">⟳ Chargement...</div>
+  </div>
+  <div class="card">
+    <div class="card-title">🌙 PHASE LUNAIRE</div>
+    <div id="moon-sci">⟳ Chargement...</div>
+  </div>
+  <div class="card">
+    <div class="card-title">☀️ MÉTÉO SOLAIRE</div>
+    <div id="solar-sci">⟳ Chargement...</div>
+  </div>
+  <div class="card">
+    <div class="card-title">🌙 CE SOIR — TLEMCEN</div>
+    <div id="tonight-sci">⟳ Chargement...</div>
+  </div>
+</div>
+
+<div class="search-box">
+  <div style="font-family:Orbitron,monospace;font-size:11px;color:var(--blue);margin-bottom:12px">🔭 CATALOGUE MESSIER — RECHERCHE</div>
+  <input type="text" id="search-input" placeholder="M42, Orion, nébuleuse..." onkeyup="if(event.key==='Enter') searchCatalog()">
+  <button onclick="searchCatalog()">🔍 RECHERCHER</button>
+  <button onclick="searchCatalog('')" style="margin-left:8px">📋 TOUT AFFICHER</button>
+</div>
+<div id="results"></div>
+
+<div style="margin:24px;background:rgba(0,20,40,0.8);border:1px solid #00ff8833;border-radius:8px;padding:20px">
+  <div style="font-family:Orbitron,monospace;font-size:12px;color:#00d4ff;letter-spacing:2px;margin-bottom:16px">🔬 LABORATOIRE D'ANALYSE</div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px">
+
+    <div style="background:rgba(0,255,136,0.05);border:1px solid #00ff8833;border-radius:8px;padding:12px">
+      <div style="font-size:10px;color:#00ff88;margin-bottom:8px">☄️ ASTÉROÏDES DU JOUR</div>
+      <div id="lab-asteroids">⟳ Chargement...</div>
+    </div>
+
+    <div style="background:rgba(0,212,255,0.05);border:1px solid #00d4ff33;border-radius:8px;padding:12px">
+      <div style="font-size:10px;color:#00d4ff;margin-bottom:8px">🚀 PROCHAINS LANCEMENTS SPACEX</div>
+      <div id="lab-spacex">⟳ Chargement...</div>
+    </div>
+
+    <div style="background:rgba(255,170,0,0.05);border:1px solid #ffaa0033;border-radius:8px;padding:12px">
+      <div style="font-size:10px;color:#ffaa00;margin-bottom:8px">📡 API PUBLIQUE v1</div>
+      <div style="font-size:10px;color:#4a7a8a;line-height:1.8">
+        <div>GET /api/v1/iss</div>
+        <div>GET /api/v1/planets</div>
+        <div>GET /api/v1/asteroids</div>
+        <div>GET /api/v1/solar-weather</div>
+        <div>GET /api/v1/catalog</div>
+        <div>GET /api/v1/tonight</div>
+      </div>
+    </div>
+
+  </div>
+  <div style="margin-top:16px;padding-top:12px;border-top:1px solid #00ff8822;text-align:center">
+    <a href="/portail" style="color:#00d4ff;font-size:11px;text-decoration:none">← Retour au portail AstroScan-Chohra</a>
+    <span style="color:#4a7a8a;margin:0 8px">|</span>
+    <a href="/observatoire" style="color:#00ff88;font-size:11px;text-decoration:none">Observatoire</a>
+  </div>
+</div>
+
+<script>
+function loadISS(){
+  fetch('/api/v1/iss', {signal: AbortSignal.timeout(8000)})
+  .then(r=>r.json())
+  .then(function(d){
+    var pos = d.position||{};
+    var crew = d.crew||[];
+    document.getElementById('iss-sci').innerHTML =
+      [['LATITUDE', (pos.latitude||0).toFixed(4)+'°'],
+       ['LONGITUDE', (pos.longitude||0).toFixed(4)+'°'],
+       ['ALTITUDE', (pos.altitude_km||408).toFixed(1)+' km'],
+       ['VITESSE', (pos.speed_kms||7.66).toFixed(2)+' km/s'],
+       ['ÉQUIPAGE', (d.crew_count||7)+' astronautes'],
+       ['SOURCE', d.source||'Skyfield/SGP4'],
+       ['INCLINAISON', '51.6°'],
+       ['PÉRIODE', '92.9 min']
+      ].map(function(r){
+        return '<div class="data-row"><span class="data-key">'+r[0]+'</span><span class="data-val">'+r[1]+'</span></div>';
+      }).join('')+
+      (crew.length ? '<div style="margin-top:8px;border-top:1px solid #00ff8822;padding-top:8px">'+
+        crew.map(function(n){ return '<div style="font-size:10px;color:#ccd6f6;padding:2px 0">👤 '+n+'</div>'; }).join('')+
+      '</div>' : '');
+  })
+  .catch(function(){
+    document.getElementById('iss-sci').innerHTML =
+      '<div style="color:#ff4444;font-size:10px">Signal ISS temporairement indisponible</div>';
+  });
+}
+
+function loadMoon(){
+  fetch('/api/moon').then(r=>r.json()).then(function(d){
+    document.getElementById('moon-sci').innerHTML =
+      [['PHASE',d.phase],['ILLUMINATION',d.illumination_pct+'%'],['CYCLE',d.cycle_jour+' jours']
+      ].map(function(r){
+        return '<div class="data-row"><span class="data-key">'+r[0]+'</span><span class="data-val">'+r[1]+'</span></div>';
+      }).join('');
+  });
+}
+
+function loadSolar(){
+  fetch('/api/v1/solar-weather').then(r=>r.json()).then(function(d){
+    var s = d.solar_wind||{};
+    var couleur = s.status==='TEMPÊTE' ? '#ff4444' : '#00ff88';
+    document.getElementById('solar-sci').innerHTML =
+      '<div class="data-row"><span class="data-key">STATUT</span><span style="color:'+couleur+';font-weight:bold">'+(s.status||'--')+'</span></div>'+
+      [['VITESSE VENT',(s.speed_kms!=null?s.speed_kms:'--')+' km/s'],['DENSITÉ',(s.density!=null?s.density:'--')+' p/cm³'],['TEMPÉRATURE',(s.temperature!=null?Math.round(s.temperature/1000):'--')+'K'],['SOURCE',s.source||'--']
+      ].map(function(r){
+        return '<div class="data-row"><span class="data-key">'+r[0]+'</span><span class="data-val">'+r[1]+'</span></div>';
+      }).join('');
+  });
+}
+
+function loadTonight(){
+  fetch('/api/v1/tonight').then(r=>r.json()).then(function(d){
+    var data = d.data||{};
+    var lune = data.lune||{};
+    var html = '<div class="data-row"><span class="data-key">DATE</span><span class="data-val">'+data.date+'</span></div>';
+    html += '<div class="data-row"><span class="data-key">LUNE</span><span class="data-val">'+(lune.phase||'--')+'</span></div>';
+    (data.objets||[]).forEach(function(o){
+      html += '<div class="data-row"><span class="data-key">'+o.nom+'</span><span class="data-val" style="font-size:9px">'+o.heure+'</span></div>';
+    });
+    document.getElementById('tonight-sci').innerHTML = html;
+  });
+}
+
+function searchCatalog(q){
+  var query = (q !== undefined) ? q : document.getElementById('search-input').value;
+  fetch('/api/v1/catalog?q='+encodeURIComponent(query)).then(r=>r.json()).then(function(d){
+    var results = d.results||[];
+    if(!results.length){
+      document.getElementById('results').innerHTML = '<div style="color:#ff4444;padding:16px;text-align:center">Aucun objet trouvé</div>';
+      return;
+    }
+    document.getElementById('results').innerHTML =
+      '<div style="font-family:Orbitron,monospace;font-size:10px;color:#4a7a8a;padding:8px 0">'+results.length+' objet(s) trouvé(s)</div>'+
+      results.map(function(o){
+        return '<div class="obj-card">'+
+          '<div class="obj-id">'+o.id+'</div>'+
+          '<div><div style="color:var(--acid);font-size:11px">'+o.nom+'</div><div style="color:#4a7a8a;font-size:9px">'+o.type+'</div></div>'+
+          '<div><div style="font-size:10px">'+o.constellation+'</div><div style="color:#4a7a8a;font-size:9px">Mag: '+o.magnitude+'</div></div>'+
+          '<div><div style="font-size:10px;color:var(--blue)">RA: '+o.ra+'</div><div style="color:#4a7a8a;font-size:9px">DÉC: '+o.dec+'</div></div>'+
+        '</div>';
+      }).join('');
+  });
+}
+
+function loadLab(){
+  // Astéroïdes
+  fetch('/api/v1/asteroids').then(r=>r.json()).then(function(d){
+    var el = document.getElementById('lab-asteroids');
+    if(!el) return;
+    el.innerHTML = '<div style="font-size:12px;color:#00ff88">'+d.total_today+' NEO aujourd\'hui</div>'+
+      '<div style="font-size:10px;color:'+(d.hazardous&&d.hazardous.length?'#ff4444':'#00ff88')+'">'+
+      (d.hazardous&&d.hazardous.length ? '⚠️ '+d.hazardous.length+' dangereux !' : '✅ Aucun dangereux')+'</div>';
+  }).catch(function(){ var e=document.getElementById('lab-asteroids');if(e)e.textContent='Indisponible'; });
+
+  // SpaceX
+  fetch('/api/live/spacex').then(r=>r.json()).then(function(d){
+    var el = document.getElementById('lab-spacex');
+    if(!el) return;
+    if(!d||!d.length){ el.textContent='Aucun lancement prévu'; return; }
+    el.innerHTML = d.slice(0,3).map(function(l){
+      return '<div style="font-size:10px;padding:3px 0;border-bottom:1px solid rgba(0,212,255,0.1)">'+
+        '<span style="color:#00d4ff">'+(l.name||'').substring(0,20)+'</span>'+
+        '<span style="color:#4a7a8a;float:right">'+(l.date||'').substring(0,10)+'</span></div>';
+    }).join('');
+  }).catch(function(){ var e=document.getElementById('lab-spacex');if(e)e.textContent='Indisponible'; });
+}
+
+// Charge tout au démarrage
+loadISS(); loadMoon(); loadSolar(); loadTonight();
+loadLab();
+searchCatalog('');
+setInterval(loadISS, 10000);
+setInterval(loadSolar, 60000);
+</script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

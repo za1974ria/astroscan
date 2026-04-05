@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta name="google-site-verification" content="HRmcoe6EC6sH5EQwwkt2ktVyiQToMgMC8AFtz7n6-38" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ seo_title }}</title>
+  <meta name="description" content="{{ seo_description }}">
+  <meta name="keywords" content="ISS tracker, Voyager, météo spatiale, astronomie Algérie, space monitoring">
+  <meta property="og:title" content="AstroScan-Chohra">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://astroscan.space/">
+  <meta property="og:description" content="AstroScan-Chohra est une plateforme avancée d'analyse et de surveillance spatiale en temps réel.">
+  <meta property="og:image" content="https://astroscan.space/static/preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AstroScan-Chohra">
+  <meta name="twitter:description" content="Observatoire spatial intelligent en temps réel.">
+  <meta name="twitter:image" content="https://astroscan.space/static/preview.png">
+  <meta name="robots" content="index, follow">
+  <style>
+    :root {
+      --bg: #030508;
+      --cyan: #00e8ff;
+      --cyan-glow: rgba(0, 232, 255, 0.45);
+      --text: #c8e4ee;
+      --muted: #5f8294;
+      --card: rgba(8, 18, 28, 0.85);
+      --border: rgba(0, 232, 255, 0.18);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+    #stars-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .layer-vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(ellipse 80% 60% at 50% 20%, transparent 0%, rgba(0,0,0,0.55) 100%);
+    }
+    main { position: relative; z-index: 2; }
+
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 3rem 1.25rem 4rem;
+    }
+    .hero h1.logo {
+      font-size: clamp(2.4rem, 10vw, 5rem);
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      color: var(--cyan);
+      text-shadow: 0 0 24px var(--cyan-glow), 0 0 60px rgba(0, 200, 255, 0.15);
+      line-height: 1.05;
+      margin-bottom: 1rem;
+      animation: fadeIn 1s ease both;
+    }
+    .hero .h2 {
+      font-size: clamp(1.05rem, 3vw, 1.45rem);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      max-width: 28em;
+      margin-bottom: 0.65rem;
+      animation: fadeIn 1s ease 0.1s both;
+    }
+    .hero .sub {
+      font-size: clamp(0.85rem, 2vw, 1rem);
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      margin-bottom: 1.75rem;
+      animation: fadeIn 1s ease 0.2s both;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .visit-line {
+      font-size: clamp(0.95rem, 2.2vw, 1.1rem);
+      margin-bottom: 1.75rem;
+      color: var(--text);
+      animation: fadeIn 1s ease 0.3s both;
+    }
+    .visit-line strong {
+      color: var(--cyan);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.06em;
+    }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem 1.75rem;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 232, 255, 0.55);
+      background: rgba(0, 232, 255, 0.08);
+      color: var(--cyan);
+      font-weight: 700;
+      font-size: clamp(0.72rem, 1.5vw, 0.88rem);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-decoration: none;
+      box-shadow: 0 0 28px rgba(0, 232, 255, 0.2);
+      animation: fadeIn 1s ease 0.35s both, pulseGlow 2.8s ease-in-out infinite 1.2s;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 40px rgba(0, 232, 255, 0.35);
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 28px rgba(0, 232, 255, 0.2); }
+      50% { box-shadow: 0 0 42px rgba(0, 232, 255, 0.38); }
+    }
+
+    .section {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 3rem 1.25rem 4rem;
+    }
+    .section h2 {
+      text-align: center;
+      font-size: 0.72rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    @media (min-width: 640px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 900px) {
+      .grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .card {
+      display: block;
+      padding: 1.35rem 1.2rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      text-decoration: none;
+      color: inherit;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(0, 232, 255, 0.45);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 232, 255, 0.08);
+    }
+    .card .ico { font-size: 1.5rem; margin-bottom: 0.45rem; }
+    .card h3 {
+      font-size: 0.78rem;
+      letter-spacing: 0.14em;
+      color: var(--cyan);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+    }
+    .card p { font-size: 0.88rem; color: var(--muted); }
+
+    .stats-block {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 1.25rem;
+      background: rgba(4, 12, 20, 0.65);
+      margin-bottom: 1.25rem;
+    }
+    .stats-block .big {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--cyan);
+      margin-bottom: 0.5rem;
+    }
+    .stats-block .big strong { font-variant-numeric: tabular-nums; }
+    .badge-up {
+      display: inline-block;
+      margin-top: 0.75rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #00ff9d;
+      border: 1px solid rgba(0, 255, 157, 0.35);
+      background: rgba(0, 255, 157, 0.06);
+    }
+    .countries-list {
+      list-style: none;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    .countries-list li {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .countries-list li:last-child { border-bottom: none; }
+    .muted { color: var(--muted); font-size: 0.85rem; }
+
+    footer {
+      text-align: center;
+      padding: 2.5rem 1.25rem 3rem;
+      font-size: 0.88rem;
+      color: var(--muted);
+      border-top: 1px solid rgba(0, 232, 255, 0.1);
+    }
+    footer .creator { margin-bottom: 1rem; letter-spacing: 0.04em; }
+    footer .links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem 1.5rem;
+    }
+    footer a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+    }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <section style="max-width:900px;margin:auto;text-align:center;padding:20px;">
+    <h1>AstroScan-Chohra</h1>
+    <p>{{ seo_description }}</p>
+  </section>
+  <canvas id="stars-canvas" aria-hidden="true"></canvas>
+  <div class="layer-vignette" aria-hidden="true"></div>
+
+  <main>
+    <section class="hero">
+      <h1 class="logo">AstroScan-Chohra</h1>
+      <p class="h2">L'Observatoire Intelligent de l'Algérie</p>
+      <p class="sub">ISS en direct · Voyager · Météo spatiale · IA</p>
+
+      <p class="visit-line" id="visit-hero">
+        <strong id="visit-num">000 000</strong> visiteurs du monde entier
+      </p>
+
+      <a class="cta" href="/portail">🚀 ENTRER DANS L'OBSERVATOIRE</a>
+    </section>
+
+    <section class="section" id="features">
+      <h2>Modules</h2>
+      <div class="grid">
+        <a class="card" href="/sky-camera">
+          <div class="ico" aria-hidden="true">🔭</div>
+          <h3>SKY CAMERA</h3>
+          <p>Analyse IA du ciel nocturne</p>
+        </a>
+        <a class="card" href="/sondes">
+          <div class="ico" aria-hidden="true">📡</div>
+          <h3>SONDES LIVE</h3>
+          <p>Voyager 1&amp;2 en temps réel</p>
+        </a>
+        <a class="card" href="/iss-tracker">
+          <div class="ico" aria-hidden="true">🛸</div>
+          <h3>ISS TRACKER</h3>
+          <p>Estimation basée sur modèles physiques</p>
+        </a>
+        <a class="card" href="/meteo-spatiale">
+          <div class="ico" aria-hidden="true">⚡</div>
+          <h3>MÉTÉO SPATIALE</h3>
+          <p>Alertes solaires NOAA</p>
+        </a>
+        <a class="card" href="/visiteurs-live">
+          <div class="ico" aria-hidden="true">🌍</div>
+          <h3>VISITEURS</h3>
+          <p>Communauté mondiale</p>
+        </a>
+        <a class="card" href="/oracle-cosmique">
+          <div class="ico" aria-hidden="true">🤖</div>
+          <h3>ORACLE COSMIQUE</h3>
+          <p>Chat IA astronomie</p>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="stats">
+      <h2>Statistiques live</h2>
+      <div class="stats-block">
+        <div class="big" id="stats-visitors-line">
+          <strong id="visit-stat">000 000</strong> visiteurs du monde entier
+        </div>
+        <p class="muted" id="countries-intro">Top pays</p>
+        <ul class="countries-list" id="countries-ul">
+          <li class="muted">Données en cours...</li>
+        </ul>
+        <span class="badge-up">SYSTÈME OPÉRATIONNEL · UPTIME</span>
+      </div>
+    </section>
+
+    <footer>
+      <p class="creator">Projet développé par Zakaria Chohra</p>
+      <div class="links">
+        <a href="/portail">Portail</a>
+        <a href="/dashboard-v2">Dashboard v2</a>
+        <a href="https://github.com/" rel="noopener noreferrer" target="_blank">GitHub</a>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+(function () {
+  var c = document.getElementById('stars-canvas');
+  if (!c) return;
+  var ctx = c.getContext('2d');
+  var stars = [];
+  var n = 180;
+  function resize() {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  for (var i = 0; i < n; i++) {
+    stars.push({
+      x: Math.random() * c.width,
+      y: Math.random() * c.height,
+      r: Math.random() * 1.3 + 0.2,
+      v: Math.random() * 0.12 + 0.02,
+      tw: Math.random() * 6.28
+    });
+  }
+  function loop() {
+    ctx.fillStyle = '#030508';
+    ctx.fillRect(0, 0, c.width, c.height);
+    for (var j = 0; j < stars.length; j++) {
+      var s = stars[j];
+      s.y += s.v;
+      s.tw += 0.015;
+      if (s.y > c.height) { s.y = 0; s.x = Math.random() * c.width; }
+      var a = 0.3 + Math.sin(s.tw) * 0.35;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(180, 230, 255, ' + a + ')';
+      ctx.fill();
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+function formatSix(n) {
+  var v = Math.max(0, parseInt(n, 10) || 0);
+  var s = String(v).padStart(6, '0');
+  return s.slice(0, 3) + ' ' + s.slice(3);
+}
+
+function setVisits(count) {
+  var t = formatSix(count);
+  var a = document.getElementById('visit-num');
+  var b = document.getElementById('visit-stat');
+  if (a) a.textContent = t;
+  if (b) b.textContent = t;
+}
+
+function loadVisits() {
+  fetch('/api/visits', { credentials: 'same-origin' })
+    .then(function (r) { return r.ok ? r.json() : { count: 0 }; })
+    .then(function (d) {
+      var c = d.count != null ? d.count : 0;
+      setVisits(c);
+    })
+    .catch(function () { setVisits(0); });
+}
+
+/** Top pays : même source que le flux live (agrégation DB) via API JSON stable */
+function loadTopCountries() {
+  var ul = document.getElementById('countries-ul');
+  if (!ul) return;
+  fetch('/api/visitors/stats', { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var rows = (data.by_country || []).slice(0, 3);
+      if (!rows.length) {
+        ul.innerHTML = '<li class="muted">Données en cours...</li>';
+        return;
+      }
+      ul.innerHTML = '';
+      rows.forEach(function (row, idx) {
+        var li = document.createElement('li');
+        var name = row.country || '—';
+        var code = row.code || '';
+        var cnt = row.count != null ? row.count : 0;
+        li.innerHTML = '<span>' + (idx + 1) + '. ' + name + (code ? ' (' + code + ')' : '') + '</span><span>' + cnt + '</span>';
+        ul.appendChild(li);
+      });
+    })
+    .catch(function () {
+      ul.innerHTML = '<li class="muted">Données en cours...</li>';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  loadVisits();
+  loadTopCountries();
+  setInterval(loadVisits, 30000);
+});
+  </script>
+</body>
+</html>

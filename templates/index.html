@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="fr" id="html-lang">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#00d4ff">
+<title>AstroScan-Chohra - Dashboard QG · ORBITAL-CHOHRA</title>
+<link rel="manifest" href="/manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style id="embed-style"></style>
+<script>
+(function(){
+  if (window.location.search.indexOf('embed=1') !== -1 || window !== window.parent) {
+    var s = document.getElementById('embed-style');
+    if (s) s.textContent = '.topbar, .statusbar, .shell > footer { display:none !important; } .shell { grid-template-rows: 1fr !important; }';
+  }
+})();
+</script>
+<style>
+:root {
+  --void:#010408; --deep:#030c14;
+  --cyan:#00d4ff; --cyan2:rgba(0,212,255,0.15);
+  --green:#00ff88; --amber:#ff8c00; --red:#ff2244;
+  --emerald:#00dc96; --blue:#4090ff; --purple:#9060ff;
+  --text:#7a9ab0; --hi:#d0e8f5; --lo:#2a4858;
+  --border:rgba(0,180,255,0.1); --borderhi:rgba(0,212,255,0.35);
+  --panel:rgba(2,8,14,0.96);
+  --F:'Orbitron',monospace; --M:'Share Tech Mono',monospace; --R:'Rajdhani',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--M)}
+
+/* SCANLINES */
+body::after{content:'';position:fixed;inset:0;z-index:999;pointer-events:none;
+background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.025) 3px,rgba(0,0,0,0.025) 4px)}
+
+/* STARS */
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+.s{position:absolute;border-radius:50%;background:#fff;animation:tw var(--d,4s) ease-in-out infinite var(--dl,0s);opacity:var(--op,.3)}
+@keyframes tw{0%,100%{opacity:var(--op)}50%{opacity:calc(var(--op)*.08)}}
+
+/* NEBULA BG */
+.nebula{position:fixed;inset:0;z-index:0;pointer-events:none;
+background:radial-gradient(ellipse 60% 40% at 75% 30%, rgba(0,100,180,0.04) 0%, transparent 70%),
+radial-gradient(ellipse 40% 60% at 20% 70%, rgba(0,180,120,0.03) 0%, transparent 70%),
+radial-gradient(ellipse 50% 30% at 50% 80%, rgba(140,60,255,0.025) 0%, transparent 70%)}
+
+/* LAYOUT */
+.shell{position:relative;z-index:2;width:100%;height:100vh;display:grid;
+grid-template-rows:56px 1fr 26px;overflow:hidden}
+
+/* ═══ TOPBAR ═══ */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;
+background:rgba(1,4,10,0.99);border-bottom:1px solid var(--borderhi);position:relative;z-index:20}
+.topbar::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;
+background:linear-gradient(90deg,transparent 0%,var(--cyan) 50%,transparent 100%);opacity:0.5}
+
+.brand{display:flex;align-items:center;gap:14px}
+.brand-logo{width:36px;height:36px;flex-shrink:0}
+.brand-logo svg{width:100%;height:100%}
+.brand-text{}
+.brand-name{font-family:var(--F);font-size:0.8rem;font-weight:900;letter-spacing:0.25em;
+color:var(--cyan);text-shadow:0 0 20px rgba(0,212,255,0.5);line-height:1}
+.brand-sub{font-size:0.42rem;letter-spacing:0.3em;color:var(--lo);text-transform:uppercase;margin-top:2px}
+
+.tb-pills{display:flex;align-items:center;gap:8px}
+.pill{display:flex;align-items:center;gap:5px;padding:4px 10px;border:1px solid rgba(0,180,255,0.15);
+font-size:0.46rem;letter-spacing:0.15em;color:var(--lo);text-transform:uppercase;background:rgba(0,212,255,0.03)}
+.pill-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.pill-dot.g{background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2s infinite}
+.pill-dot.a{background:var(--amber);box-shadow:0 0 4px var(--amber)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.tb-right{display:flex;align-items:center;gap:20px}
+.dir-chip{display:flex;align-items:center;gap:8px}
+.dir-chip img{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--cyan);
+box-shadow:0 0 10px rgba(0,212,255,0.4);object-fit:cover;object-position:center top;
+filter:brightness(1.05) contrast(1.08) saturate(1.1)}
+.dir-chip-info{}
+.dir-chip-name{font-family:var(--F);font-size:0.52rem;font-weight:700;letter-spacing:0.1em;color:var(--hi);line-height:1}
+.dir-chip-role{font-size:0.38rem;letter-spacing:0.15em;color:var(--lo);text-transform:uppercase;margin-top:1px}
+#clock{font-family:var(--F);font-size:0.75rem;font-weight:600;letter-spacing:0.1em;color:var(--hi)}
+.lang-toggle{display:inline-flex;align-items:stretch;background:rgba(0,212,255,0.04);border:1px solid var(--borderhi);border-radius:4px;overflow:hidden;box-shadow:0 0 12px rgba(0,0,0,0.3)}
+.lang-toggle a{display:flex;align-items:center;gap:6px;padding:6px 12px;font-family:var(--F);font-size:0.46rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--lo);text-decoration:none;cursor:pointer;transition:all 0.2s}
+.lang-toggle a:hover{color:var(--hi);background:rgba(0,212,255,0.06)}
+.lang-toggle a.active{color:var(--cyan);background:rgba(0,212,255,0.1)}
+.lang-toggle a:not(:last-child){border-right:1px solid var(--border)}
+.btn-portail{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;font-family:var(--F);font-size:0.46rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#fff;text-decoration:none;background:rgba(255,34,68,0.2);border:1px solid var(--red);transition:all 0.2s}
+.btn-portail:hover{background:rgba(255,34,68,0.35);box-shadow:0 0 12px rgba(255,34,68,0.3)}
+
+/* ═══ MAIN BODY ═══ */
+.main{display:grid;grid-template-columns:1fr 380px;grid-template-rows:1fr;gap:1px;background:var(--border);overflow:hidden}
+
+/* ═══ CENTER — HERO ═══ */
+.hero{position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--void)}
+
+/* APOD Hero image */
+.apod-stage{flex:1;position:relative;overflow:hidden;min-height:0}
+.apod-img{width:100%;height:100%;object-fit:cover;filter:brightness(0.85) saturate(1.15);transition:transform 20s ease}
+.apod-img:hover{transform:scale(1.03)}
+.apod-vignette{position:absolute;inset:0;
+background:linear-gradient(to bottom,rgba(1,4,8,0.4) 0%,transparent 25%,transparent 55%,rgba(1,4,8,0.85) 100%),
+linear-gradient(to right,rgba(1,4,8,0.3) 0%,transparent 20%,transparent 80%,rgba(1,4,8,0.3) 100%);
+pointer-events:none}
+
+/* Reticule overlay */
+.reticule{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;opacity:0.35}
+.reticule svg{width:120px;height:120px}
+.ret-outer{animation:rrot 20s linear infinite;transform-origin:60px 60px}
+.ret-inner{animation:rrot 8s linear infinite reverse;transform-origin:60px 60px}
+@keyframes rrot{to{transform:rotate(360deg)}}
+
+/* Scan line */
+.scan-h{position:absolute;left:0;right:0;height:1px;
+background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+opacity:0.3;animation:scanh 5s linear infinite;pointer-events:none}
+@keyframes scanh{0%{top:0}100%{top:100%}}
+
+/* Corners */
+.corner{position:absolute;width:20px;height:20px}
+.corner.tl{top:16px;left:16px;border-top:1.5px solid var(--cyan);border-left:1.5px solid var(--cyan)}
+.corner.tr{top:16px;right:16px;border-top:1.5px solid var(--cyan);border-right:1.5px solid var(--cyan)}
+.corner.bl{bottom:16px;left:16px;border-bottom:1.5px solid var(--cyan);border-left:1.5px solid var(--cyan)}
+.corner.br{bottom:16px;right:16px;border-bottom:1.5px solid var(--cyan);border-right:1.5px solid var(--cyan)}
+
+/* APOD info overlay */
+.apod-info{position:absolute;bottom:0;left:0;right:0;padding:20px 24px}
+.apod-label{font-size:0.44rem;letter-spacing:0.3em;color:var(--cyan);text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.live-badge{display:flex;align-items:center;gap:5px;padding:2px 8px;background:rgba(255,34,68,0.12);border:1px solid rgba(255,34,68,0.4);font-size:0.42rem;letter-spacing:0.15em;color:var(--red);text-transform:uppercase;animation:pulse 1.5s infinite}
+.live-badge-dot{width:5px;height:5px;border-radius:50%;background:var(--red);box-shadow:0 0 6px var(--red);animation:pulse 1s infinite}
+.img-timestamp{position:absolute;top:14px;right:60px;font-size:0.44rem;letter-spacing:0.12em;color:rgba(255,255,255,0.5);font-family:var(--M);background:rgba(0,0,0,0.5);padding:2px 8px;border:1px solid rgba(255,255,255,0.1)}
+.img-fps{position:absolute;top:14px;left:60px;font-size:0.44rem;letter-spacing:0.12em;color:var(--green);font-family:var(--M);background:rgba(0,0,0,0.5);padding:2px 8px;border:1px solid rgba(0,255,136,0.2)}
+.apod-title{font-family:var(--F);font-size:1.3rem;font-weight:900;letter-spacing:0.08em;
+color:#fff;text-shadow:0 2px 20px rgba(0,0,0,0.8);line-height:1.2;margin-bottom:8px}
+.apod-meta{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.apod-tag{font-size:0.46rem;letter-spacing:0.15em;padding:3px 8px;
+border:1px solid;text-transform:uppercase}
+.apod-tag.galaxy{color:var(--purple);border-color:rgba(144,96,255,0.4)}
+.apod-tag.nebula{color:var(--cyan);border-color:rgba(0,212,255,0.4)}
+.apod-tag.aurora{color:var(--emerald);border-color:rgba(0,220,150,0.4)}
+.apod-tag.star{color:var(--amber);border-color:rgba(255,140,0,0.4)}
+.apod-tag.planet{color:var(--blue);border-color:rgba(64,144,255,0.4)}
+.apod-date{font-size:0.46rem;letter-spacing:0.15em;color:var(--lo)}
+.apod-source{font-size:0.5rem;letter-spacing:0.12em;color:var(--lo);margin-bottom:6px}
+.apod-comment{font-size:0.52rem;letter-spacing:0.06em;color:var(--cyan);margin-bottom:6px;line-height:1.35;opacity:0.95}
+
+/* Metrics strip */
+.metrics-strip{flex-shrink:0;display:grid;grid-template-columns:repeat(5,1fr);
+gap:1px;background:var(--border);border-top:1px solid var(--border)}
+.metric{background:rgba(2,8,14,0.98);padding:10px 14px;
+display:flex;flex-direction:column;justify-content:center;gap:3px;position:relative;overflow:hidden}
+.metric::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;
+background:linear-gradient(90deg,transparent,var(--bc,var(--cyan)),transparent);opacity:0.4}
+.m-val{font-family:var(--F);font-size:1.1rem;font-weight:900;line-height:1}
+.m-lbl{font-size:0.4rem;letter-spacing:0.2em;color:var(--lo);text-transform:uppercase}
+.m-trend{font-size:0.42rem;letter-spacing:0.08em;margin-top:1px}
+
+/* Connexions strip */
+.connexions-strip{flex-shrink:0;display:grid;grid-template-columns:1fr;gap:2px;background:rgba(0,6,12,0.98);border-top:1px solid var(--border);padding:10px 20px}
+.cx-row{display:flex;align-items:center;gap:8px;font-size:0.44rem;letter-spacing:0.12em;color:var(--lo)}
+.cx-node{font-family:var(--F);color:var(--cyan);flex-shrink:0}
+.cx-line{flex:1;height:2px;background:linear-gradient(90deg,var(--cyan),transparent);position:relative;overflow:hidden}
+.cx-line::before{content:'';position:absolute;left:0;top:0;bottom:0;width:20px;background:linear-gradient(90deg,transparent,var(--cyan));opacity:0.6;animation:cxflow 2s linear infinite}
+.cx-dot{position:absolute;left:0;top:50%;transform:translate(-50%,-50%);width:4px;height:4px;border-radius:50%;background:var(--cyan);box-shadow:0 0 6px var(--cyan);animation:cxdot 2s ease-in-out infinite}
+.cx-line.cx-standby{background:linear-gradient(90deg,var(--lo),transparent);opacity:0.5}
+.cx-line.cx-standby::before,.cx-line.cx-standby .cx-dot{animation:none;opacity:0.4}
+.cx-badge{font-size:0.38rem;color:var(--amber);text-transform:uppercase;margin-left:4px}
+.cx-meta{font-size:0.36rem;color:var(--lo);margin-left:4px;text-transform:uppercase;letter-spacing:0.1em}
+@keyframes cxflow{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
+@keyframes cxdot{0%{left:0;opacity:1}100%{left:100%;opacity:0.8}}
+
+/* Analysis strip */
+.analysis-strip{flex-shrink:0;border-top:1px solid var(--border);
+background:rgba(1,5,10,0.99);padding:12px 24px;display:flex;gap:16px;align-items:flex-start}
+.as-badge{flex-shrink:0;padding:4px 10px;background:rgba(0,220,150,0.08);
+border:1px solid rgba(0,220,150,0.3);font-family:var(--F);font-size:0.46rem;
+letter-spacing:0.18em;color:var(--emerald);text-transform:uppercase;white-space:nowrap;margin-top:2px}
+.as-text{font-family:var(--R);font-size:0.82rem;line-height:1.6;color:var(--text);flex:1}
+
+/* ═══ RIGHT PANEL ═══ */
+.right-panel{background:var(--panel);display:flex;flex-direction:column;overflow:hidden}
+.rp-header{padding:12px 16px;border-bottom:1px solid var(--border);
+display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+background:rgba(0,8,16,0.9)}
+.rp-title{font-family:var(--F);font-size:0.54rem;font-weight:700;letter-spacing:0.2em;
+text-transform:uppercase;color:var(--cyan)}
+.rp-live{display:flex;align-items:center;gap:5px;font-size:0.44rem;letter-spacing:0.12em;
+color:var(--green);text-transform:uppercase;animation:pulse 2s infinite}
+.rp-ldot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green)}
+.rp-scroll{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,212,255,0.1) transparent}
+.rp-scroll::-webkit-scrollbar{width:2px}
+.rp-scroll::-webkit-scrollbar-thumb{background:rgba(0,212,255,0.12)}
+
+/* Observation cards */
+.obs-card{padding:12px 16px;border-bottom:1px solid rgba(0,180,255,0.07);
+transition:background 0.18s;position:relative;overflow:hidden}
+.obs-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--cc,var(--cyan));opacity:0.4}
+.obs-card:hover{background:rgba(0,212,255,0.035)}
+.obs-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px}
+.obs-num{font-family:var(--F);font-size:0.44rem;color:var(--lo);letter-spacing:0.1em;flex-shrink:0;margin-top:2px}
+.obs-title{font-family:var(--R);font-size:0.82rem;font-weight:600;color:var(--hi);line-height:1.25;flex:1}
+.obs-anom{display:flex;align-items:center;gap:3px;font-size:0.4rem;letter-spacing:0.1em;
+padding:2px 6px;border:1px solid rgba(255,34,68,0.4);color:var(--red);text-transform:uppercase;flex-shrink:0}
+.obs-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.obs-time{font-size:0.44rem;letter-spacing:0.08em;color:var(--lo)}
+.obs-src{font-size:0.42rem;letter-spacing:0.12em;padding:1px 6px;
+border:1px solid rgba(0,180,255,0.2);color:var(--text);text-transform:uppercase}
+.obs-obj{font-size:0.44rem;letter-spacing:0.08em;color:var(--cyan)}
+.obs-rapport{font-family:var(--R);font-size:0.72rem;line-height:1.5;color:var(--text);
+margin-top:6px;padding-top:6px;border-top:1px solid rgba(0,180,255,0.08);
+display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Station card */
+.station-card{margin:12px;padding:14px;
+background:rgba(0,212,255,0.04);border:1px solid var(--border);
+clip-path:polygon(6px 0%,100% 0%,100% calc(100% - 6px),calc(100% - 6px) 100%,0% 100%,0% 6px)}
+.sc-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.sc-avatar{width:52px;height:52px;border-radius:50%;border:2px solid var(--cyan);flex-shrink:0;
+box-shadow:0 0 16px rgba(0,212,255,0.5),0 0 32px rgba(0,212,255,0.2);
+object-fit:cover;object-position:center top;filter:brightness(1.05) contrast(1.08) saturate(1.1)}
+.sc-info{}
+.sc-name{font-family:var(--F);font-size:0.7rem;font-weight:900;letter-spacing:0.1em;color:var(--hi)}
+.sc-role{font-size:0.44rem;letter-spacing:0.18em;color:var(--cyan);text-transform:uppercase;margin-top:3px}
+.sc-station{font-size:0.42rem;letter-spacing:0.1em;color:var(--lo);margin-top:2px}
+.sc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.sc-stat{text-align:center;padding:6px 4px;background:rgba(0,0,0,0.3);border:1px solid rgba(0,180,255,0.08)}
+.sc-stat-v{font-family:var(--F);font-size:0.75rem;font-weight:700;line-height:1}
+.sc-stat-l{font-size:0.38rem;letter-spacing:0.12em;color:var(--lo);text-transform:uppercase;margin-top:2px}
+
+/* Chat AEGIS */
+.chat-box{flex-shrink:0;border-top:1px solid var(--border);background:rgba(0,5,10,0.98)}
+.chat-header{padding:7px 16px;border-bottom:1px solid var(--border);
+display:flex;align-items:center;justify-content:space-between}
+.chat-htitle{font-family:var(--F);font-size:0.48rem;letter-spacing:0.18em;color:var(--emerald);text-transform:uppercase}
+.chat-hmodel{font-size:0.4rem;letter-spacing:0.1em;color:var(--lo)}
+.chat-msgs{max-height:80px;overflow-y:auto;padding:6px 16px;
+scrollbar-width:thin;scrollbar-color:rgba(0,220,150,0.1) transparent}
+.chat-msg{font-family:var(--R);font-size:0.78rem;line-height:1.5;margin-bottom:3px}
+.cm-aegis{color:var(--emerald)} .cm-you{color:var(--lo)}
+.chat-row{display:flex;border-top:1px solid var(--border)}
+.chat-input{flex:1;background:transparent;border:none;outline:none;
+padding:9px 16px;font-family:var(--M);font-size:0.58rem;color:var(--hi);letter-spacing:0.04em}
+.chat-input::placeholder{color:var(--lo)}
+.chat-btn{padding:9px 14px;background:rgba(0,212,255,0.07);border:none;
+border-left:1px solid var(--border);cursor:pointer;font-family:var(--F);
+font-size:0.44rem;letter-spacing:0.15em;color:var(--cyan);text-transform:uppercase;transition:all 0.2s}
+.chat-btn:hover{background:rgba(0,212,255,0.14)}
+
+/* ═══ STATUSBAR ═══ */
+.statusbar{display:flex;align-items:center;justify-content:space-between;
+padding:0 20px;background:rgba(0,3,7,0.99);border-top:1px solid rgba(0,180,255,0.12);
+font-size:0.42rem;letter-spacing:0.14em;color:var(--lo);text-transform:uppercase;z-index:10}
+.sb-left{display:flex;gap:18px}
+.sb-item{display:flex;align-items:center;gap:5px}
+.sb-v{font-family:var(--M);font-size:0.44rem}
+.sb-v.c{color:var(--cyan)} .sb-v.g{color:var(--green)} .sb-v.a{color:var(--amber)}
+.sb-center{font-size:0.42rem;color:var(--lo)}
+.sb-right{display:flex;gap:18px}
+
+/* ═══ LOADING ═══ */
+#loader{position:fixed;inset:0;z-index:500;background:var(--void);
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity 0.5s}
+#loader.out{opacity:0;pointer-events:none}
+.ld-spin{width:40px;height:40px;border:2px solid var(--border);border-top-color:var(--cyan);
+border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld-txt{font-family:var(--F);font-size:0.6rem;letter-spacing:0.2em;color:var(--lo);text-transform:uppercase}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .main{grid-template-columns:1fr;grid-template-rows:auto auto}
+  .right-panel{max-height:50vh}
+  .brand-sub{display:none}
+  .tb-pills{display:none}
+  .apod-title{font-size:0.9rem}
+  .metrics-strip{grid-template-columns:repeat(3,1fr)}
+  .metrics-strip .metric:nth-child(4),.metrics-strip .metric:nth-child(5){display:none}
+}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="ld-spin"></div>
+  <div class="ld-txt" data-i18n="loader_txt">Initialisation AstroScan-Chohra...</div>
+</div>
+
+<div class="nebula"></div>
+<div id="stars"></div>
+
+<div class="shell">
+
+<!-- ══ TOPBAR ══ -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-logo">
+      <svg viewBox="0 0 36 36" fill="none">
+        <circle cx="18" cy="18" r="16" stroke="#00d4ff" stroke-width="0.8" stroke-dasharray="4 2" opacity="0.4"/>
+        <circle cx="18" cy="18" r="10" stroke="#00d4ff" stroke-width="1" opacity="0.6"/>
+        <circle cx="18" cy="18" r="3" fill="#00d4ff"/>
+        <line x1="18" y1="1" x2="18" y2="7" stroke="#00d4ff" stroke-width="1.3"/>
+        <line x1="18" y1="29" x2="18" y2="35" stroke="#00d4ff" stroke-width="1.3"/>
+        <line x1="1" y1="18" x2="7" y2="18" stroke="#00d4ff" stroke-width="1.3"/>
+        <line x1="29" y1="18" x2="35" y2="18" stroke="#00d4ff" stroke-width="1.3"/>
+        <circle cx="18" cy="1" r="2" fill="#ff8c00"/>
+        <circle cx="30" cy="8" r="1.2" fill="rgba(0,212,255,0.5)"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <div class="brand-name">AstroScan-Chohra</div>
+      <div class="brand-sub" data-i18n="brand_sub">ORBITAL-CHOHRA · Station Hillsboro · En Ligne</div>
+    </div>
+  </div>
+
+  <div class="tb-pills">
+    <div class="pill"><div class="pill-dot g"></div><span data-i18n="pill_aegis">AEGIS v2 Actif</span></div>
+    <div class="pill"><div class="pill-dot g"></div>NASA APOD Sync</div>
+    <div class="pill"><div class="pill-dot g"></div><span data-i18n="pill_archive">Archive Live</span></div>
+    <div class="pill"><div class="pill-dot a"></div><span data-i18n="pill_anom">Anomalies</span> : <span id="tb-anom" style="color:var(--amber);margin-left:4px;font-family:var(--F)">—</span></div>
+  </div>
+
+  <div class="tb-right">
+    <div class="dir-chip">
+      <img src="/static/img/zakaria.jpg" alt="Zakaria Chohra" onerror="this.style.display='none'">
+      <div class="dir-chip-info">
+        <div class="dir-chip-name">Zakaria Chohra</div>
+        <div class="dir-chip-role" data-i18n="dir_role">Directeur · ORBITAL-CHOHRA</div>
+      </div>
+    </div>
+    <a href="/portail" class="btn-portail" title="Retour au portail">● PORTAIL</a>
+    <div class="lang-toggle" id="topbar-lang">
+      <a href="#" id="lang-fr" class="lang-opt" data-lang="fr"><span class="flag">🇫🇷</span> Français</a>
+      <a href="#" id="lang-en" class="lang-opt" data-lang="en"><span class="flag">🇬🇧</span> English</a>
+    </div>
+    <div id="clock">--:--:-- UTC</div>
+  </div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+  <!-- ── HERO ── -->
+  <div class="hero">
+    <div class="apod-stage">
+      <img class="apod-img" id="apod-img" src="/api/image" alt="NASA APOD" onerror="this.style.filter='brightness(0.1)'">
+      <div class="apod-vignette"></div>
+      <div class="scan-h"></div>
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="reticule">
+        <svg viewBox="0 0 120 120" fill="none">
+          <g class="ret-outer">
+            <circle cx="60" cy="60" r="55" stroke="#00d4ff" stroke-width="0.6" stroke-dasharray="4 4" opacity="0.5"/>
+            <line x1="60" y1="4" x2="60" y2="16" stroke="#00d4ff" stroke-width="0.8"/>
+            <line x1="60" y1="104" x2="60" y2="116" stroke="#00d4ff" stroke-width="0.8"/>
+            <line x1="4" y1="60" x2="16" y2="60" stroke="#00d4ff" stroke-width="0.8"/>
+            <line x1="104" y1="60" x2="116" y2="60" stroke="#00d4ff" stroke-width="0.8"/>
+          </g>
+          <g class="ret-inner">
+            <circle cx="60" cy="60" r="30" stroke="#00d4ff" stroke-width="0.5" stroke-dasharray="2 6" opacity="0.4"/>
+          </g>
+          <circle cx="60" cy="60" r="4" stroke="#00d4ff" stroke-width="1" opacity="0.8"/>
+        </svg>
+      </div>
+      <div class="apod-info">
+        <div class="apod-label">
+          <span data-i18n="apod_label">◈ Image Astronomique du Jour — NASA APOD</span>
+          <span class="live-badge"><span class="live-badge-dot"></span>EN DIRECT</span>
+        </div>
+        <div class="img-timestamp" id="img-ts">—</div>
+        <div class="img-fps" id="img-fps" data-i18n="img_fps">● FLUX ACTIF</div>
+        <div class="apod-comment" id="apod-comment"></div>
+        <div class="apod-title" id="apod-title" data-i18n="apod_loading">Chargement...</div>
+        <div class="apod-source" id="apod-source"></div>
+        <div class="apod-meta">
+          <span class="apod-tag aurora" id="tag1" style="display:none" data-i18n="tag_aurora">Aurore</span>
+          <span class="apod-tag nebula" id="tag2" style="display:none" data-i18n="tag_nebula">Nébuleuse</span>
+          <span class="apod-tag galaxy" id="tag3" style="display:none" data-i18n="tag_galaxy">Galaxie</span>
+          <span class="apod-tag star" id="tag4" style="display:none" data-i18n="tag_star">Étoile</span>
+          <span class="apod-tag planet" id="tag5" style="display:none" data-i18n="tag_planet">Planète</span>
+          <span class="apod-date" id="apod-date">2026-03-09 · Hillsboro</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics strip -->
+    <div class="metrics-strip">
+      <div class="metric" style="--bc:var(--cyan)">
+        <div class="m-val" id="m-obs" style="color:var(--cyan)">—</div>
+        <div class="m-lbl" data-i18n="m_obs">Observations</div>
+        <div class="m-trend" style="color:var(--green)" id="m-obs-t" data-i18n="m_obs_t">Archive totale</div>
+      </div>
+      <div class="metric" style="--bc:var(--red)">
+        <div class="m-val" id="m-anom" style="color:var(--red)">—</div>
+        <div class="m-lbl" data-i18n="m_anom">Anomalies</div>
+        <div class="m-trend" id="m-anom-t" style="color:var(--lo)" data-i18n="m_anom_t">Événements hors-norme</div>
+      </div>
+      <div class="metric" style="--bc:var(--green)">
+        <div class="m-val" style="color:var(--green)">3</div>
+        <div class="m-lbl" data-i18n="m_sources">Sources actives</div>
+        <div class="m-trend" style="color:var(--lo)">NASA · Live · Archive</div>
+      </div>
+      <div class="metric" style="--bc:var(--emerald)">
+        <div class="m-val" style="color:var(--emerald)">9</div>
+        <div class="m-lbl" data-i18n="m_telescopes">Télescopes</div>
+        <div class="m-trend" style="color:var(--lo)" data-i18n="m_network">Réseau mondial</div>
+      </div>
+      <div class="metric" style="--bc:var(--amber)">
+        <div class="m-val" style="color:var(--amber)">1400</div>
+        <div class="m-lbl" data-i18n="m_req">Req/jour AEGIS</div>
+        <div class="m-trend" style="color:var(--lo)">Gemini 2.5-Flash</div>
+      </div>
+    </div>
+
+    <!-- Carte connexions réelles (réseau télescopes) -->
+    <div class="connexions-strip" id="telescope-hub-strip"><div class="cx-row"><span class="cx-node">Image NASA du jour (APOD)</span><span class="cx-line"></span><span class="cx-meta">—</span></div></div>
+
+    <!-- Analysis -->
+    <div class="analysis-strip">
+      <div class="as-badge">⚡ AEGIS</div>
+      <div class="as-text" id="as-text" data-i18n="as_pending">Analyse AEGIS en attente...</div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="right-panel">
+    <div class="rp-header">
+      <span class="rp-title" data-i18n="rp_title">◎ Archive · Observations Récentes</span>
+      <div class="rp-live"><div class="rp-ldot"></div>En direct</div>
+    </div>
+
+    <div class="rp-scroll">
+      <!-- Station Card -->
+      <div class="station-card">
+        <div class="sc-row">
+          <img class="sc-avatar" src="/static/img/zakaria.jpg" alt="Zakaria Chohra" onerror="this.style.display='none'">
+          <div class="sc-info">
+            <div class="sc-name">Zakaria Chohra</div>
+            <div class="sc-role" data-i18n="sc_role">Directeur · AstroScan-Chohra</div>
+            <div class="sc-station" data-i18n="sc_station">Station Hillsboro · 45.52°N 122.68°W</div>
+          </div>
+        </div>
+        <div class="sc-stats">
+          <div class="sc-stat">
+            <div class="sc-stat-v" id="sc-obs" style="color:var(--cyan)">—</div>
+            <div class="sc-stat-l" data-i18n="sc_obs">Obs.</div>
+          </div>
+          <div class="sc-stat">
+            <div class="sc-stat-v" id="sc-anom" style="color:var(--amber)">—</div>
+            <div class="sc-stat-l" data-i18n="sc_anom">Anom.</div>
+          </div>
+          <div class="sc-stat">
+            <div class="sc-stat-v" style="color:var(--green)" data-i18n="sc_active">ACTIF</div>
+            <div class="sc-stat-l">AEGIS</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Observations list -->
+      <div id="obs-list"></div>
+    </div>
+
+    <!-- Chat AEGIS -->
+    <div class="chat-box">
+      <div class="chat-header">
+        <span class="chat-htitle" data-i18n="chat_title">⚡ Chat AEGIS — IA Astronomique</span>
+        <span class="chat-hmodel">Gemini 2.5-Flash</span>
+      </div>
+      <div class="chat-msgs" id="chat-msgs">
+        <div class="chat-msg cm-aegis" id="chat-welcome" data-i18n="chat_welcome">AEGIS › Station ORBITAL-CHOHRA en ligne. Posez votre question astronomique.</div>
+      </div>
+      <div class="chat-row">
+        <input class="chat-input" id="chat-in" type="text" data-i18n-ph="chat_placeholder" placeholder="Question à AEGIS sur l'astronomie..." maxlength="300">
+        <button class="chat-btn" onclick="sendChat()" data-i18n="chat_btn">Envoyer ▶</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ STATUSBAR ══ -->
+<footer class="statusbar">
+  <div class="sb-left">
+    <div class="sb-item"><span data-i18n="sb_station">Station</span> <span class="sb-v c">Hillsboro</span></div>
+    <div class="sb-item">IP <span class="sb-v c">5.78.153.17</span></div>
+    <div class="sb-item">AEGIS <span class="sb-v g">v2.0 Active</span></div>
+  </div>
+  <div class="sb-center">AstroScan-Chohra · ORBITAL-CHOHRA · <span id="sb-date">—</span></div>
+  <div class="sb-right">
+    <div class="sb-item"><span data-i18n="sb_obs">Obs.</span> <span class="sb-v c" id="sb-obs">—</span></div>
+    <div class="sb-item"><span data-i18n="sb_anom">Anom.</span> <span class="sb-v a" id="sb-anom">—</span></div>
+    <div class="sb-item">NASA <span class="sb-v g">Sync</span></div>
+  </div>
+</footer>
+
+</div><!-- /shell -->
+
+<script>
+/* ── i18n : en iframe ?lang= prioritaire, sinon localStorage puis navigateur ─────── */
+var STORAGE_LANG = 'astro_lang';
+(function(){
+  var q = new URLSearchParams(window.location.search);
+  var urlLang = q.get('lang');
+  if ((urlLang === 'fr' || urlLang === 'en')) {
+    window.LANG = urlLang;
+    localStorage.setItem(STORAGE_LANG, urlLang);
+    return;
+  }
+  var stored = localStorage.getItem(STORAGE_LANG);
+  if (stored === 'fr' || stored === 'en') { window.LANG = stored; return; }
+  var nav = (navigator.language || (navigator.languages && navigator.languages[0]) || 'fr').toLowerCase().slice(0, 2);
+  window.LANG = (nav === 'en') ? 'en' : 'fr';
+})();
+var LANG = window.LANG || 'fr';
+window.LANG = LANG;
+document.documentElement.lang = LANG;
+document.documentElement.setAttribute('lang', LANG);
+
+/* fetchWithTimeout (10s) + fetchRetry (2 tentatives) */
+function fetchWithTimeout(url, opts, timeout) {
+  timeout = timeout || 10000;
+  var ctrl = new AbortController();
+  var id = setTimeout(function() { ctrl.abort(); }, timeout);
+  return fetch(url, Object.assign({}, opts, { signal: ctrl.signal })).then(function(r) { clearTimeout(id); return r; });
+}
+function fetchRetry(url, opts, retries) {
+  retries = retries != null ? retries : 2;
+  return fetchWithTimeout(url, opts).catch(function(e) {
+    if (retries > 0) return fetchRetry(url, opts, retries - 1);
+    throw e;
+  });
+}
+
+var T = {
+  fr: {
+    page_title: 'AstroScan-Chohra - Dashboard QG · ORBITAL-CHOHRA',
+    loader_txt: 'Initialisation AstroScan-Chohra...',
+    brand_sub: 'ORBITAL-CHOHRA · Station Hillsboro · En Ligne',
+    pill_aegis: 'AEGIS v2 Actif',
+    pill_archive: 'Archive En Direct',
+    pill_anom: 'Anomalies',
+    dir_role: 'Directeur · ORBITAL-CHOHRA',
+    apod_label: '◈ Image Astronomique du Jour — NASA APOD',
+    img_fps: '● FLUX ACTIF',
+    apod_loading: 'Chargement...',
+    tag_aurora: 'Aurore', tag_nebula: 'Nébuleuse', tag_galaxy: 'Galaxie', tag_star: 'Étoile', tag_planet: 'Planète',
+    m_obs: 'Observations', m_obs_t: 'Archive totale',
+    m_anom: 'Anomalies', m_anom_t: 'Événements hors-norme',
+    m_sources: 'Sources actives', m_telescopes: 'Télescopes', m_network: 'Réseau mondial', m_req: 'Req/jour AEGIS',
+    as_pending: 'Analyse AEGIS en attente...',
+    rp_title: '◎ Archive · Observations Récentes',
+    sc_role: 'Directeur · AstroScan-Chohra',
+    sc_station: 'Station Hillsboro · 45.52°N 122.68°W',
+    sc_obs: 'Obs.', sc_anom: 'Anom.', sc_active: 'ACTIF',
+    chat_title: '⚡ Chat AEGIS — IA Astronomique',
+    chat_welcome: 'AEGIS › Station ORBITAL-CHOHRA en ligne. Posez votre question astronomique.',
+    chat_placeholder: "Question à AEGIS sur l'astronomie...",
+    chat_btn: 'Envoyer ▶',
+    sb_station: 'Station', sb_obs: 'Obs.', sb_anom: 'Anom.',
+    obs_stellar: 'Observation Stellaire',
+    label_anomaly: '⚠ Anomalie',
+    label_rate: 'Taux',
+    chat_error: 'Connexion temporairement indisponible.'
+  },
+  en: {
+    page_title: 'AstroScan-Chohra - HQ Dashboard · ORBITAL-CHOHRA',
+    loader_txt: 'Initializing AstroScan-Chohra...',
+    brand_sub: 'ORBITAL-CHOHRA · Hillsboro Station · Online',
+    pill_aegis: 'AEGIS v2 Active',
+    pill_archive: 'Live Archive',
+    pill_anom: 'Anomalies',
+    dir_role: 'Director · ORBITAL-CHOHRA',
+    apod_label: '◈ Astronomy Picture of the Day — NASA APOD',
+    img_fps: '● FEED ACTIVE',
+    apod_loading: 'Loading...',
+    tag_aurora: 'Aurora', tag_nebula: 'Nebula', tag_galaxy: 'Galaxy', tag_star: 'Star', tag_planet: 'Planet',
+    m_obs: 'Observations', m_obs_t: 'Total archive',
+    m_anom: 'Anomalies', m_anom_t: 'Out-of-norm events',
+    m_sources: 'Active sources', m_telescopes: 'Telescopes', m_network: 'Global network', m_req: 'AEGIS req/day',
+    as_pending: 'AEGIS analysis pending...',
+    rp_title: '◎ Archive · Recent Observations',
+    sc_role: 'Director · AstroScan-Chohra',
+    sc_station: 'Hillsboro Station · 45.52°N 122.68°W',
+    sc_obs: 'Obs.', sc_anom: 'Anom.', sc_active: 'ACTIVE',
+    chat_title: '⚡ AEGIS Chat — AI Astronomy',
+    chat_welcome: 'AEGIS › ORBITAL-CHOHRA station online. Ask your astronomy question.',
+    chat_placeholder: 'Ask AEGIS about astronomy...',
+    chat_btn: 'Send ▶',
+    sb_station: 'Station', sb_obs: 'Obs.', sb_anom: 'Anom.',
+    obs_stellar: 'Stellar Observation',
+    label_anomaly: '⚠ Anomaly',
+    label_rate: 'Rate',
+    chat_error: 'Temporarily unavailable.'
+  }
+};
+function t(k){ return (T[LANG] && T[LANG][k]) || T.fr[k] || k; }
+function applyI18n(){
+  document.title = t('page_title');
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){
+    el.placeholder = t(el.getAttribute('data-i18n-ph'));
+  });
+  document.querySelectorAll('.lang-opt').forEach(function(a) {
+    a.classList.toggle('active', a.getAttribute('data-lang') === LANG);
+  });
+  if (typeof updateImageComment === 'function') updateImageComment();
+}
+document.querySelectorAll('.lang-opt').forEach(function(a) {
+  a.addEventListener('click', function(e) {
+    e.preventDefault();
+    var lang = a.getAttribute('data-lang');
+    if (lang !== 'fr' && lang !== 'en') return;
+    localStorage.setItem(STORAGE_LANG, lang);
+    LANG = lang;
+    window.LANG = lang;
+    document.documentElement.lang = lang;
+    applyI18n();
+    if (window.updateIssUiFromLang) window.updateIssUiFromLang();
+    if (window.refreshTelescopeHub) window.refreshTelescopeHub();
+  });
+});
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', applyI18n);
+} else {
+  applyI18n();
+}
+
+/* STARS */
+(()=>{
+  const c=document.getElementById('stars');
+  for(let i=0;i<180;i++){
+    const s=document.createElement('div');s.className='s';
+    const z=Math.random()<.85?Math.random()*.8+.2:Math.random()*1.8+.8;
+    s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${z}px;height:${z}px;--d:${3+Math.random()*7}s;--dl:${-Math.random()*7}s;--op:${.06+Math.random()*.3}`;
+    c.appendChild(s);
+  }
+})();
+
+/* CLOCK */
+(()=>{
+  function tick(){
+    const n=new Date();
+    document.getElementById('clock').textContent=
+      [n.getUTCHours(),n.getUTCMinutes(),n.getUTCSeconds()].map(x=>String(x).padStart(2,'0')).join(':')+' UTC';
+    const d=n.toISOString().slice(0,10);
+    const sb=document.getElementById('sb-date');
+    if(sb)sb.textContent=d;
+  }
+  setInterval(tick,1000);tick();
+})();
+
+/* LOAD DATA — compat API: d.stats.total, d.stats.anomalies, observations[].analyse */
+async function loadData(){
+  try{
+    const lang = (window.LANG || document.documentElement.getAttribute('lang') || 'fr').slice(0,2);
+    const r=await fetchRetry('/api/latest?lang=' + (lang === 'en' ? 'en' : 'fr'));
+    if(!r.ok)return;
+    const d=await r.json();
+    const total=(d.stats&&d.stats.total!==undefined)?d.stats.total:(d.total||0);
+    const anom=(d.stats&&d.stats.anomalies!==undefined)?d.stats.anomalies:(d.anomalies||0);
+
+    ['m-obs','sb-obs','sc-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=total;});
+    ['m-anom','sb-anom','sc-anom','tb-anom'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=anom;});
+
+    const anomTrend=document.getElementById('m-anom-t');
+    if(anomTrend&&total>0)anomTrend.textContent=t('label_rate')+': '+((anom/total)*100).toFixed(2)+'%';
+
+    if(d.observations&&d.observations.length){
+      const obs=d.observations.slice(0,12);
+      const colors=['var(--cyan)','var(--emerald)','var(--blue)','var(--purple)','var(--amber)'];
+      document.getElementById('obs-list').innerHTML=obs.map((o,i)=>{
+        const cc=o.anomalie?'var(--red)':colors[i%colors.length];
+        const rapport=o.rapport_gemini||o.analyse||'';
+        const title=(o.title&&!String(o.title).includes('LIVE_TELESCOPE'))?o.title:((o.objets&&String(o.objets).slice(0,50))||o.source||t('obs_stellar')+' '+String(total-i).padStart(4,'0'));
+        return '<div class="obs-card" style="--cc:'+cc+'">'+
+          '<div class="obs-card-head">'+
+            '<div class="obs-num">#'+String(total-i).padStart(4,'0')+'</div>'+
+            '<div class="obs-title">'+title+'</div>'+
+            (o.anomalie?'<div class="obs-anom">'+t('label_anomaly')+'</div>':'')+
+          '</div>'+
+          '<div class="obs-meta">'+
+            '<span class="obs-time">'+(o.timestamp||'').slice(0,19).replace('T',' ')||'—'+'</span>'+
+            '<span class="obs-src">'+(o.source||'—')+'</span>'+
+            (o.objets?'<span class="obs-obj">'+o.objets+'</span>':'')+
+          '</div>'+
+          (rapport?'<div class="obs-rapport">'+md(rapport)+'</div>':'')+
+        '</div>';
+      }).join('');
+
+      const firstRapport=((d.observations[0]&&(d.observations[0].rapport_gemini||d.observations[0].analyse))||'').toLowerCase();
+      lastReport = (d.observations[0] && (d.observations[0].rapport_gemini || d.observations[0].analyse)) || '';
+      updateImageComment();
+      if(/aurore|aurora/.test(firstRapport)){document.getElementById('tag1').style.display='inline-block'}
+      if(/nébul|nebul/.test(firstRapport)){document.getElementById('tag2').style.display='inline-block'}
+      if(/galax/.test(firstRapport)){document.getElementById('tag3').style.display='inline-block'}
+      if(/étoil|star|stellar/.test(firstRapport)){document.getElementById('tag4').style.display='inline-block'}
+      if(/planèt|planet/.test(firstRapport)){document.getElementById('tag5').style.display='inline-block'}
+
+      const asText=document.getElementById('as-text');
+      if(asText&&d.observations[0])asText.innerHTML=md(d.observations[0].rapport_gemini||d.observations[0].analyse||'')||t('as_pending');
+      if (LANG === 'fr') translateObsCards();
+    }
+  }catch(e){console.error(e)}
+}
+function looksLikeEnglish(t) {
+  if (!t || t.length < 20) return false;
+  var en = (t.match(/\b(the|and|of|to|in|is|for|on|with|are|this|that|was|were)\b/gi) || []).length;
+  var fr = (t.match(/\b(les|des|une|dans|pour|est|sont|avec|ces|que|qui|aux|par)\b/gi) || []).length;
+  return en > fr;
+}
+async function translateObsCards() {
+  var cards = document.querySelectorAll('#obs-list .obs-card');
+  var jobs = [];
+  cards.forEach(function(card) {
+    var titleEl = card.querySelector('.obs-title');
+    var rapportEl = card.querySelector('.obs-rapport');
+    if (titleEl && looksLikeEnglish(titleEl.textContent)) jobs.push({ el: titleEl, text: titleEl.textContent.trim(), html: false });
+    if (rapportEl && looksLikeEnglish(rapportEl.textContent)) jobs.push({ el: rapportEl, text: rapportEl.textContent.trim(), html: true });
+  });
+  if (!jobs.length) return;
+  try {
+    var results = await Promise.all(jobs.map(function(j) {
+      return fetchRetry('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: j.text }) }).then(function(r) { return r.json(); }).then(function(d) { return { el: j.el, translated: (d.translated || j.text).trim(), html: j.html }; });
+    }));
+    results.forEach(function(r) { if (r.html) r.el.innerHTML = md(r.translated); else r.el.textContent = r.translated; });
+  } catch (e) { console.error('translateObsCards', e); }
+}
+
+function md(txt){
+  if(!txt)return '';
+  return String(txt)
+    .replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--hi)">$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/^#+\s(.+)$/gm,'<div style="font-family:var(--F);font-size:0.65rem;color:var(--cyan);letter-spacing:0.1em;margin:6px 0 3px">$1</div>')
+    .replace(/\n\n/g,'<br><br>')
+    .replace(/\n/g,'<br>');
+}
+
+/* Commentaire image (titre + rapport AEGIS) — FR/EN */
+var lastTitle = '', lastReport = '';
+var COMMENT = {
+  fr: {
+    aurora: "🌌 Aurore boréale · Interaction vent solaire / magnétosphère · ~150 km altitude",
+    nebula: "🌫 Nébuleuse · Nuage de gaz · Nurserie d'étoiles · dist. > 1 000 al",
+    galaxy: "🌌 Galaxie · Système de milliards d'étoiles · dist. > 2 millions al"
+  },
+  en: {
+    aurora: "🌌 Northern lights · Solar wind / magnetosphere interaction · ~150 km altitude",
+    nebula: "🌫 Nebula · Gas cloud · Star nursery · dist. > 1,000 ly",
+    galaxy: "🌌 Galaxy · Billions of stars · dist. > 2 million ly"
+  }
+};
+function updateImageComment(){
+  var el = document.getElementById('apod-comment');
+  if(!el) return;
+  var title = (lastTitle || '').toLowerCase();
+  var report = (lastReport || '').toLowerCase();
+  var combined = title + ' ' + report;
+  var lang = (LANG === 'en') ? 'en' : 'fr';
+  var text = '';
+  if(/aurore|aurora|boréal|northern/.test(combined)) text = COMMENT[lang].aurora;
+  else if(/nébul|nebul|nebula|gas cloud/.test(combined)) text = COMMENT[lang].nebula;
+  else if(/galax|galaxy/.test(combined)) text = COMMENT[lang].galaxy;
+  el.textContent = text;
+  el.style.display = text ? 'block' : 'none';
+}
+
+/* LOAD TITLE */
+async function loadTitle(){
+  try{
+    const r=await fetchRetry('/api/title');
+    if(!r.ok)return;
+    const d=await r.json();
+    lastTitle = d.title || '';
+    const titleEl=document.getElementById('apod-title');
+    if(titleEl)titleEl.textContent=lastTitle;
+    const srcEl=document.getElementById('apod-source');
+    if(srcEl){ srcEl.textContent=d.source?('Source: '+d.source):''; srcEl.style.display=d.source?'block':'none'; }
+    updateImageComment();
+  }catch(e){}
+}
+
+/* LIVE IMAGE FEED — 5s refresh with smooth fade */
+let imgLoading=false;
+function refreshImg(){
+  if(imgLoading)return;
+  imgLoading=true;
+  const img=document.getElementById('apod-img');
+  const newImg=new Image();
+  newImg.onload=function(){
+    img.style.transition='opacity 0.6s ease';
+    img.style.opacity='0';
+    var ts=document.getElementById('img-ts');
+    if(ts){var n=new Date();ts.textContent=n.toUTCString().slice(17,25)+' UTC';}
+    var fps=document.getElementById('img-fps');
+    if(fps){fps.style.color='var(--green)';setTimeout(function(){if(fps)fps.style.color='var(--lo)';setTimeout(function(){if(fps)fps.style.color='var(--green)';},200);},100);}
+    setTimeout(function(){
+      img.src=newImg.src;
+      img.style.opacity='1';
+      imgLoading=false;
+    },300);
+  };
+  newImg.onerror=function(){imgLoading=false;};
+  newImg.src='/api/image?t='+Date.now();
+}
+setInterval(refreshImg,5000);
+
+/* CHAT */
+async function sendChat(){
+  const inp=document.getElementById('chat-in');
+  const msgs=document.getElementById('chat-msgs');
+  const msg=inp.value.trim();
+  if(!msg)return;
+  inp.value='';
+  msgs.innerHTML+='<div class="chat-msg cm-you">▷ '+msg+'</div>';
+  msgs.scrollTop=msgs.scrollHeight;
+  const title=document.getElementById('apod-title')?.textContent?.trim()||'';
+  try{
+    const r=await fetch('/api/chat',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:msg,context:'Image NASA actuelle: '+title})
+    });
+    const d=await r.json();
+    msgs.innerHTML+='<div class="chat-msg cm-aegis">AEGIS › '+(d.response||d.reply||'...')+'</div>';
+  }catch(e){
+    msgs.innerHTML+='<div class="chat-msg cm-aegis">AEGIS › '+t('chat_error')+'</div>';
+  }
+  msgs.scrollTop=msgs.scrollHeight;
+}
+document.getElementById('chat-in').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
+
+/* INIT */
+setTimeout(()=>{
+  const ld=document.getElementById('loader');
+  if(ld)ld.classList.add('out');
+},800);
+
+/* TELESCOPE HUB — latences réelles */
+function loadTelescopeHub() {
+  var strip = document.getElementById('telescope-hub-strip');
+  if (!strip) return;
+  fetchRetry('/api/telescope-hub').then(function(r) { return r.json(); }).then(function(d) {
+    var telescopes = (d.telescopes || []);
+    telescopes.forEach(function(t) {
+      var row = strip.querySelector('.cx-row[data-hub-id="' + t.id + '"]');
+      if (!row) return;
+      var line = row.querySelector('.cx-line');
+      var meta = row.querySelector('.cx-meta');
+      if (line) line.classList.toggle('cx-standby', !t.online);
+      if (meta) meta.textContent = t.online ? (t.latency_ms + 'ms') : (meta.getAttribute('title') || '—');
+    });
+  }).catch(function() {});
+}
+window.refreshTelescopeHub = loadTelescopeHub;
+
+loadData();
+loadTitle();
+loadTelescopeHub();
+setInterval(loadData,30000);
+setInterval(loadTitle,60000);
+setInterval(loadTelescopeHub, 60000);
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(){});
+</script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

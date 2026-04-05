@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AstroScan-Chohra - MPC Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--acid:#00ff88;--blue:#00d4ff;--bg:#010408;--card:rgba(0,20,40,0.8);--warn:#ffaa00}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:#ccd6f6;font-family:'Share Tech Mono',monospace;min-height:100vh}
+header{background:rgba(0,5,15,0.95);border-bottom:1px solid #00ff8833;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:Orbitron,monospace;font-size:16px;color:var(--acid);letter-spacing:3px}
+main{padding:24px;max-width:960px;margin:0 auto}
+.card{background:var(--card);border:1px solid #00ff8833;border-radius:8px;padding:16px;margin-bottom:16px}
+.card-title{font-family:Orbitron,monospace;font-size:11px;color:var(--blue);letter-spacing:2px;margin-bottom:12px;border-bottom:1px solid #00ff8822;padding-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{border:1px solid #00ff8822;padding:8px;text-align:left}
+th{color:var(--blue);font-weight:700}
+.readiness{display:inline-block;padding:4px 8px;border-radius:4px;font-size:10px}
+.readiness.ready{background:rgba(0,255,136,0.2);color:var(--acid)}
+.readiness.draft{background:rgba(255,170,0,0.2);color:var(--warn)}
+.readiness.not-ready{background:rgba(255,68,68,0.2);color:#ff6666}
+ul{margin:8px 0;padding-left:20px;font-size:11px;color:#aabbcc}
+.warnings{color:var(--warn)}
+.missing{color:#ff6666}
+a{color:var(--blue);text-decoration:none;font-size:10px}
+a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">📋 MPC REPORT — AstroScan-Chohra</div>
+  <div style="font-size:10px;color:#4a7a8a">Draft only · Do not submit without validation</div>
+  <a href="/lab">← LAB</a>
+</header>
+<main>
+  <div class="card">
+    <div class="card-title">STATUS</div>
+    <p><strong>Report status:</strong> <span class="readiness {{ report_status_class }}">{{ report_status }}</span></p>
+    <p style="margin-top:8px;font-size:11px;color:#8899aa">Observatory code: {{ observatory_code or '—' }} · Submission format: {{ submission_format or 'ADES_PSV' }}</p>
+    <p style="margin-top:4px;font-size:11px;color:#8899aa">{{ summary }}</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">VALIDATION READINESS</div>
+    <p><strong>Ready for validation:</strong> {{ 'Yes' if validation_ready else 'No' }}</p>
+    {% if missing_fields %}
+    <p class="missing" style="margin-top:8px">Missing fields:</p>
+    <ul class="missing">
+      {% for f in missing_fields %}<li>{{ f }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if warnings %}
+    <p class="warnings" style="margin-top:8px">Warnings:</p>
+    <ul class="warnings">
+      {% for w in warnings %}<li>{{ w }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">CANDIDATES ({{ candidate_count }})</div>
+    {% if candidates %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Type</th>
+          <th>UTC time</th>
+          <th>RA (deg)</th>
+          <th>Dec (deg)</th>
+          <th>Magnitude</th>
+          <th>Confidence</th>
+          <th>Source</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in candidates %}
+        <tr>
+          <td>{{ c.candidate_id }}</td>
+          <td>{{ c.object_type }}</td>
+          <td>{{ c.observation_time_utc or '—' }}</td>
+          <td>{% if c.ra_deg is not none %}{{ c.ra_deg }}{% else %}—{% endif %}</td>
+          <td>{% if c.dec_deg is not none %}{{ c.dec_deg }}{% else %}—{% endif %}</td>
+          <td>{% if c.magnitude_estimate is not none %}{{ c.magnitude_estimate }}{% else %}—{% endif %}</td>
+          <td>{{ c.confidence }}</td>
+          <td>{{ c.source_image or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="font-size:11px;color:#8899aa">No candidates in this report.</p>
+    {% endif %}
+  </div>
+</main>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

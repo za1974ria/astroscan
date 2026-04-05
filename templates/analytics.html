@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroScan-Chohra - Analytics</title>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --panel: #12161c;
+    --border: rgba(100, 180, 255, 0.22);
+    --text: #e8eef6;
+    --muted: #8a9aab;
+    --accent: #5eb3ff;
+    --green: #3dd68c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.45;
+    font-size: 14px;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 20px 40px; }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 18px;
+    margin-bottom: 22px;
+  }
+  h1 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    color: var(--accent);
+  }
+  .sub { margin-top: 8px; font-size: 0.78rem; color: var(--muted); letter-spacing: 0.12em; }
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 26px;
+  }
+  .kpi {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 18px;
+  }
+  .kpi-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); }
+  .kpi-value { margin-top: 8px; font-size: 1.55rem; font-weight: 600; color: var(--green); font-variant-numeric: tabular-nums; }
+  .kpi-value.sm { font-size: 1rem; color: var(--text); word-break: break-all; }
+  section {
+    margin-bottom: 28px;
+  }
+  h2 {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .table-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: auto;
+    max-width: 100%;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(100, 180, 255, 0.1);
+  }
+  th {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(94, 179, 255, 0.05); }
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .empty { color: var(--muted); padding: 16px; font-size: 0.85rem; }
+  .journey-cell { font-size: 0.78rem; line-height: 1.35; color: var(--text); max-width: 420px; word-break: break-word; }
+  .sess-id { font-size: 0.72rem; max-width: 140px; word-break: break-all; color: var(--muted); }
+  .telemetry-wrap {
+    background: #06080d;
+    border: 1px solid rgba(61, 214, 140, 0.2);
+    border-radius: 6px;
+    padding: 18px 16px;
+    font-family: "Consolas", "DejaVu Sans Mono", ui-monospace, monospace;
+  }
+  .telemetry-intro { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.12em; margin-bottom: 16px; }
+  .session-summary {
+    font-size: 14px;
+    color: #00ffd5;
+    margin-bottom: 8px;
+    font-weight: bold;
+    border-bottom: 1px solid rgba(0, 255, 213, 0.2);
+    padding-bottom: 4px;
+  }
+  .telemetry-session {
+    margin-bottom: 22px;
+    padding: 14px 14px 12px;
+    background: rgba(8, 12, 18, 0.95);
+    border: 1px solid rgba(100, 180, 255, 0.12);
+    border-left: 3px solid var(--green);
+    border-radius: 4px;
+  }
+  .telemetry-session:last-child { margin-bottom: 0; }
+  .telemetry-head { font-size: 0.88rem; color: var(--text); margin-bottom: 4px; line-height: 1.5; }
+  .telemetry-head .hl { color: var(--green); }
+  .telemetry-sub { font-size: 0.78rem; color: #7a9aaf; margin-bottom: 12px; }
+  .telemetry-kv {
+    font-size: 0.78rem;
+    color: #9ec5e0;
+    line-height: 1.55;
+    margin-bottom: 6px;
+    word-break: break-word;
+  }
+  .telemetry-kv .lkv { color: var(--muted); font-weight: 500; }
+  .telemetry-kv .profil { color: var(--green); font-weight: 600; }
+  .telemetry-mods { font-size: 0.76rem; color: #b8dcf5; margin: 8px 0 14px; padding: 8px 10px; background: rgba(0,0,0,.25); border-radius: 4px; }
+  .telemetry-mods .lkv { color: var(--muted); display: block; margin-bottom: 4px; }
+  .telemetry-line {
+    font-size: 0.82rem;
+    color: #b8e0ff;
+    line-height: 1.7;
+    padding: 2px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  }
+  .telemetry-line:first-of-type { border-top: none; padding-top: 0; }
+  .telemetry-line .t { color: #5eb3ff; }
+  .telemetry-line .p { color: #e8eef6; }
+  .telemetry-line .d { color: var(--muted); }
+  footer { margin-top: 32px; font-size: 0.72rem; color: var(--muted); }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  @media (max-width: 640px) {
+    h1 { letter-spacing: 0.15em; font-size: 1rem; }
+    th, td { padding: 8px 10px; }
+  }
+</style>
+</head>
+<body>
+<div style="color:red;font-size:20px;font-weight:bold;">
+TEST 999 ASTRO
+</div>
+<div class="wrap">
+  <header>
+    <h1>AstroScan-Chohra ANALYTICS</h1>
+    <p class="sub">Lecture seule · SQLite · visites &amp; durées de page</p>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi">
+      <div class="kpi-label">Total visites</div>
+      <div class="kpi-value">{{ total_visits }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">IPs uniques</div>
+      <div class="kpi-value">{{ unique_ips }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Événements temps</div>
+      <div class="kpi-value">{{ total_tracked_events }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Dernière activité</div>
+      <div class="kpi-value sm">{{ last_activity }}</div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Top pays</h2>
+    <div class="table-wrap">
+      {% if top_countries %}
+      <table>
+        <thead><tr><th>Pays</th><th>Code</th><th class="num">Visites</th></tr></thead>
+        <tbody>
+          {% for r in top_countries %}
+          <tr><td>{{ r.country }}</td><td>{{ r.code }}</td><td class="num">{{ r.count }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Top villes</h2>
+    <div class="table-wrap">
+      {% if top_cities %}
+      <table>
+        <thead><tr><th>Pays</th><th>Ville</th><th class="num">Visites</th></tr></thead>
+        <tbody>
+          {% for r in top_cities %}
+          <tr><td>{{ r.country }}</td><td>{{ r.city }}</td><td class="num">{{ r.count }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Top pages par temps cumulé</h2>
+    <div class="table-wrap">
+      {% if top_pages_by_time %}
+      <table>
+        <thead><tr><th>Chemin</th><th class="num">Secondes cumulées</th></tr></thead>
+        <tbody>
+          {% for r in top_pages_by_time %}
+          <tr><td>{{ r.path }}</td><td class="num">{{ r.total_seconds }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Durée moyenne par page</h2>
+    <div class="table-wrap">
+      {% if avg_duration_by_page %}
+      <table>
+        <thead><tr><th>Chemin</th><th class="num">Moyenne (s)</th></tr></thead>
+        <tbody>
+          {% for r in avg_duration_by_page %}
+          <tr><td>{{ r.path }}</td><td class="num">{{ r.avg_seconds }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Sessions les plus longues (événements)</h2>
+    <div class="table-wrap">
+      {% if longest_sessions %}
+      <table>
+        <thead><tr><th>Session</th><th>Page</th><th class="num">Durée (s)</th><th>Horodatage</th></tr></thead>
+        <tbody>
+          {% for r in longest_sessions %}
+          <tr>
+            <td style="max-width:180px;word-break:break-all">{{ r.session_id }}</td>
+            <td>{{ r.path }}</td>
+            <td class="num">{{ r.duration }}</td>
+            <td style="font-size:0.8rem;color:var(--muted)">{{ r.created_at }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Visiteurs détaillés (session)</h2>
+    <p class="sub" style="margin-bottom:10px">Jusqu’à 20 sessions · temps cumulé · parcours chronologique · heure locale (US/DZ/BR)</p>
+    <div class="table-wrap">
+      {% if session_visitors_detail %}
+      <table>
+        <thead>
+          <tr>
+            <th>Session</th>
+            <th>Pays</th>
+            <th>Ville</th>
+            <th class="num">Temps total</th>
+            <th class="num">Pages</th>
+            <th>Parcours</th>
+            <th>Heure locale</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in session_visitors_detail %}
+          <tr>
+            <td class="sess-id">{{ r.session_id }}</td>
+            <td>{{ r.country }}</td>
+            <td>{{ r.city }}</td>
+            <td class="num">{{ r.total_time_fmt }}</td>
+            <td class="num">{{ r.pages_count }}</td>
+            <td class="journey-cell">{{ r.journey }}</td>
+            <td style="font-size:0.8rem;color:var(--muted);white-space:nowrap">{{ r.start_local }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="empty">Aucune donnée session</div>{% endif %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Télémetrie des sessions</h2>
+    <div class="telemetry-wrap">
+      <p class="telemetry-intro">10 sessions max · tri par dernière activité · lecture seule · chrono par événement</p>
+      {% if sessions_timeline %}
+        {% for block in sessions_timeline %}
+        <div class="telemetry-session">
+          <div class="session-summary">
+            {{ block.summary_line }}
+          </div>
+          <div class="telemetry-head">
+            <span class="hl">🌍</span> {{ block.country }} – {{ block.city }}
+          </div>
+          <div class="telemetry-sub"><span class="hl">🕒</span> Début session (local) : {{ block.start_local }}</div>
+          <div class="telemetry-kv"><span class="lkv">IP :</span> {{ block.ip }}</div>
+          <div class="telemetry-kv"><span class="lkv">User-Agent :</span> {{ block.ua }}</div>
+          <div class="telemetry-kv"><span class="lkv">Temps total :</span> {{ block.total_time_fmt }}</div>
+          <div class="telemetry-kv"><span class="lkv">Profil :</span> <span class="profil">{{ block.classification }}</span></div>
+          <div class="telemetry-mods"><span class="lkv">Modules visités :</span> {% if block.modules %}{{ block.modules | join(', ') }}{% else %}—{% endif %}</div>
+          {% for ev in block.events %}
+          <div class="telemetry-line">
+            <span class="t">[{{ ev.time_local }}]</span> <span class="p">→ {{ ev.path }}</span> <span class="d">({{ ev.duration_fmt }})</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty" style="padding:0">Aucune télémétrie de session</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Dernières visites</h2>
+    <div class="table-wrap">
+      {% if latest_visits %}
+      <table>
+        <thead><tr><th>IP</th><th>Pays</th><th>Ville</th><th>Chemin</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for r in latest_visits %}
+          <tr>
+            <td style="font-size:0.8rem">{{ r.ip }}</td>
+            <td>{{ r.country }}</td>
+            <td>{{ r.city }}</td>
+            <td>{{ r.path }}</td>
+            <td style="font-size:0.8rem;color:var(--muted)">{{ r.visited_at }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
+    </div>
+  </section>
+
+  <footer>
+    <a href="/portail">← Portail</a>
+  </footer>
+</div>
+</body>
+</html>

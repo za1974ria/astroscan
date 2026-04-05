@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroScan-Chohra - Météo spatiale (live)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0a0504;
+  --panel: rgba(18, 8, 4, 0.94);
+  --orange: #ff8c00;
+  --red: #ff2d2d;
+  --yellow: #ffd000;
+  --text: #f0e6dc;
+  --muted: #9a7a68;
+  --cyan: #00e5ff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; background: var(--bg);
+  background-image: radial-gradient(ellipse 100% 80% at 50% -30%, rgba(255,100,30,0.12), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 50%, rgba(255,200,0,0.05), transparent 50%);
+  color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px;
+}
+header {
+  padding: 16px 20px 12px; text-align: center; border-bottom: 1px solid rgba(255,140,0,0.25);
+  position: relative;
+}
+header h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.2em; color: var(--orange); text-shadow: 0 0 24px rgba(255,100,0,0.35); }
+.badge-live {
+  display: inline-block; margin-top: 10px; padding: 4px 14px; border-radius: 4px;
+  background: linear-gradient(90deg, var(--orange), var(--red)); color: #fff; font-size: 10px; font-weight: 800;
+  letter-spacing: 0.15em; animation: blink 1.2s ease-in-out infinite;
+}
+.badge-alerte {
+  display: none; margin-left: 10px; padding: 4px 12px; border-radius: 4px; background: var(--red);
+  color: #fff; font-size: 10px; font-weight: 800; animation: blink 0.9s ease-in-out infinite;
+}
+.badge-alerte.show { display: inline-block; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.65} }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 16px 14px 40px; }
+.grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 900px) { .grid { grid-template-columns: 1.1fr 1fr; } }
+.card {
+  background: var(--panel); border: 1px solid rgba(255,140,0,0.2); border-radius: 14px; padding: 16px 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+.card h2 { margin: 0 0 12px; font-size: 0.75rem; letter-spacing: 0.14em; color: var(--yellow); }
+.sdo-wrap { text-align: center; }
+.sdo-wrap img { max-width: 100%; height: auto; border-radius: 10px; border: 1px solid rgba(255,140,0,0.35); }
+.sdo-meta { font-size: 11px; color: var(--muted); margin-top: 8px; }
+.kp-box { margin-top: 8px; }
+.kp-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+.kp-track {
+  height: 22px; border-radius: 11px; background: #1a1512; border: 1px solid rgba(255,140,0,0.3);
+  overflow: hidden; position: relative;
+}
+.kp-fill {
+  height: 100%; border-radius: 11px; transition: width 0.6s ease, background 0.4s;
+  min-width: 0; max-width: 100%;
+}
+.kp-fill.calm { background: linear-gradient(90deg, #2d6a2d, #4caf50); }
+.kp-fill.warn { background: linear-gradient(90deg, #8a7a00, var(--yellow)); }
+.kp-fill.high { background: linear-gradient(90deg, #c45c00, var(--orange)); }
+.kp-fill.danger { background: linear-gradient(90deg, #a00, var(--red)); }
+.metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 14px; }
+.metric {
+  background: rgba(255,100,0,0.06); border-radius: 10px; padding: 10px 12px; border: 1px solid rgba(255,140,0,0.15);
+}
+.metric .k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.metric .v { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-top: 4px; }
+.flare-counters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.fc { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+.fc.a { background: rgba(100,180,255,0.15); color: #9cf; }
+.fc.b { background: rgba(100,200,150,0.15); color: #8fa; }
+.fc.c { background: rgba(255,220,100,0.15); color: var(--yellow); }
+.fc.m { background: rgba(255,140,0,0.2); color: var(--orange); }
+.fc.x { background: rgba(255,40,40,0.25); color: #ff6b6b; }
+.alerts-list { max-height: 280px; overflow-y: auto; }
+.alert-item {
+  border-left: 3px solid var(--red); padding: 8px 10px; margin-bottom: 10px; background: rgba(255,30,0,0.06);
+  border-radius: 0 8px 8px 0; font-size: 12px; line-height: 1.45;
+}
+.alert-item .pid { font-size: 10px; color: var(--orange); }
+.timeline { max-height: 220px; overflow-y: auto; }
+.timeline li { margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+.timeline .cls { color: var(--orange); font-weight: 700; }
+.btn-push {
+  margin-top: 12px; width: 100%; padding: 12px; border: none; border-radius: 10px; cursor: pointer;
+  background: linear-gradient(135deg, #cc5500, var(--red)); color: #fff; font-weight: 800;
+  letter-spacing: 0.06em; font-size: 11px;
+}
+.btn-push:disabled { opacity: 0.45; cursor: not-allowed; }
+.err { color: #ff6b6b; font-size: 12px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ LIVE MÉTÉO SPATIALE</h1>
+  <div>
+    <span class="badge-live">DIRECT NOAA / GOES</span>
+    <span class="badge-alerte" id="badge-alerte">ALERTE M/X</span>
+  </div>
+</header>
+<div class="wrap">
+  <div class="grid">
+    <div class="card">
+      <h2>Soleil — SDO AIA 304 Å</h2>
+      <div class="sdo-wrap">
+        <img id="sdo-img" src="" alt="Soleil SDO 304" width="512" height="512">
+        <div class="sdo-meta" id="sdo-meta">—</div>
+      </div>
+      <div class="kp-box">
+        <div class="kp-label"><span>Index Kp (planétaire)</span><span id="kp-val">—</span></div>
+        <div class="kp-track"><div class="kp-fill calm" id="kp-fill" style="width:0%"></div></div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="k">Vent solaire</div><div class="v" id="m-wind">—</div></div>
+        <div class="metric"><div class="k">Densité protons</div><div class="v" id="m-dens">—</div></div>
+        <div class="metric"><div class="k">Bz (GSM)</div><div class="v" id="m-bz">—</div></div>
+        <div class="metric"><div class="k">Mise à jour</div><div class="v" id="m-upd" style="font-size:0.85rem">—</div></div>
+      </div>
+      <button type="button" class="btn-push" id="btn-push">🔔 Activer les alertes push (éruptions M/X)</button>
+      <div class="err" id="push-msg" style="display:none"></div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h2>Éruptions solaires — 24 h (classes)</h2>
+        <div class="flare-counters" id="flare-counters">—</div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <h2>Alertes NOAA actives</h2>
+        <div class="alerts-list" id="alerts-list">Chargement…</div>
+      </div>
+      <div class="card">
+        <h2>Historique 7 jours — éruptions / jour</h2>
+        <canvas id="chart7" height="200"></canvas>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>Timeline — événements M / X récents</h2>
+        <ul class="timeline" id="timeline"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var chart7 = null;
+
+  function kpClass(kp) {
+    if (kp <= 3) return 'calm';
+    if (kp <= 5) return 'warn';
+    if (kp <= 7) return 'high';
+    return 'danger';
+  }
+
+  function renderFlareCounts(c) {
+    if (!c) return;
+    var el = document.getElementById('flare-counters');
+    el.innerHTML = ['A','B','C','M','X'].map(function (L) {
+      return '<span class="fc ' + L.toLowerCase() + '">' + L + ' : ' + (c[L] || 0) + '</span>';
+    }).join('');
+  }
+
+  function renderAlerts(list) {
+    var el = document.getElementById('alerts-list');
+    if (!list || !list.length) { el.textContent = 'Aucune alerte récente listée.'; return; }
+    el.innerHTML = list.map(function (a) {
+      return '<div class="alert-item"><div class="pid">' + (a.product_id || '') + ' · ' + (a.issued || '') + '</div>' +
+        (a.message || '').replace(/</g,'&lt;') + '</div>';
+    }).join('');
+  }
+
+  function renderTimeline(items) {
+    var el = document.getElementById('timeline');
+    if (!items || !items.length) { el.innerHTML = '<li>Aucun pic M/X récent dans la liste.</li>'; return; }
+    el.innerHTML = items.map(function (x) {
+      return '<li><span class="cls">' + (x.class || '') + '</span> — ' + (x.time || '') + '</li>';
+    }).join('');
+  }
+
+  function updateChart(labels, values) {
+    var ctx = document.getElementById('chart7');
+    if (!ctx) return;
+    if (chart7) chart7.destroy();
+    if (!labels || !labels.length) {
+      labels = ['—'];
+      values = [0];
+    }
+    chart7 = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Éruptions (toutes classes)',
+          data: values,
+          backgroundColor: 'rgba(255,140,0,0.55)',
+          borderColor: 'rgba(255,80,0,0.9)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#c5a990' } } },
+        scales: {
+          x: { ticks: { color: '#9a7a68', maxRotation: 45 }, grid: { color: 'rgba(255,140,0,0.08)' } },
+          y: { ticks: { color: '#9a7a68' }, grid: { color: 'rgba(255,140,0,0.08)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  async function loadSolarImage() {
+    try {
+      var j = await fetch('/api/solar/image').then(function (r) { return r.json(); });
+      var u = j.url || '';
+      var bust = '&t=' + Date.now();
+      document.getElementById('sdo-img').src = u + (u.indexOf('?') >= 0 ? bust : '?' + bust.slice(2));
+      document.getElementById('sdo-meta').textContent = (j.last_modified ? 'NASA SDO · ' + j.last_modified : u);
+    } catch (e) {}
+  }
+
+  async function loadMeteo() {
+    try {
+      var d = await fetch('/api/meteo-spatiale').then(function (r) { return r.json(); });
+      var kp = parseFloat(d.kp_index);
+      if (isNaN(kp)) kp = 0;
+      var pct = Math.min(100, (kp / 9) * 100);
+      document.getElementById('kp-val').textContent = kp.toFixed(1) + ' / 9';
+      var fill = document.getElementById('kp-fill');
+      fill.style.width = pct + '%';
+      fill.className = 'kp-fill ' + kpClass(kp);
+      document.getElementById('m-wind').textContent = (d.solar_wind_speed_kms != null)
+        ? d.solar_wind_speed_kms + ' km/s' : '—';
+      document.getElementById('m-dens').textContent = (d.solar_wind_density_cm3 != null)
+        ? d.solar_wind_density_cm3 + ' p/cm³' : '—';
+      var bz = d.bz_gsm_nt;
+      document.getElementById('m-bz').textContent = (bz != null)
+        ? bz + ' nT (' + (d.bz_interpretation || '') + ')' : '—';
+      document.getElementById('m-upd').textContent = d.mise_a_jour_utc || '—';
+      renderFlareCounts(d.flare_counts_24h);
+      renderAlerts(d.alerts_active);
+      updateChart(d.flare_chart_7d_labels || [], d.flare_chart_7d_counts || []);
+      renderTimeline(d.flare_timeline_mx);
+      var mx = (d.alert_level_mx || 0) > 0;
+      document.getElementById('badge-alerte').classList.toggle('show', mx);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var rawData = atob(base64);
+    var outputArray = new Uint8Array(rawData.length);
+    for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  }
+
+  document.getElementById('btn-push').addEventListener('click', async function () {
+    var btn = this;
+    var msg = document.getElementById('push-msg');
+    msg.style.display = 'none';
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      msg.textContent = 'Push non supporté par ce navigateur.'; msg.style.display = 'block'; return;
+    }
+    try {
+      var perm = await Notification.requestPermission();
+      if (perm !== 'granted') { msg.textContent = 'Permission refusée.'; msg.style.display = 'block'; return; }
+      await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      var reg = await navigator.serviceWorker.ready;
+      var jr = await fetch('/api/push/vapid-public-key').then(function (r) { return r.json(); });
+      if (!jr.publicKey) {
+        msg.textContent = 'Clé VAPID absente sur le serveur (.env VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY).';
+        msg.style.display = 'block'; return;
+      }
+      var sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(jr.publicKey)
+      });
+      var res = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sub.toJSON())
+      });
+      var out = await res.json();
+      if (out.ok) { msg.style.color = '#8fa'; msg.textContent = 'Alertes activées.'; }
+      else { msg.textContent = out.error || 'Erreur'; }
+      msg.style.display = 'block';
+    } catch (e) {
+      msg.textContent = String(e.message || e);
+      msg.style.display = 'block';
+    }
+  });
+
+  loadSolarImage();
+  setInterval(loadSolarImage, 300000);
+  loadMeteo();
+  setInterval(loadMeteo, 45000);
+})();
+</script>
+</body>
+</html>

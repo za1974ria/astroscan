@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>AstroScan-Chohra - Guide stellaire</title>
+<link rel="icon" href="/static/favicon.ico?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #010408;
+  --bg: #000a14;
+  --cyan: #00d4ff;
+  --green: #00ff88;
+  --gold: #e6c200;
+  --text: #7a9ab0;
+  --bright: #d0e8f0;
+  --border: rgba(0, 212, 255, 0.25);
+  --font: 'Orbitron', monospace;
+  --mono: 'Share Tech Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 50% 0%, #0a1a28 0%, var(--bg) 45%, var(--void) 100%);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+.wrap { max-width: 900px; margin: 0 auto; padding: 20px 16px 48px; }
+
+header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+h1 {
+  font-family: var(--font);
+  font-size: clamp(0.9rem, 4vw, 1.2rem);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: var(--cyan);
+  text-shadow: 0 0 24px rgba(0, 212, 255, 0.35);
+  line-height: 1.4;
+}
+.sub {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--text);
+  opacity: 0.9;
+}
+
+.sky-panel {
+  margin-bottom: 22px;
+  padding: 12px;
+  background: rgba(3, 16, 32, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.sky-panel h2 {
+  font-family: var(--font);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--green);
+  margin-bottom: 10px;
+  text-align: center;
+}
+#sky-canvas {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  height: 220px;
+  margin: 0 auto;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #020814 0%, #050d18 55%, #0a1520 100%);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+}
+
+.form-card {
+  padding: 18px;
+  background: rgba(3, 16, 32, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.row { margin-bottom: 14px; }
+label {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.15em;
+  color: var(--cyan);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+input[type="text"], input[type="date"], input[type="search"] {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--bright);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+input:focus {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
+}
+
+.suggest-box {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: none;
+  background: rgba(0, 8, 16, 0.98);
+}
+.suggest-box.open { display: block; }
+.suggest-item {
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.08);
+  color: var(--bright);
+}
+.suggest-item:hover { background: rgba(0, 212, 255, 0.08); color: var(--cyan); }
+
+.btn-gen {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px 18px;
+  font-family: var(--font);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #001008;
+  background: linear-gradient(90deg, var(--cyan), var(--green));
+  background-size: 200% 100%;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: transform 0.15s, box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-gen:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(0, 255, 136, 0.25);
+}
+.btn-gen:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-gen.generating {
+  animation: btn-shimmer 1.2s ease-in-out infinite, btn-pulse 0.9s ease-in-out infinite;
+}
+@keyframes btn-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes btn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.35); }
+  50% { box-shadow: 0 0 24px 4px rgba(0, 255, 136, 0.25); }
+}
+
+.loader {
+  display: none;
+  text-align: center;
+  padding: 28px;
+  color: var(--cyan);
+}
+.loader.on { display: block; }
+.loader .ring {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 14px;
+  border: 3px solid rgba(0, 212, 255, 0.15);
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.output {
+  display: none;
+  padding: 20px;
+  background: rgba(3, 16, 32, 0.88);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 12px;
+  margin-top: 16px;
+}
+.output.on { display: block; }
+.output h2 {
+  font-family: var(--font);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  color: var(--green);
+  margin: 18px 0 10px;
+  border-left: 3px solid var(--cyan);
+  padding-left: 10px;
+}
+.output h2:first-child { margin-top: 0; }
+.output p {
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--bright);
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+}
+#guide-body.typewriting {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--bright);
+  white-space: pre-wrap;
+  min-height: 120px;
+}
+#guide-body .tw-cursor {
+  display: inline-block;
+  width: 0.5em;
+  margin-left: 2px;
+  animation: tw-blink 0.7s step-end infinite;
+  color: var(--cyan);
+}
+@keyframes tw-blink { 50% { opacity: 0; } }
+
+.ctx-mini {
+  margin-top: 16px;
+  padding: 12px;
+  font-size: 0.65rem;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  border: 1px dashed var(--border);
+}
+.error-box {
+  display: none;
+  padding: 14px;
+  color: #ff6b8a;
+  background: rgba(255, 51, 102, 0.08);
+  border: 1px solid rgba(255, 51, 102, 0.35);
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 0.78rem;
+}
+.error-box.on { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🌟 GUIDE TOURISTIQUE STELLAIRE</h1>
+    <p class="sub">ORBITAL-CHOHRA · Ce soir, sous votre ciel — propulsé par Claude</p>
+  </header>
+
+  <div class="sky-panel">
+    <h2>CARTE DU CIEL (APERÇU)</h2>
+    <canvas id="sky-canvas" width="520" height="220" aria-label="Carte du ciel simplifiée"></canvas>
+  </div>
+
+  <div class="form-card">
+    <div class="row">
+      <label for="city-input">Ville ou lieu</label>
+      <input type="search" id="city-input" autocomplete="off" placeholder="Ex. Paris, Tlemcen, Montréal…" />
+      <div class="suggest-box" id="suggest-box" role="listbox"></div>
+    </div>
+    <div class="row">
+      <label for="date-input">Date d'observation</label>
+      <input type="date" id="date-input" />
+    </div>
+    <button type="button" class="btn-gen" id="btn-gen">GÉNÉRER MON GUIDE CE SOIR</button>
+    <div class="error-box" id="error-box"></div>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="ring"></div>
+    <div>Alignement des éphémérides, météo et modèle IA…</div>
+  </div>
+
+  <div class="output" id="output">
+    <div id="guide-body"></div>
+    <div class="ctx-mini" id="ctx-mini"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var canvas = document.getElementById('sky-canvas');
+  var ctx = canvas.getContext('2d');
+  var cityInput = document.getElementById('city-input');
+  var suggestBox = document.getElementById('suggest-box');
+  var dateInput = document.getElementById('date-input');
+  var btn = document.getElementById('btn-gen');
+  var loader = document.getElementById('loader');
+  var output = document.getElementById('output');
+  var guideBody = document.getElementById('guide-body');
+  var ctxMini = document.getElementById('ctx-mini');
+  var errBox = document.getElementById('error-box');
+
+  /** Si l'utilisateur clique une suggestion : évite un 2e géocodage si le texte n'a pas changé. */
+  var lastPick = null;
+  var suggestTimer = null;
+
+  function todayISO() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+  dateInput.value = todayISO();
+
+  function drawSky(moonPct) {
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    var g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#030a14');
+    g.addColorStop(0.55, '#061222');
+    g.addColorStop(1, '#0c1828');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    for (var i = 0; i < 80; i++) {
+      var sx = Math.random() * w, sy = Math.random() * h * 0.72;
+      var op = Math.random() * 0.85;
+      ctx.fillStyle = 'rgba(200,230,255,' + op + ')';
+      ctx.beginPath();
+      ctx.arc(sx, sy, Math.random() > 0.92 ? 1.4 : 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(0,212,255,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, h * 0.78);
+    ctx.lineTo(w, h * 0.78);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(0,255,136,0.12)';
+    ctx.fillRect(0, h * 0.78, w, h * 0.22);
+    ctx.fillStyle = '#00d4ff';
+    ctx.font = '10px Share Tech Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('N', w / 2, 14);
+    ctx.fillText('E', w - 12, h * 0.4);
+    ctx.fillText('O', 12, h * 0.4);
+    ctx.fillText('S', w / 2, h * 0.72);
+    var cx = w * 0.72, cy = h * 0.38, r = 22;
+    var pct = typeof moonPct === 'number' ? moonPct : 35;
+    ctx.fillStyle = '#223344';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ddeeff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2);
+    ctx.fill();
+    var lit = Math.max(0, Math.min(100, pct)) / 100;
+    var sweep = Math.PI * (1 - lit);
+    ctx.fillStyle = '#8899aa';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI / 2 - sweep, Math.PI / 2 + sweep);
+    ctx.lineTo(cx, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,212,255,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  drawSky(35);
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function renderGuideMarkdown(text) {
+    if (!text) return '';
+    var lines = text.split('\n');
+    var html = '';
+    var buf = [];
+    function flushP() {
+      if (buf.length) {
+        html += '<p>' + esc(buf.join('\n')).replace(/\n/g, '<br/>') + '</p>';
+        buf = [];
+      }
+    }
+    lines.forEach(function(line) {
+      if (/^##\s+/.test(line)) {
+        flushP();
+        html += '<h2>' + esc(line.replace(/^##\s+/, '')) + '</h2>';
+      } else if (line.trim() === '') {
+        flushP();
+      } else {
+        buf.push(line);
+      }
+    });
+    flushP();
+    return html || '<p>' + esc(text) + '</p>';
+  }
+
+  function typewriterThenFormat(fullText, onDone) {
+    guideBody.className = 'typewriting';
+    guideBody.innerHTML = '';
+    var i = 0;
+    var step = Math.max(1, Math.floor(fullText.length / 600));
+    function tick() {
+      if (i >= fullText.length) {
+        guideBody.className = '';
+        guideBody.innerHTML = renderGuideMarkdown(fullText);
+        if (onDone) onDone();
+        return;
+      }
+      i = Math.min(fullText.length, i + step);
+      var chunk = fullText.slice(0, i);
+      guideBody.innerHTML = '';
+      guideBody.appendChild(document.createTextNode(chunk));
+      var cur = document.createElement('span');
+      cur.className = 'tw-cursor';
+      cur.textContent = '▌';
+      guideBody.appendChild(cur);
+      setTimeout(tick, 10);
+    }
+    tick();
+  }
+
+  function fetchSuggest(q) {
+    fetch('/api/guide-geocode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: q })
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        suggestBox.innerHTML = '';
+        if (!d.results || !d.results.length) {
+          suggestBox.classList.remove('open');
+          return;
+        }
+        d.results.forEach(function(item) {
+          var div = document.createElement('div');
+          div.className = 'suggest-item';
+          div.textContent = item.label;
+          div.addEventListener('click', function() {
+            var name = item.name || item.label.split(',')[0];
+            cityInput.value = name;
+            lastPick = {
+              text: cityInput.value.trim(),
+              lat: item.lat,
+              lon: item.lon,
+              name: name
+            };
+            suggestBox.classList.remove('open');
+          });
+          suggestBox.appendChild(div);
+        });
+        suggestBox.classList.add('open');
+      })
+      .catch(function() { suggestBox.classList.remove('open'); });
+  }
+
+  cityInput.addEventListener('input', function() {
+    clearTimeout(suggestTimer);
+    lastPick = null;
+    var q = cityInput.value.trim();
+    if (q.length < 2) {
+      suggestBox.classList.remove('open');
+      return;
+    }
+    suggestTimer = setTimeout(function() { fetchSuggest(q); }, 280);
+  });
+
+  cityInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      runGenerate();
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!suggestBox.contains(e.target) && e.target !== cityInput) suggestBox.classList.remove('open');
+  });
+
+  function submitGuide(lat, lon, displayVille) {
+    fetch('/api/guide-stellaire', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ville: displayVille,
+        latitude: lat,
+        longitude: lon,
+        date: dateInput.value || todayISO()
+      })
+    })
+      .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, j: j }; }); })
+      .then(function(res) {
+        loader.classList.remove('on');
+        btn.disabled = false;
+        btn.classList.remove('generating');
+        if (!res.j.ok) {
+          errBox.textContent = res.j.error || 'Erreur serveur';
+          errBox.classList.add('on');
+          if (res.j.context && res.j.context.lune) drawSky(res.j.context.lune.illumination_pct || 35);
+          return;
+        }
+        var c = res.j.context || {};
+        var moon = (c.lune && c.lune.illumination_pct != null) ? c.lune.illumination_pct : 35;
+        drawSky(moon);
+        var plist = (c.planetes_catalogue_v1 && c.planetes_catalogue_v1.planets) ? c.planetes_catalogue_v1.planets : [];
+        var pl = plist.slice(0, 5).map(function(p) { return p.name; }).join(', ');
+        ctxMini.innerHTML =
+          '<strong>Données injectées</strong><br/>' +
+          esc(c.ville || '') + ' · ' + esc(c.date || '') + '<br/>' +
+          'Lune (/api/moon) : ' + esc((c.lune && c.lune.phase) || '?') + ' (' + (c.lune && c.lune.illumination_pct != null ? c.lune.illumination_pct + '%' : '?') + ')<br/>' +
+          'Planètes (catalogue /api/v1/planets) : ' + (pl || '—') + '<br/>' +
+          'Météo (wttr.in) : ' + esc(c.meteo_resume || '—');
+        output.classList.add('on');
+        typewriterThenFormat(res.j.guide.text || '', null);
+      })
+      .catch(function(e) {
+        loader.classList.remove('on');
+        btn.disabled = false;
+        btn.classList.remove('generating');
+        errBox.textContent = 'Réseau : ' + e.message;
+        errBox.classList.add('on');
+      });
+  }
+
+  function runGenerate() {
+    errBox.classList.remove('on');
+    errBox.textContent = '';
+    var ville = cityInput.value.trim();
+    if (!ville.length) {
+      errBox.textContent = 'Indiquez une ville ou un lieu.';
+      errBox.classList.add('on');
+      return;
+    }
+    output.classList.remove('on');
+    btn.disabled = true;
+    btn.classList.add('generating');
+    loader.classList.add('on');
+
+    if (lastPick && lastPick.text === ville) {
+      submitGuide(lastPick.lat, lastPick.lon, lastPick.name || ville);
+      return;
+    }
+
+    fetch('/api/guide-geocode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: ville })
+    })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d.results || !d.results.length) {
+          loader.classList.remove('on');
+          btn.disabled = false;
+          btn.classList.remove('generating');
+          errBox.textContent = 'Impossible de géocoder « ' + ville + ' ». Réessayez ou précisez (ex. Tlemcen, Algérie).';
+          errBox.classList.add('on');
+          return;
+        }
+        var r0 = d.results[0];
+        submitGuide(r0.lat, r0.lon, r0.name || ville);
+      })
+      .catch(function(e) {
+        loader.classList.remove('on');
+        btn.disabled = false;
+        btn.classList.remove('generating');
+        errBox.textContent = 'Réseau (géocodage) : ' + e.message;
+        errBox.classList.add('on');
+      });
+  }
+
+  btn.addEventListener('click', runGenerate);
+})();
+</script>
+</body>
+</html>

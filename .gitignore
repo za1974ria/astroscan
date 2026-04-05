@@ -1,0 +1,5 @@
+data/
+data_core/
+*.json
+*.tle
+telescope_live/

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroScan-Chohra - Tableau de bord recherche</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#020810;
+    --card:#05111f;
+    --line:rgba(0,255,136,.28);
+    --txt:#c8d8e8;
+    --muted:#6f879d;
+    --green:#00ff88;
+    --cyan:#00d4ff;
+    --warn:#ff5c7a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  /* Scrollbars custom */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #020810; }
+  ::-webkit-scrollbar-thumb { background: #00d4ff; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #00ff88; }
+  * { scrollbar-width: thin; scrollbar-color: #00d4ff #020810; }
+  body{
+    background:radial-gradient(circle at 20% 10%, rgba(0,212,255,.08), transparent 35%), var(--bg);
+    color:var(--txt);
+    font-family:'Share Tech Mono', monospace;
+    min-height:100vh;
+    padding:22px;
+  }
+  .wrap{max-width:1380px;margin:0 auto}
+  .header{margin-bottom:18px}
+  .title{
+    font-family:'Orbitron', monospace;
+    letter-spacing:3px;
+    color:var(--green);
+    font-size:1.5rem;
+  }
+  .subtitle{
+    margin-top:6px;
+    color:var(--muted);
+    font-size:.8rem;
+    letter-spacing:1.5px;
+  }
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:14px;
+    margin-bottom:14px;
+  }
+  .card{
+    background:linear-gradient(180deg, rgba(0,255,136,.06), rgba(0,212,255,.03));
+    border:1px solid var(--line);
+    border-radius:11px;
+    padding:14px;
+    min-height:190px;
+  }
+  .card h2{
+    color:var(--cyan);
+    font-size:.8rem;
+    text-transform:uppercase;
+    letter-spacing:2px;
+    margin-bottom:10px;
+  }
+  .value{
+    font-family:'Orbitron', monospace;
+    font-size:2rem;
+    color:var(--green);
+    line-height:1.15;
+    margin-bottom:6px;
+  }
+  .small{font-size:.8rem;color:var(--muted)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+  .badge{
+    display:inline-flex;
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:4px 10px;
+    font-size:.75rem;
+    color:var(--green);
+    background:rgba(0,255,136,.1);
+  }
+  .btn{
+    width:100%;
+    border-radius:8px;
+    border:1px solid rgba(0,212,255,.45);
+    background:rgba(0,212,255,.12);
+    color:var(--cyan);
+    font-family:'Share Tech Mono', monospace;
+    cursor:pointer;
+    padding:9px 11px;
+    margin-top:10px;
+  }
+  .btn:hover{background:rgba(0,212,255,.2)}
+  .btn-danger{
+    border-color:rgba(255,92,122,.5);
+    background:rgba(255,92,122,.12);
+    color:#ff8ca1;
+  }
+  .actions a{
+    display:block;
+    text-decoration:none;
+    margin-top:9px;
+  }
+  .err{
+    margin-top:8px;
+    min-height:1rem;
+    color:var(--warn);
+    font-size:.74rem;
+    word-break:break-word;
+  }
+  .geo{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:11px;
+    padding:14px;
+  }
+  .geo-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+    margin:10px 0 14px;
+  }
+  .mini{
+    border:1px solid rgba(0,212,255,.24);
+    border-radius:9px;
+    background:rgba(0,212,255,.06);
+    padding:10px;
+    text-align:center;
+  }
+  .mini .n{
+    font-family:'Orbitron', monospace;
+    font-size:1.5rem;
+    color:var(--green);
+  }
+  .chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:rgba(0,255,136,.08);
+    padding:4px 10px;
+    font-size:.8rem;
+  }
+  .visitors{
+    border:1px solid rgba(0,255,136,.16);
+    border-radius:9px;
+    max-height:330px;
+    overflow:auto;
+  }
+  .visitor{
+    display:grid;
+    grid-template-columns:30px 1fr auto;
+    gap:8px;
+    padding:9px 10px;
+    border-bottom:1px solid rgba(0,255,136,.08);
+    align-items:center;
+  }
+  .visitor:last-child{border-bottom:0}
+  .level-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:64px;
+    padding:3px 8px;
+    border-radius:999px;
+    font-size:.7rem;
+    font-weight:700;
+    letter-spacing:.4px;
+    border:1px solid transparent;
+  }
+  .level-fort{
+    color:#00ff88;
+    background:rgba(0,255,136,.12);
+    border-color:rgba(0,255,136,.45);
+  }
+  .level-moyen{
+    color:#ffb347;
+    background:rgba(255,179,71,.14);
+    border-color:rgba(255,179,71,.45);
+  }
+  .level-faible{
+    color:#ff6b8a;
+    background:rgba(255,92,122,.14);
+    border-color:rgba(255,92,122,.45);
+  }
+  .owner-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    margin-left:8px;
+    padding:2px 7px;
+    border-radius:999px;
+    font-size:.66rem;
+    color:#00d4ff;
+    border:1px solid rgba(0,212,255,.55);
+    background:rgba(0,212,255,.14);
+  }
+  .visitor.owner{
+    background:rgba(0,212,255,.06);
+  }
+  .live-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border:1px solid rgba(0,255,136,.45);
+    border-radius:999px;
+    padding:3px 9px;
+    color:#00ff88;
+    background:rgba(0,255,136,.10);
+    font-size:.72rem;
+  }
+  .live-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:#00ff88;
+    box-shadow:0 0 12px rgba(0,255,136,.85);
+    animation:livePulse 1.25s ease-in-out infinite;
+  }
+  @keyframes livePulse{
+    0%,100%{transform:scale(.9);opacity:.7}
+    50%{transform:scale(1.15);opacity:1}
+  }
+  .muted{color:var(--muted);font-size:.74rem}
+  .foot{
+    margin-top:16px;
+    text-align:center;
+    font-size:.82rem;
+  }
+  .foot a{color:var(--cyan)}
+  @media (max-width:1000px){
+    .cards{grid-template-columns:1fr 1fr}
+  }
+  @media (max-width:760px){
+    body{padding:12px}
+    .cards,.geo-grid{grid-template-columns:1fr}
+  }
+</style>
+<!-- Google Analytics GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-1WNGPCCZNW');
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header class="header">
+    <h1 class="title">TABLEAU DE BORD RECHERCHE - ORBITAL-CHOHRA</h1>
+    <div class="subtitle">DIRECTEUR : ZAKARIA CHOHRA - TLEMCEN, ALGERIE</div>
+  </header>
+
+  <section class="cards">
+    <article class="card">
+      <h2>Compteur visites</h2>
+      <div class="value" id="visitsCount">-</div>
+      <div class="small">Visites depuis le dernier reset</div>
+      <button class="btn btn-danger" id="btnResetVisits">Reset compteur</button>
+      <div class="err" id="errVisits"></div>
+    </article>
+
+    <article class="card">
+      <h2>Statut systeme</h2>
+      <div class="value" id="sysMode">-</div>
+      <div class="row"><span class="small">Etat:</span><span class="badge" id="sysStatus">-</span></div>
+      <div class="row"><span class="small">Uptime:</span><span id="sysUptime">-</span></div>
+      <div class="row"><span class="small">TLE:</span><span id="sysTle">-</span></div>
+      <div class="err" id="errHealth"></div>
+    </article>
+
+    <article class="card">
+      <h2>Observations</h2>
+      <div class="value" id="obsCount">-</div>
+      <div class="small">Images archivees dans la base</div>
+      <div class="err" id="errStatus"></div>
+    </article>
+
+    <article class="card">
+      <h2>AEGIS IA</h2>
+      <div class="value" id="aegisState" style="font-size:1.35rem">-</div>
+      <div class="small" id="aegisModel">Modele: -</div>
+      <button class="btn" id="btnAegis">Tester AEGIS</button>
+      <div class="err" id="errAegis"></div>
+    </article>
+
+    <article class="card">
+      <h2>Solar Shield</h2>
+      <div class="value" id="shieldState" style="font-size:1.35rem">-</div>
+      <div class="row"><span class="small">UV index:</span><span id="shieldUv">-</span></div>
+      <div class="row"><span class="small">Raison:</span><span id="shieldReason">-</span></div>
+      <div class="err" id="errShield"></div>
+    </article>
+
+    <article class="card actions">
+      <h2>Actions rapides</h2>
+      <a href="/observatoire"><button class="btn">Observatoire</button></a>
+      <a href="/ce_soir"><button class="btn">Ce soir</button></a>
+      <a href="/dashboard"><button class="btn">Dashboard QG</button></a>
+      <a href="/portail"><button class="btn">Portail</button></a>
+      <div class="err" id="errActions"></div>
+    </article>
+  </section>
+
+  <section class="geo">
+    <h2 style="color:var(--cyan);font-size:.9rem;letter-spacing:2px;margin-bottom:4px">GEO-IP TRACKER</h2>
+    <div class="geo-grid">
+      <div class="mini"><div class="n" id="geoTotal">-</div><div class="small">Total visiteurs</div></div>
+      <div class="mini"><div class="n" id="geoToday">-</div><div class="small">Aujourd'hui</div></div>
+      <div class="mini"><div class="n" id="geoCountries">-</div><div class="small">Pays distincts</div></div>
+    </div>
+
+    <div class="small" style="margin-bottom:6px">Top pays</div>
+    <div class="chips" id="geoTopCountries"></div>
+
+    <div class="row" style="margin:10px 0 6px">
+      <div class="small">Derniers visiteurs</div>
+      <button class="btn" id="btnGeoRefresh" onclick="fetchGeoStatsAndVisitors()" style="margin:0;width:auto;padding:6px 10px">Actualiser</button>
+    </div>
+    <div class="visitors" id="geoVisitors"></div>
+    <div class="err" id="errGeo"></div>
+
+    <div class="row" style="margin:14px 0 6px">
+      <div class="small">Temps de connexion par IP (externes)</div>
+      <div class="live-pill"><span class="live-dot"></span><span id="connLiveState">EN DIRECT</span></div>
+      <label class="small" style="display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="excludeMyIpToggle">
+        Exclure mon IP
+      </label>
+    </div>
+    <div class="visitors" id="connectionTimes"></div>
+    <div class="small" id="connLastSync" style="margin-top:6px;color:var(--muted)">Dernière synchro: --</div>
+    <div class="small" id="connBreakdown" style="margin-top:4px;color:var(--muted)">Répartition: --</div>
+    <div class="err" id="errConnectionTimes"></div>
+  </section>
+
+  <div class="foot"><a href="/portail">Retour au portail</a></div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  function setError(id, error) {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = error ? ("Erreur: " + error) : "";
+  }
+
+  function formatUptime(seconds) {
+    const s = Number(seconds || 0);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return h + "h " + m + "m";
+  }
+
+  function flagHtml(code) {
+    const c = (code || "XX").toLowerCase();
+    if (c === "xx") return "<span>XX</span>";
+    return '<img src="https://flagcdn.com/24x18/' + c + '.png" width="24" height="18" style="border-radius:2px;vertical-align:middle">';
+  }
+
+  function connectionLevel(sec) {
+    const s = Number(sec || 0);
+    if (s >= 180) return { label: "FORT", cls: "level-fort" };
+    if (s >= 30) return { label: "MOYEN", cls: "level-moyen" };
+    return { label: "FAIBLE", cls: "level-faible" };
+  }
+
+  async function fetchConnectionTimes() {
+    try {
+      const startedAt = new Date();
+      const exclude = $("excludeMyIpToggle") && $("excludeMyIpToggle").checked ? 1 : 0;
+      const bust = "&_=" + Date.now();
+      const res = await fetch("/api/visitors/connection-time?exclude_my_ip=" + exclude + bust, { cache: "no-store", credentials: "same-origin" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const rows = (data.items || []).slice(0, 25);
+      $("connectionTimes").innerHTML = rows.length
+        ? rows.map((v) => {
+            const loc = (v.country || "Unknown") + ((v.city && v.city !== "Unknown") ? (" - " + v.city) : "");
+            const lvl = connectionLevel(v.total_sec);
+            const when = v.last_visit ? String(v.last_visit).slice(0, 16) : "";
+            const ownerTag = v.is_my_ip ? '<span class="owner-badge">MON IP</span>' : '';
+            return '<div class="visitor ' + (v.is_my_ip ? 'owner' : '') + '"><div>' + flagHtml(v.country_code) + '</div><div><div><strong>' + (v.ip || "-") + '</strong>' + ownerTag + ' · ' + loc + '</div><div class="muted">Sessions: ' + (v.sessions || 0) + ' · Duree: ' + (v.total_time || "0 s") + '</div></div><div><span class="level-badge ' + lvl.cls + '">' + lvl.label + '</span><div class="muted" style="margin-top:5px;text-align:right">' + when + '</div></div></div>';
+          }).join("")
+        : '<div class="visitor"><div></div><div class="muted">Aucune duree de connexion disponible.</div><div></div></div>';
+      setError("errConnectionTimes", "");
+      $("connLiveState").textContent = "EN DIRECT";
+      $("connLastSync").textContent = "Dernière synchro: " + startedAt.toLocaleTimeString("fr-FR");
+      $("connBreakdown").textContent = "Répartition: MON IP=" + Number(data.my_ip_count || 0) + " · Visiteurs externes=" + Number(data.external_ip_count || 0);
+    } catch (err) {
+      setError("errConnectionTimes", err.message || String(err));
+      $("connectionTimes").innerHTML = '<div class="visitor"><div></div><div class="muted">Echec chargement compteur temps.</div><div></div></div>';
+      $("connLiveState").textContent = "DEGRADE";
+      $("connLastSync").textContent = "Dernière synchro: échec";
+      $("connBreakdown").textContent = "Répartition: indisponible";
+    }
+  }
+
+  async function fetchVisits() {
+    try {
+      const res = await fetch("/api/visits", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      $("visitsCount").textContent = Number(data.count || 0).toLocaleString("fr-FR");
+      setError("errVisits", "");
+    } catch (err) {
+      $("visitsCount").textContent = "-";
+      setError("errVisits", err.message || String(err));
+    }
+  }
+
+  async function fetchHealth() {
+    try {
+      const res = await fetch("/health", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      $("sysMode").textContent = data.mode || "-";
+      $("sysStatus").textContent = String(data.status || "-").toUpperCase();
+      $("sysUptime").textContent = formatUptime(data.uptime_sec || 0);
+      $("sysTle").textContent = (data.tle_count || 0) + " (" + (data.tle_status || "?") + ")";
+      setError("errHealth", "");
+    } catch (err) {
+      $("sysMode").textContent = "-";
+      $("sysStatus").textContent = "-";
+      $("sysUptime").textContent = "-";
+      $("sysTle").textContent = "-";
+      setError("errHealth", err.message || String(err));
+    }
+  }
+
+  async function fetchStatus() {
+    try {
+      const res = await fetch("/status", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const obs = Number(data.image_count ?? data.images ?? data.observations ?? 0);
+      $("obsCount").textContent = obs.toLocaleString("fr-FR");
+      setError("errStatus", "");
+    } catch (err) {
+      $("obsCount").textContent = "-";
+      setError("errStatus", err.message || String(err));
+    }
+  }
+
+  async function fetchShield() {
+    try {
+      const res = await fetch("/api/shield", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      $("shieldState").textContent = String(data.status || "-").toUpperCase();
+      $("shieldUv").textContent = data.uv_index ?? "-";
+      $("shieldReason").textContent = data.reason || "-";
+      setError("errShield", "");
+    } catch (err) {
+      $("shieldState").textContent = "-";
+      $("shieldUv").textContent = "-";
+      $("shieldReason").textContent = "-";
+      setError("errShield", err.message || String(err));
+    }
+  }
+
+  async function fetchGeoStatsAndVisitors() {
+    try {
+      const statsRes = await fetch("/api/visitors/stats", { cache: "no-store" });
+      if (!statsRes.ok) throw new Error("stats HTTP " + statsRes.status);
+      const stats = await statsRes.json();
+      $("geoTotal").textContent = Number(stats.total || 0).toLocaleString("fr-FR");
+      $("geoToday").textContent = Number(stats.today || 0).toLocaleString("fr-FR");
+      $("geoCountries").textContent = (stats.by_country || []).length;
+
+      const chips = $("geoTopCountries");
+      const top = (stats.by_country || []).slice(0, 12);
+      chips.innerHTML = top.length
+        ? top.map((c) => '<span class="chip">' + flagHtml(c.code) + "<span>" + (c.country || "Unknown") + "</span><strong>" + (c.count || 0) + "</strong></span>").join("")
+        : '<span class="muted">Aucune donnee pays pour le moment.</span>';
+
+      const geoRes = await fetch("/api/visitors/geo", { cache: "no-store" });
+      if (!geoRes.ok) throw new Error("geo HTTP " + geoRes.status);
+      const geo = await geoRes.json();
+      const rows = (geo.visitors || []).slice(0, 25);
+      $("geoVisitors").innerHTML = rows.length
+        ? rows.map((v) => {
+            const country = v.country && v.country !== "Unknown" ? v.country : "Unknown";
+            const city = v.city && v.city !== "Unknown" ? (" - " + v.city) : "";
+            const loc = country !== "Unknown" ? (country + city) : (v.ip || "IP inconnue");
+            const when = v.visited_at ? String(v.visited_at).slice(0, 16) : "";
+            return '<div class="visitor"><div>' + flagHtml(v.country_code) + '</div><div><div>' + loc + '</div><div class="muted">' + (v.path || "/") + '</div></div><div class="muted">' + when + "</div></div>";
+          }).join("")
+        : '<div class="visitor"><div></div><div class="muted">Aucun visiteur recemment.</div><div></div></div>';
+      setError("errGeo", "");
+    } catch (err) {
+      setError("errGeo", err.message || String(err));
+      $("geoTotal").textContent = "-";
+      $("geoToday").textContent = "-";
+      $("geoCountries").textContent = "-";
+    }
+  }
+
+  async function testAegis() {
+    try {
+      const res = await fetch("/api/aegis/status", { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const configured = !!(data.gemini_configured || data.groq_configured);
+      const isOk = !!data.ok && configured;
+      $("aegisState").textContent = isOk ? "ACTIF" : "ERREUR";
+      $("aegisModel").textContent = "Modele: " + (isOk ? "Gemini/Groq" : "inconnu");
+      setError("errAegis", isOk ? "" : "Configuration IA absente ou indisponible.");
+    } catch (err) {
+      $("aegisState").textContent = "ERREUR";
+      $("aegisModel").textContent = "Modele: -";
+      setError("errAegis", err.message || String(err));
+    }
+  }
+
+  async function resetVisits() {
+    if (!confirm("Confirmer le reset du compteur de visites ?")) return;
+    try {
+      const res = await fetch("/api/visits/reset", { method: "POST" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Reset refuse.");
+      $("visitsCount").textContent = "0";
+      setError("errVisits", "");
+    } catch (err) {
+      setError("errVisits", err.message || String(err));
+    }
+  }
+
+  async function loadAll() {
+    await Promise.all([
+      fetchVisits(),
+      fetchHealth(),
+      fetchStatus(),
+      fetchShield(),
+      fetchGeoStatsAndVisitors(),
+      fetchConnectionTimes(),
+      testAegis(),
+    ]);
+  }
+
+  $("btnResetVisits").addEventListener("click", resetVisits);
+  $("btnAegis").addEventListener("click", testAegis);
+  $("btnGeoRefresh").addEventListener("click", fetchGeoStatsAndVisitors);
+  $("excludeMyIpToggle").addEventListener("change", fetchConnectionTimes);
+
+  // Iframe « Portail » : les timers sont ralentis en arrière-plan — rafraîchir à la visibilité et au message parent.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") fetchConnectionTimes();
+  });
+  window.addEventListener("focus", function () { fetchConnectionTimes(); });
+  window.addEventListener("message", function (ev) {
+    try {
+      if (ev && ev.data && ev.data.type === "astroscan-dashboard-refresh") fetchConnectionTimes();
+    } catch (e) {}
+  });
+
+  loadAll();
+  setInterval(loadAll, 30000);
+  setInterval(fetchConnectionTimes, 15000);
+</script>
+</body>
+</html>

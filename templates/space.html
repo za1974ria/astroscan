@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AstroScan-Chohra - Intelligence spatiale · ORBITAL-CHOHRA</title>
+  <link rel="icon" href="/static/favicon.ico?v=2">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --void: #010408;
+      --panel: rgba(3,10,20,0.97);
+      --border: rgba(0,180,255,0.13);
+      --border-bright: rgba(0,212,255,0.4);
+      --cyan: #00d4ff;
+      --amber: #ff8c00;
+      --green: #00ff88;
+      --red: #ff3355;
+      --text: #7a9ab0;
+      --text-bright: #d0e8f0;
+      --text-dim: #3a5868;
+      --font: 'Orbitron', monospace;
+      --mono: 'Share Tech Mono', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      min-height: 100vh;
+      background: var(--void);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+    }
+    .page-wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px 20px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 {
+      font-family: var(--font);
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: var(--cyan);
+      text-shadow: 0 0 20px rgba(0,212,255,0.4);
+    }
+    .header-sub {
+      font-size: 0.6rem;
+      letter-spacing: 0.25em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(0,212,255,0.06);
+      border: 1px solid var(--border);
+      color: var(--cyan);
+      text-decoration: none;
+      font-family: var(--font);
+      font-size: 0.55rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      clip-path: polygon(4px 0%, 100% 0%, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0% 100%, 0% 4px);
+      transition: all 0.2s;
+    }
+    .back-link:hover {
+      background: rgba(0,212,255,0.12);
+      border-color: var(--border-bright);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      clip-path: polygon(6px 0%, 100% 0%, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0% 100%, 0% 6px);
+      padding: 18px;
+      min-height: 180px;
+      transition: all 0.25s;
+    }
+    .card:hover {
+      border-color: var(--border-bright);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+    }
+    .card-title {
+      font-family: var(--font);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(0,212,255,0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title .icon { font-size: 1rem; opacity: 0.9; }
+    .card-body {
+      font-size: 0.75rem;
+      line-height: 1.6;
+      color: var(--text);
+      letter-spacing: 0.04em;
+    }
+    .card-body .val { color: var(--cyan); font-family: var(--font); }
+    .card-body .ok { color: var(--green); }
+    .card-body .warn { color: var(--amber); }
+    .card-body .err { color: var(--red); }
+    .card-loading {
+      color: var(--text-dim);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+    }
+    .card-error {
+      color: var(--red);
+      font-size: 0.65rem;
+    }
+    .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .row:last-child { margin-bottom: 0; }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .dsn-dish { margin-bottom: 10px; padding: 8px; background: rgba(0,20,40,0.5); border-left: 2px solid var(--cyan); font-size: 0.65rem; }
+    .dsn-dish .name { color: var(--cyan); font-family: var(--font); }
+    @media (max-width: 700px) {
+      .grid { grid-template-columns: 1fr; }
+      .header h1 { font-size: 1.1rem; letter-spacing: 0.1em; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <header class="header">
+      <div>
+        <h1>INTELLIGENCE SPATIALE</h1>
+        <p class="header-sub">ORBITAL-CHOHRA · Dashboard temps réel</p>
+      </div>
+      <a href="/portail" class="back-link">← Portail</a>
+    </header>
+
+    <div class="grid">
+      <!-- 1. Active satellites -->
+      <div class="card" id="card-satellites">
+        <div class="card-title"><span class="icon">🛰</span> Satellites actifs</div>
+        <div class="card-body" id="body-satellites">
+          <span class="card-loading">Chargement…</span>
+        </div>
+      </div>
+
+      <!-- 2. ISS live -->
+      <div class="card" id="card-iss">
+        <div class="card-title"><span class="icon">🌍</span> ISS · Position en direct</div>
+        <div class="card-body" id="body-iss">
+          <span class="card-loading">Chargement…</span>
+        </div>
+      </div>
+
+      <!-- 3. Voyager / New Horizons -->
+      <div class="card" id="card-voyager">
+        <div class="card-title"><span class="icon">🪐</span> Voyager · New Horizons</div>
+        <div class="card-body" id="body-voyager">
+          <span class="card-loading">Chargement…</span>
+        </div>
+      </div>
+
+      <!-- 4. Solar activity -->
+      <div class="card" id="card-solar">
+        <div class="card-title"><span class="icon">☀️</span> Activité solaire</div>
+        <div class="card-body" id="body-solar">
+          <span class="card-loading">Chargement…</span>
+        </div>
+      </div>
+
+      <!-- 5. Deep Space Network -->
+      <div class="card" id="card-dsn">
+        <div class="card-title"><span class="icon">📡</span> Deep Space Network</div>
+        <div class="card-body" id="body-dsn">
+          <span class="card-loading">Chargement…</span>
+        </div>
+      </div>
+
+      <!-- 6. Space weather -->
+      <div class="card" id="card-weather">
+        <div class="card-title"><span class="icon">🌐</span> Météo spatiale</div>
+        <div class="card-body" id="body-weather">
+          <span class="card-loading">Chargement…</span>
+        </div>
+      </div>
+
+      <!-- 7. NASA APOD -->
+      <div class="card" id="card-apod">
+        <div class="card-title"><span class="icon">🖼</span> NASA APOD</div>
+        <div class="card-body" id="body-apod">
+          <span class="card-loading">Chargement…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+(function() {
+  'use strict';
+
+  function el(id) { return document.getElementById(id); }
+
+  async function fetchAPI(url) {
+    var controller = new AbortController();
+    var timeout = setTimeout(function() { controller.abort(); }, 5000);
+    try {
+      var r = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      return await r.json();
+    } catch (e) {
+      clearTimeout(timeout);
+      return { error: true };
+    }
+  }
+
+  // 1. Satellites (orbits live)
+  function loadSatellites() {
+    fetchAPI('/api/orbits/live').then(function(d) {
+      if (d && d.error) { el('body-satellites').innerHTML = '<span class="card-error">Erreur API</span>'; return; }
+      var list = d.satellites || [];
+      var html = list.length ? list.map(function(s) {
+        return '<div class="row"><span>' + (s.name || s.id) + '</span><span class="val">' + (s.lat != null ? s.lat.toFixed(1) + '°' : '—') + ' / ' + (s.lon != null ? s.lon.toFixed(1) + '°' : '—') + '</span></div>';
+      }).join('') : '<span class="card-loading">Aucune donnée</span>';
+      el('body-satellites').innerHTML = html || '<span class="card-loading">Aucun satellite</span>';
+    }).catch(function() { el('body-satellites').innerHTML = '<span class="card-error">Erreur API</span>'; });
+  }
+
+  // 2. ISS
+  function loadIss() {
+    fetchAPI('/api/iss').then(function(d) {
+      if (d && d.error) { el('body-iss').innerHTML = '<span class="card-error">Erreur API</span>'; return; }
+      if (d && d.ok === false) { el('body-iss').innerHTML = '<span class="card-error">Données temporairement indisponibles</span>'; return; }
+      var lat = d.lat != null ? d.lat.toFixed(2) : '—';
+      var lon = d.lon != null ? d.lon.toFixed(2) : '—';
+      var alt = d.alt != null ? d.alt + ' km' : '';
+      var speed = d.speed != null ? (d.speed / 1000).toFixed(2) + ' km/s' : '';
+      var crew = d.crew != null ? d.crew : '—';
+      var region = d.region || '';
+      var ok = d.ok ? '<span class="ok">● En direct</span>' : '<span class="warn">Hors ligne</span>';
+      el('body-iss').innerHTML =
+        '<div class="row">' + ok + ' <span class="val">' + lat + '° / ' + lon + '°</span></div>' +
+        '<div class="row"><span>Altitude</span><span class="val">' + alt + '</span></div>' +
+        '<div class="row"><span>Vitesse</span><span class="val">' + speed + '</span></div>' +
+        '<div class="row"><span>Équipage</span><span class="val">' + crew + '</span></div>' +
+        (region ? '<div class="row"><span>Région</span><span class="val">' + region + '</span></div>' : '');
+    }).catch(function() { el('body-iss').innerHTML = '<span class="card-error">Erreur API</span>'; });
+  }
+
+  // 3. Voyager / New Horizons (feeds + voyager-live)
+  function loadVoyager() {
+    Promise.all([
+      fetchAPI('/api/feeds/voyager'),
+      fetchAPI('/api/voyager-live')
+    ]).then(function(arr) {
+      if (arr[0] && arr[0].error) arr[0] = {}; if (arr[1] && arr[1].error) arr[1] = {};
+      var feed = arr[0] && arr[0].data ? arr[0].data : {};
+      var live = arr[1] || {};
+      var html = '';
+      if (feed.VOYAGER_1) {
+        html += '<div class="row"><span>Voyager 1</span><span class="val">' + (feed.VOYAGER_1.dist_au + ' UA') + '</span></div>';
+      }
+      if (feed.VOYAGER_2) {
+        html += '<div class="row"><span>Voyager 2</span><span class="val">' + (feed.VOYAGER_2.dist_au + ' UA') + '</span></div>';
+      }
+      if (live.statut) html += '<div class="row"><span>Statut</span><span class="val ok">' + live.statut + '</span></div>';
+      el('body-voyager').innerHTML = html || '<span class="card-loading">Données indisponibles</span>';
+    }).catch(function() { el('body-voyager').innerHTML = '<span class="card-error">Erreur API</span>'; });
+  }
+
+  // 4. Solar activity
+  function loadSolar() {
+    Promise.all([
+      fetchAPI('/api/feeds/solar'),
+      fetchAPI('/api/feeds/solar_alerts')
+    ]).then(function(arr) {
+      if (arr[0] && arr[0].error) arr[0] = {}; if (arr[1] && arr[1].error) arr[1] = {};
+      var wind = arr[0] && arr[0].solar_wind ? arr[0].solar_wind : {};
+      var alerts = arr[1] && arr[1].alerts ? arr[1].alerts : [];
+      var flares = arr[1] && arr[1].flares ? arr[1].flares : [];
+      var html = '';
+      if (wind.speed) html += '<div class="row"><span>Vent solaire</span><span class="val">' + wind.speed + '</span></div>';
+      if (wind.density) html += '<div class="row"><span>Densité</span><span class="val">' + wind.density + '</span></div>';
+      if (alerts.length) html += '<div class="row"><span>Alertes</span><span class="warn">' + alerts.length + '</span></div>';
+      if (flares.length) html += '<div class="row"><span>Flares</span><span class="val">' + flares.length + '</span></div>';
+      el('body-solar').innerHTML = html || '<span class="card-loading">Aucune donnée</span>';
+    }).catch(function() { el('body-solar').innerHTML = '<span class="card-error">Erreur API</span>'; });
+  }
+
+  // 5. DSN
+  function loadDsn() {
+    fetchAPI('/api/dsn').then(function(d) {
+      if (d && d.error) { el('body-dsn').innerHTML = '<span class="card-error">Erreur API</span>'; return; }
+      var stations = d.stations || [];
+      var html = '';
+      stations.slice(0, 4).forEach(function(st) {
+        var name = st.friendlyName || st.name || 'Station';
+        var dishes = (st.dishes || []).length;
+        html += '<div class="dsn-dish"><span class="name">' + name + '</span> · ' + dishes + ' antenne(s)</div>';
+      });
+      el('body-dsn').innerHTML = html || '<span class="card-loading">Aucune donnée DSN</span>';
+    }).catch(function() { el('body-dsn').innerHTML = '<span class="card-error">Erreur API</span>'; });
+  }
+
+  // 6. Space weather
+  function loadWeather() {
+    fetchAPI('/api/space-weather').then(function(d) {
+      if (d && d.error) { el('body-weather').innerHTML = '<span class="card-error">Erreur API</span>'; return; }
+      var kp = d.kp_index != null ? d.kp_index : '—';
+      var mag = d.statut_magnetosphere || d.magnetosphere || '—';
+      el('body-weather').innerHTML =
+        '<div class="row"><span>Indice Kp</span><span class="val">' + kp + '</span></div>' +
+        '<div class="row"><span>Magnétosphère</span><span class="val">' + mag + '</span></div>';
+    }).catch(function() { el('body-weather').innerHTML = '<span class="card-error">Erreur API</span>'; });
+  }
+
+  // 7. NASA APOD
+  function loadApod() {
+    fetchAPI('/api/feeds/apod_hd').then(function(d) {
+      if (d && d.error) { el('body-apod').innerHTML = '<span class="card-error">Erreur API</span>'; return; }
+      var apod = d.apod || {};
+      var title = apod.title || 'NASA Astronomy Picture of the Day';
+      var date = apod.date || '';
+      var url = apod.url || apod.hdurl || '';
+      var html = '<div class="row"><span class="val">' + title + '</span></div>' + (date ? '<div class="row"><span>Date</span><span class="val">' + date + '</span></div>' : '');
+      if (url) html += '<a href="' + url + '" target="_blank" rel="noopener" style="color:var(--cyan);font-size:0.6rem;letter-spacing:0.1em;">Voir l\'image →</a>';
+      el('body-apod').innerHTML = html || '<span class="card-loading">Indisponible</span>';
+    }).catch(function() { el('body-apod').innerHTML = '<span class="card-error">Erreur API</span>'; });
+  }
+
+  loadSatellites();
+  loadIss();
+  loadVoyager();
+  loadSolar();
+  loadDsn();
+  loadWeather();
+  loadApod();
+
+  setInterval(loadIss, 15000);
+  setInterval(loadSatellites, 30000);
+  setInterval(loadWeather, 60000);
+})();
+  </script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

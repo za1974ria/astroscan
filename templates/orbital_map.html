@@ -1,0 +1,2164 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>AstroScan-Chohra - Carte orbitale 3D</title>
+<link href="https://cdn.jsdelivr.net/npm/cesium@1.110/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<link href="/static/css/orbital_command.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.110/Build/Cesium/Cesium.js"></script>
+<script src="/static/js/satellite.min.js"></script>
+<style>
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: black;
+}
+#cesiumContainer {
+  position: absolute;
+  top: 0;
+  left: 250px;
+  right: 0;
+  bottom: 0;
+  width: calc(100% - 250px);
+  height: 100vh;
+  padding-bottom: 30px;
+  box-sizing: border-box;
+}
+#orbitalMap {
+  width: 100%;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+#spaceRadar {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 12px;
+  z-index: 100;
+}
+#spaceRadar h3 { margin: 0 0 8px 0; font-size: 14px; }
+#passPredictor {
+  position: absolute;
+  top: 340px;
+  right: 20px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+  font-size: 12px;
+  z-index: 100;
+}
+#passPredictor h3 { margin: 0 0 8px 0; font-size: 14px; }
+#orbitalControl {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 10px 12px;
+  font-size: 11px;
+  border: 1px solid rgba(0,255,136,0.3);
+  border-radius: 6px;
+  z-index: 110;
+  max-width: 240px;
+}
+#orbitalControl h3 {
+  margin: 0 0 6px 0;
+  font-size: 13px;
+}
+#orbitalControl label {
+  display: block;
+  margin: 2px 0;
+}
+#orbitalControl button {
+  margin-top: 6px;
+  margin-right: 4px;
+  background: rgba(0,255,136,0.12);
+  border: 1px solid rgba(0,255,136,0.5);
+  color: #00ff88;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+}
+#orbitalControl button:hover {
+  background: rgba(0,255,136,0.22);
+}
+
+.pro-controls {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 999;
+  display: flex;
+  gap: 8px;
+  background: rgba(0,0,0,0.6);
+  padding: 10px;
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+}
+
+.pro-controls button {
+  background: black;
+  color: #00ffcc;
+  border: 1px solid #00ffcc;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: 0.2s;
+}
+
+.pro-controls button:hover {
+  background: #00ffcc;
+  color: black;
+}
+
+.pro-controls button.active {
+  background: #00ffcc;
+  color: black;
+  box-shadow: 0 0 8px #00ffcc;
+}
+
+/* Demo overlay safety: never blocks full Cesium view */
+#video-demo-overlay {
+  position: fixed !important;
+  left: 20px;
+  bottom: 120px;
+  max-width: 360px;
+  z-index: 2000 !important;
+  background: rgba(0, 0, 0, 0.55) !important;
+  pointer-events: none;
+}
+#video-demo-overlay.is-active {
+  pointer-events: auto;
+}
+
+/* Keep DEMO toggle always accessible */
+#btn-demo-mode {
+  position: relative;
+  z-index: 3000 !important;
+}
+
+/* ---- Layout safety overrides (no JS logic changes) ---- */
+#cesiumContainer {
+  z-index: 100;
+}
+#orbitalMap {
+  z-index: 100;
+}
+
+/* Navigation controls: always on top, single row */
+.pro-controls {
+  z-index: 1000 !important;
+  display: flex;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: calc(100vw - 40px);
+}
+
+/* Keep left analysis area below top controls region */
+#ui-left {
+  z-index: 300 !important;
+  top: 88px !important;
+}
+
+/* NASA FEEDS fixed bottom-right, below buttons */
+#nasa-panel {
+  position: fixed !important;
+  right: 20px !important;
+  bottom: 20px !important;
+  margin-top: 0 !important;
+  width: min(360px, calc(100vw - 40px));
+  z-index: 500 !important;
+}
+
+/* Right alerts keeps below controls and above map */
+#ui-right {
+  z-index: 400 !important;
+}
+
+#spaceRadar, #passPredictor, #close-approach-panel,
+#satellite-focus-panel, #global-dashboard {
+  transition: all 0.3s ease;
+}
+#video-demo-overlay {
+  transition: opacity 0.3s ease;
+  box-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
+  letter-spacing: 0.5px;
+}
+
+/* Barre de statut /status + horloge UTC (bas de page, alignée sur la carte) */
+.asc-orbital-footer {
+  position: fixed;
+  left: 250px;
+  right: 0;
+  bottom: 0;
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  background: rgba(3, 8, 6, 0.94);
+  border-top: 1px solid rgba(0, 255, 136, 0.28);
+  color: #9bc9b0;
+  pointer-events: none;
+}
+.asc-orbital-footer .asc-status-badge {
+  pointer-events: auto;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+}
+.asc-status-live {
+  background: rgba(0, 255, 136, 0.14);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.5);
+}
+.asc-status-sim {
+  background: rgba(255, 209, 102, 0.12);
+  color: #ffd166;
+  border: 1px solid rgba(255, 209, 102, 0.45);
+}
+.asc-status-offline {
+  background: rgba(255, 77, 90, 0.12);
+  color: #ff7a8a;
+  border: 1px solid rgba(255, 77, 90, 0.45);
+}
+.asc-footer-sep { opacity: 0.35; user-select: none; }
+.asc-footer-metrics { color: #b9e0cc; }
+#asc-stale-banner {
+  display: none;
+  position: fixed;
+  left: 250px;
+  right: 0;
+  bottom: 28px;
+  z-index: 99998;
+  padding: 6px 14px;
+  font-size: 11px;
+  text-align: center;
+  background: rgba(60, 35, 0, 0.92);
+  color: #ffd166;
+  border-top: 1px solid rgba(255, 209, 102, 0.35);
+  border-bottom: 1px solid rgba(255, 209, 102, 0.2);
+  pointer-events: none;
+}
+#asc-stale-banner.is-visible { display: block; }
+.asc-status-demo {
+  background: rgba(255, 209, 102, 0.12);
+  color: #ffd166;
+  border: 1px solid rgba(255, 209, 102, 0.45);
+}
+
+#asc-view-sync-role[data-role="master"],
+#asc-view-sync-role[data-role="collaborative"] {
+  color: #00ff88;
+  font-weight: 600;
+}
+#asc-view-sync-role[data-role="viewer"] {
+  color: #66aaff;
+  font-weight: 600;
+}
+#asc-view-sync-ws[data-state="open"] {
+  color: #00ff88 !important;
+}
+#asc-view-sync-ws[data-state="offline"],
+#asc-view-sync-ws[data-state="connecting"],
+#asc-view-sync-ws[data-state="reconnecting"] {
+  color: #ff6688 !important;
+}
+#asc-view-takeover {
+  display: none;
+  margin-left: 8px;
+  padding: 2px 10px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  border-radius: 4px;
+  border: 1px solid rgba(102, 170, 255, 0.55);
+  background: rgba(0, 80, 160, 0.25);
+  color: #9dceff;
+  font-family: inherit;
+  vertical-align: middle;
+}
+#asc-view-takeover:hover {
+  background: rgba(0, 100, 200, 0.35);
+  color: #cce8ff;
+}
+
+/* Ancienne barre dans #cesiumContainer : souvent masquée par le canvas / contexte Cesium — conservée pour applyStatus + bannière stale. */
+#asc-orbital-footer {
+  display: none !important;
+}
+
+/* Barre statut viewport (hors Cesium) : toujours au-dessus du globe. */
+#astro-status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background: #0a0a0a;
+  border-top: 1px solid #00ff88;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  z-index: 99999;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #00ff88;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+#astro-status-bar span {
+  pointer-events: auto;
+}
+
+/* Panneau synchro /status (astroscan:status) */
+.status-panel.status-panel--orbital {
+  margin-top: 10px;
+}
+.status-panel.status-panel--orbital .status-panel-rows > div {
+  font-size: 11px;
+  line-height: 1.65;
+  color: rgba(232, 244, 250, 0.92);
+}
+.status-panel.status-panel--orbital .status-panel-rows span[id] {
+  color: #00ff88;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+  .status-panel {
+    padding: 10px;
+  }
+  .card,
+  .box {
+    width: 100% !important;
+    margin-bottom: 10px;
+  }
+  .grid {
+    display: flex;
+    flex-direction: column;
+  }
+  .topbar {
+    flex-wrap: wrap;
+  }
+  .asc-sidebar .asc-panel,
+  .status-panel.status-panel--orbital {
+    width: 100% !important;
+    margin-bottom: 10px;
+  }
+}
+</style>
+</head>
+<body>
+<script>
+(function () {
+  try {
+    document.body.classList.remove("demo-glow");
+    var b = document.getElementById("btn-demo-mode");
+    if (b) b.classList.remove("is-active");
+    var vo = document.getElementById("video-demo-overlay");
+    if (vo) {
+      vo.style.display = "none";
+      vo.classList.remove("is-active");
+    }
+  } catch (e) {}
+})();
+</script>
+<div id="cesiumContainer">
+  <div class="asc-badges" aria-hidden="true">
+    <div id="badge-online" class="asc-badge ok"><span class="asc-dot" style="background:currentColor;"></span><span>EN LIGNE</span></div>
+    <div id="badge-tracking" class="asc-badge data"><span class="asc-dot" style="background:currentColor;"></span><span>SUIVI</span></div>
+    <div id="badge-live" class="asc-badge off"><span class="asc-dot" style="background:currentColor;"></span><span>EN DIRECT</span></div>
+  </div>
+  <div id="orbitalMap" style="width:100%; height:100vh;"></div>
+  <div id="center-radar" class="asc-radar-visual" aria-hidden="true"></div>
+  <div id="ui-left" class="asc-sidebar asc-sidebar-left" aria-hidden="false">
+    <div id="analysis-card" class="asc-panel">
+      <div style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div class="asc-title">PRIORITY ANALYSIS</div>
+          <div class="asc-kicker" id="analysis-kicker">Highest-priority tracked object</div>
+        </div>
+        <div id="analysis-level-badge" class="asc-badge off" style="padding:6px 10px;"><span class="asc-dot" style="background:currentColor;"></span><span>LOW</span></div>
+      </div>
+      <div style="padding:10px 12px;">
+        <div id="analysis-body" style="font-size:11px;line-height:1.35;color:rgba(232,244,250,.92);">Waiting for tracking data…</div>
+        <div style="margin-top:10px;border-top:1px solid rgba(0,255,136,0.22);padding-top:8px;">
+          <div style="font-size:11px;font-weight:700;color:#00ff88;letter-spacing:.3px;margin-bottom:6px;">Predicted Passes</div>
+          <div style="max-height:170px;overflow:auto;border:1px solid rgba(0,255,136,0.26);border-radius:6px;background:rgba(0,10,0,0.55);">
+            <table style="width:100%;border-collapse:collapse;font-size:10px;color:#b9ffd9;">
+              <thead>
+                <tr style="background:rgba(0,255,136,0.08);color:#00ff88;">
+                  <th style="text-align:left;padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.18);">Sat</th>
+                  <th style="text-align:left;padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.18);">Lever</th>
+                  <th style="text-align:left;padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.18);">Max</th>
+                  <th style="text-align:left;padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.18);">Durée</th>
+                </tr>
+              </thead>
+              <tbody id="analysis-pass-table-body">
+                <tr><td colspan="4" style="padding:6px;color:rgba(180,230,200,.75);">Chargement…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="live-status-sync-panel" class="asc-panel status-panel status-panel--orbital" aria-live="polite">
+      <div style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);">
+        <div class="asc-title">STATION STATUS</div>
+        <div class="asc-kicker">/status · temps réel</div>
+      </div>
+      <div class="status-panel-rows" style="padding:10px 12px;">
+        <div>Mode: <span id="mode-status">-</span></div>
+        <div>Status: <span id="global-status">-</span></div>
+        <div>Object: <span id="priority-object">-</span></div>
+        <div>Score: <span id="priority-score">-</span></div>
+        <div>Response: <span id="response-time">-</span></div>
+      </div>
+    </div>
+    <div id="tracked-kpi" class="asc-panel secondary-panel">
+      <div style="padding:10px 12px;">
+        <div class="asc-title">TRACKED</div>
+        <div id="tracked-kpi-value" style="margin-top:6px;font-size:26px;font-weight:bold;color:#e8f4fa;">—</div>
+        <div class="asc-kicker" id="tracked-kpi-sub">Objects tracked</div>
+      </div>
+    </div>
+    <div id="predicted-passes-panel" style="background:#0a0a0a;border:1px solid #00ff88;padding:10px;margin-top:10px;color:#00ff88;font-family:monospace;font-size:12px;">
+      <div style="color:#00ff88;font-weight:bold;margin-bottom:8px;">📡 PASSAGES PRÉDITS — TLEMCEN</div>
+      <div id="predicted-passes-list">Calcul en cours...</div>
+    </div>
+    <div id="map-live-telemetry" class="asc-panel secondary-panel" style="margin-top:10px;">
+      <div style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);">
+        <div class="asc-title">ISS LIVE</div>
+        <div class="asc-kicker" id="map-iss-meta">/api/iss · maj auto</div>
+      </div>
+      <div style="padding:10px 12px;font-size:10px;font-family:monospace;color:#b9ffd9;line-height:1.55;">
+        <div>LAT <span id="map-iss-lat">—</span> · LON <span id="map-iss-lon">—</span></div>
+        <div>ALT <span id="map-iss-alt">—</span> km · VIT <span id="map-iss-spd">—</span> km/h</div>
+        <div id="map-iss-region" style="color:rgba(180,230,200,.8);margin-top:4px;">—</div>
+      </div>
+      <div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.06);">
+        <div class="asc-title" style="font-size:11px;">RADIO SDR</div>
+        <div class="asc-kicker" id="map-sdr-meta">/api/sdr/status</div>
+      </div>
+      <div style="padding:8px 12px;font-size:10px;font-family:monospace;color:#c8e6ff;line-height:1.5;">
+        <div>Statut : <span id="map-sdr-status">—</span></div>
+        <div>NOAA-15 (API passes) : <span id="map-sdr-noaa">—</span></div>
+      </div>
+      <div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.06);">
+        <div class="asc-title" style="font-size:11px;">TÉLÉMÉTRIE STELLAIRE</div>
+        <div class="asc-kicker" id="map-stellar-meta">/api/latest</div>
+      </div>
+      <div style="padding:8px 12px;font-size:10px;font-family:monospace;color:#e8d4ff;line-height:1.45;">
+        <div id="map-stellar-line1">—</div>
+        <div id="map-stellar-line2" style="color:rgba(200,190,230,.85);margin-top:4px;">—</div>
+      </div>
+    </div>
+  </div>
+  <div id="ui-right" class="asc-sidebar asc-sidebar-right" aria-hidden="false">
+    <div id="alerts-panel" class="asc-panel" style="display:none;">
+      <div class="asc-alerts-head">
+        <div class="asc-title">ALERTES SYSTÈME</div>
+        <div class="asc-kicker" id="alerts-meta">—</div>
+      </div>
+      <div class="asc-alerts-list" id="alerts-list"></div>
+    </div>
+    <div id="nasa-panel" class="asc-panel secondary-panel" style="margin-top:12px;display:block;">
+      <div style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;">
+        <div class="asc-title">NASA FEEDS</div>
+        <div class="asc-kicker" id="nasa-meta">chargement…</div>
+      </div>
+      <div style="padding:10px 12px;">
+        <div id="nasa-apod" style="font-size:11px;line-height:1.35;color:rgba(232,244,250,.92);margin-bottom:8px;">APOD : chargement…</div>
+        <div id="nasa-neo" style="font-size:11px;line-height:1.35;color:rgba(232,244,250,.92);margin-bottom:8px;">NEO : chargement…</div>
+        <div id="nasa-solar" style="font-size:11px;line-height:1.35;color:rgba(232,244,250,.92);">SOLAIRE : chargement…</div>
+      </div>
+    </div>
+  </div>
+  <div class="pro-controls">
+    <button type="button" data-filter="all" class="active">TOUS</button>
+    <button type="button" data-filter="starlink">STARLINK</button>
+    <button type="button" data-filter="gps">GPS</button>
+    <button type="button" data-filter="debris">DÉBRIS</button>
+    <button type="button" id="btn-export-csv">EXPORTER</button>
+    <button type="button" id="btn-export-report" style="border-color:rgba(0,255,204,.45);color:#00ffcc;">RAPPORT</button>
+    <button type="button" id="btn-demo-mode" style="border-color:rgba(255,209,102,.45);color:#ffd166;">MODE DÉMO</button>
+    <button type="button" id="btn-details" class="details-btn" style="border-color:rgba(255,255,255,.18);color:rgba(210,230,240,.85);">DÉTAILS</button>
+  </div>
+  <div id="orbitalControl">
+    <h3>Contrôle Orbital</h3>
+    <label><input type="checkbox" id="filter-iss" checked> Afficher ISS</label>
+    <label><input type="checkbox" id="filter-catalog" checked> Afficher satellites catalogue</label>
+    <label><input type="checkbox" id="filter-radar" checked> Afficher radar &amp; couverture</label>
+    <label><input type="checkbox" id="filter-starlink" checked> Afficher Starlink</label>
+    <label><input type="checkbox" id="filter-gps" checked> Afficher GPS</label>
+    <label><input type="checkbox" id="filter-debris" checked> Afficher débris</label>
+    <label><input type="checkbox" id="filter-other" checked> Afficher autres</label>
+    <label><input type="checkbox" id="future-orbit-toggle" checked> Simulation orbite 24h</label>
+    <label><input type="checkbox" id="global-orbit-toggle"> Trafic orbital global</label>
+    <div style="margin-top:8px;">
+      <div style="font-size:10px;color:#a0b0c0;margin-bottom:4px;">Mode</div>
+      <button id="mode-earth">Terre</button>
+      <button id="mode-moon">Lune</button>
+      <button id="mode-solar">Solaire</button>
+      <button id="mode-asteroids">Astéroïdes</button>
+      <button id="mode-live-earth">Terre en Direct</button>
+    </div>
+    <div style="margin-top:6px;">
+      <button type="button" id="btn-center-iss">Centrer ISS</button>
+      <button type="button" id="btn-follow-iss">Suivre ISS</button>
+    </div>
+    <div id="orbital-selected" style="margin-top:6px;font-size:10px;color:#a0b0c0">
+      Aucun objet sélectionné.
+    </div>
+  </div>
+  <div id="close-approaches" class="asc-panel secondary-panel" style="display:none;position:absolute;right:20px;bottom:20px;background:rgba(0,0,0,0.85);color:#eee;padding:10px 12px;border-radius:6px;font-size:11px;max-width:260px;z-index:100;border:1px solid rgba(255,100,100,0.4);">
+    <h3 style="margin:0 0 6px 0;font-size:13px;">Approches Proches</h3>
+    <div id="close-approach-content">Aucune approche proche détectée.</div>
+    <div style="margin-top:10px;border-top:1px solid rgba(0,255,136,0.22);padding-top:8px;">
+      <div style="font-size:11px;font-weight:700;color:#00ff88;letter-spacing:.3px;margin-bottom:6px;">Passages Prévus</div>
+      <div style="max-height:180px;overflow:auto;border:1px solid rgba(0,255,136,0.26);border-radius:6px;background:rgba(0,10,0,0.65);">
+        <table style="width:100%;border-collapse:collapse;font-size:10px;color:#b9ffd9;">
+          <thead>
+            <tr style="background:rgba(0,255,136,0.08);color:#00ff88;">
+              <th style="text-align:left;padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.18);">Sat</th>
+              <th style="text-align:left;padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.18);">Lever</th>
+              <th style="text-align:left;padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.18);">Max</th>
+              <th style="text-align:left;padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.18);">Durée</th>
+            </tr>
+          </thead>
+          <tbody id="details-pass-table-body">
+            <tr><td colspan="4" style="padding:6px;color:rgba(180,230,200,.75);">Chargement…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div id="satellite-focus-panel" style="position:absolute;left:20px;bottom:20px;background:rgba(0,0,0,0.85);color:#eee;padding:10px 12px;border-radius:6px;font-size:11px;max-width:240px;z-index:100;border:1px solid rgba(0,255,136,0.3);">
+    <h3 style="margin:0 0 6px 0;font-size:13px;">Satellite Sélectionné</h3>
+    <div id="satellite-focus-content">Aucun satellite sélectionné.</div>
+    <div style="margin-top:8px;">
+      <button type="button" id="satellite-focus-center" style="margin-right:6px;background:rgba(0,255,136,0.2);border:1px solid rgba(0,255,136,0.5);color:#00ff88;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;">Centrer</button>
+      <button type="button" id="satellite-focus-follow" style="background:rgba(0,255,136,0.2);border:1px solid rgba(0,255,136,0.5);color:#00ff88;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;">Suivre</button>
+    </div>
+  </div>
+  <div id="global-dashboard" style="position:absolute;left:20px;top:220px;background:rgba(0,0,0,0.85);color:#0f0;padding:8px 10px;border-radius:6px;font-size:11px;z-index:100;border:1px solid rgba(0,255,136,0.5);min-width:220px;">
+    <div style="font-size:11px;font-weight:bold;margin-bottom:4px;">AstroScan-Chohra Radar Pro — Visualisation en temps réel depuis modèles orbitaux</div>
+    <div id="global-dashboard-content">Dashboard en cours de chargement…</div>
+    <div style="margin-top:6px;">
+      <button type="button" onclick="exportPremiumReport()" style="background:rgba(0,255,136,0.2);border:1px solid rgba(0,255,136,0.5);color:#00ff88;padding:3px 6px;border-radius:4px;cursor:pointer;font-size:10px;">Exporter PDF (démo)</button>
+      <button type="button" onclick="if(window.OrbitalMapEngine&amp;&amp;OrbitalMapEngine.startVideoDemo)OrbitalMapEngine.startVideoDemo()" style="margin-left:4px;background:rgba(0,255,204,0.15);border:1px solid rgba(0,255,204,0.45);color:#00ffcc;padding:3px 6px;border-radius:4px;cursor:pointer;font-size:10px;">DÉMO VIDÉO</button>
+      <button type="button" onclick="if(window.OrbitalMapEngine&amp;&amp;OrbitalMapEngine.startSelfTest)OrbitalMapEngine.startSelfTest()" style="margin-left:4px;background:rgba(0,0,0,0.6);border:1px solid rgba(0,255,204,0.45);color:#00ffcc;padding:3px 6px;border-radius:4px;cursor:pointer;font-size:10px;">AUTO-TEST</button>
+      <button type="button" onclick="if(window.HilalMode&amp;&amp;HilalMode.toggle)HilalMode.toggle()" style="margin-left:4px;background:rgba(0,0,0,0.6);border:1px solid rgba(255,209,102,0.45);color:#ffd166;padding:3px 6px;border-radius:4px;cursor:pointer;font-size:10px;">HILAL MODE</button>
+    </div>
+  </div>
+  <div id="hilal-panel" class="asc-panel" style="position:absolute;left:20px;top:420px;z-index:1200;display:none;max-width:360px;">
+    <div style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="asc-title" style="color:#ffd166;">HILAL MODE</div>
+        <div class="asc-kicker">Observation assistée du croissant lunaire</div>
+      </div>
+      <div id="hilal-status-badge" class="asc-badge off" style="padding:6px 10px;"><span class="asc-dot" style="background:currentColor;"></span><span>LOW</span></div>
+    </div>
+    <div style="padding:10px 12px;">
+      <div id="hilal-metrics" style="font-size:11px;line-height:1.35;color:rgba(232,244,250,.92);">Initialisation…</div>
+      <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;">
+        <button type="button" onclick="if(window.HilalMode)HilalMode.connectTelescope()" class="hilal-btn">CONNECTER</button>
+        <button type="button" onclick="if(window.HilalMode)HilalMode.slewToMoon()" class="hilal-btn">SLEW TO MOON</button>
+        <button type="button" onclick="if(window.HilalMode)HilalMode.startTracking()" class="hilal-btn">TRACK</button>
+        <button type="button" onclick="if(window.HilalMode)HilalMode.captureImage()" class="hilal-btn">CAPTURE</button>
+        <button type="button" onclick="if(window.HilalMode)HilalMode.openReport()" class="hilal-btn hilal-btn-primary">REPORT</button>
+        <button type="button" onclick="if(window.HilalMode)HilalMode.hide()" class="hilal-btn hilal-btn-ghost">CLOSE</button>
+      </div>
+      <div id="hilal-captures" style="margin-top:10px;font-size:10px;color:rgba(150,175,190,.85);"></div>
+    </div>
+  </div>
+  <div id="self-test-overlay" style="position:absolute;left:20px;top:20px;z-index:1300;background:rgba(0,0,0,0.82);color:#ffffff;padding:14px 16px;border-radius:10px;border:1px solid rgba(0,255,204,0.35);font-size:12px;display:none;max-width:420px;box-shadow:0 0 18px rgba(0,255,204,0.12);">
+    <div id="self-test-title" style="font-weight:bold;color:#00ffcc;margin-bottom:8px;">AstroScan-Chohra Self-Test</div>
+    <div id="self-test-step" style="margin-bottom:8px;">Initialisation…</div>
+    <div id="self-test-checklist"></div>
+  </div>
+  <div id="video-demo-overlay" style="position:absolute;left:20px;bottom:120px;z-index:1200;background:rgba(0,0,0,0.72);color:#00ffcc;padding:10px 14px;border-radius:8px;border:1px solid rgba(0,255,204,0.4);font-size:12px;display:none;max-width:340px;box-shadow:0 0 20px rgba(0,255,200,0.15);letter-spacing:0.5px;">
+    <div id="video-demo-title" style="font-weight:bold;">AstroScan-Chohra Radar Pro</div>
+    <div id="video-demo-text">Initialisation…</div>
+  </div>
+  <div id="alert-toasts" style="position:absolute;top:10px;right:10px;z-index:1000;font-size:11px;"></div>
+  <div id="loading-overlay" style="position:absolute;left:0;top:0;right:0;bottom:0;background:#000;z-index:2000;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#0f0;font-size:14px;">
+    <div>Chargement des satellites...</div>
+    <div id="loading-bar" style="margin-top:8px;width:200px;height:6px;border:1px solid #0f0;">
+      <div id="loading-bar-inner" style="height:100%;width:0;background:#0f0;transition:width 0.3s;"></div>
+    </div>
+  </div>
+  <div id="asc-stale-banner" role="status" aria-live="polite"></div>
+  <div id="asc-orbital-footer" class="asc-orbital-footer" aria-live="polite">
+    <span id="asc-status-badge" class="asc-status-badge asc-status-offline">OFFLINE</span>
+    <span class="asc-footer-sep">|</span>
+    <span id="asc-footer-metrics" class="asc-footer-metrics">TLE — · IMG — · UP —</span>
+    <span class="asc-footer-sep">|</span>
+    <span id="asc-footer-utc">UTC --:--:--</span>
+  </div>
+</div>
+<script>
+// Pas de token Ion par défaut (évite 401 si variable d’environnement invalide).
+// Imagerie / terrain gratuits sont fournis par orbital_map_engine.js (OSM + ellipsoïde).
+try {
+  Cesium.Ion.defaultAccessToken = "";
+} catch (e) {}
+
+// Runtime diagnostics: TLE feed + orbital engine visibility checks.
+(function () {
+  try {
+    fetch("/api/tle/active", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        try {
+          var cnt = (d && Array.isArray(d.items)) ? d.items.length : 0;
+          if (cnt === 0) {
+            console.warn("OrbitalMap: /api/tle/active returned count=0");
+          } else {
+            console.info("OrbitalMap: /api/tle/active count=", cnt);
+          }
+        } catch (e) {}
+      })
+      .catch(function () {
+        console.warn("OrbitalMap: failed to query /api/tle/active");
+      });
+  } catch (e) {}
+})();
+</script>
+<script src="/static/js/orbital_core.js"></script>
+<script src="/static/js/render_state.js"></script>
+<script src="/static/js/dashboard.js"></script>
+<script src="/static/js/analysis.js"></script>
+<script src="/static/js/alerts.js"></script>
+<script src="/static/js/demo_mode.js"></script>
+<script src="/static/js/report_export.js"></script>
+<script src="/static/js/orbital_map_engine.js"></script>
+<script src="/static/js/orbital_ui.js"></script>
+<script src="/static/js/hilal_mode.js"></script>
+<script>
+(function () {
+  function setTxt(id, txt) {
+    try {
+      var el = document.getElementById(id);
+      if (el) el.textContent = txt;
+    } catch (e) {}
+  }
+  async function fetchJson(url) {
+    try {
+      var r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) {
+      return null;
+    }
+  }
+  async function updateNasaFeeds() {
+    try {
+      var apod = await fetchJson("/api/nasa/apod");
+      var neo = await fetchJson("/api/nasa/neo");
+      var solar = await fetchJson("/api/nasa/solar");
+
+      if (apod && apod.ok) {
+        setTxt("nasa-apod", "APOD: " + (apod.title || "Untitled") + (apod.date ? (" (" + apod.date + ")") : ""));
+      } else {
+        setTxt("nasa-apod", "APOD: unavailable");
+      }
+
+      if (neo && neo.ok) {
+        var first = (neo.asteroids && neo.asteroids[0]) ? neo.asteroids[0] : null;
+        var firstTxt = first ? (first.name + (first.miss_distance_km != null ? (" @ " + first.miss_distance_km + " km") : "")) : "none";
+        setTxt("nasa-neo", "NEO: " + (neo.count || 0) + " objects | nearest: " + firstTxt);
+      } else {
+        setTxt("nasa-neo", "NEO: unavailable");
+      }
+
+      if (solar && solar.ok) {
+        var ev = (solar.events && solar.events[0]) ? solar.events[0] : null;
+        setTxt("nasa-solar", "SOLAR: " + (solar.count || 0) + " events" + (ev && ev.type ? (" | latest: " + ev.type) : ""));
+      } else {
+        setTxt("nasa-solar", "SOLAR: unavailable");
+      }
+
+      setTxt("nasa-meta", "live");
+      try {
+        if (window.OrbitalMapEngine && typeof OrbitalMapEngine.setNasaFeedsSnapshot === "function") {
+          OrbitalMapEngine.setNasaFeedsSnapshot({
+            apod: (document.getElementById("nasa-apod") || {}).textContent || "",
+            neo: (document.getElementById("nasa-neo") || {}).textContent || "",
+            solar: (document.getElementById("nasa-solar") || {}).textContent || ""
+          });
+        }
+      } catch (es) {}
+    } catch (e) {
+      setTxt("nasa-meta", "error");
+    }
+  }
+  updateNasaFeeds();
+  setInterval(updateNasaFeeds, 120000);
+})();
+</script>
+<script src="/static/js/astroscan_status_sync.js"></script>
+<script src="/static/js/astroscan_status_ui.js"></script>
+<script src="/static/js/astroscan_view_sync.js"></script>
+<script>
+(function () {
+  var badge = document.getElementById("asc-status-badge");
+  var metrics = document.getElementById("asc-footer-metrics");
+  var utcEl = document.getElementById("asc-footer-utc");
+  var staleBanner = document.getElementById("asc-stale-banner");
+  function fmtUptime(sec) {
+    var s = Math.max(0, parseInt(sec, 10) || 0);
+    var h = Math.floor(s / 3600);
+    var m = Math.floor((s % 3600) / 60);
+    return h + "h " + m + "m";
+  }
+  function tickUtc() {
+    try {
+      if (!utcEl) return;
+      var n = new Date();
+      utcEl.textContent =
+        "UTC " +
+        [n.getUTCHours(), n.getUTCMinutes(), n.getUTCSeconds()]
+          .map(function (x) { return String(x).padStart(2, "0"); })
+          .join(":");
+    } catch (e) {}
+  }
+  function updateAstroStatusBar(data, netErr) {
+    var b = document.getElementById("sb-badge");
+    var tle = document.getElementById("sb-tle");
+    var img = document.getElementById("sb-img");
+    var upEl = document.getElementById("sb-uptime");
+    if (!b || !tle || !img || !upEl) return;
+    if (netErr || !data) {
+      b.style.color = "#ff4444";
+      b.textContent = "⬤ OFFLINE";
+      tle.textContent = "TLE: --";
+      img.textContent = "IMG: --";
+      upEl.textContent = "UP: --";
+      return;
+    }
+    var st = (data.status || "").toLowerCase();
+    var mode = data.mode || "";
+    var pm = (data.production_mode != null ? String(data.production_mode) : "").toUpperCase();
+    if (pm === "LIVE" || (st === "ok" && mode === "LIVE")) {
+      b.style.color = "#00ff88";
+      b.textContent = "⬤ LIVE";
+    } else if (
+      pm === "DEMO" ||
+      mode === "OFFLINE_DATA" ||
+      mode === "SIMULATION" ||
+      (data.tle || "").toLowerCase() === "cached"
+    ) {
+      b.style.color = "#ffaa00";
+      b.textContent = "⬤ SIMULATION";
+    } else if (pm === "OFFLINE" || st === "offline") {
+      b.style.color = "#ff4444";
+      b.textContent = "⬤ OFFLINE";
+    } else {
+      b.style.color = "#ffaa00";
+      b.textContent = "⬤ SIMULATION";
+    }
+    tle.textContent = "TLE: " + (data.tle_count != null ? data.tle_count : "--");
+    img.textContent = "IMG: " + (data.images != null ? data.images : "--");
+    var up = Math.max(0, parseInt(data.uptime_seconds, 10) || 0);
+    var h = Math.floor(up / 3600);
+    var m = Math.floor((up % 3600) / 60);
+    upEl.textContent = "UP: " + h + "h" + m + "m";
+  }
+
+  function applyStatus(data, netErr) {
+    if (!badge || !metrics) return;
+    if (netErr || !data) {
+      badge.textContent = "OFFLINE";
+      badge.className = "asc-status-badge asc-status-offline";
+      metrics.textContent = "TLE — · IMG — · UP —";
+      if (staleBanner) {
+        staleBanner.classList.remove("is-visible");
+        staleBanner.textContent = "";
+      }
+      return;
+    }
+    var st = data.status || "";
+    var mode = data.mode || "";
+    var tle = data.tle || "";
+    var pm = (data.production_mode != null ? String(data.production_mode) : "").toUpperCase();
+    var tleC = data.tle_count != null ? data.tle_count : "—";
+    var imgC = data.images != null ? data.images : "—";
+    var up = fmtUptime(data.uptime_seconds);
+    metrics.textContent = "TLE " + tleC + " · IMG " + imgC + " · UP " + up;
+    if (staleBanner) {
+      var df = data.data_freshness || "";
+      if (df === "stale") {
+        staleBanner.textContent =
+          "Avertissement : données TLE obsolètes — fiabilité des prévisions réduite.";
+        staleBanner.classList.add("is-visible");
+      } else if (df === "aging") {
+        staleBanner.textContent =
+          "Avertissement : données TLE en vieillissement — rafraîchissement recommandé.";
+        staleBanner.classList.add("is-visible");
+      } else {
+        staleBanner.classList.remove("is-visible");
+        staleBanner.textContent = "";
+      }
+    }
+    if (st === "offline" || st === "degraded" || pm === "OFFLINE") {
+      badge.textContent = "OFFLINE";
+      badge.className = "asc-status-badge asc-status-offline";
+      return;
+    }
+    if (pm === "DEMO") {
+      badge.textContent = "DEMO";
+      badge.className = "asc-status-badge asc-status-demo";
+      return;
+    }
+    if (pm === "LIVE" || (st === "ok" && mode === "LIVE")) {
+      badge.textContent = "LIVE";
+      badge.className = "asc-status-badge asc-status-live";
+      return;
+    }
+    if (mode === "OFFLINE_DATA" || tle === "cached") {
+      badge.textContent = "SIMULATION";
+      badge.className = "asc-status-badge asc-status-sim";
+      return;
+    }
+    badge.textContent = "SIMULATION";
+    badge.className = "asc-status-badge asc-status-sim";
+  }
+  window.addEventListener("astroscan:status", function (ev) {
+    var UI = window.AstroScanStatusUI;
+    var d = ev.detail;
+    if (d && d._networkError) {
+      if (UI) UI.clear();
+      updateAstroStatusBar(null, true);
+      applyStatus(null, true);
+      return;
+    }
+    try {
+      if (UI) UI.bind(d);
+    } catch (eUi) {}
+    try {
+      console.log("STATUS:", d);
+    } catch (eLog) {}
+    updateAstroStatusBar(d, false);
+    applyStatus(d, false);
+  });
+  tickUtc();
+  setInterval(tickUtc, 1000);
+  if (window.AstroScanStatusSync) {
+    AstroScanStatusSync.start({ intervalMs: 3000, useWebSocket: false });
+  }
+})();
+</script>
+<script>
+var viewer = window.viewer;
+if (!viewer) {
+  console.error("Orbital map engine did not create viewer.");
+  viewer = new Cesium.Viewer("orbitalMap", { timeline: true, animation: true, shouldAnimate: true });
+  viewer.scene.globe.enableLighting = true;
+}
+
+// If Cesium token is missing/invalid, fallback to free OSM imagery.
+(function ensureCesiumBaseLayer() {
+  try {
+    if (!Cesium.Ion.defaultAccessToken && viewer && viewer.imageryLayers) {
+      try { viewer.imageryLayers.removeAll(); } catch (e) {}
+      try {
+        viewer.imageryLayers.addImageryProvider(new Cesium.OpenStreetMapImageryProvider({
+          url: "https://tile.openstreetmap.org/"
+        }));
+        console.info("OrbitalMap: using free OSM imagery fallback.");
+      } catch (e2) {
+        console.warn("OrbitalMap: OSM fallback failed", e2);
+      }
+    }
+  } catch (e) {}
+})();
+
+// Demo overlay visual state helper (no logic change).
+setInterval(function () {
+  try {
+    var ov = document.getElementById("video-demo-overlay");
+    if (!ov) return;
+    var active = ov.style.display && ov.style.display !== "none";
+    ov.classList.toggle("is-active", !!active);
+  } catch (e) {}
+}, 500);
+
+// DETAILS panel: predicted passes from OrbitalMapEngine.
+(function () {
+  function fmtRise(v) {
+    try {
+      var d = v instanceof Date ? v : new Date(v);
+      if (!d || isNaN(d.getTime())) return "--";
+      var hh = String(d.getHours()).padStart(2, "0");
+      var mm = String(d.getMinutes()).padStart(2, "0");
+      return hh + ":" + mm;
+    } catch (e) {
+      return "--";
+    }
+  }
+  function fmtDuration(v) {
+    var n = Number(v);
+    if (!isFinite(n) || n < 0) return "--";
+    return Math.round(n) + "m";
+  }
+  function fmtElevation(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return "--";
+    return Math.round(n) + "°";
+  }
+  function getPasses() {
+    try {
+      var eng = window.OrbitalMapEngine || {};
+      var list = eng.passedPredictions || eng.predictedPasses || (eng.state && eng.state.predictedPasses) || [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function renderPassesTable(bodyId) {
+    var body = document.getElementById(bodyId);
+    if (!body) return;
+    var passes = getPasses().slice(0, 8);
+    if (!passes.length) {
+      body.innerHTML = '<tr><td colspan="4" style="padding:6px;color:rgba(180,230,200,.75);">Aucun passage prédit.</td></tr>';
+      return;
+    }
+    body.innerHTML = passes.map(function (p) {
+      var name = (p && (p.name || (p.satRef && p.satRef.name))) || "—";
+      var rise = fmtRise(p && (p.riseTime || p.start));
+      var maxEl = fmtElevation(p && (p.peakElevation || p.maxElevation));
+      var dur = fmtDuration(p && (p.durationMinutes || ((p.endTime && p.startTime) ? ((new Date(p.endTime) - new Date(p.startTime)) / 60000) : null)));
+      return '<tr>' +
+        '<td style="padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.12);max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + name + '">' + name + '</td>' +
+        '<td style="padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.12);">' + rise + '</td>' +
+        '<td style="padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.12);">' + maxEl + '</td>' +
+        '<td style="padding:5px 6px;border-bottom:1px solid rgba(0,255,136,0.12);">' + dur + '</td>' +
+      '</tr>';
+    }).join("");
+  }
+  function renderAllPassTables() {
+    renderPassesTable("details-pass-table-body");
+    renderPassesTable("analysis-pass-table-body");
+    renderPredictedPassesPanel();
+  }
+
+  function renderPredictedPassesPanel() {
+    var el = document.getElementById("predicted-passes-list");
+    if (!el) return;
+    var passes = getPasses().slice(0, 8);
+    if (!passes.length) {
+      el.textContent = "Aucun passage prévu";
+      return;
+    }
+    el.innerHTML = passes.map(function (p) {
+      var name = (p && (p.name || (p.satRef && p.satRef.name))) || "—";
+      var rise = fmtRise(p && (p.riseTime || p.start));
+      var maxEl = fmtElevation(p && (p.peakElevation || p.maxElevation));
+      var dur = fmtDuration(
+        p && (
+          p.durationMinutes ||
+          ((p.endTime && p.startTime) ? ((new Date(p.endTime) - new Date(p.startTime)) / 60000) : null)
+        )
+      );
+      return name + " | " + rise + " | " + maxEl + " | " + dur;
+    }).join("<br/>");
+  }
+  renderAllPassTables();
+  setInterval(renderAllPassTables, 5000);
+})();
+
+// DETAILS : listeners dans static/js/orbital_ui.js (évite double-toggle).
+
+// Ensure Cesium canvas resizes correctly with the window
+window.addEventListener("resize", function () {
+  if (!viewer) return;
+  viewer.resize();
+  if (viewer.scene) {
+    viewer.scene.requestRender();
+  }
+});
+
+var satelliteLayer = viewer.scene.primitives.add(
+  new Cesium.PointPrimitiveCollection()
+);
+var satRecs = [];
+var satPoints = [];
+var categoryRecs = {
+  catalog: [],
+  starlink: [],
+  gps: [],
+  debris: [],
+  other: []
+};
+var categoryPoints = {
+  catalog: [],
+  starlink: [],
+  gps: [],
+  debris: [],
+  other: []
+};
+
+var observer = {
+  lat: 34.888,
+  lon: 1.315,
+  height: 0
+};
+
+var visibleSatellites = [];
+var lastRadarUpdate = 0;
+var predictedPasses = [];
+var orbitalMode = "earth";
+var modeEntities = {
+  earth: [],
+  moon: [],
+  solar: [],
+  asteroids: [],
+  "live-earth": []
+};
+var controlFilters = {
+  iss: true,
+  catalog: true,
+  radar: true,
+  starlink: true,
+  gps: true,
+  debris: true,
+  other: true
+};
+var selectedSatellite = null;
+var selectedOrbitPositions = [];
+var selectedOrbitLine = viewer.entities.add({
+  polyline: {
+    positions: new Cesium.CallbackProperty(function () {
+      return selectedOrbitPositions;
+    }, false),
+    width: 1.5,
+    material: Cesium.Color.ORANGE.withAlpha(0.7)
+  },
+  show: false
+});
+
+var futureOrbitPositions = [];
+var futureOrbitLine = viewer.entities.add({
+  polyline: {
+    positions: new Cesium.CallbackProperty(function () {
+      return futureOrbitPositions;
+    }, false),
+    width: 2,
+    material: Cesium.Color.LIME
+  },
+  show: false
+});
+var futureOrbitMarkers = viewer.scene.primitives.add(
+  new Cesium.PointPrimitiveCollection()
+);
+
+var liveEarthSettings = {
+  realTimeClock: false,
+  cloudsEnabled: false
+};
+var liveEarthLayer = null;
+var liveEarthSpinHandler = null;
+
+function computeElevation(observerLat, observerLon, satLat, satLon, satAlt) {
+  var obs = Cesium.Cartesian3.fromDegrees(observerLon, observerLat, observer.height || 0);
+  var sat = Cesium.Cartesian3.fromDegrees(satLon, satLat, satAlt);
+  var vec = Cesium.Cartesian3.subtract(sat, obs, new Cesium.Cartesian3());
+  Cesium.Cartesian3.normalize(vec, vec);
+  var up = Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(obs, new Cesium.Cartesian3());
+  var dot = Cesium.Cartesian3.dot(vec, up);
+  return Cesium.Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, dot))));
+}
+
+function classifyCategory(name) {
+  var n = (name || '').toUpperCase();
+  if (n.indexOf('ISS') >= 0) return 'iss';
+  if (n.indexOf('STARLINK') >= 0) return 'starlink';
+  if (n.indexOf('GPS') >= 0 || n.indexOf('NAVSTAR') >= 0) return 'gps';
+  if (n.indexOf('DEB') >= 0 || n.indexOf('DEBRIS') >= 0) return 'debris';
+  return 'other';
+}
+
+viewer.selectedEntityChanged.addEventListener(function (entity) {
+  if (!entity) return;
+  console.log("Satellite:", entity.name);
+});
+
+var iss = viewer.entities.add({
+  name: "ISS",
+  position: Cesium.Cartesian3.fromDegrees(0, 0, 400000),
+  point: {
+    pixelSize: 12,
+    color: Cesium.Color.YELLOW,
+    outlineColor: Cesium.Color.WHITE,
+    outlineWidth: 2
+  }
+});
+
+var orbitPositions = [];
+var orbitLine = viewer.entities.add({
+  polyline: {
+    positions: new Cesium.CallbackProperty(function () {
+      return orbitPositions;
+    }, false),
+    width: 2,
+    material: Cesium.Color.CYAN
+  }
+});
+
+var satellites = {
+  ISS: {
+    entity: iss,
+    trail: orbitPositions
+  }
+};
+
+// Phase 6: global orbital traffic
+var globalOrbitLines = [];
+var globalOrbitLoaded = false;
+
+function createSatellite(name, color) {
+  var positions = [];
+  var entity = viewer.entities.add({
+    name: name,
+    position: Cesium.Cartesian3.fromDegrees(0, 0, 400000),
+    point: {
+      pixelSize: 10,
+      color: color,
+      outlineColor: Cesium.Color.WHITE,
+      outlineWidth: 1
+    }
+  });
+  var orbit = viewer.entities.add({
+    polyline: {
+      positions: new Cesium.CallbackProperty(function () { return positions; }, false),
+      width: 2,
+      material: color
+    }
+  });
+  satellites[name] = { entity: entity, trail: positions };
+}
+
+async function loadSatelliteCatalog() {
+  // Utilisation des TLE réelles (CelesTrak / cache actif via /api/tle/active)
+  var r = await fetch("/api/tle/active", { cache: "no-store" });
+  var data = await r.json();
+  var raw = (data.items || []).slice(0, 400);
+  var sats = raw.map(function (it) {
+    var t1 = it.tle_line1 || it.tle1 || it.line1;
+    var t2 = it.tle_line2 || it.tle2 || it.line2;
+    if (!t1 || !t2) return null;
+    return { name: it.name || "Sat", tle1: t1, tle2: t2 };
+  }).filter(Boolean);
+  sats.forEach(function (sat) {
+    var cat = classifyCategory(sat.name);
+    if (cat === "iss") return;
+    var satrec = satellite.twoline2satrec(sat.tle1, sat.tle2);
+    var color = Cesium.Color.CYAN;
+    if (cat === "starlink") color = Cesium.Color.ORANGE;
+    else if (cat === "gps") color = Cesium.Color.LIME;
+    else if (cat === "debris") color = Cesium.Color.RED;
+    categoryRecs[cat].push({ name: sat.name, satrec: satrec, category: cat });
+    var point = satelliteLayer.add({
+      pixelSize: 3,
+      color: color
+    });
+    categoryPoints[cat].push(point);
+  });
+}
+
+// Phase 6: load extended TLE catalog and build global orbits
+async function loadFullCatalog() {
+  if (globalOrbitLoaded) return;
+  try {
+    var r = await fetch("/api/tle/full");
+    var data = await r.json();
+    var sats = (data.satellites || []).slice(0, 1500); // performance cap
+    var now = new Date();
+    sats.forEach(function (sat) {
+      var cat = classifyCategory(sat.name);
+      if (cat === "iss") return;
+      try {
+        var satrec = satellite.twoline2satrec(sat.tle1, sat.tle2);
+        var positions = [];
+        var totalSeconds = 90 * 60; // 90 minutes
+        var step = 300; // 300 s
+        for (var t = 0; t <= totalSeconds; t += step) {
+          var when = new Date(now.getTime() + t * 1000);
+          var eci = satellite.propagate(satrec, when);
+          if (!eci || !eci.position) continue;
+          var gmst = satellite.gstime(when);
+          var geo = satellite.eciToGeodetic(eci.position, gmst);
+          var lat = Cesium.Math.toDegrees(geo.latitude);
+          var lon = Cesium.Math.toDegrees(geo.longitude);
+          var alt = geo.height * 1000;
+          positions.push(Cesium.Cartesian3.fromDegrees(lon, lat, alt));
+        }
+        if (positions.length > 1) {
+          var color = Cesium.Color.WHITE;
+          if (cat === "starlink") color = Cesium.Color.BLUE;
+          else if (cat === "gps") color = Cesium.Color.YELLOW;
+          else if (cat === "debris") color = Cesium.Color.RED;
+          var line = viewer.entities.add({
+            polyline: {
+              positions: positions,
+              width: 1,
+              material: color
+            },
+            show: false
+          });
+          globalOrbitLines.push(line);
+        }
+      } catch (e) {
+        // Ignore individual satellite errors
+      }
+    });
+    globalOrbitLoaded = true;
+  } catch (e) {
+    console.log("Error loading full TLE catalog", e);
+  }
+}
+
+function updateCategoryPositions(now, gmst, cat) {
+  var recs = categoryRecs[cat];
+  var pts = categoryPoints[cat];
+  for (var i = 0; i < recs.length; i++) {
+    var sat = recs[i];
+    var eci = satellite.propagate(sat.satrec, now);
+    if (!eci || !eci.position) continue;
+    var geo = satellite.eciToGeodetic(eci.position, gmst);
+    var lat = Cesium.Math.toDegrees(geo.latitude);
+    var lon = Cesium.Math.toDegrees(geo.longitude);
+    var alt = geo.height * 1000;
+    pts[i].position = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+    var elevation = computeElevation(observer.lat, observer.lon, lat, lon, alt);
+    if (elevation > 10 && (cat === "catalog" || cat === "other")) {
+      var obs = Cesium.Cartesian3.fromDegrees(observer.lon, observer.lat, observer.height || 0);
+      var satPos = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+      var distance = Cesium.Cartesian3.distance(obs, satPos) / 1000;
+      visibleSatellites.push({
+        name: sat.name,
+        category: sat.category,
+        elevation: elevation,
+        distance: distance,
+        lat: lat,
+        lon: lon,
+        alt: alt
+      });
+    }
+  }
+}
+
+function updateSatellites() {
+  visibleSatellites.length = 0;
+  var now = new Date();
+  var gmst = satellite.gstime(now);
+  updateCategoryPositions(now, gmst, "catalog");
+  updateCategoryPositions(now, gmst, "starlink");
+  updateCategoryPositions(now, gmst, "gps");
+  updateCategoryPositions(now, gmst, "debris");
+  updateCategoryPositions(now, gmst, "other");
+  if (Date.now() - lastRadarUpdate > 5000) {
+    updateRadarUI();
+    lastRadarUpdate = Date.now();
+  }
+}
+
+function predictPasses(satrec, observer, minutesAhead) {
+  var passes = [];
+  var now = new Date();
+  var stepMs = 30 * 1000;
+  var windowMs = minutesAhead * 60 * 1000;
+  var inPass = false;
+  var passStart = null;
+  var maxEl = 0;
+  var prevEl = -90;
+  for (var t = 0; t <= windowMs; t += stepMs) {
+    var when = new Date(now.getTime() + t);
+    var eci = satellite.propagate(satrec, when);
+    if (!eci || !eci.position) continue;
+    var gmst = satellite.gstime(when);
+    var geo = satellite.eciToGeodetic(eci.position, gmst);
+    var lat = Cesium.Math.toDegrees(geo.latitude);
+    var lon = Cesium.Math.toDegrees(geo.longitude);
+    var alt = geo.height * 1000;
+    var elevation = computeElevation(observer.lat, observer.lon, lat, lon, alt);
+    if (!inPass && elevation > 10) {
+      inPass = true;
+      passStart = new Date(when.getTime());
+      maxEl = elevation;
+    } else if (inPass) {
+      if (elevation > maxEl) maxEl = elevation;
+      if (elevation < 10) {
+        passes.push({ startTime: passStart, maxElevation: maxEl, endTime: when });
+        inPass = false;
+      }
+    }
+    prevEl = elevation;
+  }
+  if (inPass && passStart) {
+    passes.push({ startTime: passStart, maxElevation: maxEl, endTime: new Date(now.getTime() + windowMs) });
+  }
+  return passes;
+}
+
+function runPredictions() {
+  predictedPasses.length = 0;
+  var now = new Date();
+  var limit = Math.min(20, satRecs.length);
+  for (var i = 0; i < limit; i++) {
+    var sat = satRecs[i];
+    var passes = predictPasses(sat.satrec, observer, 90);
+    passes.forEach(function (p) {
+      var durationMin = (p.endTime.getTime() - p.startTime.getTime()) / 60000;
+      predictedPasses.push({
+        name: sat.name,
+        start: p.startTime,
+        maxElevation: p.maxElevation,
+        duration: durationMin
+      });
+    });
+  }
+  updatePassUI();
+}
+
+function updatePassUI() {
+  var now = new Date();
+  var sorted = predictedPasses.slice().sort(function (a, b) { return a.start.getTime() - b.start.getTime(); });
+  var next = sorted.slice(0, 5);
+  var html = next.length ? next.map(function (p) {
+    var minFromNow = (p.start.getTime() - now.getTime()) / 60000;
+    var inStr = minFromNow <= 0 ? "now" : "in " + Math.round(minFromNow) + " min";
+    return p.name + " — " + inStr + " — max " + Math.round(p.maxElevation) + "° — " + Math.round(p.duration) + " min";
+  }).join("<br/>") : "No passes in next 90 min";
+  var el = document.getElementById("next-passes-list");
+  if (el) el.innerHTML = html;
+}
+
+function updateRadarUI() {
+  var list = visibleSatellites.slice();
+  var issPos = iss.position && iss.position.getValue ? iss.position.getValue(viewer.clock.currentTime) : null;
+  if (issPos) {
+    var carto = Cesium.Cartographic.fromCartesian(issPos);
+    var issLat = Cesium.Math.toDegrees(carto.latitude);
+    var issLon = Cesium.Math.toDegrees(carto.longitude);
+    var issAlt = carto.height;
+    var issEl = computeElevation(observer.lat, observer.lon, issLat, issLon, issAlt);
+    if (issEl > 10) {
+      var obs = Cesium.Cartesian3.fromDegrees(observer.lon, observer.lat, observer.height || 0);
+      var issDist = Cesium.Cartesian3.distance(obs, issPos) / 1000;
+      list.push({ name: "ISS", category: "iss", elevation: issEl, distance: issDist, lat: issLat, lon: issLon, alt: issAlt });
+    }
+  }
+  var counts = { iss: 0, starlink: 0, gps: 0, debris: 0, other: 0 };
+  list.forEach(function (s) {
+    var c = (s.category || "other");
+    if (!counts[c]) counts[c] = 0;
+    counts[c]++;
+  });
+  var total = list.length;
+  var summaryEl = document.getElementById("space-radar-summary");
+  if (summaryEl) {
+    summaryEl.innerHTML =
+      "Visible: " + total +
+      " · ISS: " + (counts.iss || 0) +
+      " · Starlink: " + (counts.starlink || 0) +
+      " · GPS: " + (counts.gps || 0) +
+      " · Debris: " + (counts.debris || 0) +
+      " · Other: " + (counts.other || 0);
+  }
+  list.sort(function (a, b) { return b.elevation - a.elevation; });
+  var top = list.slice(0, 10);
+  var html = top.length ? top.map(function (s) {
+    var dist = (s.distance != null) ? Math.round(s.distance) + " km" : "—";
+    var cat = s.category || "other";
+    return "[" + cat + "] " + s.name + " — " + Math.round(s.elevation) + "° — " + dist;
+  }).join("<br/>") : "No satellites above 10°";
+  var listEl = document.getElementById("visible-satellites-list");
+  if (listEl) listEl.innerHTML = html;
+}
+
+// === Orbital Modes & Live Earth (Phase 4) ===
+
+function setOrbitalMode(mode) {
+  orbitalMode = mode;
+  updateModeVisibility();
+}
+
+function updateModeVisibility() {
+  // Masquer tous les jeux d'entités de modes supplémentaires
+  Object.keys(modeEntities).forEach(function (key) {
+    modeEntities[key].forEach(function (e) {
+      if (!e) return;
+      e.show = false;
+    });
+  });
+  // Activer celles du mode courant (les entités Earth existantes restent gérées
+  // par leurs propres fonctions et ne sont pas cachées ici)
+  if (modeEntities[orbitalMode]) {
+    modeEntities[orbitalMode].forEach(function (e) {
+      if (!e) return;
+      e.show = true;
+    });
+  }
+  // Appliquer ou non les réglages de scène Live Earth
+  if (orbitalMode === "live-earth") {
+    applyLiveEarthScene(true);
+  } else {
+    applyLiveEarthScene(false);
+    // Hors mode Live Earth, masquer visuellement l'overlay nuages
+    if (liveEarthLayer) {
+      liveEarthLayer.show = false;
+    }
+  }
+}
+
+function applyLiveEarthScene(on) {
+  viewer.scene.globe.enableLighting = on;
+  viewer.scene.skyAtmosphere.show = on;
+  viewer.scene.sun.show = on;
+  viewer.scene.moon.show = on;
+  // Ombres optionnelles, laisser désactivées par défaut pour la perf
+  // viewer.shadows = on;
+}
+
+function startLiveEarthSpin() {
+  if (liveEarthSpinHandler) return;
+  var lastTime = viewer.clock.currentTime;
+  liveEarthSpinHandler = viewer.clock.onTick.addEventListener(function (clock) {
+    if (!liveEarthSettings.realTimeClock || orbitalMode !== "live-earth") return;
+    var now = clock.currentTime;
+    var delta = Cesium.JulianDate.secondsDifference(now, lastTime);
+    lastTime = now;
+    var spinRate = Cesium.Math.toRadians(0.15); // deg/sec
+    viewer.camera.rotate(Cesium.Cartesian3.UNIT_Z, -spinRate * delta);
+  });
+}
+
+function stopLiveEarthSpin() {
+  if (!liveEarthSpinHandler) return;
+  viewer.clock.onTick.removeEventListener(liveEarthSpinHandler);
+  liveEarthSpinHandler = null;
+}
+
+function ensureLiveEarthCloudLayer() {
+  if (liveEarthLayer) return;
+  try {
+    // Placeholder overlay: tile coordinates grid, à remplacer plus tard par de vraies données météo
+    liveEarthLayer = viewer.imageryLayers.addImageryProvider(
+      new Cesium.TileCoordinatesImageryProvider()
+    );
+    liveEarthLayer.alpha = 0.15;
+  } catch (e) {
+    console.log("Live Earth clouds layer error", e);
+    liveEarthLayer = null;
+  }
+}
+
+function setLiveEarthClouds(on) {
+  liveEarthSettings.cloudsEnabled = !!on;
+  if (on) {
+    ensureLiveEarthCloudLayer();
+    if (liveEarthLayer) liveEarthLayer.show = true;
+  } else if (liveEarthLayer) {
+    liveEarthLayer.show = false;
+  }
+}
+
+function configureLiveEarthClock(on) {
+  liveEarthSettings.realTimeClock = !!on;
+  if (on) {
+    viewer.clock.clockStep = Cesium.ClockStep.SYSTEM_CLOCK;
+    viewer.clock.multiplier = 1.0;
+    startLiveEarthSpin();
+  } else {
+    viewer.clock.clockStep = Cesium.ClockStep.SYSTEM_CLOCK_MULTIPLIER;
+    viewer.clock.multiplier = 60.0;
+    stopLiveEarthSpin();
+  }
+}
+
+function liveEarthGlobalView() {
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(0, 20, 12000000.0),
+    duration: 3.0
+  });
+}
+
+function liveEarthNightSideView() {
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(180, -20, 12000000.0),
+    duration: 3.0
+  });
+}
+
+function liveEarthSunlitView() {
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(0, 0, 9000000.0),
+    duration: 3.0
+  });
+}
+
+function liveEarthHorizonView() {
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromDegrees(-75, 10, 5000000.0),
+    orientation: {
+      heading: Cesium.Math.toRadians(0.0),
+      pitch: Cesium.Math.toRadians(-35.0),
+      roll: 0.0
+    },
+    duration: 3.0
+  });
+}
+
+// === Phase 5: 24h orbital propagation simulator ===
+
+function computeFutureOrbit(satrec) {
+  var positions = [];
+  if (!satrec) return positions;
+  var now = new Date();
+  var totalSeconds = 24 * 60 * 60; // 24h
+  var step = 120; // 120 s
+  var maxPoints = 720;
+  var count = 0;
+  futureOrbitMarkers.removeAll();
+  for (var t = 0; t <= totalSeconds && count < maxPoints; t += step) {
+    var futureTime = new Date(now.getTime() + t * 1000);
+    var eci = satellite.propagate(satrec, futureTime);
+    if (!eci || !eci.position) continue;
+    var gmst = satellite.gstime(futureTime);
+    var geo = satellite.eciToGeodetic(eci.position, gmst);
+    var lat = Cesium.Math.toDegrees(geo.latitude);
+    var lon = Cesium.Math.toDegrees(geo.longitude);
+    var alt = geo.height * 1000;
+    var cart = Cesium.Cartesian3.fromDegrees(lon, lat, alt);
+    positions.push(cart);
+    // Marqueurs horaires (toutes les 3600 s)
+    if (t % 3600 === 0) {
+      futureOrbitMarkers.add({
+        position: cart,
+        pixelSize: 4,
+        color: Cesium.Color.LIME.withAlpha(0.9)
+      });
+    }
+    count++;
+  }
+  return positions;
+}
+
+var radarEllipse = viewer.entities.add({
+  position: Cesium.Cartesian3.fromDegrees(observer.lon, observer.lat),
+  ellipse: {
+    semiMinorAxis: 1200000,
+    semiMajorAxis: 1200000,
+    material: Cesium.Color.CYAN.withAlpha(0.08),
+    outline: true
+  }
+});
+var radarStation = viewer.entities.add({
+  position: Cesium.Cartesian3.fromDegrees(observer.lon, observer.lat),
+  point: {
+    pixelSize: 12,
+    color: Cesium.Color.RED
+  },
+  label: {
+    text: "AstroScan-Chohra Radar Station",
+    font: "16px sans-serif",
+    fillColor: Cesium.Color.WHITE,
+    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+    outlineWidth: 2
+  }
+});
+
+// Earth entities can optionally be tracked in modeEntities.earth if desired
+// (we leave existing logic untouched; modes will only add/hide their own extras)
+
+viewer.zoomTo(viewer.entities);
+viewer.trackedEntity = iss;
+
+function applyFilters() {
+  iss.show = !!controlFilters.iss;
+  orbitLine.show = !!controlFilters.iss;
+  // satelliteLayer toujours actif, mais on masque par catégorie
+  ['catalog','starlink','gps','debris','other'].forEach(function (cat) {
+    var pts = categoryPoints[cat];
+    var on = !!controlFilters[cat];
+    for (var i = 0; i < pts.length; i++) {
+      pts[i].show = on;
+    }
+  });
+  radarEllipse.show = !!controlFilters.radar;
+  radarStation.show = !!controlFilters.radar;
+}
+
+async function updateISS() {
+  try {
+    var usedFallback = false;
+    var r = await fetch("/api/iss", { cache: "no-store" });
+    if (r.status === 502) {
+      usedFallback = true;
+      r = await fetch("https://api.wheretheiss.at/v1/satellites/25544", { cache: "no-store" });
+    }
+    var d = await r.json();
+    try {
+      if (window.OrbitalMapEngine && typeof OrbitalMapEngine.ingestIssLive === "function") {
+        OrbitalMapEngine.ingestIssLive(d);
+      }
+    } catch (eIngest) {}
+    try {
+      var metaUn = document.getElementById("map-iss-meta");
+      if (d && d.ok === false && metaUn) {
+        metaUn.textContent = "Données temporairement indisponibles";
+        return;
+      }
+    } catch (eOk) {}
+    var lat = parseFloat(d.lat != null ? d.lat : d.latitude);
+    var lon = parseFloat(d.lon != null ? d.lon : d.longitude);
+    var alt = parseFloat(d.alt != null ? d.alt : (d.altitude != null ? d.altitude : 400));
+    var spd = parseFloat(d.speed != null ? d.speed : (d.velocity != null ? d.velocity : NaN));
+    try {
+      var meta = document.getElementById("map-iss-meta");
+      if (meta) {
+        meta.textContent = (usedFallback ? "wheretheiss.at (502) · " : "/api/iss · ") + new Date().toLocaleTimeString();
+      }
+      var elLat = document.getElementById("map-iss-lat");
+      var elLon = document.getElementById("map-iss-lon");
+      var elAlt = document.getElementById("map-iss-alt");
+      var elSpd = document.getElementById("map-iss-spd");
+      var elReg = document.getElementById("map-iss-region");
+      if (elLat) elLat.textContent = !isNaN(lat) ? lat.toFixed(4) : "—";
+      if (elLon) elLon.textContent = !isNaN(lon) ? lon.toFixed(4) : "—";
+      if (elAlt) elAlt.textContent = !isNaN(alt) ? alt.toFixed(1) : "—";
+      if (elSpd) elSpd.textContent = !isNaN(spd) ? String(Math.round(spd)) : "—";
+      if (elReg) {
+        var reg = d.region || d.country_name || "—";
+        var cr = d.crew;
+        if (cr != null && typeof cr === "object" && cr.number != null) reg += " · équipage: " + cr.number;
+        else if (Array.isArray(cr)) reg += " · équipage: " + cr.length;
+        elReg.textContent = reg;
+      }
+    } catch (eUi) {}
+    if (!isNaN(lat) && !isNaN(lon)) {
+      var pos = Cesium.Cartesian3.fromDegrees(lon, lat, alt * 1000);
+      iss.position = pos;
+      orbitPositions.push(pos);
+      if (orbitPositions.length > 200) {
+        orbitPositions.shift();
+      }
+    }
+  } catch (e) {
+    console.log("ISS update error", e);
+  }
+}
+updateISS();
+setInterval(updateISS, 15000);
+
+async function refreshMapSideTelemetry() {
+  try {
+    var st = await fetch("/api/sdr/status", { cache: "no-store" }).then(function (x) { return x.json(); });
+    var stEl = document.getElementById("map-sdr-status");
+    var sm = document.getElementById("map-sdr-meta");
+    if (stEl) {
+      stEl.textContent = st && st.status != null ? String(st.status) : (st && st.ok === false ? "erreur" : "standby");
+    }
+    if (sm) sm.textContent = "/api/sdr/status · " + new Date().toLocaleTimeString();
+  } catch (e1) {
+    var stEl2 = document.getElementById("map-sdr-status");
+    if (stEl2) stEl2.textContent = "—";
+  }
+  try {
+    var pr = await fetch("/api/sdr/passes", { cache: "no-store" }).then(function (x) { return x.json(); });
+    var passes = (pr && pr.passes) ? pr.passes : [];
+    var noaaEl = document.getElementById("map-sdr-noaa");
+    var n15 = null;
+    for (var i = 0; i < passes.length; i++) {
+      if (passes[i] && String(passes[i].sat || "").toUpperCase().indexOf("NOAA-15") >= 0) {
+        n15 = passes[i];
+        break;
+      }
+    }
+    if (!n15) {
+      for (var j = 0; j < passes.length; j++) {
+        if (passes[j] && String(passes[j].sat || "").indexOf("15") >= 0) {
+          n15 = passes[j];
+          break;
+        }
+      }
+    }
+    if (noaaEl) {
+      if (n15 && n15.aos) {
+        var aos = new Date(n15.aos * 1000);
+        noaaEl.textContent = (n15.sat || "NOAA") + " · AOS ~ " + aos.toISOString().replace("T", " ").slice(0, 16) + " UTC · max " + (n15.max_el != null ? n15.max_el : "?") + "°" + (n15.simulated ? " (sim)" : "");
+      } else {
+        noaaEl.textContent = passes.length ? "Passes: voir /api/sdr/passes" : "Aucune passe dans la fenêtre";
+      }
+    }
+  } catch (e2) {
+    var ne = document.getElementById("map-sdr-noaa");
+    if (ne) ne.textContent = "—";
+  }
+  try {
+    var lj = await fetch("/api/latest?limit=1", { cache: "no-store" }).then(function (x) { return x.json(); });
+    var obs = (lj && lj.observations && lj.observations[0]) ? lj.observations[0] : null;
+    var l1 = document.getElementById("map-stellar-line1");
+    var l2 = document.getElementById("map-stellar-line2");
+    var lm = document.getElementById("map-stellar-meta");
+    if (lm) lm.textContent = "/api/latest · " + new Date().toLocaleTimeString();
+    if (obs && l1) {
+      l1.textContent = (obs.timestamp || "—") + " · src " + (obs.source || "—");
+      var snippet = (obs.title || obs.type_objet || obs.objets_detectes || "").toString();
+      if (!snippet && obs.rapport_display) snippet = String(obs.rapport_display).slice(0, 140);
+      if (l2) l2.textContent = snippet ? snippet.slice(0, 140) : "—";
+    } else if (l1) {
+      l1.textContent = "Aucune observation en base";
+      if (l2) l2.textContent = "—";
+    }
+  } catch (e3) {
+    var l1b = document.getElementById("map-stellar-line1");
+    if (l1b) l1b.textContent = "API indisponible";
+  }
+}
+refreshMapSideTelemetry();
+setInterval(refreshMapSideTelemetry, 20000);
+// Radar and pass data come only from OrbitalMapEngine (orbital_map_engine.js)
+
+// Control panel wiring
+applyFilters();
+var filterIss = document.getElementById('filter-iss');
+var filterCatalog = document.getElementById('filter-catalog');
+var filterRadar = document.getElementById('filter-radar');
+var filterStarlink = document.getElementById('filter-starlink');
+var filterGps = document.getElementById('filter-gps');
+var filterDebris = document.getElementById('filter-debris');
+var filterOther = document.getElementById('filter-other');
+var futureOrbitToggle = document.getElementById('future-orbit-toggle');
+var globalOrbitToggle = document.getElementById('global-orbit-toggle');
+var btnCenterIss = document.getElementById('btn-center-iss');
+var btnFollowIss = document.getElementById('btn-follow-iss');
+var selectedInfoEl = document.getElementById('orbital-selected');
+var followIss = true;
+
+if (filterIss) {
+  filterIss.addEventListener('change', function () {
+    controlFilters.iss = !!this.checked;
+    applyFilters();
+  });
+}
+if (filterCatalog) {
+  filterCatalog.addEventListener('change', function () {
+    controlFilters.catalog = !!this.checked;
+    applyFilters();
+  });
+}
+if (filterRadar) {
+  filterRadar.addEventListener('change', function () {
+    controlFilters.radar = !!this.checked;
+    applyFilters();
+  });
+}
+if (filterStarlink) {
+  filterStarlink.addEventListener('change', function () {
+    controlFilters.starlink = !!this.checked;
+    applyFilters();
+  });
+}
+if (filterGps) {
+  filterGps.addEventListener('change', function () {
+    controlFilters.gps = !!this.checked;
+    applyFilters();
+  });
+}
+if (filterDebris) {
+  filterDebris.addEventListener('change', function () {
+    controlFilters.debris = !!this.checked;
+    applyFilters();
+  });
+}
+if (filterOther) {
+  filterOther.addEventListener('change', function () {
+    controlFilters.other = !!this.checked;
+    applyFilters();
+  });
+}
+if (futureOrbitToggle) {
+  futureOrbitToggle.addEventListener('change', function () {
+    if (!this.checked) {
+      futureOrbitLine.show = false;
+      futureOrbitMarkers.removeAll();
+    } else {
+      futureOrbitLine.show = futureOrbitPositions.length > 1;
+    }
+  });
+}
+if (globalOrbitToggle) {
+  globalOrbitToggle.addEventListener('change', async function () {
+    if (this.checked) {
+      await loadFullCatalog();
+      for (var i = 0; i < globalOrbitLines.length; i++) {
+        globalOrbitLines[i].show = true;
+      }
+    } else {
+      for (var j = 0; j < globalOrbitLines.length; j++) {
+        globalOrbitLines[j].show = false;
+      }
+    }
+  });
+}
+if (btnCenterIss) {
+  btnCenterIss.addEventListener('click', function () {
+    viewer.flyTo(iss);
+  });
+}
+if (btnFollowIss) {
+  btnFollowIss.addEventListener('click', function () {
+    followIss = !followIss;
+    viewer.trackedEntity = followIss ? iss : null;
+    btnFollowIss.textContent = followIss ? 'Unfollow ISS' : 'Follow ISS';
+  });
+}
+
+// Click interaction for satellites
+var handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+handler.setInputAction(function (movement) {
+  var picked = viewer.scene.pick(movement.position);
+  if (!picked) {
+    selectedSatellite = null;
+    selectedOrbitPositions.length = 0;
+    selectedOrbitLine.show = false;
+    futureOrbitPositions.length = 0;
+    futureOrbitLine.show = false;
+    futureOrbitMarkers.removeAll();
+    if (selectedInfoEl) selectedInfoEl.textContent = 'No object selected.';
+    return;
+  }
+  // ISS entity selection
+  if (picked.id === iss) {
+    selectedSatellite = { name: 'ISS', category: 'iss' };
+    selectedOrbitPositions.length = 0;
+    selectedOrbitLine.show = false;
+     futureOrbitPositions.length = 0;
+     futureOrbitLine.show = false;
+     futureOrbitMarkers.removeAll();
+    if (selectedInfoEl) selectedInfoEl.textContent = 'Selected: ISS (ISS)';
+    return;
+  }
+  // Point primitives from categories
+  var primitive = picked.primitive;
+  if (!primitive) {
+    if (selectedInfoEl) selectedInfoEl.textContent = 'No object selected.';
+    return;
+  }
+  // Find matching satellite by closest point
+  var cart = primitive.position || primitive._position;
+  if (!cart) {
+    if (selectedInfoEl) selectedInfoEl.textContent = 'No object selected.';
+    return;
+  }
+  var carto = Cesium.Cartographic.fromCartesian(cart);
+  var lat = Cesium.Math.toDegrees(carto.latitude);
+  var lon = Cesium.Math.toDegrees(carto.longitude);
+  var alt = carto.height;
+  var best = null;
+  var bestDist = 1e9;
+  ['catalog','starlink','gps','debris','other'].forEach(function (cat) {
+    var recs = categoryRecs[cat];
+    for (var i = 0; i < recs.length; i++) {
+      var rec = recs[i];
+      // Approx: compare current positions from last update
+      // We don't store per-sat lat/lon here, so we rely on index equality
+      if (categoryPoints[cat][i] === primitive) {
+        best = { rec: rec, category: cat, index: i };
+        bestDist = 0;
+        break;
+      }
+    }
+  });
+  if (!best) {
+    if (selectedInfoEl) selectedInfoEl.textContent = 'No object selected.';
+    return;
+  }
+  selectedSatellite = best.rec;
+  var obs = Cesium.Cartesian3.fromDegrees(observer.lon, observer.lat, observer.height || 0);
+  var distance = Cesium.Cartesian3.distance(obs, cart) / 1000;
+  if (selectedInfoEl) {
+    selectedInfoEl.textContent =
+      'Selected: ' + selectedSatellite.name +
+      ' (' + best.category + ') · Lat ' + lat.toFixed(2) +
+      ' · Lon ' + lon.toFixed(2) +
+      ' · Alt ' + (alt/1000).toFixed(1) + ' km' +
+      ' · Dist ' + distance.toFixed(0) + ' km';
+  }
+  // Optional orbit for selected satellite
+  selectedOrbitPositions.length = 0;
+  var now = new Date();
+  for (var dt = -20 * 60; dt <= 20 * 60; dt += 120) {
+    var when = new Date(now.getTime() + dt * 1000);
+    var eci = satellite.propagate(selectedSatellite.satrec, when);
+    if (!eci || !eci.position) continue;
+    var gmst = satellite.gstime(when);
+    var g = satellite.eciToGeodetic(eci.position, gmst);
+    var la = Cesium.Math.toDegrees(g.latitude);
+    var lo = Cesium.Math.toDegrees(g.longitude);
+    var al = g.height * 1000;
+    selectedOrbitPositions.push(Cesium.Cartesian3.fromDegrees(lo, la, al));
+  }
+  selectedOrbitLine.show = selectedOrbitPositions.length > 1;
+
+  // Future 24h orbit simulation
+  futureOrbitPositions.length = 0;
+  futureOrbitMarkers.removeAll();
+  if (futureOrbitToggle && futureOrbitToggle.checked && selectedSatellite.satrec) {
+    var futurePositions = computeFutureOrbit(selectedSatellite.satrec);
+    for (var i = 0; i < futurePositions.length; i++) {
+      futureOrbitPositions.push(futurePositions[i]);
+    }
+    futureOrbitLine.show = futureOrbitPositions.length > 1;
+  } else {
+    futureOrbitLine.show = false;
+  }
+}, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+</script>
+<div id="astro-status-bar" aria-live="polite">
+  <span id="sb-badge">⬤ LIVE</span>
+  <span id="sb-tle">TLE: --</span>
+  <span id="sb-img">IMG: --</span>
+  <span id="sb-uptime">UP: --</span>
+  <span class="asc-view-sync-hud" style="margin-left:14px;font-size:10px;color:#8899aa;letter-spacing:0.3px;" title="Synchro vue (?sessionId= viewRole= sessionKey=)">
+    VUE <span id="asc-view-sync-session">—</span>
+    · <span id="asc-view-sync-role" data-role="master">—</span>
+    · <span id="asc-view-sync-ws" data-state="offline">OFFLINE</span>
+    <button type="button" id="asc-view-takeover" title="Demander le rôle pilote (si le master est inactif)" onclick="if(window.AstroScanViewSync)AstroScanViewSync.requestMaster();">Prendre le contrôle</button>
+  </span>
+  <span id="sb-time" style="margin-left:auto;color:#ffaa00;"></span>
+</div>
+<script>
+(function () {
+  function tickSbUtc() {
+    try {
+      var el = document.getElementById("sb-time");
+      if (!el) return;
+      var t = new Date();
+      el.textContent = t.toUTCString().slice(17, 25) + " UTC";
+    } catch (e) {}
+  }
+  tickSbUtc();
+  setInterval(tickSbUtc, 1000);
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+
+  if (!window.AstroScanViewSync || typeof AstroScanViewSync.start !== "function") return;
+
+  /* sessionId / viewRole : query (?sessionId=&viewRole=master|viewer) ou défauts module */
+  AstroScanViewSync.start({});
+
+  var lastCamJson = "";
+  var camTimer = null;
+  var suppressCameraUntil = 0;
+
+  function cameraSnapshot() {
+    try {
+      var v = window.viewer;
+      var C = window.Cesium;
+      if (!v || !v.camera || !C) return null;
+      var carto = C.Cartographic.fromCartesian(v.camera.position);
+      var hpr = v.camera.headingPitchRoll;
+      return {
+        lng: C.Math.toDegrees(carto.longitude),
+        lat: C.Math.toDegrees(carto.latitude),
+        height: carto.height,
+        heading: hpr.heading,
+        pitch: hpr.pitch,
+        roll: hpr.roll,
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function scheduleCameraPush() {
+    if (camTimer) clearTimeout(camTimer);
+    camTimer = setTimeout(function () {
+      camTimer = null;
+      if (Date.now() < suppressCameraUntil) return;
+      if (!window.AstroScanViewSync || window.AstroScanViewSync._applyingRemote) return;
+      var c = cameraSnapshot();
+      if (!c) return;
+      var j = JSON.stringify(c);
+      if (j === lastCamJson) return;
+      lastCamJson = j;
+      AstroScanViewSync.send({ mode: "orbital_map", camera: c });
+    }, 550);
+  }
+
+  function applyOrbitalCamera(c) {
+    try {
+      var v = window.viewer;
+      var C = window.Cesium;
+      if (!v || !c || !C) return;
+      suppressCameraUntil = Date.now() + 1200;
+      v.camera.setView({
+        destination: C.Cartesian3.fromDegrees(
+          Number(c.lng),
+          Number(c.lat),
+          Number(c.height)
+        ),
+        orientation: {
+          heading: Number(c.heading) || 0,
+          pitch: Number(c.pitch) || 0,
+          roll: Number(c.roll) || 0,
+        },
+      });
+      lastCamJson = JSON.stringify({
+        lng: Number(c.lng),
+        lat: Number(c.lat),
+        height: Number(c.height),
+        heading: Number(c.heading) || 0,
+        pitch: Number(c.pitch) || 0,
+        roll: Number(c.roll) || 0,
+      });
+    } catch (e) {}
+  }
+
+  function syncLayerCheckboxes() {
+    var cf = window.controlFilters;
+    if (!cf) return;
+    var map = {
+      iss: "filter-iss",
+      catalog: "filter-catalog",
+      radar: "filter-radar",
+      starlink: "filter-starlink",
+      gps: "filter-gps",
+      debris: "filter-debris",
+      other: "filter-other",
+    };
+    Object.keys(map).forEach(function (k) {
+      var el = document.getElementById(map[k]);
+      if (el) el.checked = !!cf[k];
+    });
+  }
+
+  function wireCamera() {
+    var v = window.viewer;
+    if (!v || !v.camera || !v.camera.changed) return;
+    v.camera.changed.addEventListener(function () {
+      scheduleCameraPush();
+    });
+  }
+
+  wireCamera();
+
+  var innerSetFilter = window.setFilter;
+  if (typeof innerSetFilter === "function") {
+    window.setFilter = function (type) {
+      innerSetFilter(type);
+      if (window.AstroScanViewSync && !window.AstroScanViewSync._applyingRemote) {
+        var f = (type || "all").toString().toLowerCase();
+        AstroScanViewSync.send({ mode: "orbital_map", filters: { proFilter: f } });
+      }
+    };
+  }
+
+  if (typeof window.applyFilters === "function") {
+    var origAF = window.applyFilters;
+    window.applyFilters = function () {
+      origAF.apply(this, arguments);
+      if (
+        window.AstroScanViewSync &&
+        !window.AstroScanViewSync._applyingRemote &&
+        window.controlFilters
+      ) {
+        var cf = window.controlFilters;
+        AstroScanViewSync.send({
+          mode: "orbital_map",
+          filters: {
+            layers: {
+              iss: !!cf.iss,
+              catalog: !!cf.catalog,
+              radar: !!cf.radar,
+              starlink: !!cf.starlink,
+              gps: !!cf.gps,
+              debris: !!cf.debris,
+              other: !!cf.other,
+            },
+          },
+        });
+      }
+    };
+  }
+
+  window.addEventListener("astroscan:view-state", function (ev) {
+    var env = ev.detail;
+    if (!env || !env.payload) return;
+    var p = env.payload;
+    if (p.mode && p.mode !== "orbital_map") return;
+
+    if (p.filters) {
+      if (p.filters.proFilter != null && typeof window.setFilter === "function") {
+        window.setFilter(p.filters.proFilter);
+      }
+      if (p.filters.layers && window.controlFilters) {
+        var L = p.filters.layers;
+        ["iss", "catalog", "radar", "starlink", "gps", "debris", "other"].forEach(function (k) {
+          if (L[k] !== undefined) window.controlFilters[k] = !!L[k];
+        });
+        syncLayerCheckboxes();
+        if (typeof window.applyFilters === "function") window.applyFilters();
+      }
+    }
+
+    if (
+      p.selectedObject !== undefined &&
+      window.OrbitalMapEngine &&
+      typeof OrbitalMapEngine.selectSatelliteByName === "function"
+    ) {
+      var n = p.selectedObject && p.selectedObject.name ? String(p.selectedObject.name) : null;
+      OrbitalMapEngine.selectSatelliteByName(n);
+    }
+
+    if (p.camera && window.viewer && window.Cesium) {
+      applyOrbitalCamera(p.camera);
+    }
+  });
+})();
+</script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

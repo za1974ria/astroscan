@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroScan-Chohra - Sky Camera (live)</title>
+<style>
+:root {
+  --bg: #040914;
+  --cyan: #00d8ff;
+  --vio: #9b6cff;
+  --gold: #ffd060;
+  --red: #ff2c3a;
+  --green: #00ff88;
+  --txt: #d4e8ff;
+  --muted: #7e9db9;
+  --card: rgba(8,14,30,0.92);
+  --border: rgba(0,216,255,0.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--txt);font-family:Segoe UI,system-ui,sans-serif;overflow:hidden}
+
+/* ── Layout ── */
+#app{display:flex;width:100vw;height:100vh;overflow:hidden}
+
+/* ── Zone caméra ── */
+#camera-zone{
+  position:relative;flex:1 1 auto;min-width:0;
+  background:#000;overflow:hidden;
+}
+#video{
+  width:100%;height:100%;object-fit:cover;display:block;
+}
+#canvas-overlay{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:5;
+}
+#sim-img{
+  width:100%;height:100%;object-fit:cover;display:none;
+  filter:brightness(.9) saturate(1.1);
+}
+
+/* Crosshair */
+#crosshair{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:40px;height:40px;pointer-events:none;z-index:6;
+}
+#crosshair::before,#crosshair::after{
+  content:"";position:absolute;background:rgba(0,216,255,.7);
+}
+#crosshair::before{width:1px;height:100%;left:50%;top:0}
+#crosshair::after{width:100%;height:1px;top:50%;left:0}
+.ch-circle{
+  position:absolute;top:50%;left:50%;
+  width:24px;height:24px;margin:-12px 0 0 -12px;
+  border:1px solid rgba(0,216,255,.6);border-radius:50%;
+}
+
+/* Badge LIVE */
+#live-badge{
+  position:absolute;top:12px;left:16px;z-index:10;
+  background:var(--red);color:#fff;
+  padding:4px 12px;border-radius:4px;
+  font:700 10px/1 monospace;letter-spacing:.18em;
+  animation:blink 1.1s infinite;display:none;
+}
+#live-badge.on{display:block}
+@keyframes blink{50%{opacity:.5}}
+
+/* Overlay "no camera" */
+#no-cam-msg{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:rgba(4,9,20,.75);z-index:8;
+  font:600 13px/1.5 monospace;color:var(--muted);
+  text-align:center;gap:8px;display:none;
+}
+#no-cam-msg .icon{font-size:36px}
+
+/* Compteur étoiles overlay */
+#star-count-badge{
+  position:absolute;bottom:16px;left:16px;z-index:10;
+  background:rgba(0,0,20,.7);backdrop-filter:blur(6px);
+  border:1px solid var(--border);border-radius:6px;
+  padding:6px 12px;font:600 11px/1 monospace;color:var(--cyan);
+  letter-spacing:.08em;
+}
+
+/* ── Panel droit ── */
+#panel{
+  width:320px;min-width:320px;height:100vh;
+  overflow-y:auto;
+  background:rgba(4,9,20,.96);
+  border-left:1px solid var(--border);
+  backdrop-filter:blur(12px);
+  display:flex;flex-direction:column;
+  z-index:20;
+}
+.panel-head{
+  padding:14px 16px 10px;
+  border-bottom:1px solid var(--border);
+}
+.panel-title{font:700 12px/1 monospace;letter-spacing:.15em;color:var(--cyan)}
+.panel-sub{font:400 10px/1 monospace;color:var(--muted);margin-top:3px}
+
+.panel-body{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+
+/* Bouton capture */
+#btn-capture{
+  width:100%;padding:11px 0;
+  background:linear-gradient(135deg,#0a2a40,#083060);
+  border:1px solid var(--cyan);border-radius:8px;
+  color:var(--cyan);font:700 12px/1 monospace;letter-spacing:.12em;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+#btn-capture:hover{background:linear-gradient(135deg,#0e3a56,#0a4080);box-shadow:0 0 16px rgba(0,216,255,.25)}
+#btn-capture:disabled{opacity:.4;cursor:not-allowed}
+#btn-simulate{
+  width:100%;padding:8px 0;
+  background:rgba(155,108,255,.1);
+  border:1px solid rgba(155,108,255,.4);border-radius:6px;
+  color:var(--vio);font:600 10px/1 monospace;letter-spacing:.1em;
+  cursor:pointer;transition:all .2s;
+}
+#btn-simulate:hover{background:rgba(155,108,255,.2)}
+
+/* Zone résultat analyse */
+.section-label{font:600 9px/1 monospace;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px}
+#analyse-box{
+  background:rgba(0,0,20,.6);
+  border:1px solid var(--border);border-radius:8px;
+  padding:12px;min-height:100px;
+  font:400 11px/1.6 monospace;color:var(--txt);
+  position:relative;overflow:hidden;
+}
+#analyse-cursor{
+  display:inline-block;width:6px;height:12px;
+  background:var(--cyan);vertical-align:middle;
+  animation:cur 0.7s step-end infinite;
+}
+@keyframes cur{50%{opacity:0}}
+#analyse-loader{
+  position:absolute;inset:0;background:rgba(4,9,20,.85);
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:8px;font:600 10px/1 monospace;color:var(--muted);
+}
+.spinner{
+  width:28px;height:28px;border:2px solid rgba(0,216,255,.2);
+  border-top-color:var(--cyan);border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-box{
+  background:rgba(0,0,20,.5);border:1px solid var(--border);
+  border-radius:6px;padding:8px 10px;
+}
+.stat-val{font:700 18px/1 monospace;color:var(--cyan)}
+.stat-lbl{font:400 9px/1 monospace;color:var(--muted);letter-spacing:.1em;margin-top:3px;text-transform:uppercase}
+
+/* Historique */
+#history-list{display:flex;flex-direction:column;gap:8px}
+.hist-item{
+  display:flex;gap:8px;align-items:center;
+  background:rgba(0,0,20,.4);border:1px solid rgba(0,216,255,.1);
+  border-radius:6px;padding:8px;cursor:pointer;transition:border-color .2s;
+}
+.hist-item:hover{border-color:rgba(0,216,255,.35)}
+.hist-thumb{width:44px;height:44px;object-fit:cover;border-radius:4px;flex-shrink:0}
+.hist-info{flex:1;min-width:0}
+.hist-time{font:600 9px/1 monospace;color:var(--muted)}
+.hist-txt{font:400 10px/1.4 monospace;color:var(--txt);margin-top:2px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+/* Scrollbars */
+*{scrollbar-width:thin;scrollbar-color:#00ffff #0a0a1a}
+*::-webkit-scrollbar{width:5px}
+*::-webkit-scrollbar-track{background:#0a0a1a}
+*::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#00ffff,#7700ff);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Zone caméra -->
+  <div id="camera-zone">
+    <video id="video" autoplay playsinline muted></video>
+    <img id="sim-img" alt="Ciel simulé" crossorigin="anonymous"/>
+    <canvas id="canvas-overlay"></canvas>
+    <div id="crosshair"><div class="ch-circle"></div></div>
+    <div id="live-badge">● LIVE</div>
+    <div id="star-count-badge">✦ <span id="star-count">0</span> étoiles détectées</div>
+    <div id="no-cam-msg">
+      <div class="icon">🔭</div>
+      <div>Aucune caméra détectée</div>
+      <div style="color:var(--vio)">Mode simulation activé</div>
+    </div>
+  </div>
+
+  <!-- Panel droit -->
+  <div id="panel">
+    <div class="panel-head">
+      <div class="panel-title">🔭 SKY CAMERA</div>
+      <div class="panel-sub">Détection étoiles + Analyse Claude Vision</div>
+    </div>
+
+    <div class="panel-body">
+
+      <!-- Boutons -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button id="btn-capture" onclick="captureAndAnalyze()">
+          📸 CAPTURER ET ANALYSER
+        </button>
+        <button id="btn-simulate" onclick="loadSimulation()">
+          🌌 MODE SIMULATION
+        </button>
+      </div>
+
+      <!-- Stats -->
+      <div>
+        <div class="section-label">Télémétrie optique</div>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-val" id="stat-stars">0</div>
+            <div class="stat-lbl">Étoiles</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="stat-mag" style="color:var(--gold)">—</div>
+            <div class="stat-lbl">Magnitude</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="stat-const" style="color:var(--vio);font-size:11px">—</div>
+            <div class="stat-lbl">Constellation</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="stat-planet" style="color:var(--green);font-size:11px">—</div>
+            <div class="stat-lbl">Planètes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analyse Claude -->
+      <div>
+        <div class="section-label">Analyse ORBITAL-CHOHRA</div>
+        <div id="analyse-box">
+          <span id="analyse-text" style="color:var(--muted)">Capturez une image pour déclencher l'analyse astronomique...</span>
+          <div id="analyse-loader" style="display:none">
+            <div class="spinner"></div>
+            <span>Analyse en cours...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Historique -->
+      <div>
+        <div class="section-label">Dernières captures (<span id="hist-count">0</span>/5)</div>
+        <div id="history-list"></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──
+let stream = null;
+let simMode = false;
+let detectionInterval = null;
+let stars = [];
+let history = [];
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas-overlay');
+const ctx = canvas.getContext('2d');
+const simImg = document.getElementById('sim-img');
+
+// ── Init webcam ──
+async function initCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = stream;
+    video.style.display = 'block';
+    simImg.style.display = 'none';
+    document.getElementById('live-badge').classList.add('on');
+    document.getElementById('no-cam-msg').style.display = 'none';
+    simMode = false;
+    video.addEventListener('loadedmetadata', resizeCanvas);
+    startDetection();
+  } catch(e) {
+    console.warn('Webcam non disponible:', e.message);
+    document.getElementById('no-cam-msg').style.display = 'flex';
+    await loadSimulation();
+  }
+}
+
+// ── Resize canvas ──
+function resizeCanvas() {
+  const zone = document.getElementById('camera-zone');
+  canvas.width = zone.clientWidth;
+  canvas.height = zone.clientHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ── Détection étoiles (pixels lumineux) ──
+function detectStars() {
+  const offscreen = document.createElement('canvas');
+  let src, srcW, srcH;
+  if (!simMode && video.readyState >= 2) {
+    srcW = video.videoWidth || 640;
+    srcH = video.videoHeight || 360;
+    offscreen.width = srcW;
+    offscreen.height = srcH;
+    const oc = offscreen.getContext('2d');
+    oc.drawImage(video, 0, 0, srcW, srcH);
+    src = oc;
+  } else if (simMode && simImg.complete && simImg.naturalWidth > 0) {
+    srcW = simImg.naturalWidth;
+    srcH = simImg.naturalHeight;
+    offscreen.width = Math.min(srcW, 800);
+    offscreen.height = Math.min(srcH, 600);
+    const oc = offscreen.getContext('2d');
+    oc.drawImage(simImg, 0, 0, offscreen.width, offscreen.height);
+    srcW = offscreen.width;
+    srcH = offscreen.height;
+    src = oc;
+  } else return;
+
+  let data;
+  try { data = src.getImageData(0, 0, srcW, srcH).data; }
+  catch(e) { return; }
+
+  const THRESHOLD = 600;
+  const MIN_DIST = 18;
+  const found = [];
+
+  for (let y = 2; y < srcH - 2; y += 3) {
+    for (let x = 2; x < srcW - 2; x += 3) {
+      const i = (y * srcW + x) * 4;
+      const bright = data[i] + data[i+1] + data[i+2];
+      if (bright > THRESHOLD && data[i+3] > 200) {
+        // Vérifie distance min par rapport aux étoiles déjà trouvées
+        const tooClose = found.some(s => Math.hypot(s.x - x, s.y - y) < MIN_DIST);
+        if (!tooClose) {
+          found.push({ x, y, bright });
+        }
+      }
+    }
+  }
+
+  // Normalise coordonnées vers canvas overlay
+  const zone = document.getElementById('camera-zone');
+  const cW = canvas.width, cH = canvas.height;
+  stars = found.slice(0, 80).map(s => ({
+    cx: (s.x / srcW) * cW,
+    cy: (s.y / srcH) * cH,
+    r: Math.min(4 + (s.bright - 600) / 200, 10),
+    bright: s.bright
+  }));
+
+  document.getElementById('star-count').textContent = stars.length;
+  document.getElementById('stat-stars').textContent = stars.length;
+  drawOverlay();
+}
+
+// ── Dessin overlay ──
+let animPhase = 0;
+function drawOverlay() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  animPhase += 0.08;
+
+  const pulse = 0.5 + 0.5 * Math.sin(animPhase);
+
+  for (const s of stars) {
+    // Cercle principal
+    ctx.beginPath();
+    ctx.arc(s.cx, s.cy, s.r + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0,216,255,${0.55 + pulse * 0.35})`;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Halo
+    ctx.beginPath();
+    ctx.arc(s.cx, s.cy, s.r + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0,216,255,${0.12 + pulse * 0.1})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Point central
+    ctx.beginPath();
+    ctx.arc(s.cx, s.cy, 1.2, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+}
+
+function startDetection() {
+  if (detectionInterval) clearInterval(detectionInterval);
+  detectStars();
+  detectionInterval = setInterval(detectStars, 2000);
+  // Animation loop pour le clignotement
+  function animLoop() { drawOverlay(); requestAnimationFrame(animLoop); }
+  animLoop();
+}
+
+// ── Capture frame en base64 ──
+function captureFrame() {
+  const cap = document.createElement('canvas');
+  if (!simMode && video.readyState >= 2) {
+    cap.width = video.videoWidth || 640;
+    cap.height = video.videoHeight || 480;
+    cap.getContext('2d').drawImage(video, 0, 0);
+  } else if (simMode && simImg.complete && simImg.naturalWidth > 0) {
+    cap.width = Math.min(simImg.naturalWidth, 800);
+    cap.height = Math.min(simImg.naturalHeight, 600);
+    cap.getContext('2d').drawImage(simImg, 0, 0, cap.width, cap.height);
+  } else {
+    cap.width = 320; cap.height = 240;
+    const c = cap.getContext('2d');
+    c.fillStyle = '#000010';
+    c.fillRect(0, 0, 320, 240);
+  }
+  return cap.toDataURL('image/jpeg', 0.85);
+}
+
+// ── Analyse Claude Vision ──
+async function captureAndAnalyze() {
+  const btn = document.getElementById('btn-capture');
+  btn.disabled = true;
+  const loader = document.getElementById('analyse-loader');
+  loader.style.display = 'flex';
+  document.getElementById('analyse-text').textContent = '';
+
+  const imageB64 = captureFrame();
+  const thumb = imageB64;
+
+  // Données contextuelles
+  const now = new Date();
+  const dateStr = now.toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' });
+
+  try {
+    const resp = await fetch('/api/sky-camera/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_base64: imageB64.split(',')[1],
+        datetime: dateStr,
+        stars_detected: stars.length,
+        sim_mode: simMode
+      })
+    });
+    const data = await resp.json();
+    loader.style.display = 'none';
+
+    const analyse = markdownToHtml(data.analyse || data.error || 'Aucune analyse disponible.');
+
+    // Mise à jour stats depuis analyse
+    if (data.stars_count !== undefined) document.getElementById('stat-stars').textContent = data.stars_count;
+    if (data.magnitude) document.getElementById('stat-mag').textContent = data.magnitude;
+    if (data.constellation) document.getElementById('stat-const').textContent = data.constellation;
+    if (data.planets) document.getElementById('stat-planet').textContent = data.planets;
+
+    // Effet typewriter
+    typewrite('analyse-text', analyse);
+
+    // Ajout historique
+    addHistory(thumb, analyse, now);
+  } catch(e) {
+    loader.style.display = 'none';
+    document.getElementById('analyse-text').textContent = 'Erreur de connexion : ' + e.message;
+  }
+  btn.disabled = false;
+}
+
+function markdownToHtml(text) {
+  return text
+    .replace(/### (.*)/g, '<h4 style="color:var(--gold);margin:6px 0 3px;font-size:11px;letter-spacing:.08em">$1</h4>')
+    .replace(/## (.*)/g, '<h3 style="color:var(--cyan);margin:8px 0 4px;font-size:12px;letter-spacing:.1em">$1</h3>')
+    .replace(/\*\*(.*?)\*\*/g, '<b style="color:var(--txt)">$1</b>')
+    .replace(/\*(.*?)\*/g, '<i style="color:var(--muted)">$1</i>')
+    .replace(/```[\w]*\n?/g, '')
+    .replace(/`(.*?)`/g, '<code style="background:rgba(0,216,255,.1);padding:1px 4px;border-radius:3px;color:var(--cyan)">$1</code>')
+    .replace(/---/g, '<hr style="border-color:rgba(0,216,255,.15);margin:6px 0">')
+    .replace(/\n/g, '<br>');
+}
+
+function typewrite(id, html) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  // Typewriter sur le texte brut, puis render HTML en fin
+  const plain = html.replace(/<[^>]+>/g, '');
+  let i = 0;
+  const iv = setInterval(() => {
+    i += 2;
+    if (i >= plain.length) {
+      clearInterval(iv);
+      el.innerHTML = html;   // affichage HTML complet à la fin
+    } else {
+      el.textContent = plain.substring(0, i);
+    }
+  }, 12);
+}
+
+// ── Historique ──
+function addHistory(thumb, text, date) {
+  history.unshift({ thumb, text, date });
+  if (history.length > 5) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  document.getElementById('hist-count').textContent = history.length;
+  list.innerHTML = history.map((h, i) => `
+    <div class="hist-item" onclick="showHistory(${i})">
+      <img class="hist-thumb" src="${h.thumb}" alt="capture ${i+1}"/>
+      <div class="hist-info">
+        <div class="hist-time">${h.date.toLocaleTimeString('fr-FR')}</div>
+        <div class="hist-txt">${h.text.substring(0, 80)}…</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function showHistory(i) {
+  if (history[i]) typewrite('analyse-text', markdownToHtml(history[i].text));
+}
+
+// ── Mode simulation ──
+const FALLBACK_SIM_URL = 'https://apod.nasa.gov/apod/image/2401/OrionMolCloud_Addis_960.jpg';
+
+async function loadSimulation() {
+  simMode = true;
+  video.style.display = 'none';
+  document.getElementById('live-badge').classList.remove('on');
+  document.getElementById('no-cam-msg').style.display = 'none';
+
+  let imgUrl = FALLBACK_SIM_URL;
+  try {
+    const r = await fetch('/api/sky-camera/simulate');
+    const d = await r.json();
+    if (d.url) imgUrl = d.url;
+  } catch(e) {
+    console.warn('simulate API error, using fallback:', e.message);
+  }
+
+  // Charge l'image et attend qu'elle soit prête avant de lancer la détection
+  simImg.crossOrigin = 'anonymous';
+  simImg.style.display = 'block';
+  simImg.style.position = 'absolute';
+  simImg.style.inset = '0';
+  simImg.style.width = '100%';
+  simImg.style.height = '100%';
+  simImg.style.objectFit = 'cover';
+  simImg.style.zIndex = '2';
+
+  await new Promise((resolve) => {
+    simImg.onload = () => { resizeCanvas(); resolve(); };
+    simImg.onerror = () => {
+      // Fallback si l'URL APOD du jour échoue
+      if (simImg.src !== FALLBACK_SIM_URL) {
+        simImg.src = FALLBACK_SIM_URL;
+      } else {
+        simImg.style.display = 'none';
+        document.getElementById('no-cam-msg').style.display = 'flex';
+        resolve();
+      }
+    };
+    simImg.src = imgUrl;
+  });
+
+  if (!detectionInterval) startDetection();
+  else { clearInterval(detectionInterval); detectionInterval = null; startDetection(); }
+}
+
+// ── Boot ──
+initCamera();
+</script>
+</body>
+</html>

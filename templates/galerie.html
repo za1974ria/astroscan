@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroScan-Chohra - Archive stellaire · ORBITAL-CHOHRA</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style id="embed-style"></style>
+<script>
+(function(){
+  if (window.location.search.indexOf("embed=1") !== -1 || window !== window.parent) {
+    var s = document.getElementById("embed-style");
+    if (s) s.textContent = ".top-bar { display:none !important; } .page-wrap { padding-top:0 !important; }";
+  }
+})();
+</script>
+<style>
+:root {
+  --void:#010408; --cyan:#00d4ff; --green:#00ff88; --amber:#ff8c00; --red:#ff2244;
+  --emerald:#00dc96; --blue:#4090ff; --purple:#9060ff;
+  --text:#7a9ab0; --hi:#d0e8f5; --lo:#2a4858;
+  --border:rgba(0,180,255,0.1); --borderhi:rgba(0,212,255,0.35);
+  --panel:rgba(2,8,16,0.97);
+  --F:'Orbitron',monospace; --M:'Share Tech Mono',monospace; --R:'Rajdhani',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--void);color:var(--text);font-family:var(--R);min-height:100vh;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.02) 3px,rgba(0,0,0,0.02) 4px)}
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+.s{position:absolute;border-radius:50%;background:#fff;animation:tw var(--d,4s) ease-in-out infinite var(--dl,0s);opacity:var(--op,.2)}
+@keyframes tw{0%,100%{opacity:var(--op)}50%{opacity:calc(var(--op)*.08)}}
+
+.top-bar{position:relative;z-index:100;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;
+  background:rgba(1,4,8,0.95);border-bottom:1px solid var(--borderhi);backdrop-filter:blur(10px)}
+.tb-brand{font-family:var(--F);font-size:0.7rem;font-weight:900;letter-spacing:0.2em;color:var(--cyan)}
+.tb-right{display:flex;align-items:center;gap:12px}
+.lang-toggle{display:flex;align-items:stretch;border:1px solid var(--borderhi);overflow:hidden;
+  clip-path:polygon(4px 0%,100% 0%,100% calc(100% - 4px),calc(100% - 4px) 100%,0% 100%,0% 4px)}
+.lb{padding:6px 14px;font-family:var(--F);font-size:0.46rem;font-weight:700;letter-spacing:0.12em;
+  cursor:pointer;border:none;background:transparent;color:var(--lo);text-transform:uppercase;transition:all 0.2s}
+.lb.active{background:rgba(0,212,255,0.15);color:var(--cyan)}
+.lb:hover:not(.active){background:rgba(0,212,255,0.06);color:var(--text)}
+.lb-sep{width:1px;background:var(--borderhi)}
+.tb-home{font-family:var(--M);font-size:0.46rem;letter-spacing:0.15em;color:var(--lo);
+  text-decoration:none;text-transform:uppercase;transition:color 0.2s}
+.tb-home:hover{color:var(--cyan)}
+
+.page-wrap{position:relative;z-index:2;max-width:1200px;margin:0 auto;padding:24px 24px 60px;padding-top:56px}
+.page-wrap.embed{padding-top:24px}
+
+.stats-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);margin-bottom:24px;overflow:hidden}
+.stat-box{background:var(--panel);padding:16px 20px;text-align:center;border:1px solid var(--border)}
+.stat-val{font-family:var(--F);font-size:1.6rem;font-weight:900;line-height:1}
+.stat-lbl{font-size:0.44rem;letter-spacing:0.2em;color:var(--lo);text-transform:uppercase;margin-top:6px}
+
+.type-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;align-items:center}
+.type-filters .filter-type{padding:6px 12px;font-family:var(--F);font-size:0.5rem;letter-spacing:0.08em;
+  cursor:pointer;border:1px solid var(--border);background:rgba(0,212,255,0.04);color:var(--text);
+  transition:all 0.2s;display:flex;align-items:center;gap:6px}
+.type-filters .filter-type:hover,.type-filters .filter-type.active{background:rgba(0,212,255,0.12);
+  color:var(--cyan);border-color:var(--cyan)}
+.type-filters .filter-type .count{font-size:0.44rem;color:var(--lo)}
+
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;align-items:center}
+.filter-btn{padding:6px 14px;font-family:var(--F);font-size:0.46rem;letter-spacing:0.12em;
+  text-transform:uppercase;cursor:pointer;border:1px solid var(--borderhi);background:rgba(0,212,255,0.04);
+  color:var(--lo);transition:all 0.2s}
+.filter-btn:hover,.filter-btn.active{background:rgba(0,212,255,0.12);color:var(--cyan);border-color:var(--cyan)}
+.filter-btn.anom:hover,.filter-btn.anom.active{border-color:var(--red);color:var(--red);background:rgba(255,34,68,0.08)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.card{background:var(--panel);padding:18px 20px;border:1px solid var(--border);
+  clip-path:polygon(6px 0%,100% 0%,100% calc(100% - 6px),calc(100% - 6px) 100%,0% 100%,0% 6px);
+  transition:border-color 0.2s,transform 0.2s}
+.card:hover{border-color:rgba(0,212,255,0.3);transform:translateY(-2px)}
+.card.anomalie{border-left:3px solid var(--red)}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.card-id{font-family:var(--F);font-size:0.44rem;color:var(--lo);letter-spacing:0.15em}
+.card-time{font-size:0.44rem;color:var(--lo);letter-spacing:0.08em}
+.card-source{font-size:0.5rem;letter-spacing:0.15em;color:var(--cyan);text-transform:uppercase;margin-bottom:8px}
+.card-title{font-family:var(--F);font-size:0.72rem;font-weight:700;letter-spacing:0.06em;color:var(--hi);margin-bottom:10px;line-height:1.3}
+.phenomenon{font-size:0.52rem;line-height:1.5;color:var(--text);margin-bottom:10px;padding:8px 10px;
+  background:rgba(0,212,255,0.04);border-left:2px solid var(--cyan)}
+.phenomenon strong{color:var(--cyan)}
+.confidence-badge{font-size:0.4rem;letter-spacing:0.1em;color:var(--emerald);margin-left:6px;
+  padding:2px 6px;border:1px solid rgba(0,220,150,0.4);background:rgba(0,220,150,0.08)}
+.card-analyse{font-size:0.78rem;line-height:1.6;color:var(--text)}
+.card-analyse strong{color:var(--hi)}
+.badges{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px}
+.badge{font-size:0.4rem;letter-spacing:0.12em;padding:3px 8px;text-transform:uppercase;border:1px solid}
+.badge-ok{color:var(--emerald);border-color:rgba(0,220,150,0.4);background:rgba(0,220,150,0.06)}
+.badge-anom{color:var(--red);border-color:rgba(255,34,68,0.5);background:rgba(255,34,68,0.08)}
+.empty{grid-column:1/-1;text-align:center;padding:50px 20px;color:var(--lo);font-size:0.9rem}
+
+.translating{color:var(--lo);font-style:italic}
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<div class="top-bar">
+  <div class="tb-brand">◈ Archive Stellaire · ORBITAL-CHOHRA</div>
+  <div class="tb-right">
+    <a class="tb-home" href="/portail">← Portail</a>
+    <div class="lang-toggle">
+      <button type="button" class="lb active" data-lang="fr" id="lb-fr">🇫🇷 FR</button>
+      <div class="lb-sep"></div>
+      <button type="button" class="lb" data-lang="en" id="lb-en">🇬🇧 EN</button>
+  </div>
+  </div>
+</div>
+
+<div class="page-wrap" id="page-wrap">
+  <div class="stats-bar">
+    <div class="stat-box">
+      <div class="stat-val" id="stat-total" style="color:var(--cyan)">0</div>
+      <div class="stat-lbl" id="stat-total-lbl">Observations</div>
+      </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-anom" style="color:var(--red)">0</div>
+      <div class="stat-lbl" id="stat-anom-lbl">Anomalies</div>
+      </div>
+    <div class="stat-box">
+      <div class="stat-val" id="stat-shown" style="color:var(--emerald)">0</div>
+      <div class="stat-lbl" id="stat-shown-lbl">Affichées</div>
+    </div>
+  </div>
+
+  <div class="type-filters" id="type-filters"></div>
+  <div class="filters">
+    <button type="button" class="filter-btn active" data-filter="all" id="f-all">Tout</button>
+    <button type="button" class="filter-btn" data-filter="NASA_APOD" id="f-apod">NASA APOD</button>
+    <button type="button" class="filter-btn" data-filter="LIVE" id="f-live">En direct</button>
+    <button type="button" class="filter-btn" data-filter="HUBBLE" id="f-hubble">🔭 Hubble</button>
+    <button type="button" class="filter-btn" data-filter="CHANDRA" id="f-chandra">☢️ Chandra</button>
+    <button type="button" class="filter-btn" data-filter="MAST" id="f-jwst">🌌 JWST</button>
+    <button type="button" class="filter-btn anom" data-filter="anomalie" id="f-anom">⚠ Anomalies</button>
+  </div>
+
+  <div class="grid" id="card-grid"></div>
+</div>
+
+<script>
+window.GALERIE_DATA = {{ observations|tojson }};
+window.GALERIE_STATS = {{ stats|tojson }};
+window.GALERIE_CLASSIFICATION = {{ classification_stats|tojson }};
+</script>
+<script>
+(function(){
+  var STORAGE_KEY = "astro_lang";
+  function getLang(){
+    var s = localStorage.getItem(STORAGE_KEY);
+    if (s === "fr" || s === "en") return s;
+    var n = (navigator.language || navigator.languages && navigator.languages[0] || "fr").toLowerCase().slice(0,2);
+    return n === "en" ? "en" : "fr";
+  }
+  var q = new URLSearchParams(window.location.search);
+  var urlLang = q.get("lang");
+  var LANG = (urlLang === "fr" || urlLang === "en") ? urlLang : getLang();
+  if (urlLang === "fr" || urlLang === "en") localStorage.setItem(STORAGE_KEY, urlLang);
+  document.documentElement.lang = LANG;
+  document.querySelectorAll(".lb").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-lang") === LANG); });
+  if (window !== window.parent) document.getElementById("page-wrap").classList.add("embed");
+
+  var T = {
+    fr: {
+      observations: "Observations", anomalies: "Anomalies", affichees: "Affichées",
+      tout: "Tout", nasa_apod: "NASA APOD", live: "En direct", anomalie: "⚠ Anomalies",
+      normal: "Normal", anomalie_badge: "⚠ Anomalie",
+      empty: "Aucune observation ne correspond au filtre.",
+      non_classee: "Observation stellaire"
+    },
+    en: {
+      observations: "Observations", anomalies: "Anomalies", affichees: "Displayed",
+      tout: "All", nasa_apod: "NASA APOD", live: "Live", anomalie: "⚠ Anomalies",
+      normal: "Normal", anomalie_badge: "⚠ Anomaly",
+      empty: "No observations match the filter.",
+      non_classee: "Stellar observation"
+    }
+  };
+  var PHENOM = {
+    fr: {
+      aurora: "🌌 <strong>Aurore boréale</strong><br>Les particules du Soleil entrent dans l'atmosphère et font briller les gaz. Altitude 100–300 km · Vert = oxygène, Rouge = hydrogène.",
+      nebula: "🌫 <strong>Nébuleuse</strong><br>Nuage de gaz et poussières où naissent les étoiles. Taille typique : 10 à 300 années-lumière.",
+      galaxy: "🌌 <strong>Galaxie</strong><br>Système de milliards d'étoiles. Distance souvent supérieure à 2 millions d'années-lumière.",
+      planet: "🪐 <strong>Planète</strong><br>Objet en orbite autour d'une étoile. Dans notre ciel : planètes du système solaire.",
+      star: "⭐ <strong>Champ stellaire</strong><br>Région du ciel riche en étoiles. Amas ouverts, champs galactiques.",
+      supernova: "💥 <strong>Supernova</strong><br>Explosion d'étoile en fin de vie. Très lumineuse, souvent détectée comme anomalie.",
+      cluster: "✨ <strong>Amas</strong><br>Amas d'étoiles ouvert ou globulaire. Groupes liés par la gravité.",
+      default: "🔭 <strong>Objet astronomique</strong><br>Observation analysée par AEGIS."
+    },
+    en: {
+      aurora: "🌌 <strong>Northern lights</strong><br>Solar particles enter the atmosphere and make gases glow. Altitude 100–300 km.",
+      nebula: "🌫 <strong>Nebula</strong><br>Cloud of gas and dust where stars are born. Typical size: 10 to 300 light-years.",
+      galaxy: "🌌 <strong>Galaxy</strong><br>System of billions of stars. Distance often over 2 million light-years.",
+      planet: "🪐 <strong>Planet</strong><br>Object orbiting a star. In our sky: solar system planets.",
+      star: "⭐ <strong>Star field</strong><br>Region of sky rich in stars. Open clusters, galactic fields.",
+      supernova: "💥 <strong>Supernova</strong><br>End-of-life stellar explosion. Very bright, often flagged as anomaly.",
+      cluster: "✨ <strong>Cluster</strong><br>Open or globular star cluster. Gravitationally bound groups.",
+      default: "🔭 <strong>Astronomical object</strong><br>Observation analyzed by AEGIS."
+    }
+  };
+
+  function t(k){ return (T[LANG] && T[LANG][k]) || T.fr[k] || k; }
+  function getPhenomenon(analyse, title){
+    var a = (analyse || "").toLowerCase();
+    var b = (title || "").toLowerCase();
+    var c = a + " " + b;
+    if (/aurore|aurora|boréal|northern/.test(c)) return PHENOM[LANG].aurora;
+    if (/nébul|nebul|nebula|gas cloud/.test(c)) return PHENOM[LANG].nebula;
+    if (/galax|galaxy/.test(c)) return PHENOM[LANG].galaxy;
+    if (/planèt|planet/.test(c)) return PHENOM[LANG].planet;
+    if (/supernova|supernovae/.test(c)) return PHENOM[LANG].supernova;
+    if (/amas|cluster|stellar field|champ stellaire/.test(c)) return PHENOM[LANG].cluster;
+    if (/étoil|star|stellar/.test(c)) return PHENOM[LANG].star;
+    return PHENOM[LANG].default;
+  }
+  function md(txt){
+    if (!txt) return "";
+    return String(txt)
+      .replace(/\*\*(.*?)\*\*/g, "<strong style=\"color:var(--hi)\">$1</strong>")
+      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+      .replace(/\n\n/g, "<br><br>")
+      .replace(/\n/g, "<br>");
+  }
+  function classificationLabel(obs){
+    if (obs.title && String(obs.title).trim() && !String(obs.title).includes("LIVE_TELESCOPE"))
+      return obs.title.trim();
+    if (obs.objets && String(obs.objets).trim()) return obs.objets.trim();
+    if (obs.objets_detectes && String(obs.objets_detectes).trim()) return obs.objets_detectes.trim();
+    return t("non_classee") + " #" + obs.id;
+  }
+
+  var translateCache = {};
+  function looksLikeEnglish(t){
+    if (!t || t.length < 20) return false;
+    var en = /\b(the|and|of|to|in|is|for|on|with|are|this|that|was|were|have|has|from|by|as|at|it|be|been)\b/gi;
+    var fr = /\b(les|des|une|dans|pour|est|sont|avec|ces|que|qui|aux|par|son|ses|été|avoir)\b/gi;
+    var enC = (t.match(en) || []).length;
+    var frC = (t.match(fr) || []).length;
+    return enC > frC;
+  }
+  function enc(s){ try { return btoa(unescape(encodeURIComponent(s))); } catch(e){ return ""; } }
+  function dec(s){ try { return decodeURIComponent(escape(atob(s))); } catch(e){ return ""; } }
+  function applyTranslation(el, text, isAnalyse){
+    if (isAnalyse) el.innerHTML = md(text); else el.textContent = text;
+    el.removeAttribute("data-orig"); el.classList.remove("translating");
+  }
+  function translateAndFill(orig, el, isAnalyse){
+    if (translateCache[orig]) {
+      applyTranslation(el, translateCache[orig], isAnalyse);
+      return;
+    }
+    el.classList.add("translating");
+    var start = Date.now();
+    fetch("/api/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: orig }) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var tr = (d.translated || orig).trim();
+        translateCache[orig] = tr;
+        var delay = Math.max(0, 1000 - (Date.now() - start));
+        setTimeout(function(){ applyTranslation(el, tr, isAnalyse); }, delay);
+      })
+      .catch(function(){ el.textContent = orig; el.removeAttribute("data-orig"); el.classList.remove("translating"); });
+  }
+  function afterRenderTranslate(){
+    if (LANG !== "fr") return;
+    document.querySelectorAll(".card [data-orig]").forEach(function(el){
+      var orig = dec(el.getAttribute("data-orig") || "");
+      var isAnalyse = el.classList.contains("card-analyse");
+      translateAndFill(orig, el, isAnalyse);
+    });
+  }
+
+  var currentFilter = "all";
+  var currentTypeFilter = null;
+  function filterObs(list){
+    if (currentTypeFilter) {
+      list = list.filter(function(o){ return (o.type_objet || "unknown") === currentTypeFilter; });
+    }
+    if (currentFilter === "all") return list;
+    if (currentFilter === "anomalie") return list.filter(function(o){ return o.anomalie; });
+    return list.filter(function(o){ return (o.source || "").toUpperCase().indexOf(currentFilter) !== -1; });
+  }
+  function buildTypeFilters(){
+    var dist = window.GALERIE_CLASSIFICATION || [];
+    var container = document.getElementById("type-filters");
+    if (!container || dist.length === 0) return;
+    var html = "";
+    dist.forEach(function(d){
+      var active = currentTypeFilter === d.type ? " active" : "";
+      html += "<button type=\"button\" class=\"filter-type" + active + "\" data-type=\"" + (d.type || "unknown") + "\" title=\"" + (d.fr || d.type) + "\"><span>" + (d.emoji || "🔭") + "</span><span class=\"count\">" + (d.n !== undefined ? d.n : (d.count || 0)) + "</span></button>";
+    });
+    container.innerHTML = html;
+    container.querySelectorAll(".filter-type").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var t = this.getAttribute("data-type");
+        currentTypeFilter = currentTypeFilter === t ? null : t;
+        container.querySelectorAll(".filter-type").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-type") === currentTypeFilter); });
+        renderCards();
+      });
+    });
+  }
+  function renderCards(){
+    var list = window.GALERIE_DATA || [];
+    var stats = window.GALERIE_STATS || { total: 0, anomalies: 0 };
+    var filtered = filterObs(list);
+    document.getElementById("stat-total").textContent = stats.total || 0;
+    document.getElementById("stat-anom").textContent = stats.anomalies || 0;
+    document.getElementById("stat-shown").textContent = filtered.length;
+    document.getElementById("stat-total-lbl").textContent = t("observations");
+    document.getElementById("stat-anom-lbl").textContent = t("anomalies");
+    document.getElementById("stat-shown-lbl").textContent = t("affichees");
+
+    var grid = document.getElementById("card-grid");
+    if (filtered.length === 0) {
+      grid.innerHTML = "<div class=\"empty\">" + t("empty") + "</div>";
+      return;
+    }
+    var typeLabels = { aurore: "🌌", nebula: "🌫", galaxy: "🌌", star: "⭐", planet: "🪐", supernova: "💥", cluster: "✨", unknown: "🔭" };
+    grid.innerHTML = filtered.map(function(o){
+      var title = classificationLabel(o);
+      var phenom = getPhenomenon(o.analyse || o.rapport_gemini, o.title || o.objets || o.objets_detectes);
+      var typeObj = o.type_objet || "unknown";
+      var conf = o.confidence != null ? Math.round(Number(o.confidence) * 100) : null;
+      var confBadge = (conf != null && conf > 0) ? (" <span class=\"confidence-badge\">" + conf + "% " + (LANG === "fr" ? "confiance" : "confidence") + "</span>") : "";
+      var analyseRaw = o.analyse || o.rapport_gemini || "";
+      var needTitleTr = LANG === "fr" && looksLikeEnglish(title);
+      var needAnalyseTr = LANG === "fr" && analyseRaw.length > 30 && looksLikeEnglish(analyseRaw);
+      var titleHtml, analyseHtml;
+      if (needTitleTr && translateCache[title])
+        titleHtml = "<div class=\"card-title\">" + (String(translateCache[title]).replace(/</g,"&lt;").replace(/>/g,"&gt;")) + "</div>";
+      else if (needTitleTr)
+        titleHtml = "<div class=\"card-title translating\" data-orig=\"" + enc(title) + "\">⏳ Traduction...</div>";
+      else
+        titleHtml = "<div class=\"card-title\">" + (title.replace(/</g,"&lt;").replace(/>/g,"&gt;")) + "</div>";
+      if (needAnalyseTr && translateCache[analyseRaw])
+        analyseHtml = "<div class=\"card-analyse\">" + md(translateCache[analyseRaw]) + "</div>";
+      else if (needAnalyseTr)
+        analyseHtml = "<div class=\"card-analyse translating\" data-orig=\"" + enc(analyseRaw) + "\">⏳ Traduction...</div>";
+      else
+        analyseHtml = "<div class=\"card-analyse\">" + md(analyseRaw) + "</div>";
+      var badge = o.anomalie ? ("<span class=\"badge badge-anom\">" + t("anomalie_badge") + "</span>") : ("<span class=\"badge badge-ok\">✓ " + t("normal") + "</span>");
+      return "<div class=\"card" + (o.anomalie ? " anomalie" : "") + "\">" +
+        "<div class=\"card-head\"><span class=\"card-id\">#" + o.id + "</span><span class=\"card-time\">" + (o.timestamp || "") + "</span></div>" +
+        "<div class=\"card-source\">" + (o.source || "") + "</div>" +
+        titleHtml +
+        "<div class=\"phenomenon\">" + (typeLabels[typeObj] || "🔭") + " " + phenom + confBadge + "</div>" +
+        analyseHtml +
+        "<div class=\"badges\">" + badge + "</div></div>";
+    }).join("");
+    afterRenderTranslate();
+  }
+
+  document.querySelectorAll(".filter-btn").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      currentFilter = this.getAttribute("data-filter");
+      document.querySelectorAll(".filter-btn").forEach(function(b){ b.classList.remove("active"); });
+      this.classList.add("active");
+      updateFilterLabels();
+      renderCards();
+    });
+  });
+  document.getElementById("lb-fr").addEventListener("click", function(){ setL("fr"); });
+  document.getElementById("lb-en").addEventListener("click", function(){ setL("en"); });
+  function setL(l){
+    LANG = l;
+    localStorage.setItem(STORAGE_KEY, l);
+    document.documentElement.lang = l;
+    document.querySelectorAll(".lb").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-lang") === l); });
+    updateFilterLabels();
+    renderCards();
+    if (window.updateIssUiFromLang) window.updateIssUiFromLang();
+  }
+
+  function updateFilterLabels(){
+    var all = document.getElementById("f-all"); if(all) all.textContent = t("tout");
+    var apod = document.getElementById("f-apod"); if(apod) apod.textContent = t("nasa_apod");
+    var live = document.getElementById("f-live"); if(live) live.textContent = t("live");
+    var hubble = document.getElementById("f-hubble"); if(hubble) hubble.textContent = "🔭 Hubble";
+    var chandra = document.getElementById("f-chandra"); if(chandra) chandra.textContent = "☢️ Chandra";
+    var jwst = document.getElementById("f-jwst"); if(jwst) jwst.textContent = "🌌 JWST";
+    var anom = document.getElementById("f-anom"); if(anom) anom.textContent = t("anomalie");
+  }
+  /* Stars */
+  var c = document.getElementById("stars");
+  for (var i = 0; i < 120; i++) {
+    var s = document.createElement("div"); s.className = "s";
+    var z = Math.random() < 0.85 ? Math.random() * 0.6 + 0.2 : Math.random() * 1.2 + 0.6;
+    s.style.cssText = "left:" + Math.random() * 100 + "%;top:" + Math.random() * 100 + "%;width:" + z + "px;height:" + z + "px;--d:" + (3 + Math.random() * 6) + "s;--dl:" + (-Math.random() * 6) + "s;--op:" + (0.06 + Math.random() * 0.2);
+    c.appendChild(s);
+  }
+  buildTypeFilters();
+  updateFilterLabels();
+  renderCards();
+})();
+</script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

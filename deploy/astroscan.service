@@ -1,0 +1,23 @@
+[Unit]
+Description=AstroScan (Gunicorn / Flask station_web:app)
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/astro_scan
+# Au-delà du graceful-timeout Gunicorn (120s), laisser une marge avant SIGKILL (évite arrêt « bloqué » / incohérent).
+TimeoutStopSec=150
+# Résilience : plus de descripteurs (connexions / workers), OOM un peu moins agressif sur ce service.
+LimitNOFILE=524288
+OOMScoreAdjust=-30
+Environment=PYTHONUNBUFFERED=1
+# BLINDAGE AEGIS ACTIVÉ : Timeout 120s, 4 Workers, 4 Threads, Anti-Fuite Mémoire
+ExecStart=/usr/bin/env python3 -m gunicorn --workers 4 --threads 4 --timeout 120 --graceful-timeout 120 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50 --bind 127.0.0.1:5003 station_web:app
+Restart=always
+RestartSec=3
+# Après plusieurs échecs rapides, systemd temporise avant de relancer (évite boucle de crash).
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

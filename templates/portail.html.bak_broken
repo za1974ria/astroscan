@@ -1,0 +1,2223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ASTRO-SCAN · ORBITAL-CHOHRA · Portail</title>
+<link rel="icon" href="/static/favicon.ico?v=2">
+<link rel="shortcut icon" href="/static/favicon.ico?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #010408;
+  --panel: rgba(3,10,20,0.97);
+  --border: rgba(0,180,255,0.13);
+  --border-bright: rgba(0,212,255,0.4);
+  --cyan: #00d4ff;
+  --amber: #ff8c00;
+  --green: #00ff88;
+  --red: #ff3355;
+  --text: #7a9ab0;
+  --text-bright: #d0e8f0;
+  --text-dim: #3a5868;
+  --font: 'Orbitron', monospace;
+  --mono: 'Share Tech Mono', monospace;
+  --sidebar: 220px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--void);
+  font-family: var(--mono);
+}
+
+/* ── STARS ── */
+#stars { position:fixed; inset:0; z-index:0; pointer-events:none; }
+.star {
+  position:absolute; border-radius:50%; background:#fff;
+  animation: tw var(--d,4s) ease-in-out infinite;
+  animation-delay: var(--dl,0s); opacity:var(--op,.4);
+}
+@keyframes tw { 0%,100%{opacity:var(--op)} 50%{opacity:calc(var(--op)*.15)} }
+
+/* ── LAYOUT ── */
+.shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 48px 1fr;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* RESPONSIVE MOBILE REEL */
+@media (max-width: 900px) {
+  body { overflow-x: hidden; }
+  .shell, .shell.sync-scale {
+    width: 100vw !important;
+    min-width: unset !important;
+    transform: none !important;
+    grid-template-columns: 1fr !important;
+  }
+  .sidebar {
+    position: fixed !important;
+    left: -260px;
+    top: 0; bottom: 0;
+    width: 260px !important;
+    z-index: 999;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+    background: #050a0e;
+    box-shadow: 4px 0 20px rgba(0,255,136,0.15);
+  }
+  .sidebar.open { left: 0 !important; }
+  .sidebar-overlay { display: block !important; }
+  .sidebar-overlay.active { opacity: 1 !important; pointer-events: all !important; }
+  .content-area {
+    width: 100vw !important;
+    min-width: unset !important;
+    overflow-x: hidden;
+    padding: 0.5rem;
+  }
+  .hamburger-btn { display: flex !important; }
+  .nav-grid, .cards-grid, .grid-2col, .grid-3col {
+    grid-template-columns: 1fr !important;
+  }
+  .topbar, .stats-bar {
+    font-size: 0.7rem !important;
+    padding: 0.3rem 0.5rem !important;
+    flex-wrap: wrap;
+    gap: 0.3rem !important;
+  }
+  body { font-size: 14px !important; }
+  h1, h2 { font-size: 1.1rem !important; }
+}
+/* desktop defaults — NOT inside media query */
+.sidebar-overlay { display: none !important; }
+.content-area { min-width: 0; overflow: visible; }
+
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: -8px 0 -8px -8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--cyan);
+  font-size: 1.2rem;
+  border-radius: 6px;
+}
+.hamburger-btn:hover { background: rgba(0,212,255,0.1); }
+.hamburger-btn:focus { outline: none; }
+
+/* ── TOP BAR ── */
+.topbar {
+  grid-column: 1/-1;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 40px;
+  padding: 0 20px;
+  background: rgba(1,4,8,0.99);
+  border-bottom: 1px solid var(--border-bright);
+  position: relative; z-index: 10;
+}
+.topbar::after {
+  content:'';
+  position:absolute; bottom:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity:0.5;
+}
+
+.brand {
+  display:flex; align-items:center; gap:10px;
+}
+.brand-icon {
+  width:28px; height:28px;
+}
+.brand-icon svg { width:100%; height:100%; }
+.brand-name {
+  font-family: var(--font);
+  font-size: 0.75rem; font-weight:900;
+  letter-spacing:0.2em;
+  color: var(--cyan);
+  text-shadow: 0 0 15px rgba(0,212,255,0.5);
+}
+.brand-sep { color:var(--text-dim); margin:0 4px; }
+.brand-sub { font-size:0.55rem; letter-spacing:0.2em; color:var(--text-dim); }
+
+.topbar-center {
+  display:flex; align-items:center; gap:16px;
+}
+.asc-portail-sync {
+  display:flex; align-items:center; gap:8px;
+  font-size:0.55rem; letter-spacing:0.12em; color:var(--text-bright);
+  padding:4px 10px; border:1px solid var(--border); border-radius:6px;
+  flex-shrink:0; max-width:100%; flex-wrap:wrap;
+}
+.asc-portail-sync-dot {
+  width:8px; height:8px; border-radius:50%; background:#666; flex-shrink:0;
+}
+.asc-portail-sync-dot.live { background:#00ff88; box-shadow:0 0 8px rgba(0,255,136,0.6); }
+.asc-portail-sync-dot.demo { background:#ffaa00; }
+.asc-portail-sync-dot.off { background:#ff4466; }
+
+.tbar-stat {
+  display:flex; align-items:center; gap:6px;
+  font-size:0.55rem; letter-spacing:0.15em; color:var(--text-dim);
+  text-transform:uppercase;
+}
+.tbar-dot { width:6px; height:6px; border-radius:50%; }
+.tbar-dot.green { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
+.tbar-dot.amber { background:var(--amber); box-shadow:0 0 5px var(--amber); }
+.tbar-visits { display:flex; align-items:center; font-family:var(--font); font-size:0.6rem; letter-spacing:0.12em; color:var(--cyan); padding:4px 10px; background:rgba(0,255,136,0.08); border:1px solid rgba(0,212,255,0.3); border-radius:4px; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Langue FR/EN */
+.lang-toggle {
+  display: flex; align-items: center; gap: 2px;
+  padding: 4px 8px;
+  background: rgba(0,212,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  transition: all 0.2s;
+}
+.lang-toggle:hover { border-color: var(--cyan); color: var(--cyan); }
+.lang-toggle .active { color: var(--cyan); font-weight: 700; }
+.lang-toggle span { padding: 0 3px; user-select: none; }
+.lang-toggle span:not(.active) { opacity: 0.5; }
+
+.topbar-right {
+  display:flex; align-items:center; gap:16px;
+}
+#top-clock {
+  font-family: var(--font);
+  font-size:0.7rem; font-weight:600;
+  letter-spacing:0.1em;
+  color: var(--text-bright);
+}
+.top-station {
+  font-size:0.5rem; letter-spacing:0.15em; color:var(--text-dim); text-transform:uppercase;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 220px;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.main-content {
+  margin-left: 220px;
+}
+
+.sidebar-section {
+  padding: 12px 0 4px;
+}
+.sidebar-label {
+  font-size:0.45rem; letter-spacing:0.3em; text-transform:uppercase;
+  color:var(--text-dim); padding:0 16px; margin-bottom:6px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 2px solid transparent;
+  position: relative;
+  user-select: none;
+}
+.nav-item:hover {
+  background: rgba(0,212,255,0.04);
+  border-left-color: rgba(0,212,255,0.3);
+}
+.nav-item.active {
+  background: rgba(0,212,255,0.07);
+  border-left-color: var(--cyan);
+}
+.nav-item.active .nav-label { color:var(--cyan); }
+.nav-item.active .nav-icon { color:var(--cyan); }
+
+.nav-icon { font-size:0.9rem; width:18px; text-align:center; color:var(--text-dim); transition:color 0.2s; }
+.nav-label {
+  font-family: var(--font);
+  font-size:0.55rem; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--text-dim); transition:color 0.2s; flex:1;
+}
+.nav-badge {
+  font-size:0.45rem; letter-spacing:0.1em;
+  padding:1px 6px;
+  border:1px solid currentColor;
+  text-transform:uppercase;
+}
+.nav-badge.live { color:var(--green); border-color:rgba(0,255,136,0.4); animation:pulse 2s infinite; }
+.nav-badge.new { color:var(--amber); border-color:rgba(255,140,0,0.4); }
+
+.s-divider {
+  height:1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 8px 0;
+}
+
+/* ── ISS PANEL (sidebar) ── */
+.iss-panel {
+  margin: 8px 12px;
+  padding: 10px;
+  background: rgba(0,20,40,0.6);
+  border: 1px solid var(--border);
+  clip-path: polygon(6px 0%, 100% 0%, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0% 100%, 0% 6px);
+}
+.iss-panel-title {
+  font-family: var(--font);
+  font-size: 0.5rem;
+  letter-spacing: 0.2em;
+  color: var(--cyan);
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.iss-globe-wrap {
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: 140px;
+  background: rgba(0,10,25,0.8);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 8px;
+}
+#iss-globe {
+  width: 100%; height: 100%;
+  display: block;
+}
+.iss-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 8px;
+  font-size: 0.45rem;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+.iss-stats span:nth-child(odd) { text-transform: uppercase; }
+.iss-stats .val { color: var(--text); font-family: var(--font); }
+.iss-region {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top:none !important;
+  font-size: 0.45rem;
+  color: var(--amber);
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.aegis-status {
+  margin:8px 12px;
+  padding:8px 10px;
+  background: rgba(0,212,255,0.04);
+  border:1px solid var(--border);
+  clip-path: polygon(4px 0%, 100% 0%, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0% 100%, 0% 4px);
+}
+.aegis-row { display:flex; justify-content:space-between; align-items:center; }
+.aegis-name { font-family:var(--font); font-size:0.5rem; letter-spacing:0.15em; color:var(--cyan); }
+.aegis-val { font-size:0.5rem; color:var(--green); letter-spacing:0.08em; }
+.aegis-bar { height:2px; background:var(--border); margin-top:6px; overflow:hidden; }
+.aegis-bar-fill { height:100%; width:0%; background:var(--cyan); transition:width 0.5s ease; }
+
+/* ── Stats bar (sidebar) ── */
+.stats-bar {
+  padding: 0 12px;
+}
+.stats-bar-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.stats-bar-row:last-child { border-bottom: none; }
+.stats-bar-row .val {
+  font-size: 0.6rem;
+  color: var(--cyan);
+  font-family: var(--font);
+}
+.stats-bar-row .val.amber { color: var(--amber); }
+.stats-bar-row .val.green { color: var(--green); }
+
+.sidebar-bottom {
+  margin-top:auto;
+  padding:12px 16px;
+  border-top:none !important;
+}
+.sb-info {
+  font-size:0.5rem; letter-spacing:0.1em; color:var(--text-dim);
+  line-height:1.6;
+}
+.sb-val { color:var(--text); }
+
+/* ── CONTENT AREA ── */
+.content-area {
+  grid-column: 2;
+  grid-row: 2;
+  position: relative;
+  padding: 40px 40px 40px 20px;
+  overflow: auto;
+  margin-right: 0;
+}
+
+#portal-pages {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+.page-frame {
+  display: none;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: black;
+}
+
+.portal-content {
+  padding: 20px;
+  max-width: 1400px;
+  margin: auto;
+}
+
+#splash {
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:14px;
+  opacity:1; transition:opacity 0.3s;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  max-height: 280px;
+  overflow: hidden;
+}
+.hero-section {
+  margin-bottom: 10px;
+  min-height: auto;
+}
+.splash-logo,
+.splash-radar,
+.hero-radar,
+.radar-mask {
+  transform: scale(0.55);
+  margin-top: -40px;
+}
+.splash-logo {
+  position: relative;
+  width: 120px;
+  height: auto;
+  min-height: 7.5rem;
+  margin-bottom: -10px;
+}
+#splash.hidden { opacity:0; pointer-events:none; }
+.splash-logo svg { width:100%; height:100%; }
+
+.splash-rings {
+  position:absolute; inset:0;
+  animation: srot 20s linear infinite;
+}
+@keyframes srot { to { transform:rotate(360deg); } }
+
+.splash-title,
+#splash h1 {
+  font-family:var(--font);
+  font-size:34px;
+  font-weight:900;
+  letter-spacing:5px;
+  margin-top: -8px;
+  margin-bottom:6px;
+  color:var(--cyan);
+  text-shadow:0 0 40px rgba(0,212,255,0.6);
+  text-align:center;
+}
+.splash-sub {
+  font-size:0.65rem; letter-spacing:0.4em; color:var(--text-dim);
+  text-transform:uppercase; text-align:center;
+}
+
+.splash-nav {
+  display:grid; grid-template-columns: repeat(3, 1fr);
+  gap:12px; max-width:640px; width:100%; padding:0 20px;
+}
+.splash-btn {
+  background:rgba(0,212,255,0.05);
+  border:1px solid var(--border);
+  padding:16px 14px;
+  cursor:pointer;
+  transition:all 0.25s;
+  text-align:center;
+  clip-path:polygon(6px 0%,100% 0%,100% calc(100% - 6px),calc(100% - 6px) 100%,0% 100%,0% 6px);
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+}
+.splash-btn:hover {
+  background:rgba(0,212,255,0.1);
+  border-color:var(--border-bright);
+  transform:translateY(-3px);
+  box-shadow:0 8px 30px rgba(0,0,0,0.5), 0 0 15px rgba(0,212,255,0.08);
+}
+.splash-btn-icon { font-size:1.6rem; }
+.splash-btn-name {
+  font-family: var(--font);
+  font-size:0.55rem; letter-spacing:0.15em; color:var(--cyan); text-transform:uppercase;
+}
+.splash-btn-desc { font-size:0.5rem; color:var(--text-dim); letter-spacing:0.08em; }
+
+/* ── Portal dashboard cards (scientific modules) ── */
+.portal-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 1200px;
+  margin: auto;
+  margin-top: 10px;
+}
+.portal-cards-grid .card {
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  min-height: 100px;
+  transition: all 0.25s;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  clip-path: polygon(6px 0%, 100% 0%, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0% 100%, 0% 6px);
+}
+.portal-cards-grid .card:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: var(--border-bright);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+.portal-cards-grid .card-title {
+  font-family: var(--font);
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+  padding-bottom: 6px;
+}
+.portal-cards-grid .card-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.portal-cards-grid .card-link {
+  font-size: 0.45rem;
+  letter-spacing: 0.1em;
+  color: var(--green);
+  text-transform: uppercase;
+}
+
+.loading-bar {
+  position:absolute; bottom:0; left:0;
+  opacity:0.7;
+  animation:loadbar 1.2s ease both;
+}
+@keyframes loadbar { from{width:0} to{width:100%} }
+
+.frame-loader {
+  position:absolute; inset:0; z-index:3;
+  background:var(--void);
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:12px;
+  transition:opacity 0.4s;
+  pointer-events:none;
+}
+.frame-loader.done { opacity:0; }
+.loader-spin {
+  width:32px; height:32px;
+  border:2px solid var(--border);
+  border-top:none !important;
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+.loader-text { font-family:var(--font); font-size:0.55rem; letter-spacing:0.2em; color:var(--text-dim); text-transform:uppercase; }
+
+/* ── PWA SYNC (mobile) ── */
+.pwa-sync-btn {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 95;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(0,255,136,.12);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-family: var(--font);
+  font-size: 0.5rem;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+}
+.pwa-sync-btn:hover { background: rgba(0,255,136,.2); }
+@media (max-width: 900px) { .pwa-sync-btn { display: flex; } }
+
+/* ── Splash layout height fix (priority overrides) ── */
+#splash {
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+.hero-section {
+  height: auto !important;
+  min-height: 0 !important;
+  margin-bottom: 8px !important;
+}
+.splash-logo,
+.splash-radar,
+.hero-radar,
+.radar-mask {
+  transform: scale(0.55) !important;
+  margin-top: -45px !important;
+}
+.splash-title {
+  font-size: 32px !important;
+  margin-top: -6px !important;
+  margin-bottom: 4px !important;
+}
+.portal-cards-grid {
+  margin-top: 6px !important;
+}
+
+/* ── Portal workspace layout fix ── */
+.main-content,
+.workspace,
+#workspace,
+.portal-content {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+#splash {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+.hero-section {
+  margin-bottom: 6px !important;
+}
+.splash-logo {
+  transform: scale(0.5) !important;
+  margin-top: -50px !important;
+}
+.splash-title {
+  font-size: 30px !important;
+  margin-top: -10px !important;
+  margin-bottom: 4px !important;
+}
+.portal-cards-grid {
+  margin-top: 6px !important;
+  max-width: 1300px !important;
+}
+
+/* ── Diagnostic CSS AstroScan (correctifs finaux) ── */
+.splash-title {
+  font-size: 30px !important;
+  margin-top: -10px !important;
+  margin-bottom: 4px !important;
+}
+body,
+main,
+.workspace,
+.portal,
+.portal-content {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+.portal-cards-grid {
+  width: 100% !important;
+  max-width: 1400px !important;
+  margin: auto !important;
+}
+.splash-logo,
+.splash-radar,
+.hero-radar,
+.radar-mask {
+  transform: scale(0.55) !important;
+  margin-top: -30px !important;
+}
+#splash {
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+.hero-section {
+  margin-bottom: 6px !important;
+}
+
+/* allow radar to appear above splash */
+.hero-section {
+  position: relative !important;
+  overflow: visible !important;
+}
+/* ensure splash does not clip radar */
+#splash {
+  overflow: visible !important;
+}
+/* move radar slightly lower so header does not cut it */
+.splash-logo,
+.splash-radar,
+.hero-radar {
+  position: relative !important;
+  top: 10px !important;
+}
+/* ensure header does not hide elements */
+.topbar {
+  z-index: 5 !important;
+}
+/* radar above splash */
+.splash-logo,
+.splash-radar,
+.hero-radar {
+  z-index: 10 !important;
+}
+
+/* give space below header */
+.hero-section {
+  padding-top: 40px !important;
+}
+/* ensure splash content stays visible */
+#splash {
+  margin-top: 10px !important;
+}
+/* keep radar centered and fully visible */
+.splash-logo,
+.splash-radar,
+.hero-radar {
+  top: 20px !important;
+}
+
+/* ASTROSCAN PORTAL LAYOUT STABLE (règles uniques, sans conflit) */
+#splash {
+  position: relative;
+  width: 100%;
+  margin-top: 20px;
+  display: block;
+}
+
+.portal-hero {
+  display: block;
+  text-align: center;
+  margin: 20px auto 20px auto;
+  margin-bottom: 40px;
+}
+
+.portal-hero h1 {
+  font-family: var(--font);
+  font-size: 34px;
+  color: var(--cyan);
+  text-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
+  margin: 0 0 10px 0;
+}
+
+.portal-hero p {
+  font-size: 18px;
+  color: var(--text);
+}
+
+.portal-content{
+  padding-top:20px;
+}
+
+.portal-cards-grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap:24px;
+  justify-content:center;
+  margin-top:20px;
+}
+
+.portal-card,
+.portal-cards-grid .card {
+  position: relative;
+  width: 100%;
+  height: auto;
+  min-height: 100px;
+  padding: 14px;
+}
+
+.portal-card{
+  position:relative;
+  margin-top:12px;
+  width:100%;
+  height:auto;
+  min-height:100px;
+  box-sizing:border-box;
+}
+
+.portal-card::before{
+  content:"";
+  position:absolute;
+  top:-6px;
+  left:50%;
+  transform:translate(-50%,0);
+  width:8px;
+  height:8px;
+  background:var(--cyan);
+  clip-path:polygon(50% 0%,0% 100%,100% 100%);
+  opacity:0.9;
+  pointer-events:none;
+}
+
+.portal-card::after,
+.portal-cards-grid .card::after {
+  display: none;
+}
+
+@media screen and (max-width:900px){
+  .portal-card, .portal-cards-grid .card {
+    width:auto!important;
+    min-width:0!important;
+    max-width:100%!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+}
+
+.radial-target {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 120px;
+}
+
+.section-divider,
+.portal-line {
+  display:none !important;
+  border:none !important;
+}
+
+hr{
+  display:none !important;
+}
+
+/* Scrollbar style AstroScan */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #020b12;
+}
+::-webkit-scrollbar-thumb {
+  background: #0a2a3a;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0f3f56;
+}
+
+/* Fix ligne bleue */
+
+/* ═══ MOBILE OVERRIDE FINAL ═══ */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+  .shell, .shell.sync-scale {
+    display: block !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100vw !important;
+    transform: none !important;
+    overflow-x: hidden !important;
+  }
+  .sidebar {
+    display: none !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 80vw !important;
+    max-width: 18.75rem !important;
+    z-index: 9999 !important;
+    background: #050a0e !important;
+    overflow-y: auto !important;
+    box-shadow: 4px 0 30px rgba(0,255,136,0.2) !important;
+  }
+  .sidebar.open {
+    display: block !important;
+  }
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 9998;
+  }
+  .sidebar-overlay.open { display: block !important; }
+  .content-area {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: unset !important;
+    overflow-x: hidden !important;
+    padding: 0.5rem !important;
+    margin: 0 !important;
+  }
+  .hamburger-btn {
+    display: flex !important;
+    position: fixed !important;
+    top: 0.5rem !important;
+    left: 0.5rem !important;
+    z-index: 10000 !important;
+    background: rgba(0,255,136,0.15) !important;
+    border: 1px solid rgba(0,255,136,0.4) !important;
+    color: #00ff88 !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 8px !important;
+    font-size: 1.2rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+  }
+  /* Topbar */
+  .topbar, .stats-bar, [class*="topbar"], [class*="stats-bar"] {
+    padding-left: 3rem !important;
+    font-size: 0.65rem !important;
+    flex-wrap: wrap !important;
+    gap: 0.3rem !important;
+    overflow: hidden !important;
+  }
+  /* Grille cards — 1 colonne */
+  .nav-grid, .cards-grid, .modules-grid,
+  [class*="grid-"], [class*="-grid"]:not(.portal-cards-grid) {
+    grid-template-columns: 1fr !important;
+    gap: 0.6rem !important;
+  }
+  /* 2 colonnes pour les petites cards */
+  .grid-3col, .grid-2col {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  /* Texte */
+  body { font-size: 13px !important; line-height: 1.4 !important; }
+  h1 { font-size: 1rem !important; }
+  h2, h3 { font-size: 0.95rem !important; }
+  /* Cacher elements non essentiels */
+  .sync-btn, .pwa-sync-btn { display: none !important; }
+}
+
+
+/* ═══ GRID MOBILE FIX ═══ */
+@media (max-width: 768px) {
+  /* Toutes les grilles en 1 colonne */
+  .nav-grid, .modules-grid, .cards-grid,
+  div[style*="grid-template-columns"]:not(.portal-cards-grid),
+  .grid, [class*="grid"]:not(.portal-cards-grid) {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+  /* Cards pleine largeur */
+  .nav-card, .module-card, .card,
+  [class*="card"], [class*="-card"] {
+    width: 100% !important;
+    min-width: unset !important;
+    max-width: 100% !important;
+  }
+  /* Supprimer espaces vides */
+  .content-area > * { margin-bottom: 0.8rem !important; }
+  /* Police plus grande */
+  .nav-card h3, [class*="card"] h3 { font-size: 0.95rem !important; }
+  [class*="card"] p, [class*="card"] div { font-size: 0.8rem !important; }
+}
+
+/* ═══ PORTAL GRID MOBILE ═══ */
+@media (max-width: 768px) {
+  .portal-cards-grid {
+    grid-template-columns: 1fr 1fr !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 0 !important;
+    gap: 6px !important;
+  }
+  .portal-cards-grid .card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: unset !important;
+    min-height: 85px !important;
+    padding: 10px 8px !important;
+    font-size: 0.72rem !important;
+  }
+  div[style*="repeat(3"] {
+    grid-template-columns: 1fr !important;
+  }
+  /* Vide en bas - forcer hauteur auto */
+  .content-area, .portal-content, main {
+    height: auto !important;
+    min-height: unset !important;
+    overflow-y: auto !important;
+  }
+  /* TLEMCEN pas HILLSBORO */
+  .station-location { content: "TLEMCEN" !important; }
+}
+
+@media (max-width: 768px) {
+  .splash-nav { display: none !important; }
+  .splash-btn { padding: 12px !important; font-size: 0.85rem !important; }
+}
+</style>
+
+<style id="overflow-fix">
+/* ===== PORTAIL MOBILE — supplements existing @media blocks ===== */
+@media screen and (max-width: 900px) {
+
+  /* Unlock scroll — global body has overflow:hidden by default */
+  html, body {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    height: auto !important;
+  }
+
+  /* Shell: block layout, no transform (JS disabled) */
+  .shell, .shell.sync-scale {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+    transform: none !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Content area: full width, scrollable */
+  .content-area {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+    margin-left: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 8px !important;
+    padding-top: 60px !important;   /* clear the fixed topbar */
+    padding-bottom: 80px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Topbar: shift right to clear fixed hamburger button */
+  .topbar {
+    padding-left: 52px !important;
+    height: auto !important;
+    min-height: 44px !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100 !important;
+  }
+  .topbar-center { gap: 4px !important; flex-wrap: wrap !important; max-width: calc(100vw - 140px) !important; overflow: hidden !important; }
+  .topbar-right { gap: 4px !important; flex-shrink: 0 !important; }
+  .brand-sub { display: none !important; }
+  .brand-name { font-size: 0.6rem !important; letter-spacing: 0.1em !important; }
+  .tbar-stat { font-size: 0.55rem !important; }
+  .asc-portail-sync { font-size: 0.5rem !important; padding: 2px 5px !important; }
+  .top-clock, #top-clock { font-size: 0.6rem !important; }
+  .top-station { display: none !important; }
+  .tbar-visits { font-size: 0.55rem !important; }
+  .lang-toggle { font-size: 0.6rem !important; }
+
+  /* Status sync row: below fixed topbar */
+  .asc-portail-status-sync-row {
+    position: fixed !important;
+    top: 44px !important;
+    left: 0 !important; right: 0 !important;
+    z-index: 99 !important;
+    padding: 3px 8px !important;
+    font-size: 8px !important;
+  }
+
+  /* Notification bell: fixed top-right, above everything */
+  #astro-notif-bell {
+    position: fixed !important;
+    top: 8px !important;
+    right: 10px !important;
+    z-index: 1002 !important;
+    margin: 0 !important;
+  }
+  #astro-notif-bell-btn { width: 30px !important; height: 30px !important; font-size: 14px !important; }
+  #astro-notif-dropdown {
+    position: fixed !important;
+    top: 50px !important;
+    right: 8px !important;
+    left: 8px !important;
+    width: auto !important;
+    max-height: 70vh !important;
+    overflow-y: auto !important;
+    z-index: 1001 !important;
+  }
+
+  /* Portal cards — 2 columns on mobile, land directly on cards */
+  .portal-cards-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+    overflow: visible !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+  }
+  .portal-cards-grid .card, .portal-card {
+    min-height: 85px !important;
+    height: auto !important;
+    width: auto !important;
+    padding: 10px 8px !important;
+    font-size: 0.72rem !important;
+    clip-path: none !important;
+    margin-bottom: 0 !important;
+  }
+  .portal-cards-grid .card-title { font-size: 0.65rem !important; letter-spacing: 0.05em !important; }
+  .portal-cards-grid .card-desc { font-size: 0.6rem !important; display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; }
+  .portal-cards-grid .card-link { font-size: 0.55rem !important; }
+
+  /* Splash: hide logo/hero/nav-buttons on mobile — show only the cards grid */
+  .splash-logo { display: none !important; }
+  .splash-nav { display: none !important; }
+  .portal-hero { display: none !important; }
+  .splash-sub { display: none !important; }
+
+  /* Hide director card on mobile */
+  .director-card, #director-card,
+  #home-screen > div:nth-child(1),
+  #home-screen > div:nth-child(2) { display: none !important; }
+
+  /* Hide station text */
+  .splash-sub, [class*="station"], .asc-station-line { display: none !important; }
+
+  /* All other grids */
+  .nav-grid, .cards-grid, .grid-2col, .grid-3col, .info-grid {
+    grid-template-columns: 1fr !important;
+    overflow: visible !important;
+  }
+
+  /* Cards */
+  .card, .widget, .box { width: 100% !important; box-sizing: border-box !important; }
+
+  /* Images */
+  img { max-width: 100% !important; height: auto !important; }
+
+  /* Tables */
+  table { font-size: 9px !important; width: 100% !important; }
+  td, th { padding: 4px 3px !important; font-size: 9px !important; }
+
+  /* Inputs */
+  input[type="text"], input[type="search"], select, textarea {
+    width: 100% !important; font-size: 14px !important; min-height: 36px !important; box-sizing: border-box !important;
+  }
+
+  /* iframes / canvas */
+  iframe { width: 100% !important; height: 220px !important; }
+  canvas { max-width: 100% !important; height: auto !important; }
+
+  /* AEGIS chat widget */
+  #aegis-chat-window {
+    width: calc(100vw - 16px) !important;
+    right: 8px !important;
+    left: 8px !important;
+    bottom: 68px !important;
+    height: 60vh !important;
+  }
+  #aegis-fab { bottom: 10px !important; right: 10px !important; }
+
+  /* Text */
+  h1 { font-size: 1.1rem !important; }
+  h2 { font-size: 1rem !important; }
+  h3 { font-size: 0.9rem !important; }
+  h4 { font-size: 0.8rem !important; }
+
+  /* Performance: limit stars */
+  .star:nth-child(n+80) { display: none !important; }
+}
+
+/* Very small phones */
+@media screen and (max-width: 380px) {
+  .topbar-center { display: none !important; }
+  .splash-nav { grid-template-columns: 1fr !important; }
+  .portal-cards-grid .card { font-size: 0.75rem !important; }
+}
+</style>
+<!-- Google Analytics GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-1WNGPCCZNW');
+</script>
+</head>
+<body>
+<script>/* MOBILE INIT — runs before anything else */
+(function(){
+  var w = window.innerWidth || document.documentElement.clientWidth || 900;
+  if (w <= 900) {
+    var s = document.createElement('style');
+    s.textContent = '.shell{transform:none!important;width:100vw!important;min-width:0!important;height:auto!important;display:block!important}.sidebar{left:-280px!important;transform:none!important}.sync-scale{transform:none!important}';
+    document.head.appendChild(s);
+  }
+})();
+</script>
+
+<div id="stars"></div>
+
+<div class="shell">
+
+  <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+  <div class="topbar">
+    <button type="button" class="hamburger-btn" id="hamburger-btn" aria-label="Menu" title="Menu">☰</button>
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="14" cy="14" r="12" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+          <circle cx="14" cy="14" r="7" stroke="#00d4ff" stroke-width="0.8" opacity="0.7"/>
+          <circle cx="14" cy="14" r="2" fill="#00d4ff"/>
+          <line x1="14" y1="1" x2="14" y2="5" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="14" y1="23" x2="14" y2="27" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="1" y1="14" x2="5" y2="14" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="23" y1="14" x2="27" y2="14" stroke="#00d4ff" stroke-width="1.2"/>
+          <circle cx="14" cy="5" r="1.5" fill="#ff8c00"/>
+        </svg>
+      </div>
+      <span class="brand-name">ASTRO-SCAN</span>
+      <span class="brand-sep">·</span>
+      <span class="brand-sub">ORBITAL-CHOHRA</span>
+    </div>
+
+    <div class="topbar-center">
+      <div class="tbar-visits" id="tbar-visits" title="Visites">
+        <span style="margin-right:4px">👁️</span>
+        <span id="tbar-visits-val">000 000</span>
+      </div>
+      <div class="asc-portail-sync" id="asc-portail-sync" title="État serveur (GET /status)">
+        <span class="asc-portail-sync-dot" id="asc-portail-sync-dot"></span>
+        <span id="asc-portail-sync-txt">…</span>
+      </div>
+      <div class="tbar-stat"><div class="tbar-dot green"></div><span data-i18n="aegis_active">AEGIS ACTIF</span></div>
+      <div class="tbar-stat"><div class="tbar-dot green"></div><span data-i18n="web_online">WEB EN LIGNE</span></div>
+      <div class="tbar-stat"><div class="tbar-dot amber"></div><span data-i18n="nasa_sync">NASA SYNC</span></div>
+      <div class="lang-toggle" id="lang-toggle" title="FR / EN">
+        <span class="active" data-lang="fr">FR</span><span data-lang="en">EN</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="top-station">Tlemcen · 5.78.153.17</div>
+      <div id="top-clock">--:--:--</div>
+    </div>
+  </div>
+
+  <div class="asc-portail-status-sync-row" style="grid-column:1/-1;border-bottom:1px solid rgba(0,212,255,0.12);background:rgba(1,4,8,0.98);padding:8px 16px;font-family:var(--mono);font-size:10px;color:var(--text-bright);">
+    <div class="status-panel" style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;line-height:1.5;">
+      <span>Mode: <span id="mode-status">-</span></span>
+      <span>Status: <span id="global-status">-</span></span>
+      <span>Object: <span id="priority-object">-</span></span>
+      <span>Score: <span id="priority-score">-</span></span>
+      <span>Response: <span id="response-time">-</span></span>
+    </div>
+  </div>
+
+  <div class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="sidebar-label" data-i18n="nav_label">Navigation</div>
+
+      <div class="nav-item active" id="nav-home" onclick="navigate('home')">
+        <span class="nav-icon">⌂</span>
+        <span class="nav-label" data-i18n="nav_home">Accueil</span>
+      </div>
+
+      <div class="nav-item" id="nav-dashboard" onclick="navigate('dashboard')">
+        <span class="nav-icon">◈</span>
+        <span class="nav-label" data-i18n="nav_dashboard">Dashboard QG</span>
+        <span class="nav-badge live">Direct</span>
+      </div>
+
+      <div class="nav-item" id="nav-overlord" onclick="navigate('overlord')">
+        <span class="nav-icon">⬡</span>
+        <span class="nav-label" data-i18n="nav_overlord">Overlord Live</span>
+        <span class="nav-badge live">●</span>
+      </div>
+
+      <div class="nav-item" id="nav-galerie" onclick="navigate('galerie')">
+        <span class="nav-icon">◫</span>
+        <span class="nav-label" data-i18n="nav_galerie">Archive Stellaire</span>
+      </div>
+
+      <div class="nav-item" id="nav-observatoire" onclick="navigate('observatoire')">
+        <span class="nav-icon">◎</span>
+        <span class="nav-label" data-i18n="nav_observatoire">Observatoire</span>
+      </div>
+
+      <a href="/ce_soir" class="nav-item" style="text-decoration:none">
+        <span class="nav-icon">🌙</span>
+        <span class="nav-label">Ce Soir</span>
+        <span class="nav-badge live">DIRECT</span>
+      </a>
+
+      <div class="nav-item" id="nav-vision" onclick="navigate('vision')">
+        <span class="nav-icon">◇</span>
+        <span class="nav-label" data-i18n="nav_vision">Vision 2026</span>
+        <span class="nav-badge new">2026</span>
+      </div>
+
+      <div class="nav-item" id="nav-mission-control" onclick="navigate('mission-control')">
+        <span class="nav-icon">🛰</span>
+        <span class="nav-label">Contrôle Mission</span>
+      </div>
+
+      <div class="nav-item" id="nav-orbital-map" onclick="navigate('orbital-map')">
+        <span class="nav-icon">🌍</span>
+        <span class="nav-label">Carte Orbitale</span>
+      </div>
+
+      <a href="/scientific" target="_blank"
+style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;text-decoration:none;font-family:monospace;font-size:11px;letter-spacing:1px;border-top:1px solid #00ff8822;margin-top:4px">
+⚗️ MODE SCIENTIFIQUE
+<span style="background:#00ff88;color:#000;font-size:8px;padding:1px 6px;border-radius:10px;margin-left:auto">PRO</span>
+</a>
+      <a href="/lab" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
+🔬 DIGITAL LAB
+</a>
+      <a href="/research-center" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
+📊 RESEARCH CENTER
+</a>
+      <a href="/research" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
+📋 RESEARCH DASHBOARD
+</a>
+      <a href="/space" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
+🛰 SPACE INTELLIGENCE
+</a>
+      <a href="/api/archive/reports" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
+📁 SCIENCE ARCHIVE
+</a>
+    </div>
+
+    <div style="border-top:none;padding:8px;margin-top:8px;background:rgba(0,20,40,0.5);display:block !important;visibility:visible !important">
+      <div style="font-family:monospace;font-size:9px;color:#00d4ff;letter-spacing:2px;margin-bottom:6px">🔭 OBSERVATOIRE GLOBAL — FLUX D'IMAGES NASA</div>
+      <div id="sidebar-hubble" style="min-height:60px;display:block !important">
+        <img src="https://cdn.spacetelescope.org/archives/images/publicationjpg/heic1509a.jpg" alt="Hubble test" style="width:100%;height:60px;object-fit:cover;border-radius:4px;border:1px solid rgba(0,255,136,0.2)" onerror="this.style.display='none'">
+        <div style="color:#00ff88;font-size:9px;text-align:center;padding:8px">⟳ Chargement...</div>
+      </div>
+    </div>
+
+    <div class="s-divider"></div>
+
+    <!-- ISS Live -->
+    <div class="iss-panel">
+      <div class="iss-panel-title">🛰 ISS LIVE</div>
+      <div class="iss-globe-wrap">
+        <canvas id="iss-globe" width="180" height="180"></canvas>
+      </div>
+      <div class="iss-stats">
+        <span data-i18n="iss_lat">Lat</span><span class="val" id="iss-lat">—</span>
+        <span data-i18n="iss_lon">Lon</span><span class="val" id="iss-lon">—</span>
+        <span>Alt (km)</span><span class="val" id="iss-alt">—</span>
+        <span>Speed</span><span class="val" id="iss-speed">—</span>
+        <span data-i18n="iss_crew">Équipage</span><span class="val" id="iss-crew">—</span>
+      </div>
+      <div class="iss-region" id="iss-region">—</div>
+    </div>
+
+    <div class="s-divider"></div>
+
+    <!-- Widget Radio SDR : countdown prochain passage, fréquence, indicateur capture -->
+    <div class="radio-widget iss-panel">
+      <div class="iss-panel-title">📡 RADIO SDR</div>
+      <div class="iss-stats">
+        <span data-i18n="sdr_next">Prochain</span><span class="val" id="pw-next-sat">—</span>
+        <span>Freq</span><span class="val" id="pw-freq">—</span>
+        <span data-i18n="sdr_countdown">Décompte</span><span class="val" id="pw-countdown">—</span>
+      </div>
+      <div class="iss-region" id="pw-capture-indicator" style="font-size:0.5rem">—</div>
+    </div>
+
+    <div class="s-divider"></div>
+
+    <div class="card" style="border: 1px solid var(--amber); background: rgba(255, 193, 7, 0.05); padding: 20px;">
+      <div class="section-title" style="margin-bottom: 20px;">📡 TÉLÉMÉTRIE INTERSTELLAIRE (RÉSEAU DSN)</div>
+      <div id="voyager-live-container" style="font-family: monospace; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;">
+        <span style="color: var(--amber);">[ ÉTABLISSEMENT DE LA LIAISON DSN... ]</span>
+      </div>
+    </div>
+
+    <div class="s-divider"></div>
+
+    <div class="aegis-status">
+      <div class="aegis-row">
+        <span class="aegis-name">⚡ AEGIS v2</span>
+        <span class="aegis-val" id="sb-aegis-status" data-i18n="aegis_actif">ACTIF</span>
+      </div>
+      <div class="aegis-row" style="margin-top:4px">
+        <span style="font-size:0.45rem;color:var(--text-dim);letter-spacing:0.1em" data-i18n="req_jour">REQ/JOUR</span>
+        <span style="font-size:0.45rem;color:var(--text);letter-spacing:0.08em" id="sb-req">— / 1400</span>
+      </div>
+      <div class="aegis-bar">
+        <div class="aegis-bar-fill" id="sb-bar"></div>
+      </div>
+    </div>
+
+    <div class="s-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label" data-i18n="stats_live">Stats en Direct</div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stats-bar-row">
+        <span data-i18n="obs">Observations</span>
+        <span class="val" id="sb-total">—</span>
+      </div>
+      <div class="stats-bar-row">
+        <span data-i18n="anomalies">Anomalies</span>
+        <span class="val amber" id="sb-anomalies">—</span>
+      </div>
+      <div class="stats-bar-row">
+        <span data-i18n="sources">Sources</span>
+        <span class="val green" id="sb-sources">3</span>
+      </div>
+    </div>
+
+    <div id="system-health" class="sidebar-section" style="margin-top:12px;padding:10px 16px;background:rgba(0,20,40,0.5);border:1px solid var(--border);clip-path:polygon(4px 0%,100% 0%,100% calc(100% - 4px),calc(100% - 4px) 100%,0% 100%,0% 4px);">
+      <div class="sidebar-label" style="margin-bottom:6px;">ÉTAT SYSTÈME</div>
+      <div id="system-health-status" style="font-size:0.5rem;line-height:1.5;color:var(--text);letter-spacing:0.06em;">Chargement...</div>
+      <div id="system-diagnostics" style="font-size:0.5rem;line-height:1.5;color:var(--text-dim);letter-spacing:0.06em;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);"></div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="sb-info">
+        <div>Station <span class="sb-val">Tlemcen</span></div>
+        <div>IP <span class="sb-val">5.78.153.17</span></div>
+        <div>Dir. <span class="sb-val">Zakaria Chohra</span></div>
+        <div style="margin-top:4px">ASTRO-SCAN · v2.0</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="content-area" id="content-area">
+
+    <div id="home-screen">
+    <div class="portal-hero">
+      <h1>ORBITAL-CHOHRA</h1>
+      <p style="color:#7ddcff;font-family:monospace;font-size:18px">
+        Observatoire spatial – Portail AstroScan opérationnel.
+      </p>
+    </div>
+    <div style="display:flex;align-items:center;gap:1.2rem;background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.2);border-radius:8px;padding:1rem;margin:1rem auto;max-width:600px">
+      <div style="flex-shrink:0;width:70px;height:70px;border-radius:50%;border:2px solid #00ff88;overflow:hidden">
+        <img src="/static/director.jpg" style="width:100%;height:100%;object-fit:cover;object-position:center top">
+      </div>
+      <div>
+        <div style="font-family:Orbitron,monospace;font-size:0.85rem;color:#00ff88;letter-spacing:2px">ZAKARIA CHOHRA</div>
+        <div style="font-size:0.7rem;color:#00d4ff;letter-spacing:3px;margin:3px 0">DIRECTEUR — ORBITAL-CHOHRA</div>
+        <div style="font-size:0.65rem;color:#556677">📍 Tlemcen, Algérie · 34.87°N · Station 5.78.153.17</div>
+      </div>
+      <div style="margin-left:auto;text-align:right">
+        <div style="font-size:0.6rem;color:#445566;letter-spacing:2px">STATUT</div>
+        <div style="color:#00ff88;font-size:0.75rem;margin-top:3px">● EN LIGNE</div>
+      </div>
+    </div>
+
+
+    <div id="splash">
+      <div class="splash-logo">
+        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <g class="splash-rings">
+            <circle cx="60" cy="60" r="55" stroke="rgba(0,212,255,0.15)" stroke-width="1" stroke-dasharray="6 4"/>
+            <circle cx="60" cy="60" r="42" stroke="rgba(0,212,255,0.2)" stroke-width="1" stroke-dasharray="3 6"/>
+          </g>
+          <circle cx="60" cy="60" r="28" stroke="#00d4ff" stroke-width="1.5" opacity="0.6"/>
+          <circle cx="60" cy="60" r="8" fill="#00d4ff" opacity="0.9"/>
+          <circle cx="60" cy="60" r="14" stroke="#00d4ff" stroke-width="0.8" opacity="0.4"/>
+          <line x1="60" y1="5" x2="60" y2="18" stroke="#00d4ff" stroke-width="1.5"/>
+          <line x1="60" y1="102" x2="60" y2="115" stroke="#00d4ff" stroke-width="1.5"/>
+          <line x1="5" y1="60" x2="18" y2="60" stroke="#00d4ff" stroke-width="1.5"/>
+          <line x1="102" y1="60" x2="115" y2="60" stroke="#00d4ff" stroke-width="1.5"/>
+          <circle cx="60" cy="5" r="4" fill="#ff8c00"/>
+          <circle cx="18" cy="28" r="2.5" fill="rgba(0,212,255,0.5)"/>
+          <circle cx="102" cy="90" r="2" fill="rgba(0,212,255,0.4)"/>
+        </svg>
+      </div>
+
+      <div class="splash-sub" data-i18n="splash_sub">Station d'Analyse Astronomique · Tlemcen · En Ligne</div>
+
+      <div class="splash-nav">
+        <div class="splash-btn" onclick="navigate('dashboard')">
+          <div class="splash-btn-icon">◈</div>
+          <div class="splash-btn-name" data-i18n="nav_dashboard">Dashboard QG</div>
+          <div class="splash-btn-desc" data-i18n="splash_dash_desc">Vue d'ensemble live</div>
+        </div>
+        <div class="splash-btn" onclick="navigate('overlord')">
+          <div class="splash-btn-icon">⬡</div>
+          <div class="splash-btn-name" data-i18n="nav_overlord">Overlord Live</div>
+          <div class="splash-btn-desc" data-i18n="splash_overlord_desc">Centre de contrôle</div>
+        </div>
+        <div class="splash-btn" onclick="navigate('galerie')">
+          <div class="splash-btn-icon">◫</div>
+          <div class="splash-btn-name" data-i18n="nav_galerie">Archive Stellaire</div>
+          <div class="splash-btn-desc" data-i18n="splash_galerie_desc">Catalogue observations</div>
+        </div>
+        <div class="splash-btn" onclick="navigate('observatoire')">
+          <div class="splash-btn-icon">◎</div>
+          <div class="splash-btn-name" data-i18n="nav_observatoire">Observatoire</div>
+          <div class="splash-btn-desc" data-i18n="splash_obs_desc">Télescopes mondiaux</div>
+        </div>
+        <div class="splash-btn" onclick="navigate('vision')">
+          <div class="splash-btn-icon">◇</div>
+          <div class="splash-btn-name" data-i18n="nav_vision">Vision 2026</div>
+          <div class="splash-btn-desc" data-i18n="splash_vision_desc">Roadmap du projet</div>
+        </div>
+        <div class="splash-btn" onclick="navigate('mission-control')">
+          <div class="splash-btn-icon">🛰</div>
+          <div class="splash-btn-name">Contrôle Mission</div>
+          <div class="splash-btn-desc">Terre 3D · ISS · Vue spatiale</div>
+        </div>
+        <div class="splash-btn" onclick="window.open('/scientific','_blank')">
+          <div class="splash-btn-icon">⚗️</div>
+          <div class="splash-btn-name" data-i18n="nav_scientific">MODE SCIENTIFIQUE</div>
+          <div class="splash-btn-desc" data-i18n="splash_scientific_desc">ISS, Lune, catalogue, météo solaire</div>
+        </div>
+        <div class="splash-btn" onclick="window.open('http://5.78.153.17:5000','_blank')">
+          <div class="splash-btn-icon">🔗</div>
+          <div class="splash-btn-name">OUVRIR DIRECT</div>
+          <div class="splash-btn-desc">Onglet séparé</div>
+        </div>
+      </div>
+
+      <div class="portal-cards-grid" id="pcg-mobile-2" style="display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;width:100%!important;">
+        <a href="/orbital-map" class="portal-card card">
+          <div class="card-title">CARTE ORBITALE</div>
+          <div class="card-desc">ISS et satellites en direct sur la planète</div>
+          <span class="card-link">→ /orbital-map</span>
+        </a>
+        <a href="/space-weather" class="portal-card card">
+          <div class="card-title">MÉTÉO SPATIALE</div>
+          <div class="card-desc">Activité solaire, vent solaire, indice Kp</div>
+          <span class="card-link">→ /space-weather</span>
+        </a>
+        <a href="/module/observatoire" class="portal-card card">
+          <div class="card-title">OBSERVATOIRE</div>
+          <div class="card-desc">Télescopes mondiaux et observations</div>
+          <span class="card-link">→ /module/observatoire</span>
+        </a>
+        <a href="/module/vision" class="portal-card card">
+          <div class="card-title">VISION 2026</div>
+          <div class="card-desc">Roadmap du projet</div>
+          <span class="card-link">→ /module/vision</span>
+        </a>
+        <a href="/module/scientific" class="portal-card card">
+          <div class="card-title">MODE SCIENTIFIQUE</div>
+          <div class="card-desc">ISS, Lune, catalogue, météo solaire</div>
+          <span class="card-link">→ /module/scientific</span>
+        </a>
+        <a href="/module/lab" class="portal-card card">
+          <div class="card-title">DIGITAL LAB</div>
+          <div class="card-desc">Analyse scientifique des images spatiales</div>
+          <span class="card-link">→ /module/lab</span>
+        </a>
+        <a href="/mission-control" class="portal-card card">
+          <div class="card-title">MISSION CONTROL</div>
+          <div class="card-desc">État ISS, Voyager, NOAA, alertes</div>
+          <span class="card-link">→ /mission-control</span>
+        </a>
+        <a href="/space-intelligence-page" class="portal-card card">
+          <div class="card-title">SPACE INTELLIGENCE</div>
+          <div class="card-desc">Alertes, événements, niveau de risque</div>
+          <span class="card-link">→ /space-intelligence-page</span>
+        </a>
+        <a href="/module/galerie" class="portal-card card">
+          <div class="card-title">ARCHIVE STELLAIRE</div>
+          <div class="card-desc">Catalogue observations</div>
+          <span class="card-link">→ /module/galerie</span>
+        </a>
+      </div>
+
+      <div class="loading-bar" style="width:100%"></div>
+    </div>
+    </div>
+
+    <div id="portal-pages">
+      <iframe id="frame-dashboard" class="page-frame" data-src="/dashboard"></iframe>
+      <iframe id="frame-overlord" class="page-frame" data-src="/overlord_live"></iframe>
+      <iframe id="frame-galerie" class="page-frame" data-src="/galerie"></iframe>
+      <iframe id="frame-observatoire" class="page-frame" data-src="/observatoire"></iframe>
+      <iframe id="frame-vision" class="page-frame" data-src="/vision"></iframe>
+      <iframe id="frame-mission-control" class="page-frame" data-src="/mission-control"></iframe>
+      <iframe id="frame-orbital-map" class="page-frame" data-src="/orbital-map"></iframe>
+    </div>
+
+    <div class="frame-loader done" id="frame-loader">
+      <div class="loader-spin"></div>
+      <div class="loader-text" id="loader-text">Chargement...</div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var API_INTERVALS = {
+    iss: 15000,
+    voyager: 20000,
+    weather: 30000,
+    latest: 30000,
+    title: 30000,
+    sdr: 20000,
+    systemHealth: 15000,
+    diagnostics: 15000,
+    visits: 60000
+  };
+
+  // ── i18n FR/EN ──
+  var T = {
+    fr: {
+      aegis_active: 'AEGIS ACTIF',
+      web_online: 'WEB EN LIGNE',
+      nasa_sync: 'NASA SYNC',
+      nav_label: 'Navigation',
+      nav_home: 'Accueil',
+      nav_dashboard: 'Dashboard QG',
+      nav_overlord: 'Overlord En Direct',
+      nav_galerie: 'Archive Stellaire',
+      nav_observatoire: 'Observatoire',
+      nav_vision: 'Vision 2026',
+      iss_lat: 'Lat',
+      iss_lon: 'Lon',
+      iss_crew: 'Équipage',
+      sdr_next: 'Prochain',
+      sdr_countdown: 'Décompte',
+      stats_live: 'Stats en Direct',
+      obs: 'Observations',
+      anomalies: 'Anomalies',
+      sources: 'Sources',
+      aegis_actif: 'ACTIF',
+      req_jour: 'REQ/JOUR',
+      splash_sub: "Station d'Analyse Astronomique · Tlemcen · En Ligne",
+      splash_dash_desc: "Vue d'ensemble en direct",
+      splash_overlord_desc: 'Centre de contrôle',
+      splash_galerie_desc: 'Catalogue observations',
+      splash_obs_desc: 'Télescopes mondiaux',
+      splash_vision_desc: 'Roadmap du projet',
+      open_direct: 'Ouvrir Direct',
+      open_direct_desc: 'Onglet séparé',
+      loading: 'Chargement...'
+    },
+    en: {
+      aegis_active: 'AEGIS ACTIVE',
+      web_online: 'WEB ONLINE',
+      nasa_sync: 'NASA SYNC',
+      nav_label: 'Navigation',
+      nav_home: 'Home',
+      nav_dashboard: 'HQ Dashboard',
+      nav_overlord: 'Overlord Live',
+      nav_galerie: 'Stellar Archive',
+      nav_observatoire: 'Observatory',
+      nav_vision: 'Vision 2026',
+      iss_lat: 'Lat',
+      iss_lon: 'Lon',
+      iss_crew: 'Crew',
+      sdr_next: 'Next',
+      sdr_countdown: 'Countdown',
+      stats_live: 'Live Stats',
+      obs: 'Observations',
+      anomalies: 'Anomalies',
+      sources: 'Sources',
+      aegis_actif: 'ACTIVE',
+      req_jour: 'REQ/DAY',
+      splash_sub: 'Astronomical Analysis Station · Tlemcen · Online',
+      splash_dash_desc: 'Live overview',
+      splash_overlord_desc: 'Control center',
+      splash_galerie_desc: 'Observations catalog',
+      splash_obs_desc: 'World telescopes',
+      splash_vision_desc: 'Project roadmap',
+      open_direct: 'Open Direct',
+      open_direct_desc: 'New tab',
+      loading: 'Loading...'
+    }
+  };
+
+  var currentLang = localStorage.getItem('portail_lang') || 'fr';
+
+  function applyLang(lang) {
+    currentLang = lang;
+    localStorage.setItem('portail_lang', lang);
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+      var key = el.getAttribute('data-i18n');
+      if (T[lang] && T[lang][key] !== undefined) el.textContent = T[lang][key];
+    });
+    document.querySelectorAll('#lang-toggle span').forEach(function(s) {
+      s.classList.toggle('active', s.getAttribute('data-lang') === lang);
+    });
+  }
+
+  document.getElementById('lang-toggle').addEventListener('click', function() {
+    currentLang = currentLang === 'fr' ? 'en' : 'fr';
+    applyLang(currentLang);
+  });
+  applyLang(currentLang);
+
+  /* mobile: no transform scaling */
+
+  // ── Hamburger (mobile): sidebar slide-in = même layout PC ──
+  (function() {
+    var sidebar = document.querySelector('.sidebar');
+    var overlay = document.getElementById('sidebar-overlay');
+    var btn = document.getElementById('hamburger-btn');
+    if (!sidebar || !overlay || !btn) return;
+    // Ensure sidebar is hidden on mobile at init
+    if (window.innerWidth <= 900) {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+    }
+    function open() { sidebar.classList.add('open'); overlay.classList.add('open'); overlay.setAttribute('aria-hidden', 'false'); }
+    function close() { sidebar.classList.remove('open'); overlay.classList.remove('open'); overlay.setAttribute('aria-hidden', 'true'); }
+    function toggle() { if (sidebar.classList.contains('open')) close(); else open(); }
+    btn.addEventListener('click', toggle);
+    overlay.addEventListener('click', close);
+    document.querySelectorAll('.sidebar .nav-item').forEach(function(item) {
+      item.addEventListener('click', function() { if (window.innerWidth <= 900) close(); });
+    });
+  })();
+
+  // ── Stars ──
+  (function(){
+    var s = document.getElementById('stars');
+    for (var i = 0; i < 120; i++) {
+      var el = document.createElement('div');
+      el.className = 'star';
+      var sz = Math.random() < 0.88 ? Math.random() * 0.9 + 0.2 : Math.random() * 1.5 + 0.6;
+      el.style.cssText = 'left:' + Math.random() * 100 + '%;top:' + Math.random() * 100 + '%;width:' + sz + 'px;height:' + sz + 'px;--d:' + (3 + Math.random() * 5) + 's;--dl:' + (-Math.random() * 5) + 's;--op:' + (0.1 + Math.random() * 0.4);
+      s.appendChild(el);
+    }
+  })();
+
+  // ── Clock ──
+  function tick() {
+    var n = new Date();
+    document.getElementById('top-clock').textContent =
+      [n.getUTCHours(), n.getUTCMinutes(), n.getUTCSeconds()].map(function(x) { return String(x).padStart(2, '0'); }).join(':') + ' UTC';
+  }
+  setInterval(tick, 1000);
+  tick();
+
+  // ── ISS Globe canvas (animé: anneau orbital tournant + mascotte ISS) ──
+  var issData = { lat: 0, lon: 0, alt: 408, speed: 27600, region: '—', crew: 7 };
+  var orbitAngle = 0;
+  var issPulse = 0;
+
+  function drawIssGlobe() {
+    var c = document.getElementById('iss-globe');
+    if (!c) return;
+    var ctx = c.getContext('2d');
+    var w = c.width;
+    var h = c.height;
+    var cx = w / 2;
+    var cy = h / 2;
+    var r = Math.min(w, h) / 2 - 2;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Cercle fond (océan)
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 20, 45, 0.95)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0, 212, 255, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Anneau orbital animé (tourne en continu)
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(orbitAngle);
+    ctx.strokeStyle = 'rgba(0, 212, 255, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 0.92, r * 0.38, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Grille (méridiens / parallèles)
+    ctx.strokeStyle = 'rgba(0, 212, 255, 0.08)';
+    ctx.lineWidth = 0.5;
+    for (var i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r, r * 0.4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    for (var j = 0; j < 6; j++) {
+      var a = (j / 6) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + r * Math.cos(a), cy + r * 0.4 * Math.sin(a));
+      ctx.lineTo(cx - r * Math.cos(a), cy - r * 0.4 * Math.sin(a));
+      ctx.stroke();
+    }
+
+    // Position ISS: lon → x, lat → y (projection simple)
+    var lat = (issData.lat * Math.PI) / 180;
+    var lon = (issData.lon * Math.PI) / 180;
+    var x = cx + r * Math.cos(lat) * Math.sin(lon);
+    var y = cy - r * 0.4 * Math.sin(lat);
+
+    if (x * x + (y - cy) * (y - cy) <= r * r) {
+      // Halo pulsant autour de la mascotte ISS
+      ctx.save();
+      ctx.translate(x, y);
+      var haloR = 9 + Math.sin(issPulse) * 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, haloR, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,212,255,0.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Corps de l'ISS (module central)
+      ctx.rotate(orbitAngle);
+      ctx.fillStyle = '#0b1b2a';
+      ctx.strokeStyle = '#00d4ff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(-4, -2.2, 8, 4.4, 1.2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Panneaux solaires bleus
+      ctx.fillStyle = '#2aa9ff';
+      ctx.beginPath();
+      ctx.roundRect(-11, -1.6, 5, 3.2, 1);
+      ctx.roundRect(6, -1.6, 5, 3.2, 1);
+      ctx.fill();
+
+      // Radiateurs clairs
+      ctx.strokeStyle = 'rgba(220,245,255,0.8)';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(-3, -1);
+      ctx.lineTo(3, -1);
+      ctx.moveTo(-3, 1);
+      ctx.lineTo(3, 1);
+      ctx.stroke();
+
+      // Petit nez/bloc avant pour rappeler la forme réelle
+      ctx.beginPath();
+      ctx.moveTo(4, 0);
+      ctx.lineTo(6, -1);
+      ctx.lineTo(6, 1);
+      ctx.closePath();
+      ctx.fillStyle = '#00d4ff';
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    orbitAngle += 0.004;
+    issPulse += 0.04;
+    if (orbitAngle > Math.PI * 2) orbitAngle -= Math.PI * 2;
+  }
+
+  function issAnimationLoop() {
+    drawIssGlobe();
+    requestAnimationFrame(issAnimationLoop);
+  }
+  requestAnimationFrame(issAnimationLoop);
+
+  function fetchIss() {
+    fetch('/api/iss').then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+      if (!d) return;
+      issData.lat = d.lat;
+      issData.lon = d.lon;
+      issData.alt = d.alt;
+      issData.speed = d.speed;
+      issData.region = d.region || '—';
+      issData.crew = typeof d.crew === 'number' ? d.crew : 7;
+      var el;
+      if ((el = document.getElementById('iss-lat'))) el.textContent = d.lat.toFixed(1) + '°';
+      if ((el = document.getElementById('iss-lon'))) el.textContent = d.lon.toFixed(1) + '°';
+      if ((el = document.getElementById('iss-alt'))) el.textContent = d.alt;
+      if ((el = document.getElementById('iss-speed'))) el.textContent = (d.speed / 1000).toFixed(1) + ' km/s';
+      if ((el = document.getElementById('iss-region'))) el.textContent = d.region || '—';
+      if ((el = document.getElementById('iss-crew'))) el.textContent = issData.crew;
+    }).catch(function() {});
+  }
+  fetchIss();
+  setInterval(fetchIss, API_INTERVALS.iss);
+
+  // Compteur visites (format "000 123")
+  function fmtVisits(n){var s=String(Math.max(0,n));var p=('000000'+s).slice(-6);return p.slice(0,3)+' '+p.slice(3);}
+  function loadVisitsPortail(){fetch('/api/visits').then(function(r){return r.ok?r.json():null;}).then(function(d){var el=document.getElementById('tbar-visits-val');if(el&&d)el.textContent=fmtVisits(d.count||0);}).catch(function(){});}
+  loadVisitsPortail();
+  setInterval(loadVisitsPortail, API_INTERVALS.visits);
+
+  // ── Widget Radio SDR (countdown, fréquence, indicateur capture) ──
+  var radioPassesCache = { passes: [] };
+  function formatCountdown(aos) {
+    if (!aos || aos <= 0) return '—';
+    var now = Date.now() / 1000;
+    if (aos <= now) return (currentLang === 'fr' ? 'En cours' : 'Live');
+    var s = Math.floor(aos - now);
+    var m = Math.floor(s / 60), h = Math.floor(m / 60);
+    if (h > 0) return h + 'h ' + (m % 60) + 'm';
+    if (m > 0) return m + 'm ' + (s % 60) + 's';
+    return s + 's';
+  }
+  function updateRadioWidget() {
+    var next = radioPassesCache.passes.filter(function(p) { return p.aos > Date.now() / 1000; })[0] || radioPassesCache.passes[0];
+    var el;
+    if ((el = document.getElementById('pw-countdown'))) el.textContent = next ? formatCountdown(next.aos) : '—';
+    if (next && (el = document.getElementById('pw-next-sat'))) el.textContent = next.sat || '—';
+    if (next && (el = document.getElementById('pw-freq'))) el.textContent = next.freq || '—';
+  }
+  function fetchRadioWidget() {
+    fetch('/api/sdr/passes').then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+      if (d && d.passes) radioPassesCache.passes = d.passes;
+      updateRadioWidget();
+    }).catch(function() {});
+    fetch('/api/sdr/status').then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+      var ind = document.getElementById('pw-capture-indicator');
+      if (!ind) return;
+      var status = (d && d.status || '').toLowerCase();
+      if (status.indexOf('captur') !== -1 || status === 'recording') {
+        ind.innerHTML = '🔴 ' + (currentLang === 'fr' ? 'Capture en cours' : 'Recording');
+        ind.style.color = 'var(--red)';
+      } else {
+        ind.textContent = 'Tlemcen, DZ';
+        ind.style.color = 'var(--amber)';
+      }
+    }).catch(function() {});
+  }
+  fetchRadioWidget();
+  setInterval(fetchRadioWidget, API_INTERVALS.sdr);
+  setInterval(updateRadioWidget, 1000);
+
+  function loadSidebarHubble(){
+    fetch('/api/hubble/images')
+      .then(function(r){ return r.json(); })
+      .then(function(imgs){
+        var el = document.getElementById('sidebar-hubble');
+        if(!el) return;
+        if(!imgs || !imgs.length){ el.innerHTML='<div style="color:#ff4444;font-size:9px;padding:4px">Indisponible</div>'; return; }
+        var isMobile = window.innerWidth < 768;
+        var html = '<div style="display:grid;grid-template-columns:' + (isMobile ? '1fr 1fr' : '1fr 1fr 1fr') + ';gap:3px">';
+        for(var i=0;i<Math.min(4,imgs.length);i++){
+          var img = imgs[i];
+          var url = (img.url||'').replace(/'/g,"\\'");
+          html += '<div style="border:1px solid #00ff8833;border-radius:3px;overflow:hidden;cursor:pointer" onclick="window.open(\''+url+'\',\'_blank\')">';
+          if(img.url) html += '<img src="'+img.url+'" style="width:100%;height:55px;object-fit:cover" onerror="this.style.display=\'none\'">';
+          html += '<div class="hubble-sidebar-title" style="font-size:7px;color:#00ff88;padding:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+(img.title||'')+'</div>';
+          html += '</div>';
+        }
+        html += '</div>';
+        el.innerHTML = html;
+      })
+      .catch(function(){
+        var el = document.getElementById('sidebar-hubble');
+        if(el) el.innerHTML='<div style="color:#ff4444;font-size:9px;padding:4px">Erreur fetch</div>';
+      });
+  }
+  setTimeout(loadSidebarHubble, 2000);
+  setInterval(loadSidebarHubble, 3600000);
+
+  // ── Navigation & lazy iframes ──
+  var PAGES = {
+    dashboard:    { frame: 'frame-dashboard',    label: 'Dashboard QG' },
+    overlord:     { frame: 'frame-overlord',     label: 'Overlord Live' },
+    galerie:      { frame: 'frame-galerie',      label: 'Archive Stellaire' },
+    observatoire: { frame: 'frame-observatoire', label: 'Observatoire Mondial' },
+    vision:       { frame: 'frame-vision',       label: 'Vision 2026' },
+    'mission-control': { frame: 'frame-mission-control', label: 'Contrôle Mission' },
+    'orbital-map': { frame: 'frame-orbital-map', label: 'Carte Orbitale' }
+  };
+  var current = 'home';
+  var loaded = {};
+
+  function navigate(page) {
+    console.log("NAVIGATE ->", page);
+    document.querySelectorAll(".nav-item").forEach(el => {
+      el.classList.remove("active");
+    });
+    var nav = document.querySelector("#nav-" + page);
+    if (nav) nav.classList.add("active");
+    var homeScreen = document.getElementById("home-screen");
+    if (page === "home") {
+      if (homeScreen) homeScreen.style.display = "";
+      document.querySelectorAll(".page-frame").forEach(frame => { frame.style.display = "none"; });
+      return;
+    }
+    if (homeScreen) homeScreen.style.display = "none";
+    document.querySelectorAll(".page-frame").forEach(frame => {
+      frame.style.display = "none";
+    });
+    var frame = document.getElementById("frame-" + page);
+    if (!frame) {
+      console.error("FRAME NOT FOUND:", page);
+      return;
+    }
+    if (!frame.src || frame.src === "about:blank") {
+      frame.src = frame.dataset.src;
+    }
+    frame.style.display = "block";
+  }
+  window.navigate = navigate;
+
+  // ── Stats ──
+  function loadStats() {
+    fetch('/api/latest').then(function(r) {
+      if (!r.ok) return null;
+      return r.json();
+    }).then(function(d) {
+      if (!d) return;
+      var total = (d.stats && d.stats.total !== undefined) ? d.stats.total : d.total;
+      var anom = (d.stats && d.stats.anomalies !== undefined) ? d.stats.anomalies : d.anomalies;
+      var src = (d.stats && d.stats.sources !== undefined) ? d.stats.sources : d.sources;
+      var reqJ = (d.stats && d.stats.req_jour !== undefined) ? d.stats.req_jour : d.req_jour;
+      var el;
+      if (total !== undefined && (el = document.getElementById('sb-total'))) el.textContent = total;
+      if (anom !== undefined && (el = document.getElementById('sb-anomalies'))) el.textContent = anom;
+      if (src !== undefined && (el = document.getElementById('sb-sources'))) el.textContent = src;
+      if (reqJ !== undefined && (el = document.getElementById('sb-req'))) el.textContent = reqJ + ' / 1400';
+      var bar = document.getElementById('sb-bar');
+      if (bar && reqJ !== undefined) bar.style.width = Math.min(100, (reqJ / 1400) * 100) + '%';
+    }).catch(function() {});
+  }
+  loadStats();
+  setInterval(loadStats, API_INTERVALS.latest);
+
+  // ── PWA SYNC button ──
+  document.body.addEventListener('click', function(e) {
+    if (!e.target || e.target.id !== 'pwa-sync-btn') return;
+    e.preventDefault();
+    if (!('caches' in window)) { window.location.reload(); return; }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        if (regs && regs.length) for (var i = 0; i < regs.length; i++) regs[i].unregister();
+        return caches.keys();
+      }).then(function(keys) {
+        if (keys && keys.length) return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+      }).then(function() { window.location.reload(); }).catch(function() { window.location.reload(); });
+    } else {
+      caches.keys().then(function(keys) {
+        if (keys && keys.length) return Promise.all(keys.map(function(k) { return caches.delete(k); }));
+      }).then(function() { window.location.reload(); }).catch(function() { window.location.reload(); });
+    }
+  });
+  window.API_INTERVALS = API_INTERVALS;
+})();
+</script>
+<button type="button" class="pwa-sync-btn" id="pwa-sync-btn" title="Vider le cache et recharger" aria-label="Sync">SYNC</button>
+<script>
+async function syncVoyagerPortal() {
+  try {
+    const r = await fetch('/api/voyager-live');
+    const data = await r.json();
+    const box = document.getElementById('voyager-live-container');
+    if (box && data.voyager_1) {
+      box.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+          <div style="border-left: 2px solid var(--amber); padding-left:10px; text-align:left;">
+            <span style="color:var(--amber); font-size:0.8em;">V1 :</span> 
+            <span style="color:#00ffcc;">${data.voyager_1.distance_km.toLocaleString('fr-FR')} KM</span>
+          </div>
+          <div style="border-left: 2px solid #ff4444; padding-left:10px; text-align:left;">
+            <span style="color:#ff4444; font-size:0.8em;">V2 :</span> 
+            <span style="color:#00ffcc;">${data.voyager_2 ? data.voyager_2.distance_km.toLocaleString('fr-FR') : '--'} KM</span>
+          </div>
+        </div>`;
+    }
+  } catch (e) { console.error("Liaison Portail Interrompue", e); }
+}
+syncVoyagerPortal();
+setInterval(syncVoyagerPortal, window.API_INTERVALS.voyager);
+
+async function loadSystemHealth() {
+  try {
+    var r = await fetch("/api/system/status");
+    var d = await r.json();
+    var el = document.getElementById("system-health-status");
+    if (el) {
+      el.innerHTML = "🟢 " + (d.system || "Orbital-Chohra") + " EN LIGNE<br>" +
+        "Modules : " + (d.modules != null ? d.modules : "—") + "<br>" +
+        "APIs : " + (d.apis != null ? d.apis : "—");
+    }
+  } catch (e) {
+    var el = document.getElementById("system-health-status");
+    if (el) el.innerHTML = "🔴 System status unavailable";
+  }
+}
+setInterval(loadSystemHealth, window.API_INTERVALS.systemHealth);
+loadSystemHealth();
+
+async function loadDiagnostics() {
+  try {
+    var r = await fetch("/api/system/diagnostics");
+    var d = await r.json();
+    var el = document.getElementById("system-diagnostics");
+    if (el) {
+      el.innerHTML = "CPU: " + (d.cpu_percent != null ? d.cpu_percent : "—") + "%<br>" +
+        "RAM: " + (d.memory_mb != null ? d.memory_mb : "—") + " MB<br>" +
+        "Cache: " + (d.cache_entries != null ? d.cache_entries : "—");
+    }
+  } catch (e) {
+    var el = document.getElementById("system-diagnostics");
+    if (el) el.innerHTML = "Diagnostics unavailable";
+  }
+}
+setInterval(loadDiagnostics, window.API_INTERVALS.diagnostics);
+loadDiagnostics();
+</script>
+<script src="/static/js/astroscan_status_sync.js"></script>
+<script src="/static/js/astroscan_status_ui.js"></script>
+<script>
+(function(){
+  function apply(ev){
+    var UI=window.AstroScanStatusUI;
+    var d=ev.detail;
+    if(d&&d._networkError){
+      if(UI)UI.clear();
+      var dot=document.getElementById("asc-portail-sync-dot");
+      var txt=document.getElementById("asc-portail-sync-txt");
+      if(txt)txt.textContent="/status indisponible";
+      if(dot)dot.className="asc-portail-sync-dot off";
+      return;
+    }
+    try {
+      if(UI)UI.bind(d);
+    } catch(eUi){}
+    var dot=document.getElementById("asc-portail-sync-dot");
+    var txt=document.getElementById("asc-portail-sync-txt");
+    if(!txt)return;
+    var pm=(d.production_mode!=null?String(d.production_mode):"").toUpperCase();
+    txt.textContent=pm||(d.status||"—");
+    if(dot){
+      dot.className="asc-portail-sync-dot";
+      if(pm==="LIVE")dot.classList.add("live");
+      else if(pm==="DEMO")dot.classList.add("demo");
+      else dot.classList.add("off");
+    }
+  }
+  window.addEventListener("astroscan:status",apply);
+  if(window.AstroScanStatusSync)AstroScanStatusSync.start({intervalMs:3000,useWebSocket:false});
+})();
+</script>
+
+<script>
+// MOBILE GRID FIX — applique apres chargement DOM
+(function fixMobileGrid() {
+  if (window.innerWidth > 768) return;
+  function applyFix() {
+    // Toutes les grilles
+    document.querySelectorAll('[style*="repeat(3"]').forEach(el => {
+      el.style.gridTemplateColumns = '1fr';
+    });
+    document.querySelectorAll('[style*="300px"]').forEach(el => {
+      el.style.gridTemplateColumns = '1fr';
+      el.style.width = '100%';
+    });
+    document.querySelectorAll('.portal-cards-grid').forEach(el => {
+      el.style.gridTemplateColumns = '1fr 1fr';
+      el.style.width = '100%';
+    });
+    document.querySelectorAll('.card, .nav-card, .portal-card').forEach(el => {
+      el.style.width = '100%';
+      el.style.maxWidth = '100%';
+      el.style.minWidth = 'unset';
+    });
+  }
+  // Appliquer immediatement et apres chaque rendu
+  applyFix();
+  setTimeout(applyFix, 500);
+  setTimeout(applyFix, 1500);
+  const obs = new MutationObserver(applyFix);
+  obs.observe(document.body, {childList: true, subtree: true});
+})();
+</script>
+
+<script>
+(function(){
+  if(window.innerWidth > 900) return;
+  function force2col(){
+    document.querySelectorAll('.portal-cards-grid').forEach(function(g){
+      g.style.setProperty('grid-template-columns','1fr 1fr','important');
+      g.style.setProperty('display','grid','important');
+    });
+  }
+  force2col();
+  document.addEventListener('DOMContentLoaded', force2col);
+  window.addEventListener('load', force2col);
+  var pcg = document.querySelector('.portal-cards-grid');
+  if(pcg){
+    var obs2 = new MutationObserver(function(){ force2col(); });
+    obs2.observe(pcg, {attributes:true, attributeFilter:['style','class']});
+  }
+  var n=0, t=setInterval(function(){ force2col(); if(++n>10) clearInterval(t); },500);
+})();
+</script>
+
+<script>
+// GEO-IP AUTO-LOG
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script>
+
+<!-- AEGIS Chat Widget -->
+<script src="/static/js/astro_notifications.js"></script>
+<script src="/static/js/aegis_chat_widget.js"></script>
+<script>
+(function(){
+  if(window.innerWidth > 900) return;
+  var g = document.getElementById('pcg-mobile') || document.querySelector('.portal-cards-grid');
+  if(!g) return;
+  g.style.cssText = 'display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;width:100%!important;padding:0!important;margin-top:0!important;box-sizing:border-box!important;overflow:visible!important;';
+  var cards = g.querySelectorAll('.card, [class*="card"]');
+  cards.forEach(function(c){
+    c.style.cssText = 'min-height:85px!important;height:auto!important;width:auto!important;padding:10px 8px!important;font-size:0.72rem!important;clip-path:none!important;margin:0!important;box-sizing:border-box!important;';
+  });
+})();
+</script>
+</body>
+</html>

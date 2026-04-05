@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import os
+from flask import Flask, jsonify, render_template_string
+
+app = Flask(__name__)
+
+PORTAL_HTML = """
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASTROSCAN - EMPIRE CHOHRA</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --panel: #0e1526;
+      --panel-2: #101a30;
+      --text: #e9f1ff;
+      --muted: #91a3c0;
+      --accent: #2bd3ff;
+      --accent-2: #5c7cff;
+      --ok: #1fe28a;
+      --border: rgba(90, 130, 200, 0.25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Inter", "Roboto", sans-serif;
+      background:
+        radial-gradient(900px 500px at 95% -20%, rgba(43, 211, 255, 0.14), transparent 50%),
+        radial-gradient(600px 400px at 0% 100%, rgba(92, 124, 255, 0.16), transparent 50%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+    .sidebar {
+      background: linear-gradient(180deg, rgba(18, 29, 53, 0.95), rgba(10, 17, 32, 0.95));
+      border-right: 1px solid var(--border);
+      padding: 24px 18px;
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 1px;
+      font-size: 15px;
+      color: var(--accent);
+      margin-bottom: 24px;
+    }
+    .menu {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .menu a {
+      color: var(--text);
+      text-decoration: none;
+      padding: 10px 12px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.02);
+      transition: 0.2s ease;
+      font-size: 14px;
+    }
+    .menu a:hover {
+      border-color: var(--border);
+      background: rgba(43, 211, 255, 0.08);
+    }
+    .main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .topbar {
+      height: 72px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      background: rgba(14, 21, 38, 0.72);
+      backdrop-filter: blur(8px);
+    }
+    .title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .status {
+      color: var(--ok);
+      font-size: 13px;
+      border: 1px solid rgba(31, 226, 138, 0.35);
+      background: rgba(31, 226, 138, 0.1);
+      padding: 6px 10px;
+      border-radius: 999px;
+    }
+    .content {
+      padding: 26px;
+    }
+    .panel {
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+    }
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      color: var(--accent);
+    }
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { border-right: 0; border-bottom: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">ASTROSCAN - EMPIRE CHOHRA</div>
+      <nav class="menu">
+        <a href="/">Portail principal</a>
+        <a href="/portail">Centre de commandement</a>
+        <a href="/api/aegis/status">Etat AEGIS (API)</a>
+      </nav>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="title">Portail de Commandement</div>
+        <div class="status">SYSTEME OPERATIONNEL</div>
+      </header>
+      <section class="content">
+        <article class="panel">
+          <h2>ASTROSCAN - EMPIRE CHOHRA</h2>
+          <p>Station AstroScan en attente de donnees spatiales...</p>
+        </article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
+"""
+
+@app.route("/", methods=["GET"])
+def home():
+    return render_template_string(PORTAL_HTML), 200
+
+@app.route("/portail", methods=["GET"])
+def portail():
+    return render_template_string(PORTAL_HTML), 200
+
+@app.route("/api/aegis/status", methods=["GET", "POST"])
+def api_aegis_status():
+    groq_key = (os.environ.get("GROQ_API_KEY") or "").strip()
+
+    if not groq_key:
+        return jsonify({
+            "status": "ERREUR",
+            "message": "GROQ_API_KEY manquante",
+            "aegis": "INACTIF"
+        }), 401
+
+    return jsonify({
+        "status": "ACTIF",
+        "message": "AEGIS opérationnel",
+        "aegis": "ACTIF"
+    }), 200
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=5003)

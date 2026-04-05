@@ -1,0 +1,22 @@
+User-agent: *
+
+Allow: /
+
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /analytics
+Disallow: /overlord_live
+Disallow: /mission-control
+Disallow: /observatory/status
+Disallow: /lab/upload
+Disallow: /lab/analyze
+Disallow: /lab/dashboard
+Disallow: /lab/images
+Disallow: /lab/raw/
+Disallow: /health
+Disallow: /ready
+Disallow: /selftest
+Disallow: /demo
+Disallow: /static/img/raw/
+
+Sitemap: https://astroscan.space/sitemap.xml

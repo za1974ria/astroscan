@@ -1,0 +1,53 @@
+=================================================================
+  AEGIS : RAPPORT D'ÉTAT DES LIEUX DES CONNEXIONS GLOBALES
+  Directeur : Zakaria Chohra | Cible : ASTROSCAN (Holsboro)
+  Horodatage du scan : Wed Mar 18 04:29:10 AM UTC 2026
+=================================================================
+
+--- 🛡️ LIAISONS DE COMMANDEMENT OVERLORD (SSH - PORT 22) ---
+Netid Recv-Q Send-Q Local Address:Port     Peer Address:Port Process
+tcp   0      0        5.78.153.17:22       76.181.73.73:46762       
+tcp   0      0        5.78.153.17:22     147.185.132.72:65328       
+tcp   0      0        5.78.153.17:22        5.78.153.17:59924       
+tcp   0      1640     5.78.153.17:22    105.235.138.136:64200       
+tcp   0      0        5.78.153.17:59924     5.78.153.17:22          
+
+--- 🌐 TRAFIC WEB ENTRANT (DASHBOARD - PORTS 80 & 443) ---
+Netid Recv-Q Send-Q Local Address:Port     Peer Address:Port Process
+tcp   0      0        5.78.153.17:443   105.235.138.136:60359       
+tcp   0      0        5.78.153.17:443   105.235.138.136:50294       
+tcp   0      0        5.78.153.17:34706  34.206.104.129:443         
+tcp   0      0        5.78.153.17:443   105.235.138.136:52361       
+tcp   0      0        5.78.153.17:443   105.235.138.136:59774       
+tcp   0      0        5.78.153.17:32870   34.226.172.45:443         
+tcp   0      0        5.78.153.17:51432   54.208.68.239:443         
+tcp   0      0        5.78.153.17:443   105.235.138.136:62586       
+tcp   0      0        5.78.153.17:443   105.235.138.136:53334       
+
+--- 🛰️ FLUX DE DONNÉES SORTANTS (APIs NASA, HUBBLE, ETC.) ---
+6 connexion(s) vers IP cible : 105.235.138.136
+1 connexion(s) vers IP cible : 34.206.104.129
+1 connexion(s) vers IP cible : 34.226.172.45
+1 connexion(s) vers IP cible : 54.208.68.239
+
+--- 🔒 SERVICES LOCAUX EN ÉCOUTE (PORTS OUVERTS) ---
+Netid State  Recv-Q Send-Q    Local Address:Port  Peer Address:PortProcess
+udp   UNCONN 0      0            127.0.0.54:53         0.0.0.0:*          
+udp   UNCONN 0      0         127.0.0.53%lo:53         0.0.0.0:*          
+udp   UNCONN 0      0      5.78.153.17%eth0:68         0.0.0.0:*          
+udp   UNCONN 0      0                     *:56132            *:*          
+udp   UNCONN 0      0                     *:58320            *:*          
+tcp   LISTEN 0      128             0.0.0.0:5000       0.0.0.0:*          
+tcp   LISTEN 0      128             0.0.0.0:5001       0.0.0.0:*          
+tcp   LISTEN 0      128             0.0.0.0:5002       0.0.0.0:*          
+tcp   LISTEN 0      4096            0.0.0.0:22         0.0.0.0:*          
+tcp   LISTEN 0      511             0.0.0.0:80         0.0.0.0:*          
+tcp   LISTEN 0      4096         127.0.0.54:53         0.0.0.0:*          
+tcp   LISTEN 0      511             0.0.0.0:443        0.0.0.0:*          
+tcp   LISTEN 0      511           127.0.0.1:41389      0.0.0.0:*          
+tcp   LISTEN 0      511           127.0.0.1:37047      0.0.0.0:*          
+tcp   LISTEN 0      4096          127.0.0.1:20244      0.0.0.0:*          
+tcp   LISTEN 0      4096          127.0.0.1:20242      0.0.0.0:*          
+tcp   LISTEN 0      4096      127.0.0.53%lo:53         0.0.0.0:*          
+tcp   LISTEN 0      4096               [::]:22            [::]:*          
+

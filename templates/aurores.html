@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroScan-Chohra - Aurores boréales · ORBITAL-CHOHRA</title>
+<style>
+:root {
+  --bg: #000a14;
+  --panel: rgba(0,20,40,0.85);
+  --border: rgba(0,212,255,0.2);
+  --cyan: #00d4ff;
+  --green: #00ff88;
+  --aurora1: #00ff88;
+  --aurora2: #7700ff;
+  --aurora3: #ff3366;
+  --text: #a0b8c8;
+  --bright: #e0f0ff;
+  --font: 'Courier New', monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--bright); font-family:var(--font); min-height:100vh; padding:20px; overflow-x:hidden; }
+
+.aurora-bg {
+  position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; pointer-events:none; overflow:hidden;
+}
+.aurora-wave {
+  position:absolute; width:200%; height:300px; opacity:0.08; border-radius:50%;
+  animation: aurora-move 8s ease-in-out infinite alternate;
+}
+.aurora-wave:nth-child(1) { background: radial-gradient(ellipse, #00ff88, transparent 70%); top:10%; left:-50%; animation-duration:7s; }
+.aurora-wave:nth-child(2) { background: radial-gradient(ellipse, #7700ff, transparent 70%); top:5%; left:-30%; animation-duration:10s; animation-delay:2s; }
+.aurora-wave:nth-child(3) { background: radial-gradient(ellipse, #00d4ff, transparent 70%); top:20%; left:-20%; animation-duration:8s; animation-delay:4s; }
+@keyframes aurora-move { from{transform:translateX(0) scaleY(1)} to{transform:translateX(30%) scaleY(1.3)} }
+
+.content { position:relative; z-index:1; max-width:900px; margin:0 auto; }
+
+.header { text-align:center; margin-bottom:28px; }
+.header h1 { font-size:1.4rem; color:var(--aurora1); letter-spacing:0.15em; text-shadow:0 0 30px rgba(0,255,136,0.5); margin-bottom:8px; }
+.header p { font-size:0.72rem; color:var(--text); letter-spacing:0.08em; }
+
+.kp-section { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:20px; text-align:center; }
+.kp-title { font-size:0.65rem; letter-spacing:0.2em; color:var(--cyan); margin-bottom:16px; }
+.kp-value { font-size:2.5rem; color:var(--green); font-weight:bold; margin-bottom:4px; text-shadow:0 0 20px rgba(0,255,136,0.6); }
+.kp-label { font-size:0.65rem; color:var(--text); letter-spacing:0.1em; }
+
+.kp-scale { display:flex; gap:4px; justify-content:center; margin:16px 0; }
+.kp-cell { width:32px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.6rem; font-weight:bold; cursor:default; transition:transform 0.2s; }
+.kp-cell:hover { transform:scaleY(1.2); }
+.kp-cell.active { transform:scaleY(1.3); box-shadow:0 0 12px currentColor; }
+
+.visibility-card { border-radius:10px; padding:20px; margin-bottom:20px; border:2px solid; text-align:center; }
+.vis-icon { font-size:3rem; margin-bottom:8px; }
+.vis-title { font-size:1rem; letter-spacing:0.12em; margin-bottom:6px; }
+.vis-desc { font-size:0.7rem; color:var(--text); line-height:1.6; }
+.vis-location { font-size:0.65rem; color:var(--cyan); margin-top:8px; letter-spacing:0.1em; }
+
+.forecast { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; }
+.forecast-title { font-size:0.65rem; letter-spacing:0.2em; color:var(--cyan); margin-bottom:16px; }
+.forecast-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; }
+.forecast-cell { background:rgba(0,20,40,0.6); border:1px solid var(--border); border-radius:6px; padding:8px 4px; text-align:center; }
+.forecast-cell .fc-time { font-size:0.55rem; color:var(--text); margin-bottom:4px; }
+.forecast-cell .fc-kp { font-size:0.9rem; font-weight:bold; }
+.forecast-cell .fc-bar { height:3px; border-radius:2px; margin-top:4px; }
+
+.map-section { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; }
+.map-title { font-size:0.65rem; letter-spacing:0.2em; color:var(--cyan); margin-bottom:12px; }
+.map-container { position:relative; border-radius:8px; overflow:hidden; }
+.map-container img { width:100%; display:block; border-radius:8px; }
+.tlemcen-marker { position:absolute; width:12px; height:12px; background:var(--green); border-radius:50%; border:2px solid white; box-shadow:0 0 12px var(--green); transform:translate(-50%,-50%); animation:pulse-marker 1.5s infinite; }
+.tlemcen-label { position:absolute; color:var(--green); font-size:0.6rem; transform:translate(-50%, 10px); white-space:nowrap; text-shadow:0 0 8px var(--green); }
+@keyframes pulse-marker { 0%,100%{box-shadow:0 0 12px var(--green)} 50%{box-shadow:0 0 24px var(--green),0 0 40px rgba(0,255,136,0.5)} }
+
+.stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+.stat-card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px; text-align:center; }
+.stat-label { font-size:0.6rem; color:var(--text); letter-spacing:0.1em; margin-bottom:6px; }
+.stat-value { font-size:1.2rem; color:var(--cyan); font-weight:bold; }
+.stat-unit { font-size:0.6rem; color:var(--text); }
+
+.info-box { background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.2); border-left:3px solid var(--aurora1); border-radius:0 8px 8px 0; padding:14px 16px; font-size:0.68rem; color:var(--text); line-height:1.7; }
+.info-box strong { color:var(--bright); }
+
+.last-update { text-align:right; font-size:0.6rem; color:var(--text); margin-bottom:8px; }
+
+@media(max-width:600px) {
+  .stats-row { grid-template-columns:1fr 1fr; }
+  .forecast-grid { grid-template-columns:repeat(4,1fr); }
+}
+</style>
+</head>
+<body>
+<div class="aurora-bg">
+  <div class="aurora-wave"></div>
+  <div class="aurora-wave"></div>
+  <div class="aurora-wave"></div>
+</div>
+
+<div class="content">
+  <div class="header">
+    <h1>🌌 AURORES BORÉALES</h1>
+    <p>PRÉVISIONS EN TEMPS RÉEL · INDICE KP · VISIBILITÉ DEPUIS TLEMCEN</p>
+  </div>
+
+  <div class="last-update" id="last-update">Chargement...</div>
+
+  <div class="kp-section">
+    <div class="kp-title">⚡ INDICE KP ACTUEL — ACTIVITÉ GÉOMAGNÉTIQUE</div>
+    <div class="kp-value" id="kp-value">--</div>
+    <div class="kp-label" id="kp-label">Chargement...</div>
+    <div class="kp-scale" id="kp-scale"></div>
+  </div>
+
+  <div class="visibility-card" id="vis-card" style="border-color:var(--border)">
+    <div class="vis-icon" id="vis-icon">🔭</div>
+    <div class="vis-title" id="vis-title">Calcul en cours...</div>
+    <div class="vis-desc" id="vis-desc">Récupération des données NOAA en cours.</div>
+    <div class="vis-location">📍 TLEMCEN, ALGÉRIE · 34.87°N · 1.32°E</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">LATITUDE MIN AURORE</div>
+      <div class="stat-value" id="stat-lat">--</div>
+      <div class="stat-unit">degrés Nord</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">INTENSITÉ SOLAIRE</div>
+      <div class="stat-value" id="stat-flux">--</div>
+      <div class="stat-unit">unités flux</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">ALERTE GÉOMAG.</div>
+      <div class="stat-value" id="stat-alert">--</div>
+      <div class="stat-unit">niveau</div>
+    </div>
+  </div>
+
+  <div class="map-section">
+    <div class="map-title">🗺️ OVALE AURORAL — IMAGE NOAA TEMPS RÉEL</div>
+    <div class="map-container">
+      <img id="aurora-map" src="https://services.swpc.noaa.gov/images/aurora-forecast-north-hemi.jpg" alt="Carte aurore boréale NOAA">
+      <div class="tlemcen-marker" style="top:68%;left:51%"></div>
+      <div class="tlemcen-label" style="top:68%;left:51%">TLEMCEN</div>
+    </div>
+  </div>
+
+  <div class="forecast">
+    <div class="forecast-title">📊 PRÉVISIONS KP — PROCHAINES 24H</div>
+    <div class="forecast-grid" id="forecast-grid">
+      <div style="text-align:center;color:var(--text);font-size:0.65rem;grid-column:1/-1">Chargement des prévisions...</div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>Comment fonctionne l'indice Kp ?</strong><br>
+    L'indice Kp mesure l'activité géomagnétique mondiale de 0 (calme) à 9 (tempête extrême).
+    Pour observer des aurores depuis l'Algérie (latitude ~35°N), un indice <strong>Kp ≥ 8</strong> est généralement nécessaire.
+    Les aurores sont visibles depuis l'Europe du Nord dès Kp 4-5.<br><br>
+    <strong>Sources :</strong> NOAA Space Weather Prediction Center · Données mises à jour toutes les 15 minutes.
+  </div>
+</div>
+
+<script>
+var KP_COLORS = ['#00aa44','#00cc55','#44dd00','#88ee00','#ffcc00','#ff8800','#ff4400','#ff0000','#cc0000','#990000'];
+var KP_LABELS = ['Calme','Calme','Calme','Instable','Actif','Tempête G1','Tempête G2','Tempête G3','Tempête G4','Tempête G5'];
+
+function getAuroraVisibility(kp) {
+  if (kp >= 9) return { icon:'🌟', title:'AURORE POSSIBLE DEPUIS TLEMCEN !', desc:'Tempête géomagnétique extrême G5. Aurores boréales potentiellement visibles depuis l\'Afrique du Nord ! Regardez vers le nord cette nuit.', color:'#ff0000', border:'#ff0000' };
+  if (kp >= 8) return { icon:'🔥', title:'AURORE POSSIBLE DEPUIS LE MAGHREB', desc:'Tempête G4 sévère. Une aurore pourrait être visible à l\'horizon nord depuis les régions les plus septentrionales d\'Algérie.', color:'#ff4400', border:'#ff4400' };
+  if (kp >= 7) return { icon:'🔴', title:'AURORE VISIBLE DEPUIS L\'EUROPE DU SUD', desc:'Tempête G3 forte. Aurores visibles depuis le sud de la France et le nord de l\'Espagne. Pas visible depuis Tlemcen.', color:'#ff6600', border:'#ff6600' };
+  if (kp >= 6) return { icon:'🟠', title:'AURORE VISIBLE DEPUIS L\'EUROPE CENTRALE', desc:'Tempête G2 modérée. Aurores visibles depuis l\'Allemagne, la France centrale. Latitude min ~50°N.', color:'#ff9900', border:'#ff9900' };
+  if (kp >= 5) return { icon:'🟡', title:'AURORE VISIBLE DEPUIS L\'EUROPE DU NORD', desc:'Tempête G1 mineure. Aurores visibles depuis Scandinavie, Écosse, nord de l\'Europe. Latitude min ~60°N.', color:'#ffcc00', border:'#ffcc00' };
+  if (kp >= 4) return { icon:'🟢', title:'AURORE ACTIVE — ZONES POLAIRES', desc:'Activité modérée. Aurores bien visibles depuis la Scandinavie et le Canada. Invisible depuis Tlemcen.', color:'#88ee00', border:'#44dd00' };
+  if (kp >= 2) return { icon:'🔵', title:'AURORE FAIBLE — CERCLE POLAIRE', desc:'Activité faible. Aurores visibles uniquement dans les zones polaires (Islande, nord Norvège). Invisible depuis Tlemcen.', color:'#00d4ff', border:'#00d4ff' };
+  return { icon:'⭕', title:'ACTIVITÉ CALME', desc:'Indice Kp très bas. Aucune aurore visible en dehors des zones polaires extrêmes.', color:'#00ff88', border:'#00ff88' };
+}
+
+function buildKpScale(currentKp) {
+  var scale = document.getElementById('kp-scale');
+  scale.innerHTML = '';
+  for (var i = 0; i <= 9; i++) {
+    var cell = document.createElement('div');
+    cell.className = 'kp-cell' + (Math.round(currentKp) === i ? ' active' : '');
+    cell.textContent = i;
+    cell.style.background = KP_COLORS[i] + '33';
+    cell.style.color = KP_COLORS[i];
+    cell.style.border = '1px solid ' + KP_COLORS[i] + '66';
+    if (Math.round(currentKp) === i) cell.style.background = KP_COLORS[i] + '55';
+    scale.appendChild(cell);
+  }
+}
+
+function buildForecast(data) {
+  var grid = document.getElementById('forecast-grid');
+  grid.innerHTML = '';
+  data.slice(0, 8).forEach(function(item) {
+    var t = new Date(item[0]);
+    var kp = parseFloat(item[1]);
+    var color = KP_COLORS[Math.min(Math.floor(kp), 9)];
+    var cell = document.createElement('div');
+    cell.className = 'forecast-cell';
+    cell.innerHTML =
+      '<div class="fc-time">' + t.getUTCHours().toString().padStart(2,'0') + 'h UTC</div>' +
+      '<div class="fc-kp" style="color:' + color + '">' + kp.toFixed(1) + '</div>' +
+      '<div class="fc-bar" style="background:' + color + ';width:' + (kp/9*100) + '%"></div>';
+    grid.appendChild(cell);
+  });
+}
+
+function loadAuroraData() {
+  fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')
+    .then(function(r) { return r.json(); })
+    .then(function(kpData) {
+      var latest = kpData[kpData.length - 1];
+      var kp = parseFloat(latest[1]);
+
+      document.getElementById('kp-value').textContent = kp.toFixed(1);
+      document.getElementById('kp-label').textContent = KP_LABELS[Math.min(Math.floor(kp), 9)] + ' · Kp = ' + kp.toFixed(1);
+      document.getElementById('kp-value').style.color = KP_COLORS[Math.min(Math.floor(kp), 9)];
+
+      buildKpScale(kp);
+
+      var vis = getAuroraVisibility(kp);
+      var card = document.getElementById('vis-card');
+      document.getElementById('vis-icon').textContent = vis.icon;
+      document.getElementById('vis-title').textContent = vis.title;
+      document.getElementById('vis-desc').textContent = vis.desc;
+      card.style.borderColor = vis.border;
+      document.getElementById('vis-title').style.color = vis.color;
+
+      var minLat = Math.max(90 - kp * 6, 40);
+      document.getElementById('stat-lat').textContent = minLat.toFixed(0) + '°';
+      document.getElementById('stat-alert').textContent = kp >= 5 ? 'G' + Math.min(Math.floor(kp - 4), 5) : 'Aucune';
+      document.getElementById('last-update').textContent = 'Mis à jour : ' + new Date().toLocaleTimeString('fr-FR');
+    })
+    .catch(function(e) {
+      document.getElementById('kp-label').textContent = 'Données indisponibles — ' + e.message;
+    });
+
+  fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json')
+    .then(function(r) { return r.json(); })
+    .then(function(fcData) { buildForecast(fcData.slice(1)); })
+    .catch(function() {});
+
+  fetch('https://services.swpc.noaa.gov/products/10cm-flux-30-day.json')
+    .then(function(r) { return r.json(); })
+    .then(function(sfData) {
+      var last = sfData[sfData.length - 1];
+      document.getElementById('stat-flux').textContent = parseFloat(last[1]).toFixed(0);
+    })
+    .catch(function() {});
+
+  document.getElementById('aurora-map').src =
+    'https://services.swpc.noaa.gov/images/aurora-forecast-north-hemi.jpg?t=' + Date.now();
+}
+
+loadAuroraData();
+setInterval(loadAuroraData, 300000);
+</script>
+</body>
+</html>

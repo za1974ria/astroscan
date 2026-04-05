@@ -1,0 +1,92 @@
+=================================================================
+  AEGIS : TRAÇAGE DE L'ANOMALIE DU FLUX 'HUBBLE EN DIRECT'
+  Directeur : Zakaria Chohra
+=================================================================
+
+--- RÉSULTATS DU SCAN (LABEL FRONTEND) ---
+-> Cible identifiée. Le label se trouve dans :
+/root/astro_scan/astroscan_api_audit_20260318_033707.txt:2:  AEGIS : TRAÇAGE DE L'ANOMALIE DU FLUX 'HUBBLE EN DIRECT'
+/root/astro_scan/astroscan_api_tracer.sh:15:echo "  AEGIS : TRAÇAGE DE L'ANOMALIE DU FLUX 'HUBBLE EN DIRECT'" >> "$LOG_FILE"
+/root/astro_scan/astroscan_api_tracer.sh:24:LABEL_MATCH=$(grep -rnwi "$SEARCH_DIR" -e "HUBBLE EN DIRECT" || true)
+/root/astro_scan/astroscan_api_tracer.sh:30:    echo "-> [!] Label 'HUBBLE EN DIRECT' introuvable dans le répertoire." >> "$LOG_FILE"
+/root/astro_scan/templates/observatoire.html:403:    <div class="card-tag" style="color:var(--acid)">🔭 HUBBLE EN DIRECT — DERNIÈRES IMAGES</div>
+/root/astro_scan/templates/observatoire.html:718:    el.innerHTML = '<div class="section-title">🔭 HUBBLE EN DIRECT — DERNIÈRES IMAGES</div>'+
+
+--- RECHERCHE DES POINTS DE TERMINAISON API SUSPECTS ---
+-> API identifiées dans le code source :
+/root/astro_scan/observatoire_COPIER_ICI.html:445:https://api.nasa.gov/insight_weather/
+/root/astro_scan/observatoire_COPIER_ICI.html:463:https://api.nasa.gov/neo/rest/v1/neo/99942
+/root/astro_scan/observatoire_COPIER_ICI.html:521:https://api.nasa.gov/planetary/apod
+/root/astro_scan/nasa_feeder.py:31:https://api.nasa.gov/planetary/apod
+/root/astro_scan/nasa_feeder.py:48:https://api.nasa.gov/planetary/apod
+/root/astro_scan/RAPPORT_DETAILLE_ASTROSCAN.md:195:https://api.nasa.gov/planetary/apod
+/root/astro_scan/RAPPORT_DETAILLE_ASTROSCAN.md:196:https://api.nasa.gov/planetary/apod
+/root/astro_scan/RAPPORT_DETAILLE_ASTROSCAN.md:197:https://api.nasa.gov/neo/rest/v1/feed
+/root/astro_scan/RAPPORT_DETAILLE_ASTROSCAN.md:198:https://api.nasa.gov/neo/rest/v1/neo/99942
+/root/astro_scan/RAPPORT_DETAILLE_ASTROSCAN.md:199:https://api.nasa.gov/insight_weather/
+/root/astro_scan/RAPPORT_DETAILLE_ASTROSCAN.md:200:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/RAPPORT_DETAILLE_ASTROSCAN.md:229:https://api.nasa.gov/planetary/apod
+/root/astro_scan/RAPPORT_DETAILLE_ASTROSCAN.md:230:https://api.nasa.gov/neo/rest/v1/neo/99942
+/root/astro_scan/RAPPORT_DETAILLE_ASTROSCAN.md:231:https://api.nasa.gov/insight_weather/
+/root/astro_scan/FICHE_TECHNIQUE.md:161:https://api.nasa.gov/planetary/apod
+/root/astro_scan/astroscan_api_tracer.sh:36:https://api.nasa.gov/
+/root/astro_scan/station_web.py.bak:350:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py.bak:397:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py.bak:1317:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/station_web.py.bak:1318:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py.bak:1378:https://api.nasa.gov/neo/rest/v1/feed
+/root/astro_scan/station_web.py.bak:1465:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/station_web.py.bak:1487:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py.bak:1664:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py.bak:1681:https://api.nasa.gov/insight_weather/
+/root/astro_scan/station_web.py.bak:1733:https://api.nasa.gov/neo/rest/v1/feed
+/root/astro_scan/telescope_feeds.py:65:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py.bak_shield:251:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py.bak_shield:298:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py.bak_shield:1119:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/station_web.py.bak_shield:1120:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py.bak_shield:1180:https://api.nasa.gov/neo/rest/v1/feed
+/root/astro_scan/station_web.py.bak_shield:1267:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/station_web.py.bak_shield:1289:https://api.nasa.gov/planetary/apod
+/root/astro_scan/backup/observatoire_50ko.html:445:https://api.nasa.gov/insight_weather/
+/root/astro_scan/backup/observatoire_50ko.html:463:https://api.nasa.gov/neo/rest/v1/neo/99942
+/root/astro_scan/backup/observatoire_50ko.html:521:https://api.nasa.gov/planetary/apod
+/root/astro_scan/modules/live_feeds.py:15:https://api.nasa.gov/planetary/apod
+/root/astro_scan/modules/live_feeds.py:26:https://api.nasa.gov/planetary/apod
+/root/astro_scan/modules/live_feeds.py:89:https://api.nasa.gov/insight_weather/
+/root/astro_scan/modules/sondes_module.py:88:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/modules/sondes_module.py:109:https://api.nasa.gov/planetary/apod
+/root/astro_scan/modules/sondes_module.py.bak:109:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/modules/space_alerts.py:16:https://api.nasa.gov/neo/rest/v1/feed
+/root/astro_scan/station_web.py:431:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py:482:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py:577:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py:1579:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/station_web.py:1580:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py:1677:https://api.nasa.gov/neo/rest/v1/feed
+/root/astro_scan/station_web.py:1764:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/station_web.py:1786:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py:1934:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py:1984:https://api.nasa.gov/planetary/apod
+/root/astro_scan/station_web.py:2001:https://api.nasa.gov/insight_weather/
+/root/astro_scan/station_web.py:2053:https://api.nasa.gov/neo/rest/v1/feed
+/root/astro_scan/station_web.py:2570:https://api.nasa.gov/planetary/apod
+/root/astro_scan/templates/observatoire.html:576:https://api.nasa.gov/insight_weather/
+/root/astro_scan/templates/observatoire.html:594:https://api.nasa.gov/neo/rest/v1/neo/99942
+/root/astro_scan/templates/observatoire.html:696:https://api.nasa.gov/planetary/apod
+/root/astro_scan/templates/observatoire.html.bak651:395:https://api.nasa.gov/insight_weather/
+/root/astro_scan/templates/observatoire.html.bak651:413:https://api.nasa.gov/neo/rest/v1/neo/99942
+/root/astro_scan/templates/observatoire.html.bak651:471:https://api.nasa.gov/planetary/apod
+/root/astro_scan/templates/observatoire.html.bak:395:https://api.nasa.gov/insight_weather/
+/root/astro_scan/templates/observatoire.html.bak:413:https://api.nasa.gov/neo/rest/v1/neo/99942
+/root/astro_scan/templates/observatoire.html.bak:471:https://api.nasa.gov/planetary/apod
+/root/astro_scan/templates/observatoire.html.verrou:445:https://api.nasa.gov/insight_weather/
+/root/astro_scan/templates/observatoire.html.verrou:463:https://api.nasa.gov/neo/rest/v1/neo/99942
+/root/astro_scan/templates/observatoire.html.verrou:521:https://api.nasa.gov/planetary/apod
+/root/astro_scan/templates/observatoire.html.bak2:397:https://api.nasa.gov/insight_weather/
+/root/astro_scan/templates/observatoire.html.bak2:415:https://api.nasa.gov/neo/rest/v1/neo/99942
+/root/astro_scan/templates/observatoire.html.bak2:473:https://api.nasa.gov/planetary/apod
+/root/astro_scan/.env.save:8:https://api.nasa.gov/
+/root/astro_scan/static/sondes_aegis.js:223:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/static/sondes.js:88:https://api.nasa.gov/mars-photos/api/v1/rovers/
+/root/astro_scan/noyau_orbital.py:33:https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/latest_photos

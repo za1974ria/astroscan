@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AstroScan-Chohra - Démo multi-appareils</title>
+<style>
+  :root {
+    --bg: #050a10;
+    --acid: #00ff88;
+    --muted: #7a8f9f;
+    --card: rgba(8, 20, 32, 0.96);
+    --border: rgba(0, 255, 136, 0.22);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+    background: radial-gradient(ellipse 120% 80% at 50% 0%, #0a1828 0%, var(--bg) 55%);
+    color: #c5d8e8;
+    padding: 28px 20px 48px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  h1 {
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--acid);
+    letter-spacing: 0.06em;
+    margin: 0 0 8px;
+  }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 28px; max-width: 640px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    max-width: 560px;
+    margin-bottom: 18px;
+  }
+  label { display: block; font-size: 11px; color: var(--muted); letter-spacing: 0.12em; margin-bottom: 6px; }
+  input[type="text"], select {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px 12px;
+    background: #020810;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: #e8f0f8;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .row { margin-bottom: 16px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  button {
+    cursor: pointer;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    border: 1px solid var(--acid);
+    background: rgba(0, 255, 136, 0.08);
+    color: var(--acid);
+    transition: background 0.15s;
+  }
+  button:hover { background: rgba(0, 255, 136, 0.18); }
+  button.secondary {
+    border-color: rgba(0, 170, 255, 0.45);
+    color: #6ec8ff;
+    background: rgba(0, 120, 255, 0.08);
+  }
+  button.secondary:hover { background: rgba(0, 120, 255, 0.16); }
+  .status-line {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 12px;
+  }
+  .status-line span.val { color: #e0e8f0; }
+  #demo-ws-status.online { color: var(--acid); }
+  #demo-ws-status.offline { color: #ff6688; }
+  ul.steps { margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+  ul.steps li { margin-bottom: 6px; }
+  .ok { color: var(--acid); }
+</style>
+</head>
+<body>
+  <h1>AstroScan-Chohra Multi-Device Demo</h1>
+  <p class="sub">Démonstration client : une session partagée, un seul <strong>MASTER</strong> serveur par session, des <strong>VIEWER</strong> qui suivent. Carte : <code>/orbital-map</code></p>
+
+  <div class="card">
+    <div class="row">
+      <label for="demo-session">sessionId</label>
+      <input type="text" id="demo-session" autocomplete="off" placeholder="ex. demo-client-1">
+    </div>
+    <div class="row">
+      <label for="demo-role">rôle pour prévisualisation WS (cette page)</label>
+      <select id="demo-role">
+        <option value="master">MASTER</option>
+        <option value="viewer">VIEWER</option>
+      </select>
+    </div>
+    <div class="btns">
+      <button type="button" id="btn-open-master">Ouvrir en MASTER</button>
+      <button type="button" class="secondary" id="btn-open-viewer">Ouvrir en VIEWER</button>
+    </div>
+    <div class="btns">
+      <button type="button" class="secondary" id="btn-copy-master">Copier lien MASTER</button>
+      <button type="button" class="secondary" id="btn-copy-viewer">Copier lien VIEWER</button>
+    </div>
+    <div class="btns">
+      <button type="button" id="btn-ws-test">Tester connexion WS (cette page)</button>
+      <button type="button" class="secondary" id="btn-ws-stop">Arrêter WS</button>
+    </div>
+    <div class="status-line">
+      <div>Session affichée : <span class="val" id="demo-sid-show">—</span></div>
+      <div>Rôle prévisualisation : <span class="val" id="demo-role-show">—</span></div>
+      <div>WebSocket (cette page) : <span class="val offline" id="demo-ws-status">HORS LIGNE</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ok" style="font-size:11px;letter-spacing:0.1em;margin-bottom:8px;">PROCÉDURE</div>
+    <ul class="steps">
+      <li>Ouvrir sur le <strong>PC</strong> le lien <strong>MASTER</strong> (contrôle caméra / filtres).</li>
+      <li>Ouvrir sur <strong>Android</strong> (ou 2ᵉ onglet) le lien <strong>VIEWER</strong> avec le <strong>même sessionId</strong>.</li>
+      <li>Manipuler la carte sur le master : le viewer suit. Un 2ᵉ master est rétrogradé en viewer par le serveur.</li>
+      <li>Multi-workers : lancer Redis + Gunicorn (voir <code>docs/view_sync_deployment.md</code>).</li>
+    </ul>
+  </div>
+
+<script src="/static/js/astroscan_view_sync.js"></script>
+<script>
+(function () {
+  var inp = document.getElementById("demo-session");
+  var sel = document.getElementById("demo-role");
+  var showSid = document.getElementById("demo-sid-show");
+  var showRole = document.getElementById("demo-role-show");
+  var wsEl = document.getElementById("demo-ws-status");
+
+  function randomSid() {
+    return "demo-" + Math.random().toString(36).slice(2, 8);
+  }
+  if (!inp.value.trim()) inp.value = randomSid();
+
+  function basePath() {
+    return "/orbital-map";
+  }
+  function urlMaster(sid) {
+    return basePath() + "?sessionId=" + encodeURIComponent(sid) + "&viewRole=master";
+  }
+  function urlViewer(sid) {
+    return basePath() + "?sessionId=" + encodeURIComponent(sid) + "&viewRole=viewer";
+  }
+
+  function refreshLabels() {
+    var sid = inp.value.trim() || "orbital-chohra-main";
+    showSid.textContent = sid;
+    showRole.textContent = (sel.value || "master").toUpperCase();
+  }
+  inp.addEventListener("input", refreshLabels);
+  sel.addEventListener("change", refreshLabels);
+  refreshLabels();
+
+  document.getElementById("btn-open-master").onclick = function () {
+    var sid = inp.value.trim() || "orbital-chohra-main";
+    window.open(urlMaster(sid), "_blank");
+  };
+  document.getElementById("btn-open-viewer").onclick = function () {
+    var sid = inp.value.trim() || "orbital-chohra-main";
+    window.open(urlViewer(sid), "_blank");
+  };
+
+  function copyText(t) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () {
+        alert("Lien copié.");
+      }, function () {
+        prompt("Copier :", t);
+      });
+    } else {
+      prompt("Copier :", t);
+    }
+  }
+  document.getElementById("btn-copy-master").onclick = function () {
+    var sid = inp.value.trim() || "orbital-chohra-main";
+    copyText(global.location.origin + urlMaster(sid));
+  };
+  document.getElementById("btn-copy-viewer").onclick = function () {
+    var sid = inp.value.trim() || "orbital-chohra-main";
+    copyText(global.location.origin + urlViewer(sid));
+  };
+
+  function setWsUi(state) {
+    var on = state === "open";
+    wsEl.textContent = on ? "EN LIGNE" : "HORS LIGNE";
+    wsEl.className = "val " + (on ? "online" : "offline");
+  }
+
+  window.addEventListener("astroscan:view-ws", function (ev) {
+    var st = ev.detail && ev.detail.state;
+    if (st === "open") setWsUi("open");
+    else if (st === "offline") setWsUi("offline");
+  });
+
+  document.getElementById("btn-ws-test").onclick = function () {
+    var sid = inp.value.trim() || "orbital-chohra-main";
+    var role = sel.value || "master";
+    if (window.AstroScanViewSync) {
+      AstroScanViewSync.stop();
+      AstroScanViewSync.start({ sessionId: sid, role: role });
+    }
+  };
+  document.getElementById("btn-ws-stop").onclick = function () {
+    if (window.AstroScanViewSync) AstroScanViewSync.stop();
+    setWsUi("offline");
+  };
+})();
+</script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

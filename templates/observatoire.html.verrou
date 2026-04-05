@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASTRO-SCAN OBSERVATORY</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+:root{--acid:#00ff88;--blue:#00aaff;--purple:#aa44ff;--amber:#ffaa00;--red:#ff4466;--bg:#020810;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);min-height:100vh;font-family:'Share Tech Mono',monospace;color:#c8d8e8;overflow-x:hidden;}
+@keyframes twinkle{0%,100%{opacity:.1}50%{opacity:.9}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes glow{0%,100%{text-shadow:0 0 8px #00ff88}50%{text-shadow:0 0 25px #00ff88,0 0 50px #00ff88}}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scan{0%{top:-10%}100%{top:110%}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+#stars{position:fixed;inset:0;pointer-events:none;z-index:0;}
+.star{position:absolute;border-radius:50%;background:#fff;}
+.nebula{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at 20% 35%,rgba(0,80,255,.07) 0%,transparent 55%),radial-gradient(ellipse at 80% 70%,rgba(0,255,136,.05) 0%,transparent 50%);}
+header{position:relative;z-index:10;border-bottom:1px solid rgba(0,255,136,.15);background:rgba(2,8,16,.97);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+.logo-tag{font-size:9px;color:var(--acid);letter-spacing:5px;margin-bottom:3px;}
+.logo{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;background:linear-gradient(135deg,#00ff88,#00aaff,#aa44ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:glow 3s ease-in-out infinite;}
+.logo-sub{font-size:9px;color:#8899aa;margin-top:2px;}
+#clock{font-family:'Orbitron',monospace;font-size:18px;color:var(--acid);text-align:right;}
+#clock-utc{font-size:9px;color:#556677;text-align:right;}
+nav{position:relative;z-index:10;display:flex;gap:2px;padding:8px 28px;background:rgba(2,8,16,.93);border-bottom:1px solid rgba(0,255,136,.08);flex-wrap:wrap;}
+.tab{background:transparent;border:1px solid rgba(0,255,136,.1);color:#667788;padding:6px 13px;cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:2px;transition:.2s;}
+.tab:hover,.tab.active{border-color:var(--acid);color:var(--acid);background:rgba(0,255,136,.05);}
+main{position:relative;z-index:5;padding:20px 28px;max-height:calc(100vh - 130px);overflow-y:auto;}
+.panel{display:none;animation:fadein .3s ease;}.panel.active{display:block;}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:rgba(0,255,136,.07);margin-bottom:20px;}
+.stat-box{background:rgba(2,8,16,.97);padding:16px;text-align:center;}
+.stat-val{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;}
+.stat-label{font-size:8px;letter-spacing:2px;color:#8899aa;margin-top:5px;}
+.tele-layout{display:grid;grid-template-columns:1fr 370px;gap:16px;margin-bottom:20px;}
+.tele-screen{position:relative;background:#000;border:1px solid rgba(0,255,136,.2);overflow:hidden;}
+.tele-screen img{width:100%;height:350px;object-fit:cover;display:block;}
+.tele-overlay{position:absolute;inset:0;pointer-events:none;}
+.tele-corner{position:absolute;width:20px;height:20px;border-color:var(--acid);border-style:solid;opacity:.7;}
+.tele-corner.tl{top:8px;left:8px;border-width:2px 0 0 2px;}
+.tele-corner.tr{top:8px;right:8px;border-width:2px 2px 0 0;}
+.tele-corner.bl{bottom:8px;left:8px;border-width:0 0 2px 2px;}
+.tele-corner.br{bottom:8px;right:8px;border-width:0 2px 2px 0;}
+.tele-scanline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,255,136,.4),transparent);animation:scan 4s linear infinite;}
+.tele-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);border:1px solid rgba(0,255,136,.3);padding:3px 10px;font-size:9px;color:var(--acid);letter-spacing:2px;}
+.tele-title{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.9));padding:20px 12px 10px;font-size:11px;color:#e0e8ff;}
+.tele-source{font-size:9px;color:var(--acid);letter-spacing:2px;margin-bottom:3px;}
+.tele-panel{background:rgba(4,12,28,.97);border:1px solid rgba(0,255,136,.1);padding:16px;display:flex;flex-direction:column;gap:12px;}
+.tele-stat{border-left:2px solid rgba(0,255,136,.2);padding-left:10px;}
+.tele-stat-key{font-size:8px;color:#667788;letter-spacing:1px;margin-bottom:3px;}
+.tele-stat-val{font-size:13px;color:#e0e8ff;font-family:'Orbitron',monospace;}
+.analyse-box{flex:1;background:rgba(0,0,0,.3);border:1px solid rgba(0,255,136,.08);padding:12px;overflow-y:auto;max-height:160px;}
+.analyse-tag{font-size:8px;color:var(--acid);letter-spacing:3px;margin-bottom:8px;}
+.analyse-text{font-size:11px;color:#aabbcc;line-height:1.7;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1.2s ease-in-out infinite;display:inline-block;margin-right:6px;vertical-align:middle;}
+.archive-header{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(0,255,136,.06);margin-bottom:18px;}
+.arch-stat{background:rgba(2,8,16,.97);padding:16px;text-align:center;}
+.arch-val{font-family:'Orbitron',monospace;font-size:26px;font-weight:900;}
+.arch-label{font-size:8px;letter-spacing:2px;color:#8899aa;margin-top:5px;}
+.obs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:rgba(0,255,136,.04);}
+.obs-card{background:rgba(4,16,32,.95);padding:16px;border-left:2px solid transparent;transition:.2s;}
+.obs-card:hover{background:rgba(0,255,136,.04);}
+.obs-card.anomalie{border-left-color:var(--red);}
+.obs-card.normal{border-left-color:rgba(0,255,136,.2);}
+.card{background:rgba(4,16,32,.95);border:1px solid rgba(0,255,136,.1);padding:18px;}
+.card-tag{font-size:8px;letter-spacing:3px;margin-bottom:8px;}
+.card-title{font-family:'Orbitron',monospace;font-size:12px;color:#e0e8ff;margin-bottom:5px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+.grid-dso{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px;background:rgba(0,255,136,.04);}
+.dso-card{background:rgba(4,16,32,.95);border:1px solid rgba(0,255,136,.06);padding:16px;cursor:pointer;transition:.2s;}
+.dso-card:hover{border-color:rgba(0,255,136,.3);background:rgba(0,255,136,.04);}
+.dso-expand{display:none;margin-top:10px;padding:10px;background:rgba(0,255,136,.04);border-left:2px solid var(--acid);font-size:11px;color:#aabbcc;line-height:1.7;}
+.dso-card.open .dso-expand{display:block;}
+.solar-stage{position:relative;height:160px;background:rgba(2,6,18,.9);border:1px solid rgba(0,255,136,.08);margin-bottom:20px;overflow:hidden;border-radius:3px;}
+.sun{position:absolute;left:2.5%;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:radial-gradient(circle,#fffacc,#ffaa00,#ff6600);box-shadow:0 0 25px #ffaa00,0 0 50px rgba(255,170,0,.35);animation:pulse 2.5s ease-in-out infinite;}
+.planet-dot{position:absolute;top:50%;transform:translateY(-50%);border-radius:50%;cursor:pointer;transition:.3s;}
+.planet-dot:hover{transform:translateY(-50%) scale(1.4);}
+.planet-info{display:none;margin-bottom:16px;padding:16px;background:rgba(4,16,32,.97);border-left:3px solid;animation:fadein .3s;}
+.planet-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(0,255,136,.04);}
+.planet-card{background:rgba(4,16,32,.95);border:1px solid rgba(0,255,136,.06);padding:14px;cursor:pointer;transition:.2s;text-align:center;}
+.planet-card:hover{border-color:rgba(0,255,136,.3);}
+.quiz-box{max-width:560px;margin:0 auto;}
+.quiz-q-box{background:rgba(4,16,32,.95);border:1px solid rgba(0,255,136,.1);padding:18px;margin-bottom:12px;font-family:'Orbitron',monospace;font-size:13px;color:#e0e8ff;line-height:1.5;}
+.qopt{background:rgba(4,16,32,.9);border:1px solid rgba(0,170,255,.15);color:#c8d8e8;padding:11px 15px;width:100%;cursor:pointer;font-family:inherit;font-size:11px;text-align:left;transition:.2s;margin-bottom:6px;display:block;}
+.qopt:hover:not(:disabled){border-color:var(--blue);background:rgba(0,170,255,.07);}
+.qopt.correct{border-color:var(--acid)!important;background:rgba(0,255,136,.08)!important;color:var(--acid)!important;}
+.qopt.wrong{border-color:var(--red)!important;background:rgba(255,68,102,.06)!important;color:var(--red)!important;}
+.quiz-fact{padding:12px;background:rgba(0,255,136,.04);border-left:2px solid var(--acid);font-size:11px;color:#aabbcc;line-height:1.7;display:none;margin-top:3px;}
+.quiz-result{text-align:center;padding:36px;background:rgba(4,16,32,.95);border:1px solid rgba(0,255,136,.1);display:none;}
+.ai-box{max-width:660px;margin:0 auto;}
+.ai-row{display:flex;gap:8px;margin-bottom:14px;}
+.ai-input{background:rgba(4,16,32,.9);border:1px solid rgba(0,255,136,.25);color:#e0e8ff;padding:11px 14px;flex:1;font-family:inherit;font-size:12px;outline:none;}
+.ai-input:focus{border-color:var(--acid);}
+.send-btn,.qrestart{background:rgba(0,255,136,.07);border:1px solid var(--acid);color:var(--acid);padding:11px 20px;cursor:pointer;font-family:inherit;font-size:11px;letter-spacing:2px;transition:.2s;}
+.send-btn:hover,.qrestart:hover{background:rgba(0,255,136,.16);}
+.ai-thinking{display:none;padding:16px;text-align:center;color:var(--acid);font-size:11px;letter-spacing:2px;animation:pulse 1.2s infinite;}
+.ai-answer{display:none;padding:18px;background:rgba(0,255,136,.03);border:1px solid rgba(0,255,136,.18);border-left:3px solid var(--acid);font-size:12px;line-height:1.9;color:#c8d8e8;animation:fadein .4s;}
+.suggest-btns{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px;}
+.sbtn{background:rgba(0,170,255,.03);border:1px solid rgba(0,170,255,.18);color:var(--blue);padding:5px 11px;font-size:10px;cursor:pointer;font-family:inherit;transition:.2s;}
+.sbtn:hover{background:rgba(0,170,255,.1);}
+.iss-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px;}
+.iss-stat{background:rgba(4,16,32,.95);border:1px solid rgba(0,255,136,.1);padding:18px;text-align:center;}
+.iss-val{font-family:'Orbitron',monospace;font-size:24px;font-weight:900;animation:pulse 2s ease-in-out infinite;}
+.iss-map{position:relative;width:100%;height:220px;background:#0a0a1a;border:1px solid rgba(0,255,136,.3);overflow:hidden;border-radius:6px;margin-bottom:14px;box-sizing:border-box;}
+.iss-map::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,40,80,.35) 0%,rgba(2,8,16,.75) 100%);border-radius:4px;pointer-events:none;z-index:1;}
+.iss-mascotte{position:absolute;left:50%;top:50%;font-size:1.5rem;transform:translate(-50%,-50%);z-index:10;cursor:pointer;display:flex;align-items:center;justify-content:center;width:44px;height:44px;transition:left .5s ease-out,top .5s ease-out;}
+.iss-mascotte-pulse{position:absolute;width:14px;height:14px;background:#00ff88;border-radius:50%;transform:translate(-50%,-50%);animation:iss-pulse 1.5s infinite;z-index:9;pointer-events:none;}
+@keyframes iss-pulse{0%,100%{opacity:1;transform:translate(-50%,-50%) scale(1);}50%{opacity:.4;transform:translate(-50%,-50%) scale(2);}}
+.freq-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.score-bar{display:flex;justify-content:space-between;margin-bottom:12px;font-size:9px;color:#8899aa;letter-spacing:2px;}
+.section-title{font-family:'Orbitron',monospace;font-size:13px;color:var(--acid);letter-spacing:4px;margin-bottom:16px;}
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(0,255,136,.04);}
+.info-cell{background:rgba(4,16,32,.95);padding:12px;border-left:2px solid rgba(0,255,136,.12);}
+.info-key{font-size:8px;color:#8899aa;letter-spacing:1px;margin-bottom:3px;}
+.info-val{font-size:11px;color:#e0e8ff;}
+.bottom-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px;}
+.fact-card{background:rgba(4,16,32,.95);border:1px solid rgba(0,255,136,.07);padding:14px;text-align:center;}
+.fact-num{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;margin-bottom:5px;}
+::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:#020810;}::-webkit-scrollbar-thumb{background:var(--acid);}
+.badge{display:inline-block;padding:2px 7px;font-size:9px;letter-spacing:1px;border-radius:2px;}
+.badge-ok{border:1px solid rgba(0,255,136,.3);color:var(--acid);}
+.badge-alert{border:1px solid rgba(255,68,102,.4);color:var(--red);background:rgba(255,68,102,.07);}
+.refresh-btn{background:rgba(0,255,136,.07);border:1px solid rgba(0,255,136,.3);color:var(--acid);padding:8px 16px;cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:2px;transition:.2s;width:100%;}
+.refresh-btn:hover{background:rgba(0,255,136,.15);}
+.header-btns{display:flex;gap:10px;align-items:center;flex-shrink:0;}
+.header-btns .refresh-btn,.header-btns .disconnect-btn{width:auto;min-width:90px;padding:10px 14px;font-size:11px;cursor:pointer;border-radius:4px;}
+.disconnect-btn{background:rgba(255,68,102,.15);border:2px solid #ff4466;color:#ff4466;}
+.disconnect-btn:hover{background:rgba(255,68,102,.25);}
+/* Compteur visites — style AEGIS cyberpunk/militaire */
+.visits-counter{display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid rgba(0,255,136,.3);border-radius:4px;flex-shrink:0;}
+.visits-counter.nav-visits{margin-right:8px;align-self:center;}
+.visits-icon{font-size:1rem;opacity:1;}
+.visits-val{font-family:'Share Tech Mono',monospace;color:#00ff88;font-size:.95rem;letter-spacing:3px;font-weight:700;}
+@media (max-width:640px){header{flex-wrap:wrap;} .header-btns{margin-bottom:8px;} .header-btns .refresh-btn,.header-btns .disconnect-btn{min-width:100px;padding:12px 16px;font-size:12px;} .visits-counter.nav-visits{padding:5px 10px;}.visits-val{font-size:12px;}}
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<div class="nebula"></div>
+<header>
+  <div>
+    <div class="logo-tag">🔭 STATION D'OBSERVATION COSMIQUE</div>
+    <div class="logo">ASTRO-SCAN OBSERVATORY</div>
+    <div class="logo-sub">DIRECTEUR : ZAKARIA CHOHRA — TLEMCEN, ALGÉRIE | HILLSBORO STATION 5.78.153.17</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div class="header-btns">
+      <button type="button" class="refresh-btn" onclick="location.reload()" title="Actualiser la page (PC / Android)">🔄 Actualiser</button>
+      <button type="button" class="disconnect-btn" onclick="disconnectObservatory()" title="Retour au portail">Déconnexion</button>
+    </div>
+    <div>
+      <div style="font-size:8px;color:#556677;letter-spacing:2px;text-align:right">TEMPS LOCAL</div>
+      <div id="clock">--:--:--</div>
+      <div id="clock-utc">UTC --:--:--</div>
+    </div>
+  </div>
+</header>
+<nav>
+  <div class="visits-counter nav-visits" title="Nombre de visites">
+    <span class="visits-icon">👁️</span>
+    <span class="visits-val" id="visits-val">000 000</span>
+  </div>
+  <button class="tab active" data-tab="telescope" onclick="switchTab('telescope',this)">🔭 TÉLESCOPE LIVE</button>
+  <button class="tab" data-tab="accueil" onclick="switchTab('accueil',this)">🌌 COSMOS</button>
+  <button class="tab" data-tab="archive" onclick="switchTab('archive',this)">📂 ARCHIVE</button>
+  <button class="tab" data-tab="iss" onclick="switchTab('iss',this)">🛸 ISS LIVE</button>
+  <button class="tab" data-tab="catalogue" onclick="switchTab('catalogue',this)">⭐ CATALOGUE DSO</button>
+  <button class="tab" data-tab="systeme" onclick="switchTab('systeme',this)">🪐 SYSTÈME SOLAIRE</button>
+  <button class="tab" data-tab="quiz" onclick="switchTab('quiz',this)">🎓 FORMATION</button>
+  <button class="tab" data-tab="ia" onclick="switchTab('ia',this)">🤖 CERVEAU IA</button>
+  <button class="tab" data-tab="radio" onclick="switchTab('radio',this)">📻 RADIO SDR</button>
+  <button class="tab" data-tab="deep" onclick="switchTab('deep',this)">🚀 COSMOS PROFOND</button>
+<button class="tab" data-tab="skyview" onclick="if(typeof svInit==='function')svInit();switchTab('skyview',this)">🌌 SkyView</button>
+  </nav>
+<main>
+<div class="content">
+<div id="panel-telescope" class="panel active">
+  <div class="tele-layout">
+    <div class="tele-screen">
+      <img id="tele-img" src="/api/image" alt="Live" onerror="this.style.display='none'">
+      <div class="tele-overlay">
+        <div class="tele-corner tl"></div><div class="tele-corner tr"></div>
+        <div class="tele-corner bl"></div><div class="tele-corner br"></div>
+        <div class="tele-scanline"></div>
+        <div class="tele-badge"><span class="live-dot"></span>FLUX EN DIRECT</div>
+        <div class="tele-title">
+          <div class="tele-source" id="tele-source">NASA / ESA</div>
+          <div id="tele-name">Chargement...</div>
+        </div>
+      </div>
+    </div>
+    <div class="tele-panel">
+      <div style="font-family:Orbitron;font-size:11px;color:var(--acid);letter-spacing:3px;padding-bottom:10px;border-bottom:1px solid rgba(0,255,136,.1)">📡 DONNÉES STATION</div>
+      <div class="tele-stat"><div class="tele-stat-key">OBSERVATIONS TOTALES</div><div class="tele-stat-val" id="tp-total">--</div></div>
+      <div class="tele-stat"><div class="tele-stat-key">ANOMALIES DÉTECTÉES</div><div class="tele-stat-val" style="color:var(--red)" id="tp-anomalies">--</div></div>
+      <div class="tele-stat"><div class="tele-stat-key">DERNIÈRE ANALYSE</div><div class="tele-stat-val" style="font-size:10px" id="tp-last">--</div></div>
+      <div class="tele-stat"><div class="tele-stat-key">CERVEAU IA</div><div class="tele-stat-val" style="color:var(--amber)">Gemini 2.0 Flash</div></div>
+      <div class="analyse-box">
+        <div class="analyse-tag">🤖 DERNIÈRE ANALYSE GEMINI</div>
+        <div class="analyse-text" id="tp-analyse">En attente de l'IA...</div>
+      </div>
+      <button class="refresh-btn" onclick="refreshTelescope()">🔄 ACTUALISER</button>
+    </div>
+  </div>
+  <div style="font-family:Orbitron;font-size:11px;color:var(--acid);letter-spacing:3px;margin-bottom:12px">📋 DERNIÈRES OBSERVATIONS</div>
+  <div class="obs-grid" id="latest-obs"></div>
+</div>
+
+<div id="panel-accueil" class="panel">
+  <div class="grid4">
+    <div class="stat-box"><div class="stat-val" style="color:var(--acid)">2 000 Mrd</div><div class="stat-label">GALAXIES OBSERVABLES</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--blue)">100 Mrd</div><div class="stat-label">ÉTOILES VOIE LACTÉE</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--purple)">13.8 Mrd</div><div class="stat-label">ÂGE UNIVERS (ANS)</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--amber)">299 792</div><div class="stat-label">VITESSE LUMIÈRE km/s</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-tag" style="color:var(--acid)">🌠 IMAGE DU JOUR NASA</div>
+      <div id="apod-img-wrap"></div>
+      <div id="apod-title" class="card-title">Chargement...</div>
+      <div id="apod-desc" style="font-size:11px;color:#8899aa;line-height:1.6"></div>
+    </div>
+    <div class="card">
+      <div class="card-tag" style="color:var(--acid)">📡 SPECTRE ÉLECTROMAGNÉTIQUE</div>
+      <div class="freq-row"><span style="color:var(--red);font-size:11px">Rayons gamma</span><span style="color:#8899aa;font-size:10px">10⁻¹² m</span></div>
+      <div class="freq-row"><span style="color:#ff8844;font-size:11px">Rayons X</span><span style="color:#8899aa;font-size:10px">10⁻¹⁰ m</span></div>
+      <div class="freq-row"><span style="color:var(--purple);font-size:11px">Ultraviolets</span><span style="color:#8899aa;font-size:10px">10⁻⁸ m</span></div>
+      <div class="freq-row"><span style="color:var(--acid);font-size:11px">Visible</span><span style="color:#8899aa;font-size:10px">400–700 nm</span></div>
+      <div class="freq-row"><span style="color:var(--amber);font-size:11px">Infrarouge</span><span style="color:#8899aa;font-size:10px">10⁻⁵ m</span></div>
+      <div class="freq-row"><span style="color:var(--blue);font-size:11px">Ondes radio</span><span style="color:#8899aa;font-size:10px">1 m+</span></div>
+    </div>
+  </div>
+  <div class="bottom-facts">
+    <div class="fact-card"><div class="fact-num" style="color:var(--purple)">1 500 al</div><div style="font-size:10px;color:#aabbcc;margin:5px 0">Trou noir le plus proche</div><div style="font-size:8px;color:#8899aa">Gaia BH1 — Ophiuchus</div></div>
+    <div class="fact-card"><div class="fact-num" style="color:var(--acid)">4.24 al</div><div style="font-size:10px;color:#aabbcc;margin:5px 0">Étoile la plus proche</div><div style="font-size:8px;color:#8899aa">Proxima Centauri</div></div>
+    <div class="fact-card"><div class="fact-num" style="color:var(--blue)">5 700+</div><div style="font-size:10px;color:#aabbcc;margin:5px 0">Exoplanètes confirmées</div><div style="font-size:8px;color:#8899aa">Catalogue NASA</div></div>
+  </div>
+</div>
+
+<div id="panel-archive" class="panel">
+  <div class="section-title">📂 ARCHIVE STELLAIRE · Hubble / Chandra / JWST</div>
+  <iframe src="/galerie?embed=1" style="width:100%;height:calc(100vh - 180px);min-height:480px;border:none;background:var(--void)" title="Galerie cosmique"></iframe>
+</div>
+
+<div id="panel-iss" class="panel">
+  <div class="section-title">🛸 STATION SPATIALE INTERNATIONALE</div>
+  <div class="iss-map" id="iss-map">
+    <span class="iss-mascotte-pulse" id="iss-mascotte-pulse"></span>
+    <div class="iss-mascotte" id="iss-mascotte" title="Position ISS" style="visibility:hidden;position:absolute;">🛸</div>
+    <span style="position:absolute;bottom:6px;left:10px;font-size:9px;color:rgba(0,255,136,.7);letter-spacing:2px;z-index:1;">Carte position ISS</span>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+    <button type="button" class="refresh-btn" onclick="fetchISS()" style="width:auto;">🔄 Actualiser ISS</button>
+  </div>
+  <div class="iss-grid">
+    <div class="iss-stat"><div style="font-size:8px;color:#8899aa;letter-spacing:3px;margin-bottom:7px">LATITUDE</div><div class="iss-val" style="color:var(--acid)" id="iss-lat">--°</div></div>
+    <div class="iss-stat"><div style="font-size:8px;color:#8899aa;letter-spacing:3px;margin-bottom:7px">LONGITUDE</div><div class="iss-val" style="color:var(--blue)" id="iss-lng">--°</div></div>
+    <div class="iss-stat"><div style="font-size:8px;color:#8899aa;letter-spacing:3px;margin-bottom:7px">ALTITUDE</div><div class="iss-val" style="color:var(--amber)" id="iss-alt">-- km</div></div>
+    <div class="iss-stat"><div style="font-size:8px;color:#8899aa;letter-spacing:3px;margin-bottom:7px">VITESSE</div><div class="iss-val" style="color:var(--purple)" id="iss-vel">-- km/h</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-tag" style="color:var(--acid)">📊 DONNÉES ISS</div>
+    <div class="info-grid">
+      <div class="info-cell"><div class="info-key">Équipage</div><div class="info-val">6-7 astronautes</div></div>
+      <div class="info-cell"><div class="info-key">Masse totale</div><div class="info-val">419 725 kg</div></div>
+      <div class="info-cell"><div class="info-key">Superficie</div><div class="info-val">2 500 m²</div></div>
+      <div class="info-cell"><div class="info-key">Orbites/jour</div><div class="info-val">15.5</div></div>
+      <div class="info-cell"><div class="info-key">En service</div><div class="info-val">Depuis nov. 2000</div></div>
+      <div class="info-cell"><div class="info-key">Altitude</div><div class="info-val">~408 km</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-tag" style="color:var(--blue)">🌍 VISIBILITÉ DEPUIS TLEMCEN (35.37°N, 1.32°W)</div>
+    <p style="font-size:11px;line-height:1.9;color:#aabbcc">L'ISS est visible à l'oeil nu (magnitude <span style="color:var(--acid)">-3 à -4</span>), traverse le ciel en <span style="color:var(--acid)">3 à 6 minutes</span>. Consulte <span style="color:var(--amber)">Heavens-Above.com</span> pour les passages exacts.</p>
+  </div>
+</div>
+
+<div id="panel-catalogue" class="panel">
+  <div class="section-title">⭐ CATALOGUE OBJETS DU CIEL PROFOND</div>
+  <div class="grid-dso" id="dso-grid"></div>
+</div>
+
+<div id="panel-systeme" class="panel">
+  <div class="section-title">🪐 SYSTÈME SOLAIRE INTERACTIF</div>
+  <div class="solar-stage"><div class="sun"></div><div id="solar-planets"></div></div>
+  <div class="planet-info" id="planet-info"></div>
+  <div class="planet-grid" id="planet-grid"></div>
+</div>
+
+<div id="panel-quiz" class="panel">
+  <div class="section-title">🎓 FORMATION ASTRONOMIQUE</div>
+  <div class="quiz-box">
+    <div class="score-bar"><span id="qprog">QUESTION 1/5</span><span id="qscore">SCORE: 0</span></div>
+    <div class="quiz-q-box" id="quiz-q"></div>
+    <div id="quiz-opts"></div>
+    <div class="quiz-fact" id="quiz-fact"></div>
+    <div class="quiz-result" id="quiz-result">
+      <div style="font-size:48px;margin-bottom:14px">🌌</div>
+      <div id="qfinal" style="font-family:Orbitron;font-size:26px;color:var(--acid);margin-bottom:8px"></div>
+      <div id="qmsg" style="font-size:13px;color:#aabbcc;margin-bottom:22px"></div>
+      <button class="qrestart" onclick="restartQuiz()">RECOMMENCER</button>
+    </div>
+  </div>
+</div>
+
+<div id="panel-deep" class="panel">
+  <div class="section-title">🚀 COSMOS PROFOND</div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-tag" style="color:var(--acid)">🛸 VOYAGER 1 & 2</div>
+    <div class="info-grid" id="deep-voyager">
+      <div class="info-cell"><div class="info-key">Voyager 1 — Distance</div><div class="info-val" id="voyager1-au">-- UA</div></div>
+      <div class="info-cell"><div class="info-key">Voyager 1 — Vitesse</div><div class="info-val" id="voyager1-kms">-- km/s</div></div>
+      <div class="info-cell"><div class="info-key">Voyager 1 — En vol</div><div class="info-val" id="voyager1-years">-- ans</div></div>
+      <div class="info-cell"><div class="info-key">Voyager 2 — Distance</div><div class="info-val" id="voyager2-au">-- UA</div></div>
+      <div class="info-cell"><div class="info-key">Voyager 2 — Vitesse</div><div class="info-val" id="voyager2-kms">-- km/s</div></div>
+      <div class="info-cell"><div class="info-key">Voyager 2 — En vol</div><div class="info-val" id="voyager2-years">-- ans</div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-tag" style="color:var(--blue)">🔴 MARS ROVERS — CURIOSITY & PERSEVERANCE</div>
+    <div class="info-grid" id="deep-mars">
+      <div class="info-cell"><div class="info-key">Curiosity — Sol</div><div class="info-val" id="curiosity-sol">--</div></div>
+      <div class="info-cell"><div class="info-key">Curiosity — Caméras</div><div class="info-val" id="curiosity-cams">--</div></div>
+      <div class="info-cell"><div class="info-key">Perseverance — Sol</div><div class="info-val" id="perseverance-sol">--</div></div>
+      <div class="info-cell"><div class="info-key">Perseverance — Caméras</div><div class="info-val" id="perseverance-cams">--</div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-tag" style="color:var(--purple)">🔭 JWST — PILLARS OF CREATION, CARINA, SMACS 0723 + MAST</div>
+    <div id="deep-jwst" style="display:grid;gap:10px;font-size:11px;color:#aabbcc">
+      <div id="jwst-pillars"></div>
+      <div id="jwst-carina"></div>
+      <div id="jwst-smacs"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-tag" style="color:var(--amber)">☄️ NEO ASTÉROÏDES — APOPHIS 2029, 2024 YR4, 2023 DZ2</div>
+    <div class="info-grid" id="deep-neo">
+      <div class="info-cell"><div class="info-key">Apophis 2029 — Distance / Date</div><div class="info-val" id="neo-apophis">--</div></div>
+      <div class="info-cell"><div class="info-key">2024 YR4 — Distance / Date</div><div class="info-val" id="neo-yr4">--</div></div>
+      <div class="info-cell"><div class="info-key">2023 DZ2 — Distance / Date</div><div class="info-val" id="neo-dz2">--</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="panel-radio" class="panel">
+  <div class="section-title">📻 RADIO SDR — NOAA / HILLSBORO</div>
+  <div class="grid4" style="margin-bottom:18px">
+    <div class="stat-box"><div class="stat-val" style="color:var(--acid)" id="sdr-status-val">--</div><div class="stat-label">PIPELINE SDR</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--blue)" id="sdr-next-sat">--</div><div class="stat-label">PROCHAIN SAT</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--amber)" id="sdr-countdown">--</div><div class="stat-label">COUNTDOWN</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--purple)" id="sdr-freq">--</div><div class="stat-label">FRÉQUENCE</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-tag" style="color:var(--acid)">🛰️ PROCHAINS PASSAGES NOAA (temps réel)</div>
+    <div id="sdr-passes-list" style="display:grid;gap:8px;font-size:11px;color:#aabbcc">Chargement...</div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-tag" style="color:var(--blue)">📡 STATIONS RÉCEPTRICES</div>
+    <div id="sdr-stations-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">Chargement...</div>
+  </div>
+  <div class="section-title">📷 GALERIE CAPTURES SATELLITES</div>
+  <div class="obs-grid" id="sdr-captures-list"></div>
+</div>
+
+<div id="panel-ia" class="panel">
+  <div class="section-title">🤖 CERVEAU AEGIS — TUTEUR IA</div>
+  <div class="ai-box">
+    <div style="font-size:10px;color:#8899aa;margin-bottom:16px">Pose n'importe quelle question sur l'astronomie, l'espace, l'univers...</div>
+    <div class="ai-row">
+      <input class="ai-input" id="ai-input" placeholder="Comment se forme un trou noir ? Qu'est-ce qu'une nébuleuse ?" onkeydown="if(event.key==='Enter')askAI()">
+      <button class="send-btn" id="ai-btn" onclick="askAI()">ENVOYER</button>
+    </div>
+    <div class="ai-thinking" id="ai-thinking">🔭 AEGIS ANALYSE L'UNIVERS...</div>
+    <div class="ai-answer" id="ai-answer"><div style="font-size:8px;color:var(--acid);letter-spacing:2px;margin-bottom:6px">🤖 RÉPONSE AEGIS</div><div id="ai-text"></div></div>
+    <div style="font-size:8px;color:#8899aa;letter-spacing:3px;margin-bottom:9px;margin-top:18px">QUESTIONS SUGGÉRÉES</div>
+    <div class="suggest-btns" id="suggest-btns"></div>
+  </div>
+</div>
+
+</div>
+</main>
+<script>
+// STARS
+const se=document.getElementById('stars');
+for(let i=0;i<180;i++){const s=document.createElement('div');s.className='star';const z=Math.random()*2.2+0.3;s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${z}px;height:${z}px;opacity:${Math.random()*.7+.1};animation:twinkle ${2+Math.random()*5}s ease-in-out infinite;animation-delay:${Math.random()*5}s`;se.appendChild(s);}
+
+// CLOCK
+function disconnectObservatory(){ if(window.location.pathname!=='/portail') window.location.href='/portail'; else window.location.href='/'; }
+function updateClock(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleTimeString('fr-FR');document.getElementById('clock-utc').textContent='UTC '+n.toUTCString().split(' ')[4];}
+setInterval(updateClock,1000);updateClock();
+
+// Compteur visites — format "000 123"
+function formatVisits(n){
+  if(!n) return '0';
+  return parseInt(n).toLocaleString('fr-FR');
+}
+function loadVisits(){fetch('/api/visits').then(r=>r.json()).then(d=>{var el=document.getElementById('visits-val');if(el)el.textContent=formatVisits(d.count);}).catch(e=>console.warn('visits error',e));}
+
+// TABS
+let issTimer=null;
+function switchTab(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const panel=document.getElementById('panel-'+id);
+  if(panel) panel.classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='iss'){
+    fetchISS();
+    if(!issTimer){ issTimer=setInterval(fetchISS,10000); }
+  } else if(issTimer){
+    clearInterval(issTimer);
+    issTimer=null;
+  }
+  if(id==='accueil') loadAPOD();
+  if(id==='radio') loadRadio();
+  if(id==='deep') loadDeepSpace();
+  if(id==='skyview'&&typeof svInit==='function'){svInit();}
+}
+function loadDeepSpace(){
+  loadVoyager();
+  loadMarsRovers();
+  loadJWST();
+  loadNEO();
+}
+function loadVoyager(){
+  fetch('https://api.le-systeme-solaire.net/rest/bodies/voyager1').then(r=>r.json()).then(d=>{
+    const au=d.semimajorAxis||0; const kms=Math.sqrt(398600*(2/(au*149597870.7)-1/(au*149597870.7)))/1000||0;
+    const launch=new Date(1977,8,5); const years=(Date.now()-launch)/(365.25*24*60*60*1000);
+    document.getElementById('voyager1-au').textContent=(au?au.toFixed(2):'--')+' UA';
+    document.getElementById('voyager1-kms').textContent=(kms?kms.toFixed(2):'--')+' km/s';
+    document.getElementById('voyager1-years').textContent=(years?years.toFixed(1):'--')+' ans';
+  }).catch(()=>{});
+  fetch('https://api.le-systeme-solaire.net/rest/bodies/voyager2').then(r=>r.json()).then(d=>{
+    const au=d.semimajorAxis||0; const kms=au?17:0;
+    const launch=new Date(1977,7,20); const years=(Date.now()-launch)/(365.25*24*60*60*1000);
+    document.getElementById('voyager2-au').textContent=(au?au.toFixed(2):'--')+' UA';
+    document.getElementById('voyager2-kms').textContent=(kms?kms.toFixed(2):'--')+' km/s';
+    document.getElementById('voyager2-years').textContent=(years?years.toFixed(1):'--')+' ans';
+  }).catch(()=>{});
+}
+function loadMarsRovers(){
+  fetch('https://api.nasa.gov/insight_weather/?api_key=DEMO_KEY&feedtype=json&ver=1.0').then(r=>r.json()).then(d=>{
+    const sol=d.sol_keys&&d.sol_keys.length?d.sol_keys[d.sol_keys.length-1]:'--';
+    document.getElementById('curiosity-sol').textContent=sol;
+    document.getElementById('curiosity-cams').textContent='Mastcam, ChemCam, MAHLI...';
+    document.getElementById('perseverance-sol').textContent=sol;
+    document.getElementById('perseverance-cams').textContent='Mastcam-Z, SuperCam, PIXL...';
+  }).catch(()=>{
+    document.getElementById('curiosity-sol').textContent='--'; document.getElementById('curiosity-cams').textContent='Mastcam, ChemCam, MAHLI...';
+    document.getElementById('perseverance-sol').textContent='--'; document.getElementById('perseverance-cams').textContent='Mastcam-Z, SuperCam, PIXL...';
+  });
+}
+function loadJWST(){
+  document.getElementById('jwst-pillars').innerHTML='<strong>Pillars of Creation</strong> — NIRCam. MAST: <a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html" target="_blank" rel="noopener" style="color:var(--acid)">STScI MAST</a>';
+  document.getElementById('jwst-carina').innerHTML='<strong>Carina Nebula</strong> — NIRCam. Données MAST.';
+  document.getElementById('jwst-smacs').innerHTML='<strong>SMACS 0723</strong> — Premier champ profond JWST. MAST.';
+}
+function loadNEO(){
+  const fmt=(d,dist)=>dist&&d?dist.toFixed(2)+' LD — '+new Date(d).toLocaleDateString('fr-FR'):'--';
+  fetch('https://api.nasa.gov/neo/rest/v1/neo/99942?api_key=DEMO_KEY').then(r=>r.json()).then(d=>{
+    const close=d.close_approach_data&&d.close_approach_data[0];
+    document.getElementById('neo-apophis').textContent=close?fmt(close.close_approach_date,parseFloat(close.miss_distance?.lunar)):'Apophis 2029 — 0.1 LD env. 13 avr. 2029';
+  }).catch(()=>{ document.getElementById('neo-apophis').textContent='Apophis 2029 — ~0.1 LD — 13/04/2029'; });
+  document.getElementById('neo-yr4').textContent='2024 YR4 — Données NEO JPL';
+  document.getElementById('neo-dz2').textContent='2023 DZ2 — Données NEO JPL';
+}
+
+// TELESCOPE
+async function refreshTelescope(){
+  try{
+    document.getElementById('tele-img').src='/api/image?t='+Date.now();
+    const tr=await fetch('/api/title');
+    const td=await tr.json();
+    const lines=(td.title||'').split('\n');
+    document.getElementById('tele-name').textContent=lines[0]||'';
+    document.getElementById('tele-source').textContent=lines[1]||'NASA/ESA';
+    const dr=await fetch('/api/latest');
+    const dd=await dr.json();
+    document.getElementById('tp-total').textContent=(dd.total||0).toLocaleString();
+    document.getElementById('tp-anomalies').textContent=dd.anomalies||0;
+    if(dd.observations&&dd.observations[0])document.getElementById('tp-last').textContent=(dd.observations[0].timestamp||'').slice(0,19).replace('T',' ');
+    const valid=dd.observations&&dd.observations.find(o=>(o.rapport_gemini||o.analyse||'').length>20&&!String(o.rapport_gemini||o.analyse).includes('Echec')&&!String(o.rapport_gemini||o.analyse).includes('Échec'));
+    document.getElementById('tp-analyse').textContent=valid?(valid.rapport_gemini||valid.analyse):'[Quota Gemini — reset minuit UTC]';
+    renderObs(dd.observations,'latest-obs');
+  }catch(e){console.error(e);}
+}
+
+function renderObs(obs,cid){
+  const c=document.getElementById(cid);c.innerHTML='';
+  obs.forEach(o=>{
+    const d=document.createElement('div');
+    d.className='obs-card '+(o.anomalie?'anomalie':'normal');
+    const txt=o.rapport_gemini||o.analyse||'';
+    const ok=txt.length>20&&!txt.includes('Echec');
+    const ts=(o.timestamp||'').slice(11,19);
+    const src=(o.source||'LIVE').replace('Source: ','');
+    d.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:9px;color:var(--blue)">#${o.id} — ${src}</span><span style="font-size:9px;color:#556677">${ts}</span></div><div style="font-size:11px;color:${ok?'#aabbcc':'#556677'};margin-bottom:8px;line-height:1.5">${ok?txt.slice(0,130)+'...':'[En attente analyse Gemini]'}</div><span class="badge ${o.anomalie?'badge-alert':'badge-ok'}">${o.anomalie?'⚠ ANOMALIE':'✓ NORMAL'}</span>`;
+    c.appendChild(d);
+  });
+}
+
+refreshTelescope();
+setInterval(refreshTelescope,90000);
+
+// ARCHIVE
+async function loadArchive(){
+  try{
+    const r=await fetch('/api/latest');const d=await r.json();
+    document.getElementById('arch-total').textContent=(d.total||0).toLocaleString();
+    document.getElementById('arch-anomalies').textContent=d.anomalies||0;
+    document.getElementById('arch-last').textContent=(d.observations&&d.observations[0]?d.observations[0].timestamp:'--').slice(0,16).replace('T',' ');
+    renderObs(d.observations,'archive-obs');
+  }catch(e){}
+}
+
+// APOD
+function loadAPOD(){
+  fetch('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY')
+    .then(r=>r.json()).then(d=>{
+      if(d.media_type==='image')document.getElementById('apod-img-wrap').innerHTML=`<img src="${d.url}" style="width:100%;height:160px;object-fit:cover;margin-bottom:10px">`;
+      document.getElementById('apod-title').textContent=d.title||'';
+      document.getElementById('apod-desc').textContent=(d.explanation||'').slice(0,200)+'...';
+    }).catch(()=>{document.getElementById('apod-title').textContent='Image non disponible';});
+}
+
+// ISS
+function fetchISS(){
+  fetch('https://api.wheretheiss.at/v1/satellites/25544')
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('iss-lat').textContent=d.latitude.toFixed(2)+'°';
+      document.getElementById('iss-lng').textContent=d.longitude.toFixed(2)+'°';
+      document.getElementById('iss-alt').textContent=d.altitude.toFixed(0)+' km';
+      document.getElementById('iss-vel').textContent=Math.round(d.velocity)+' km/h';
+      var left=(d.longitude+180)/360*100; var top=(90-d.latitude)/180*100;
+      var m=document.getElementById('iss-mascotte'); var p=document.getElementById('iss-mascotte-pulse');
+      if(m){ m.style.left=left+'%'; m.style.top=top+'%'; m.style.visibility='visible'; }
+      if(p){ p.style.left=left+'%'; p.style.top=top+'%'; }
+    }).catch(()=>{});
+}
+
+// RADIO SDR
+let sdrPassesData = { passes: [] };
+function formatCountdown(aos){
+  const now=Date.now()/1000;
+  if(aos<=now) return 'En cours';
+  const s=Math.floor(aos-now);
+  const m=Math.floor(s/60), h=Math.floor(m/60);
+  if(h>0) return h+'h '+ (m%60)+'m';
+  if(m>0) return m+'m '+ (s%60)+'s';
+  return s+'s';
+}
+function updateSdrCountdown(){
+  const el=document.getElementById('sdr-countdown');
+  if(!el||!sdrPassesData.passes.length) return;
+  const next=sdrPassesData.passes.find(p=>p.aos>Date.now()/1000)||sdrPassesData.passes[0];
+  el.textContent=formatCountdown(next.aos);
+}
+async function loadRadio(){
+  try{
+    const [statusR,passesR,stationsR,capturesR]=await Promise.all([
+      fetch('/api/sdr/status'), fetch('/api/sdr/passes'), fetch('/api/sdr/stations'), fetch('/api/sdr/captures')
+    ]);
+    const status=await statusR.json();
+    const passesD=await passesR.json();
+    const stations=await stationsR.json();
+    const captures=await capturesR.json();
+    document.getElementById('sdr-status-val').textContent=(status.status||'standby').toUpperCase();
+    if(status.status&&(status.status.toLowerCase().includes('captur')||status.status==='RECORDING')) document.getElementById('sdr-status-val').innerHTML='<span style="color:var(--red)">🔴 CAPTURE</span>';
+    sdrPassesData=passesD;
+    const passes=passesD.passes||[];
+    const next=passes.find(p=>p.aos>Date.now()/1000)||passes[0];
+    if(next){
+      document.getElementById('sdr-next-sat').textContent=next.sat||'--';
+      document.getElementById('sdr-freq').textContent=next.freq||'--';
+      document.getElementById('sdr-countdown').textContent=formatCountdown(next.aos);
+    }
+    const listEl=document.getElementById('sdr-passes-list');
+    listEl.innerHTML=passes.slice(0,8).map(p=>{
+      const aosDate=new Date(p.aos*1000);
+      const losDate=new Date(p.los*1000);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:rgba(0,255,136,.04);border-left:2px solid var(--acid)"><span>${p.sat} — ${p.freq}</span><span>Max ${p.max_el}°</span><span>${aosDate.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} → ${losDate.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span><span style="color:var(--amber)">${formatCountdown(p.aos)}</span></div>`;
+    }).join('')||'Aucun passage proche.';
+    const stList=document.getElementById('sdr-stations-list');
+    stList.innerHTML=(stations.stations||[]).map(s=>`<div class="info-cell"><div class="info-key">${s.flag||''} ${s.name}</div><div class="info-val">${s.country} — ${s.freq}</div></div>`).join('')||'--';
+    const capList=document.getElementById('sdr-captures-list');
+    capList.innerHTML=(captures.captures||[]).map(c=>`<div class="obs-card normal"><div style="font-size:9px;color:var(--blue)">#${c.id}</div><div style="font-size:11px;margin-top:4px">${(c.title||'').slice(0,40)}</div><div style="font-size:9px;color:#556677;margin-top:4px">${(c.timestamp||'').slice(0,19)}</div></div>`).join('')||'<div style="padding:20px;color:#8899aa">Aucune capture récente.</div>';
+    setInterval(updateSdrCountdown,1000);
+  }catch(e){ console.error(e); document.getElementById('sdr-passes-list').textContent='Erreur chargement.'; }
+}
+
+// DSO
+const DSO=[
+  {name:"Nébuleuse d'Orion M42",type:"NÉBULEUSE",dist:"1 344 al",con:"Orion",mag:4.0,desc:"La pépinière d'étoiles la plus proche. Des milliers d'étoiles naissent en ce moment dans ses nuages de gaz et de poussière cosmique."},
+  {name:"Galaxie d'Andromède M31",type:"GALAXIE",dist:"2.5 Mal",con:"Andromède",mag:3.44,desc:"Notre plus proche voisine galactique. Elle fonce vers nous à 110 km/s. Dans 4.5 milliards d'années, collision avec la Voie Lactée."},
+  {name:"Amas des Pléiades M45",type:"AMAS OUVERT",dist:"444 al",con:"Taureau",mag:1.6,desc:"Les Sept Soeurs. Visible à l'oeil nu depuis Tlemcen par nuit claire. L'un des amas les plus jeunes et brillants du ciel."},
+  {name:"Nébuleuse du Crabe M1",type:"RÉMANENT SUPERNOVA",dist:"6 523 al",con:"Taureau",mag:8.4,desc:"Vestige d'une supernova de 1054 observée par des astronomes chinois. Un pulsar en son centre tourne 30 fois par seconde."},
+  {name:"Galaxie du Tourbillon M51",type:"GALAXIE SPIRALE",dist:"23 Mal",con:"Chiens de chasse",mag:8.4,desc:"Première galaxie dont la structure spirale fut reconnue par Lord Rosse en 1845. En interaction avec NGC 5195."},
+  {name:"Nébuleuse de la Lyre M57",type:"NÉBULEUSE PLANÉTAIRE",dist:"2 300 al",con:"Lyre",mag:8.8,desc:"L'avenir de notre Soleil dans 5 milliards d'années. Une étoile mourante expulse ses couches en anneau coloré."},
+  {name:"Amas de la Ruche M44",type:"AMAS OUVERT",dist:"577 al",con:"Cancer",mag:3.7,desc:"Connu depuis l'Antiquité. Hipparque l'observait il y a 2 200 ans. Contient plus de 1 000 étoiles."},
+  {name:"Nébuleuse Eta Carinae",type:"NÉBULEUSE EN ÉMISSION",dist:"7 500 al",con:"Carène",mag:-1.0,desc:"L'une des étoiles les plus massives connues. Candidate à une hypernova visible de jour depuis la Terre."}
+];
+const dg=document.getElementById('dso-grid');
+DSO.forEach(o=>{
+  const d=document.createElement('div');d.className='dso-card';
+  d.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:7px"><span style="font-size:9px;color:var(--blue);letter-spacing:2px">${o.type}</span><span style="font-size:9px;color:var(--amber)">Mag. ${o.mag}</span></div><div class="card-title">${o.name}</div><div style="font-size:10px;color:#8899aa">📍 ${o.con} — ${o.dist}</div><div class="dso-expand">${o.desc}</div>`;
+  d.onclick=()=>d.classList.toggle('open');dg.appendChild(d);
+});
+
+// PLANETS
+const PL=[
+  {name:"Mercure",color:"#9E8B7D",size:8,left:12,dist:"77M km",temp:"430°C",emoji:"☿",desc:"La planète la plus rapide — une année dure 88 jours. Sans atmosphère, températures de -180°C à +430°C."},
+  {name:"Vénus",color:"#E8C585",size:13,left:22,dist:"261M km",temp:"465°C",emoji:"♀",desc:"L'enfer du système solaire. Pression 90x la Terre. Pluies d'acide sulfurique sous des nuages épais."},
+  {name:"Terre",emoji:"🌍",color:"#1a6bff",size:18,left:32,dist:"149.6 M km",temp:"15°C",desc:"Notre planète, la seule connue à abriter la vie."},
+  {name:"Mars",color:"#CD5C5C",size:10,left:41,dist:"225M km",temp:"-60°C",emoji:"♂",desc:"La frontière humaine. Olympus Mons (27 km) est le plus grand volcan du système solaire."},
+  {name:"Jupiter",color:"#C88B3A",size:26,left:51,dist:"628M km",temp:"-110°C",emoji:"♃",desc:"Le géant protecteur. Grande Tache Rouge = tempête vieille de 350 ans. 95 lunes connues."},
+  {name:"Saturne",color:"#E4D191",size:22,left:62,dist:"1.2G km",temp:"-140°C",emoji:"♄",desc:"Ses anneaux font 300 000 km de large mais 10 mètres d'épaisseur seulement. 146 lunes."},
+  {name:"Uranus",color:"#7DCCCC",size:17,left:73,dist:"2.7G km",temp:"-195°C",emoji:"⛢",desc:"Axe incliné à 98° — la planète couchée. Une saison dure 21 ans terrestres."},
+  {name:"Neptune",color:"#5B7FD4",size:16,left:84,dist:"4.4G km",temp:"-200°C",emoji:"♆",desc:"Vents les plus violents du système solaire : 2 100 km/h. Sa lune Triton orbite en sens inverse."}
+];
+const sp=document.getElementById('solar-planets'),pgg=document.getElementById('planet-grid'),pi=document.getElementById('planet-info');
+let ap=null;
+PL.forEach((p,i)=>{
+  const dot=document.createElement('div');dot.className='planet-dot';
+  dot.style.cssText=`left:${p.left}%;width:${p.size}px;height:${p.size}px;background:${p.color};box-shadow:0 0 ${p.size}px ${p.color}55;animation:float ${2+i*.25}s ease-in-out infinite;`;
+  dot.onclick=()=>showP(p);sp.appendChild(dot);
+  const c=document.createElement('div');c.className='planet-card';
+  c.innerHTML=`<div style="font-size:20px;margin-bottom:5px">${p.emoji}</div><div style="font-family:Orbitron;font-size:11px;color:${p.color}">${p.name}</div><div style="font-size:9px;color:#8899aa;margin-top:3px">${p.dist}</div>`;
+  c.onclick=()=>showP(p);pgg.appendChild(c);
+});
+function showP(p){
+  if(ap===p.name){ap=null;pi.style.display='none';return;}
+  ap=p.name;pi.style.borderLeftColor=p.color;pi.style.borderColor=p.color+'44';
+  pi.innerHTML=`<div style="font-family:Orbitron;font-size:17px;color:${p.color};margin-bottom:7px">${p.emoji} ${p.name}</div><div style="display:flex;gap:22px;margin-bottom:9px"><span style="font-size:10px;color:#8899aa">Distance: <span style="color:#e0e8ff">${p.dist}</span></span><span style="font-size:10px;color:#8899aa">Température: <span style="color:#e0e8ff">${p.temp}</span></span></div><p style="font-size:12px;color:#aabbcc;line-height:1.7">${p.desc}</p>`;
+  pi.style.display='block';
+}
+
+// QUIZ
+const QZ=[
+  {q:"À quelle vitesse la lumière voyage-t-elle dans le vide ?",opts:["300 000 km/s","150 000 km/s","500 000 km/s","100 000 km/s"],a:0,fact:"En une seconde, la lumière fait 7,5 fois le tour de la Terre ! Elle met 8 minutes à nous parvenir du Soleil."},
+  {q:"Combien d'étoiles contient approximativement la Voie Lactée ?",opts:["100 à 400 milliards","1 milliard","1 trillion","10 millions"],a:0,fact:"Et il y a plus de 2 000 milliards de galaxies dans l'univers observable !"},
+  {q:"Quelle est la durée de vie totale estimée de notre Soleil ?",opts:["10 milliards d'années","1 milliard d'années","100 millions d'années","100 milliards d'années"],a:0,fact:"Notre Soleil a 4.6 milliards d'années — il est exactement à mi-vie."},
+  {q:"Qu'est-ce qu'une année-lumière ?",opts:["Distance parcourue par la lumière en 1 an","Durée de rotation d'une étoile","Taille d'une galaxie","Temps entre deux pulsars"],a:0,fact:"1 année-lumière = 9 460 milliards de kilomètres. Proxima Centauri est à 4.24 al."},
+  {q:"Quelle planète a le plus de lunes ?",opts:["Saturne (146 lunes)","Jupiter (95 lunes)","Uranus (28 lunes)","Neptune (16 lunes)"],a:0,fact:"Saturne dépasse Jupiter depuis 2023 avec 146 lunes — un vrai système solaire miniature !"}
+];
+let qi=0,qs=0,qa=false;
+function renderQ(){
+  if(qi>=QZ.length){showQResult();return;}
+  const q=QZ[qi];
+  document.getElementById('qprog').textContent=`QUESTION ${qi+1}/${QZ.length}`;
+  document.getElementById('qscore').textContent=`SCORE: ${qs}`;
+  document.getElementById('quiz-q').textContent=q.q;
+  document.getElementById('quiz-fact').style.display='none';
+  document.getElementById('quiz-result').style.display='none';
+  const oc=document.getElementById('quiz-opts');oc.innerHTML='';
+  q.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='qopt';b.textContent=o;b.onclick=()=>{if(!qa)handleQ(i,b);};oc.appendChild(b);});
+  qa=false;
+}
+function handleQ(i,btn){
+  qa=true;const q=QZ[qi];const ok=i===q.a;
+  if(ok){btn.classList.add('correct');qs++;}
+  else{btn.classList.add('wrong');document.querySelectorAll('.qopt')[q.a].classList.add('correct');}
+  document.getElementById('quiz-fact').textContent='💡 '+q.fact;
+  document.getElementById('quiz-fact').style.display='block';
+  document.getElementById('qscore').textContent=`SCORE: ${qs}`;
+  setTimeout(()=>{qi++;renderQ();},2500);
+}
+function showQResult(){
+  document.getElementById('quiz-opts').innerHTML='';
+  document.getElementById('quiz-fact').style.display='none';
+  document.getElementById('quiz-q').textContent='';
+  document.getElementById('qfinal').textContent=`${qs}/${QZ.length}`;
+  const m=["Continue à apprendre — l'univers est infini !","Bien joué ! L'astronomie n'a plus de secrets !","Excellent ! Tu es digne d'un vrai astronome ! 🚀","PARFAIT ! Zakaria, tu maitrises l'univers ! 🌌"];
+  document.getElementById('qmsg').textContent=m[Math.min(qs,3)];
+  document.getElementById('quiz-result').style.display='block';
+}
+function restartQuiz(){qi=0;qs=0;qa=false;renderQ();}
+renderQ();
+
+// AI
+const SG=["Comment nait une étoile ?","Qu'est-ce que la matière noire ?","Y a-t-il de la vie ailleurs ?","Qu'est-ce qu'un quasar ?","Comment fonctionne le télescope James Webb ?","Taille de la Voie Lactée ?","Qu'est-ce qu'une supernova ?","Comment fonctionne un trou noir ?","Qu'est-ce que l'énergie sombre ?","Observer depuis Tlemcen ?"];
+const sb=document.getElementById('suggest-btns');
+SG.forEach(q=>{const b=document.createElement('button');b.className='sbtn';b.textContent=q;b.onclick=()=>{document.getElementById('ai-input').value=q;};sb.appendChild(b);});
+async function askAI(){
+  const inp=document.getElementById('ai-input');const q=inp.value.trim();if(!q)return;
+  const btn=document.getElementById('ai-btn');btn.disabled=true;btn.textContent='...';
+  document.getElementById('ai-thinking').style.display='block';
+  document.getElementById('ai-answer').style.display='none';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:"Tu es AEGIS, astronome expert de la Station Zakaria Chohra à Tlemcen, Algérie. Réponds en français, fascinant et court (4-6 phrases). Commence par un fait stupéfiant. Utilise des comparaisons concrètes pour les échelles cosmiques. Mentionne la visibilité depuis Tlemcen (35°N) si pertinent.",messages:[{role:'user',content:q}]})});
+    const data=await res.json();
+    document.getElementById('ai-text').textContent=data.content[0].text;
+    document.getElementById('ai-answer').style.display='block';
+  }catch(e){
+    document.getElementById('ai-text').textContent='Connexion impossible. Réessaie.';
+    document.getElementById('ai-answer').style.display='block';
+  }
+  document.getElementById('ai-thinking').style.display='none';
+  btn.disabled=false;btn.textContent='ENVOYER';
+}
+
+// Init après DOM ready (contexte iframe portail)
+document.addEventListener('DOMContentLoaded',function(){
+  loadVisits();
+  if(typeof fetchISS==='function') fetchISS();
+});
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SKYVIEW PANEL — NASA Goddard / HEASARC — Zéro compte
+     ═══════════════════════════════════════════════════════════ -->
+<div id="panel-skyview" class="panel">
+  <div class="section-title">🌌 SKYVIEW — NASA Goddard · Données réelles</div>
+  <div class="grid2" style="margin-bottom:18px;">
+    <div class="card">
+      <div class="card-tag">CIBLE</div>
+      <select id="sv-target" class="ai-input" style="width:100%;margin-bottom:10px;">
+        <option value="M42">M42 — Nébuleuse d'Orion</option>
+        <option value="M31">M31 — Galaxie Andromède</option>
+        <option value="M1">M1 — Nébuleuse du Crabe</option>
+        <option value="M51">M51 — Galaxie du Tourbillon</option>
+        <option value="M57">M57 — Nébuleuse de la Lyre</option>
+        <option value="M87">M87 — Trou Noir</option>
+        <option value="M104">M104 — Galaxie Sombrero</option>
+        <option value="M27">M27 — Nébuleuse Haltère</option>
+        <option value="NGC1499">NGC1499 — Nébuleuse Californie</option>
+        <option value="NGC7293">NGC7293 — Nébuleuse Hélix</option>
+        <option value="M45">M45 — Pléiades</option>
+        <option value="M13">M13 — Amas d'Hercule</option>
+        <option value="SgrA">Sgr A* — Centre Galaxie</option>
+      </select>
+      <div class="card-tag">SURVEY</div>
+      <select id="sv-survey" class="ai-input" style="width:100%;margin-bottom:14px;">
+        <option value="DSS2 Red">DSS2 Red — visible</option>
+        <option value="DSS">DSS — optique</option>
+        <option value="2MASS-K">2MASS-K — infrarouge</option>
+        <option value="GALEX Near UV">GALEX Near UV — ultraviolet</option>
+        <option value="WISE 3.4">WISE 3.4 — IR moyen</option>
+        <option value="RASS-Int BackgroundMap">RASS — rayons X</option>
+      </select>
+      <button type="button" class="refresh-btn" id="sv-capture" style="margin-bottom:8px;">📷 CAPTURER</button>
+      <button type="button" class="sbtn" id="sv-multiwave">Multi-longueurs d'onde (3 surveys)</button>
+      <button type="button" class="sbtn" id="sv-aegis">🔬 Analyser avec AEGIS</button>
+    </div>
+    <div class="card">
+      <div class="card-tag">VUE NASA SKYVIEW</div>
+      <div class="tele-screen" style="height:280px;background:#000;">
+        <img id="sv-img" src="" alt="SkyView" style="width:100%;height:100%;object-fit:contain;display:none;">
+        <div id="sv-placeholder" style="padding:40px;text-align:center;color:#556677;font-size:12px;">Choisis une cible et clique CAPTURER</div>
+      </div>
+      <div id="sv-meta" class="tele-stat" style="margin-top:10px;display:none;">
+        <div class="tele-stat-key">Cible · Survey · Taille</div>
+        <div class="tele-stat-val" id="sv-meta-text">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="section-title">📁 Dernières images SkyView</div>
+  <div id="sv-list" class="grid4" style="min-height:60px;">
+    <div class="stat-box"><span style="color:#667788;font-size:11px;">Chargement…</span></div>
+  </div>
+</div>
+<script>
+(function(){
+  var SV = window.SV = { initialized: false, lastUrl: '' };
+  window.svInit = function(){
+    if(SV.initialized) return;
+    SV.initialized = true;
+    fetch('/api/skyview/targets').then(function(r){return r.json();}).then(function(d){
+      var t = document.getElementById('sv-target'), s = document.getElementById('sv-survey');
+      if(d.targets && t.options.length <= 1){
+        t.innerHTML = '';
+        for(var k in d.targets) t.appendChild(new Option(k + ' — ' + d.targets[k].name, k));
+      }
+      if(d.surveys && s.options.length <= 1){
+        s.innerHTML = '';
+        for(var k in d.surveys) s.appendChild(new Option(k + ' — ' + d.surveys[k], k));
+      }
+    }).catch(function(){});
+    document.getElementById('sv-capture').onclick = function(){
+      var target = document.getElementById('sv-target').value, survey = document.getElementById('sv-survey').value;
+      var btn = this; btn.disabled = true; btn.textContent = '… envoi NASA …';
+      fetch('/api/skyview/fetch', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ target: target, survey: survey, pixels: 512 }) })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          btn.disabled = false; btn.textContent = '📷 CAPTURER';
+          if(res.ok && res.url_local){
+            var img = document.getElementById('sv-img'), pl = document.getElementById('sv-placeholder');
+            img.src = res.url_local; img.style.display = 'block'; pl.style.display = 'none';
+            SV.lastUrl = res.url_local;
+            document.getElementById('sv-meta').style.display = 'block';
+            document.getElementById('sv-meta-text').textContent = (res.target_name || res.target_id) + ' · ' + (res.survey || '') + ' · ' + (res.size_kb ? res.size_kb + ' KB' : '');
+            svRefreshList();
+          } else { alert(res.error || 'Erreur'); }
+        })
+        .catch(function(){ btn.disabled = false; btn.textContent = '📷 CAPTURER'; alert('Erreur réseau'); });
+    };
+    document.getElementById('sv-multiwave').onclick = function(){
+      var target = document.getElementById('sv-target').value;
+      fetch('/api/skyview/multiwave/' + encodeURIComponent(target)).then(function(r){ return r.json(); })
+        .then(function(d){ if(d.images) { var ok = d.images.filter(function(i){ return i.ok; }); if(ok.length) { document.getElementById('sv-img').src = ok[0].url_local; document.getElementById('sv-img').style.display = 'block'; document.getElementById('sv-placeholder').style.display = 'none'; } svRefreshList(); } });
+    };
+    document.getElementById('sv-aegis').onclick = function(){
+      if(SV.lastUrl) window.location.hash = 'ia'; if(typeof switchTab === 'function') switchTab('ia', document.querySelector('[data-tab="ia"]'));
+    };
+    function svRefreshList(){
+      fetch('/api/skyview/list').then(function(r){ return r.json(); }).then(function(d){
+        var el = document.getElementById('sv-list');
+        if(!d.images || d.images.length === 0){ el.innerHTML = '<div class="stat-box"><span style="color:#667788;">Aucune image encore</span></div>'; return; }
+        el.innerHTML = d.images.slice(0,8).map(function(f){ return '<div class="stat-box"><a href="/static/img/skyview/' + f + '" target="_blank" style="color:var(--acid);font-size:10px;">' + f.replace(/^skyview_/,'').slice(0,28) + '…</a></div>'; }).join('');
+      });
+    }
+    svRefreshList();
+  };
+})();
+</script>
+<!-- END SKYVIEW PANEL -->
+
+</body>
+</html>

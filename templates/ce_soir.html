@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>AstroScan-Chohra - Ce soir · Observation</title>
+<link rel="icon" href="/static/favicon.ico?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #010408;
+  --panel: rgba(3,10,20,0.97);
+  --border: rgba(0,180,255,0.13);
+  --border-bright: rgba(0,212,255,0.4);
+  --cyan: #00d4ff;
+  --amber: #ff8c00;
+  --green: #00ff88;
+  --red: #ff3355;
+  --text: #7a9ab0;
+  --text-bright: #d0e8f0;
+  --text-dim: #3a5868;
+  --font: 'Orbitron', monospace;
+  --mono: 'Share Tech Mono', monospace;
+  --sidebar-w: 220px;
+}
+*, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+html, body { width:100%; min-height:100vh; background:var(--void); font-family:var(--mono); color:var(--text); overflow-x:hidden; }
+
+/* ── STARS ── */
+#stars { position:fixed; inset:0; z-index:0; pointer-events:none; }
+.star { position:absolute; border-radius:50%; background:#fff; animation:tw var(--d,4s) ease-in-out infinite; animation-delay:var(--dl,0s); opacity:var(--op,.4); }
+@keyframes tw { 0%,100%{opacity:var(--op)} 50%{opacity:calc(var(--op)*.15)} }
+
+/* ── LAYOUT ── */
+.shell { display:grid; grid-template-columns:var(--sidebar-w) 1fr; grid-template-rows:48px 1fr; width:100%; min-height:100vh; }
+
+/* ── TOPBAR ── */
+.topbar {
+  grid-column:1/-1; grid-row:1;
+  display:flex; align-items:center; justify-content:space-between;
+  height:48px; padding:0 20px;
+  background:rgba(1,4,8,0.99);
+  border-bottom:1px solid var(--border-bright);
+  position:sticky; top:0; z-index:100;
+}
+.topbar::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--cyan),transparent); opacity:.5; }
+.brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
+.brand-icon { width:26px; height:26px; }
+.brand-icon svg { width:100%; height:100%; }
+.brand-name { font-family:var(--font); font-size:.7rem; font-weight:900; letter-spacing:.2em; color:var(--cyan); text-shadow:0 0 15px rgba(0,212,255,.5); }
+.brand-sep { color:var(--text-dim); margin:0 3px; }
+.brand-sub { font-size:.5rem; letter-spacing:.2em; color:var(--text-dim); }
+.topbar-center { display:flex; align-items:center; gap:12px; }
+.tbar-chip { display:flex; align-items:center; gap:5px; font-size:.5rem; letter-spacing:.12em; color:var(--text-dim); padding:3px 8px; border:1px solid var(--border); border-radius:4px; text-transform:uppercase; }
+.tbar-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.tbar-dot.green { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
+.tbar-dot.amber { background:var(--amber); }
+.tbar-visits { display:flex; align-items:center; gap:5px; font-family:var(--font); font-size:.55rem; letter-spacing:.1em; color:var(--cyan); padding:3px 9px; background:rgba(0,255,136,.08); border:1px solid rgba(0,212,255,.3); border-radius:4px; }
+.topbar-right { display:flex; align-items:center; gap:14px; }
+#top-ip { font-size:.45rem; letter-spacing:.12em; color:var(--text-dim); }
+#top-clock { font-family:var(--font); font-size:.75rem; font-weight:600; letter-spacing:.1em; color:var(--text-bright); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── HAMBURGER ── */
+.hamburger-btn { display:none; align-items:center; justify-content:center; width:36px; height:36px; background:transparent; border:none; cursor:pointer; color:var(--cyan); font-size:1.1rem; border-radius:4px; }
+.hamburger-btn:hover { background:rgba(0,212,255,.1); }
+@media(max-width:900px) {
+  .hamburger-btn { display:flex; }
+  /* Une seule colonne : la zone centrale doit rester en colonne 1 (sinon grid-column:2 recrée une 2e colonne et écrase le contenu sur mobile). */
+  .shell { grid-template-columns:minmax(0,1fr); grid-template-rows:auto 1fr; }
+  .sidebar { position:fixed; left:-240px; top:0; bottom:0; width:240px; z-index:200; transition:left .3s ease; background:#050a10; box-shadow:4px 0 20px rgba(0,255,136,.15); grid-column:1; grid-row:2; }
+  .sidebar.open { left:0; }
+  .sidebar-overlay { display:block !important; }
+  .sidebar-overlay.active { opacity:1 !important; pointer-events:all !important; }
+  .content-area {
+    grid-column:1;
+    grid-row:2;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    padding:1rem .75rem;
+  }
+  .topbar { flex-wrap:wrap; row-gap:6px; min-height:48px; height:auto; padding:8px 12px; }
+  .topbar-center { flex-wrap:wrap; gap:6px; max-width:100%; }
+  .main-grid { grid-template-columns:1fr; padding:1rem .5rem; gap:1rem; }
+  .full { grid-column:1; }
+  .moon-d { flex-direction:column; align-items:center; gap:1rem; text-align:center; }
+  .moon-i { font-size:2.8rem; }
+  .cg { grid-template-columns:repeat(2,1fr); gap:.6rem; }
+  .og { grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:.65rem; }
+  .pr { grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:.5rem; }
+  .pass-item .pt { min-width:0; flex:1 1 100%; }
+  .solar-bar { padding:.5rem .75rem; gap:.75rem; font-size:.7rem; }
+}
+
+/* ── SIDEBAR OVERLAY ── */
+.sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; opacity:0; pointer-events:none; transition:opacity .3s; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  grid-column:1; grid-row:2;
+  position:sticky; top:48px; height:calc(100vh - 48px);
+  overflow-y:auto; overflow-x:hidden;
+  background:rgba(1,5,12,.98);
+  border-right:1px solid var(--border);
+  scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+}
+.sidebar::-webkit-scrollbar { width:3px; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--border); }
+
+.s-section { padding:12px 0 4px; }
+.s-label { font-size:.42rem; letter-spacing:.3em; text-transform:uppercase; color:var(--text-dim); padding:0 16px; margin-bottom:6px; display:block; }
+.nav-item { display:flex; align-items:center; gap:9px; padding:8px 16px; cursor:pointer; transition:all .2s; border-left:2px solid transparent; text-decoration:none; color:inherit; }
+.nav-item:hover { background:rgba(0,212,255,.04); border-left-color:rgba(0,212,255,.3); }
+.nav-item.active { background:rgba(0,212,255,.07); border-left-color:var(--cyan); }
+.nav-item.active .nav-label { color:var(--cyan); }
+.nav-item.active .nav-icon { color:var(--cyan); }
+.nav-icon { font-size:.85rem; width:17px; text-align:center; color:var(--text-dim); transition:color .2s; }
+.nav-label { font-family:var(--font); font-size:.5rem; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); transition:color .2s; flex:1; }
+.nav-badge { font-size:.42rem; letter-spacing:.1em; padding:1px 5px; border:1px solid currentColor; text-transform:uppercase; border-radius:2px; }
+.nav-badge.live { color:var(--green); border-color:rgba(0,255,136,.4); animation:pulse 2s infinite; }
+.nav-badge.active-page { color:var(--cyan); border-color:rgba(0,212,255,.5); }
+.s-divider { height:1px; background:linear-gradient(90deg,transparent,var(--border),transparent); margin:6px 0; }
+
+/* ── ISS MINI ── */
+.iss-mini { margin:8px 12px; padding:10px; background:rgba(0,20,40,.6); border:1px solid var(--border); }
+.iss-mini-title { font-family:var(--font); font-size:.45rem; letter-spacing:.18em; color:var(--cyan); margin-bottom:7px; }
+.iss-mini-stats { display:grid; grid-template-columns:1fr 1fr; gap:4px 8px; font-size:.42rem; letter-spacing:.06em; color:var(--text-dim); }
+.iss-mini-stats .v { color:var(--text); font-family:var(--font); }
+.iss-mini-region { margin-top:5px; font-size:.42rem; color:var(--amber); letter-spacing:.04em; text-align:center; }
+
+/* ── AEGIS MINI ── */
+.aegis-mini { margin:8px 12px; padding:8px 10px; background:rgba(0,212,255,.04); border:1px solid var(--border); }
+.aegis-mini-row { display:flex; justify-content:space-between; align-items:center; }
+.aegis-mini-name { font-family:var(--font); font-size:.45rem; letter-spacing:.12em; color:var(--cyan); }
+.aegis-mini-val { font-size:.45rem; color:var(--green); letter-spacing:.06em; }
+
+/* ── SIDEBAR BOTTOM ── */
+.s-bottom { padding:10px 14px; border-top:1px solid var(--border); margin-top:auto; }
+.s-bottom-info { font-size:.42rem; letter-spacing:.08em; color:var(--text-dim); line-height:1.7; }
+.s-bottom-info .sv { color:var(--text); }
+
+/* ── CONTENT AREA ── */
+.content-area {
+  grid-column:2; grid-row:2;
+  overflow-y:auto; overflow-x:hidden;
+  min-height:calc(100vh - 48px);
+}
+
+/* ── SOLAR TIMES BAR ── */
+.solar-bar {
+  display:flex; gap:1.5rem; flex-wrap:wrap;
+  padding:.6rem 1.5rem;
+  background:rgba(0,212,255,.03);
+  border-bottom:1px solid rgba(0,212,255,.08);
+  font-size:.75rem;
+}
+.ti { display:flex; align-items:center; gap:.5rem; }
+.ti-lbl { color:var(--text-dim); font-size:.65rem; letter-spacing:.08em; }
+.ti-val { font-family:var(--mono); color:var(--cyan); }
+
+/* ── MAIN GRID ── */
+.main-grid {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:1.2rem; padding:1.5rem;
+  max-width:1300px;
+}
+.full { grid-column:1/-1; }
+@media(max-width:1100px) { .main-grid { grid-template-columns:1fr; } .full { grid-column:1; } }
+
+/* ── PANELS ── */
+.panel { background:rgba(0,212,255,.04); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+.ph { padding:.75rem 1.1rem; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:.6rem; font-family:var(--font); font-size:.6rem; letter-spacing:.15em; color:var(--cyan); text-transform:uppercase; }
+.dot-live { width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; flex-shrink:0; }
+.pb { padding:1.1rem; }
+
+/* ── MOON ── */
+.moon-d { display:flex; align-items:center; gap:2rem; }
+.moon-i { font-size:3.5rem; animation:mg 3s ease-in-out infinite alternate; flex-shrink:0; }
+@keyframes mg { from{filter:drop-shadow(0 0 12px rgba(255,183,0,.4))} to{filter:drop-shadow(0 0 28px rgba(255,183,0,.8))} }
+.sr { display:flex; justify-content:space-between; padding:.35rem 0; border-bottom:1px solid rgba(255,183,0,.1); }
+.sl { color:var(--text-dim); font-size:.8rem; }
+.sv { font-family:var(--mono); color:var(--amber); font-size:.85rem; }
+
+/* ── CONDITIONS ── */
+.cg { display:grid; grid-template-columns:repeat(4,1fr); gap:.8rem; }
+.ci { text-align:center; }
+.ci-icon { font-size:1.8rem; margin-bottom:.25rem; }
+.ci-val { font-family:var(--mono); color:var(--cyan); font-size:1rem; }
+.ci-lbl { color:var(--text-dim); font-size:.7rem; margin-top:.15rem; }
+
+/* ── OBJECTS ── */
+.og { display:grid; grid-template-columns:repeat(auto-fill,minmax(195px,1fr)); gap:.9rem; }
+.oc { background:rgba(0,255,136,.03); border:1px solid rgba(0,255,136,.13); border-radius:5px; padding:.9rem; transition:all .2s; }
+.oc:hover { border-color:var(--green); background:rgba(0,255,136,.07); transform:translateY(-2px); }
+.ot { font-size:.6rem; letter-spacing:.18em; color:var(--cyan); text-transform:uppercase; margin-bottom:.25rem; font-family:var(--font); }
+.on { font-family:var(--mono); color:var(--green); font-size:.9rem; margin-bottom:.2rem; }
+.od { color:var(--text-dim); font-size:.75rem; line-height:1.4; }
+.om { margin-top:.4rem; font-size:.7rem; color:var(--cyan); }
+
+/* ── PLANETS ── */
+.pr { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:.7rem; }
+.pc { text-align:center; padding:.9rem .4rem; background:rgba(0,212,255,.03); border:1px solid rgba(0,212,255,.1); border-radius:6px; transition:all .2s; }
+.pc:hover { border-color:var(--cyan); }
+.pe { font-size:1.7rem; margin-bottom:.3rem; }
+.pn { font-family:var(--font); color:var(--cyan); font-size:.7rem; letter-spacing:.08em; }
+.ps { font-size:.65rem; color:var(--text-dim); margin-top:.15rem; }
+
+/* ── ISS PASSES ── */
+.pass-list { display:flex; flex-direction:column; gap:.7rem; }
+.pass-item { display:flex; align-items:center; gap:.9rem; padding:.75rem; background:rgba(0,212,255,.04); border:1px solid rgba(0,212,255,.13); border-radius:5px; flex-wrap:wrap; }
+.pass-item.vis { border-color:rgba(0,255,136,.28); background:rgba(0,255,136,.03); }
+.pt { font-family:var(--mono); color:var(--cyan); font-size:.85rem; min-width:200px; }
+.pe2 { background:var(--green); color:#000; font-family:var(--mono); font-size:.75rem; padding:.15rem .5rem; border-radius:10px; font-weight:700; white-space:nowrap; }
+.pe2.low { background:var(--amber); }
+.pd { color:var(--text-dim); font-size:.75rem; flex:1; }
+.pv { margin-left:auto; font-size:.7rem; color:var(--green); white-space:nowrap; }
+
+/* ── STATES ── */
+.loading { text-align:center; color:var(--text-dim); font-family:var(--mono); padding:2rem; font-size:.8rem; letter-spacing:.15em; }
+.err { color:var(--red); font-family:var(--mono); font-size:.75rem; padding:.8rem; text-align:center; }
+
+/* ── Intégration portail (iframe) : une seule colonne — pas de menu dupliqué ── */
+html.embed-portail .sidebar,
+html.embed-portail .sidebar-overlay,
+html.embed-portail .hamburger-btn { display:none !important; }
+html.embed-portail .shell { grid-template-columns:1fr !important; }
+html.embed-portail .content-area {
+  grid-column:1 / -1 !important;
+  grid-row:2 !important;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+}
+html.embed-portail .topbar { grid-column:1 / -1 !important; }
+</style>
+<!-- GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-1WNGPCCZNW');</script>
+</head>
+<body>
+
+<!-- Stars -->
+<div id="stars"></div>
+<script>
+(function(){const s=document.getElementById('stars');for(let i=0;i<80;i++){const el=document.createElement('div');el.className='star';const sz=Math.random()<.8?1:Math.random()<.6?1.5:2;el.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${3+Math.random()*5}s;--dl:${Math.random()*6}s;--op:${.2+Math.random()*.5}`;s.appendChild(el);}})();
+</script>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<div class="shell">
+
+  <!-- ══════════════ TOPBAR ══════════════ -->
+  <div class="topbar">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">☰</button>
+    <a class="brand" href="/portail">
+      <div class="brand-icon">
+        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="14" cy="14" r="12" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+          <circle cx="14" cy="14" r="7" stroke="#00d4ff" stroke-width="0.8" opacity="0.7"/>
+          <circle cx="14" cy="14" r="2" fill="#00d4ff"/>
+          <line x1="14" y1="1" x2="14" y2="5" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="14" y1="23" x2="14" y2="27" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="1" y1="14" x2="5" y2="14" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="23" y1="14" x2="27" y2="14" stroke="#00d4ff" stroke-width="1.2"/>
+          <circle cx="14" cy="5" r="1.5" fill="#ff8c00"/>
+        </svg>
+      </div>
+      <span class="brand-name">AstroScan-Chohra</span>
+      <span class="brand-sep">·</span>
+      <span class="brand-sub">ORBITAL-CHOHRA</span>
+    </a>
+    <div class="topbar-center">
+      <div class="tbar-visits"><span>👁</span><span id="tbar-visits-val">— —</span></div>
+      <div class="tbar-chip"><div class="tbar-dot green"></div>AEGIS ACTIF</div>
+      <div class="tbar-chip"><div class="tbar-dot green"></div>TLE <span id="top-tle-count" style="color:var(--cyan);margin-left:3px">—</span></div>
+      <div class="tbar-chip"><div class="tbar-dot amber"></div>NASA SYNC</div>
+    </div>
+    <div class="topbar-right">
+      <div id="top-ip" style="font-size:.42rem;letter-spacing:.1em;color:var(--text-dim)">📍 Tlemcen · —</div>
+      <div id="top-clock">--:--:-- UTC</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <div class="sidebar" id="sidebar">
+
+    <div class="s-section">
+      <span class="s-label">Navigation</span>
+      <a class="nav-item" href="/portail"><span class="nav-icon">⌂</span><span class="nav-label">Accueil</span></a>
+      <a class="nav-item" href="/observatoire"><span class="nav-icon">◎</span><span class="nav-label">Observatoire</span></a>
+      <a class="nav-item active" href="/ce_soir"><span class="nav-icon">🌙</span><span class="nav-label">Ce Soir</span><span class="nav-badge active-page">EN DIRECT</span></a>
+      <a class="nav-item" href="/galerie"><span class="nav-icon">◫</span><span class="nav-label">Archive Stellaire</span></a>
+      <a class="nav-item" href="/orbital-map"><span class="nav-icon">🌍</span><span class="nav-label">Orbital Map</span></a>
+      <a class="nav-item" href="/sondes"><span class="nav-icon">📡</span><span class="nav-label">Sondes &amp; DSN</span></a>
+      <a class="nav-item" href="/space-weather"><span class="nav-icon">☀️</span><span class="nav-label">Météo Spatiale</span><span class="nav-badge live">●</span></a>
+      <a class="nav-item" href="/mission-control"><span class="nav-icon">🛰</span><span class="nav-label">Mission Control</span></a>
+      <a class="nav-item" href="/vision"><span class="nav-icon">◇</span><span class="nav-label">Vision 2026</span><span class="nav-badge" style="color:var(--amber);border-color:rgba(255,140,0,.4)">2026</span></a>
+    </div>
+
+    <div class="s-divider"></div>
+    <div class="s-section">
+      <span class="s-label">Outils</span>
+      <a class="nav-item" href="/scientific" target="_blank"><span class="nav-icon">⚗️</span><span class="nav-label">Mode Scientifique</span><span class="nav-badge" style="color:var(--green);border-color:rgba(0,255,136,.3)">PRO</span></a>
+      <a class="nav-item" href="/lab" target="_blank"><span class="nav-icon">🔬</span><span class="nav-label">Digital Lab</span></a>
+      <a class="nav-item" href="/research-center" target="_blank"><span class="nav-icon">📊</span><span class="nav-label">Research Center</span></a>
+    </div>
+
+    <div class="s-divider"></div>
+
+    <!-- ISS Live mini -->
+    <div class="iss-mini">
+      <div class="iss-mini-title">🛰 ISS EN DIRECT</div>
+      <div class="iss-mini-stats">
+        <span>Lat</span><span class="v" id="sb-iss-lat">—</span>
+        <span>Lon</span><span class="v" id="sb-iss-lon">—</span>
+        <span>Alt km</span><span class="v" id="sb-iss-alt">—</span>
+        <span>km/h</span><span class="v" id="sb-iss-speed">—</span>
+      </div>
+      <div id="sb-iss-status" style="font-size:10px;color:#f90;text-align:center;margin:4px 0;min-height:1em"></div>
+      <div class="iss-mini-region" id="sb-iss-region">—</div>
+    </div>
+
+    <div class="s-divider"></div>
+
+    <!-- AEGIS mini -->
+    <div class="aegis-mini">
+      <div class="aegis-mini-row">
+        <span class="aegis-mini-name">⚡ AEGIS v2</span>
+        <span class="aegis-mini-val">ACTIF</span>
+      </div>
+      <div class="aegis-mini-row" style="margin-top:5px">
+        <span style="font-size:.42rem;color:var(--text-dim);letter-spacing:.08em">UPTIME</span>
+        <span style="font-size:.42rem;color:var(--text);letter-spacing:.06em" id="sb-uptime">—</span>
+      </div>
+    </div>
+
+    <div class="s-divider"></div>
+
+    <div class="s-bottom">
+      <div class="s-bottom-info">
+        <div>Station <span class="sv">Tlemcen, Algérie</span></div>
+        <div>Lat <span class="sv">34.87°N · 1.32°E</span></div>
+        <div>Alt <span class="sv">~816 m</span></div>
+        <div style="margin-top:4px;color:var(--text-dim)">AstroScan-Chohra · v2.0</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════ CONTENT ══════════════ -->
+  <div class="content-area">
+
+    <!-- Solar times sub-bar -->
+    <div class="solar-bar">
+      <div class="ti"><span class="ti-lbl">DATE</span><span class="ti-val" id="dateNow">—</span></div>
+      <div class="ti"><span class="ti-lbl">HEURE</span><span class="ti-val" id="timeNow">—</span></div>
+      <div class="ti"><span class="ti-lbl">COUCHER SOLEIL</span><span class="ti-val" id="sunset">—</span></div>
+      <div class="ti"><span class="ti-lbl">LEVER SOLEIL</span><span class="ti-val" id="sunrise">—</span></div>
+      <div class="ti"><span class="ti-lbl">NUIT ASTRO</span><span class="ti-val" id="darkNight">—</span></div>
+    </div>
+
+    <!-- Main panels grid -->
+    <div class="main-grid">
+
+      <div class="panel">
+        <div class="ph"><div class="dot-live"></div>PHASE LUNAIRE — EN DIRECT (astropy)</div>
+        <div class="pb">
+          <div class="moon-d">
+            <div class="moon-i" id="moonIcon">🌑</div>
+            <div id="moonStats"><div class="loading">Calcul...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><div class="dot-live"></div>CONDITIONS D'OBSERVATION — OpenMeteo</div>
+        <div class="pb"><div class="cg" id="conditions"><div class="loading" style="grid-column:1/-1">Chargement météo...</div></div></div>
+      </div>
+
+      <div class="panel full">
+        <div class="ph"><div class="dot-live"></div>OBJETS MESSIER VISIBLES CE SOIR — astropy · Tlemcen 34.87°N</div>
+        <div class="pb"><div class="og" id="objectsGrid"><div class="loading">Calcul des objets visibles...</div></div></div>
+      </div>
+
+      <div class="panel full">
+        <div class="ph"><div class="dot-live"></div>PLANÈTES — VISIBILITÉ CE SOIR</div>
+        <div class="pb"><div class="pr" id="planetsRow"><div class="loading">Calcul...</div></div></div>
+      </div>
+
+      <div class="panel full">
+        <div class="ph"><div class="dot-live"></div>PASSAGES ISS — N2YO RADIOPASSES API · NORAD 25544</div>
+        <div class="pb"><div class="pass-list" id="passList"><div class="loading">Chargement passages ISS...</div></div></div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- .shell -->
+
+<script>
+/* ── TOPBAR CLOCK ── */
+function tickClock(){
+  const n=new Date();
+  document.getElementById('top-clock').textContent=
+    n.toISOString().substr(11,8)+' UTC';
+}
+setInterval(tickClock,1000); tickClock();
+
+/* ── SOLAR BAR CLOCK ── */
+function updateLocalClock(){
+  const n=new Date();
+  document.getElementById('dateNow').textContent=n.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('timeNow').textContent=n.toLocaleTimeString('fr-FR');
+}
+setInterval(updateLocalClock,1000); updateLocalClock();
+
+/* ── HAMBURGER ── */
+document.getElementById('hamburger-btn').addEventListener('click',function(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('active');
+});
+document.getElementById('sidebar-overlay').addEventListener('click',function(){
+  document.getElementById('sidebar').classList.remove('open');
+  this.classList.remove('active');
+});
+
+/* ── TOPBAR: visits + TLE + IP ── */
+fetch('/api/visits').then(r=>r.ok?r.json():null).then(d=>{
+  if(d){const v=d.count||0; document.getElementById('tbar-visits-val').textContent=v.toLocaleString('fr-FR');}
+}).catch(()=>{});
+
+fetch('/api/tle/status').then(r=>r.ok?r.json():null).then(d=>{
+  if(d) document.getElementById('top-tle-count').textContent=(d.count||'—').toLocaleString('fr-FR');
+}).catch(()=>{});
+
+fetch('/api/health').then(r=>r.ok?r.json():null).then(d=>{
+  if(d){
+    document.getElementById('top-ip').textContent='📍 Tlemcen · '+(d.ip||'—');
+    document.getElementById('sb-uptime').textContent=d.uptime||'—';
+  }
+}).catch(()=>{});
+
+/* ── SIDEBAR ISS LIVE ── */
+function loadSidebarISS(){
+  fetch('/api/iss').then(r=>r.ok?r.json():null).then(d=>{
+    if(!d) return;
+    var st=document.getElementById('sb-iss-status');
+    if(d.ok===false){ if(st)st.textContent='Données temporairement indisponibles'; return; }
+    if(st)st.textContent='';
+    const lat=d.latitude??d.lat??'—', lon=d.longitude??d.lon??'—';
+    const alt=d.altitude??d.alt_km??'—', spd=d.velocity??d.speed??'—';
+    document.getElementById('sb-iss-lat').textContent=typeof lat==='number'?lat.toFixed(1)+'°':lat;
+    document.getElementById('sb-iss-lon').textContent=typeof lon==='number'?lon.toFixed(1)+'°':lon;
+    document.getElementById('sb-iss-alt').textContent=typeof alt==='number'?Math.round(alt):alt;
+    document.getElementById('sb-iss-speed').textContent=typeof spd==='number'?Math.round(spd).toLocaleString():spd;
+    document.getElementById('sb-iss-region').textContent=d.region||d.country||d.location||'—';
+  }).catch(()=>{});
+}
+loadSidebarISS(); setInterval(loadSidebarISS,15000);
+
+/* ══════════════════════════════════════
+   MAIN DATA FUNCTIONS
+   ══════════════════════════════════════ */
+
+/* ── SOLAR TIMES (OpenMeteo) ── */
+async function loadSun(){
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.87&longitude=1.32&daily=sunrise,sunset&timezone=Africa%2FAlgiers&forecast_days=1');
+    const d=await r.json();
+    if(d.daily){
+      const sr=new Date(d.daily.sunrise[0]), ss=new Date(d.daily.sunset[0]), dk=new Date(ss.getTime()+90*60000);
+      document.getElementById('sunrise').textContent=sr.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('sunset').textContent=ss.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('darkNight').textContent=dk.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    }
+  }catch(e){console.warn('[loadSun]',e);}
+}
+
+/* ── MOON PHASE (astropy via /api/moon) ── */
+async function loadMoon(){
+  try{
+    const r=await fetch('/api/moon');
+    const d=await r.json();
+    const phaseStr=d.phase||'';
+    const parts=phaseStr.trim().split(' ');
+    const emoji=parts[parts.length-1];
+    const vis=d.illumination_pct<30?'✅ Excellente':d.illumination_pct<60?'⚠️ Moyenne':'❌ Perturbée';
+    document.getElementById('moonIcon').textContent=emoji||'🌙';
+    document.getElementById('moonStats').innerHTML=`
+      <div class="sr"><span class="sl">Phase</span><span class="sv">${phaseStr}</span></div>
+      <div class="sr"><span class="sl">Illumination</span><span class="sv">${d.illumination_pct??'?'}%</span></div>
+      <div class="sr"><span class="sl">Cycle</span><span class="sv">Jour ${d.cycle_jour??'?'} / 29.5</span></div>
+      <div class="sr"><span class="sl">Observation DSO</span><span class="sv">${vis}</span></div>`;
+  }catch(e){
+    // Fallback calcul local
+    const jd=new Date()/86400000+2440587.5, T=(jd-2451545)/36525;
+    const D=((297.85036+445267.11148*T)%360+360)%360;
+    const illum=(1-Math.cos(D*Math.PI/180))/2*100;
+    const icons=['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
+    const names=['Nouvelle Lune','Premier Croissant','Premier Quartier','Gibbeuse Croissante','Pleine Lune','Gibbeuse Décroissante','Dernier Quartier','Dernier Croissant'];
+    const idx=Math.round(D/45)%8;
+    document.getElementById('moonIcon').textContent=icons[idx];
+    document.getElementById('moonStats').innerHTML=`
+      <div class="sr"><span class="sl">Phase</span><span class="sv">${names[idx]}</span></div>
+      <div class="sr"><span class="sl">Illumination</span><span class="sv">${illum.toFixed(1)}%</span></div>
+      <div class="sr"><span class="sl">Observation DSO</span><span class="sv">${illum<30?'✅ Excellente':illum<60?'⚠️ Moyenne':'❌ Perturbée'}</span></div>`;
+  }
+}
+
+/* ── METEO CONDITIONS (OpenMeteo) ── */
+async function loadConditions(){
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.87&longitude=1.32&current=temperature_2m,cloud_cover,wind_speed_10m,relative_humidity_2m&timezone=Africa%2FAlgiers');
+    const c=(await r.json()).current;
+    const see=c.cloud_cover<20?'⭐⭐⭐⭐⭐ Excellent':c.cloud_cover<40?'⭐⭐⭐⭐ Bon':c.cloud_cover<70?'⭐⭐⭐ Moyen':'⭐ Mauvais';
+    document.getElementById('conditions').innerHTML=`
+      <div class="ci"><div class="ci-icon">🌡️</div><div class="ci-val">${c.temperature_2m}°C</div><div class="ci-lbl">Température</div></div>
+      <div class="ci"><div class="ci-icon">☁️</div><div class="ci-val">${c.cloud_cover}%</div><div class="ci-lbl">Nuages</div></div>
+      <div class="ci"><div class="ci-icon">💨</div><div class="ci-val">${c.wind_speed_10m}km/h</div><div class="ci-lbl">Vent</div></div>
+      <div class="ci"><div class="ci-icon">👁️</div><div class="ci-val" style="font-size:.7rem;line-height:1.3">${see}</div><div class="ci-lbl">Seeing</div></div>`;
+  }catch(e){ document.getElementById('conditions').innerHTML='<div class="err">⚠️ Météo indisponible</div>'; }
+}
+
+/* ── OBJETS MESSIER (astropy /api/tonight) ── */
+async function loadObjects(){
+  try{
+    const r=await fetch('/api/tonight');
+    const d=await r.json();
+    const objs=d.objets||d.objects||d;
+    if(!objs||!objs.length){
+      document.getElementById('objectsGrid').innerHTML='<div class="err">Aucun objet &gt; 15° en ce moment depuis Tlemcen</div>';
+      return;
+    }
+    document.getElementById('objectsGrid').innerHTML=objs.map(o=>`
+      <div class="oc">
+        <div class="ot">${o.type||'DSO'}</div>
+        <div class="on">${o.nom||o.name||''}</div>
+        <div class="od">${o.condition||o.description||''}</div>
+        <div class="om">↑ ${o.altitude||'—'} · Az. ${o.azimut||'—'}</div>
+      </div>`).join('');
+  }catch(e){ document.getElementById('objectsGrid').innerHTML='<div class="err">⚠️ Erreur objets: '+e.message+'</div>'; }
+}
+
+/* ── PLANÈTES (saisonnière) ── */
+function loadPlanets(){
+  const m=new Date().getMonth()+1;
+  const planets=[
+    {name:'Mercure', e:'⚫', v:[3,4,9,10].includes(m)},
+    {name:'Vénus',   e:'🟡', v:true, n:'Étoile du Berger'},
+    {name:'Mars',    e:'🔴', v:[1,2,3,10,11,12].includes(m)},
+    {name:'Jupiter', e:'🟠', v:true},
+    {name:'Saturne', e:'🪐', v:[5,6,7,8,9,10,11].includes(m)},
+    {name:'Uranus',  e:'🔵', v:m>=9||m<=3},
+    {name:'Neptune', e:'🫧', v:[7,8,9,10,11].includes(m)},
+  ];
+  document.getElementById('planetsRow').innerHTML=planets.map(p=>`
+    <div class="pc">
+      <div class="pe">${p.e}</div>
+      <div class="pn">${p.name}</div>
+      <div class="ps">${p.v?'✅ Visible':'❌ Non visible'}</div>
+      ${p.n?`<div class="ps" style="color:var(--cyan)">${p.n}</div>`:''}
+    </div>`).join('');
+}
+
+/* ── PASSAGES ISS (N2YO via /api/passages-iss) ── */
+async function loadISSPasses(){
+  try{
+    const r=await fetch('/api/passages-iss');
+    const d=await r.json();
+    const passes=d.prochains_passages||[];
+    if(!passes.length){
+      document.getElementById('passList').innerHTML='<div class="err">Aucun passage ISS calculé</div>';
+      return;
+    }
+    document.getElementById('passList').innerHTML=passes.slice(0,8).map(p=>{
+      const el=p.elevation_max_degres||p.elevation||0;
+      const vis=el>=30;
+      return `<div class="pass-item${vis?' vis':''}">
+        <div class="pt">🛸 ${p.date_utc||p.date||''}</div>
+        <div class="${el>=30?'pe2':'pe2 low'}">↑ ${el}°</div>
+        <div class="pd">Max: ${p.heure_max_utc||p.heure_max||''} · Fin: ${p.heure_fin_utc||''} · ${p.duree||((p.duree_minutes||0)+' min')}</div>
+        ${vis?'<div class="pv">👁️ VISIBLE À L\'ŒIL NU</div>':''}
+      </div>`;
+    }).join('');
+  }catch(e){ document.getElementById('passList').innerHTML='<div class="err">⚠️ '+e.message+'</div>'; }
+}
+
+/* ── INIT ── */
+loadMoon(); loadSun(); loadConditions(); loadObjects(); loadPlanets(); loadISSPasses();
+setInterval(()=>{ loadConditions(); loadISSPasses(); }, 300000);
+</script>
+
+<script>
+(function(){try{fetch('/api/visitors/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:window.location.pathname})});}catch(e){}})();
+</script>
+</body>
+</html>

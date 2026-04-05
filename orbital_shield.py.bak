@@ -1,0 +1,526 @@
+#!/usr/bin/env python3
+"""
+╔══════════════════════════════════════════════════════════════════╗
+║  ORBITAL-SHIELD — Système de stabilité ORBITAL-CHOHRA           ║
+║  Watchdog · Auto-restart · DB integrity · Log rotation          ║
+║  Zakaria Chohra — Hillsboro · ubuntu-8gb-hil-2                  ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Service systemd : orbital-shield.service                        ║
+║  Cycle : toutes les 30 secondes                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+"""
+
+import os, sys, time, json, sqlite3, subprocess, logging, shutil, threading
+from datetime import datetime, timezone
+from pathlib import Path
+
+# ── CONFIGURATION ──────────────────────────────────────────────────
+ROOT       = '/root/astro_scan'
+DB_PATH    = f'{ROOT}/data/archive_stellaire.db'
+LOG_DIR    = f'{ROOT}/logs'
+STATE_FILE = '/tmp/orbital_shield_state.json'
+SHIELD_LOG = f'{LOG_DIR}/orbital_shield.log'
+
+SERVICES = {
+    'astroscan-web':    {'port': 5000, 'critical': True,  'max_restarts': 10},
+    'astroscan-aegis':  {'port': None, 'critical': False, 'max_restarts': 5},
+    'astroscan-tunnel': {'port': None, 'critical': False, 'max_restarts': 10},
+    'astroscan-sdr':    {'port': None, 'critical': False, 'max_restarts': 5},
+}
+
+THRESHOLDS = {
+    'disk_warn_pct':  80,   # Alerte disque à 80%
+    'disk_crit_pct':  90,   # Critique à 90%
+    'mem_warn_pct':   85,
+    'mem_crit_pct':   95,
+    'db_max_size_mb': 500,  # Archiver si DB > 500MB
+    'log_max_mb':     50,   # Rotation log > 50MB
+    'api_timeout':    10,
+    'check_interval': 30,   # secondes
+}
+
+# ── LOGGING ────────────────────────────────────────────────────────
+os.makedirs(LOG_DIR, exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(SHIELD_LOG),
+        logging.StreamHandler(sys.stdout),
+    ]
+)
+log = logging.getLogger('SHIELD')
+
+
+# ══════════════════════════════════════════════════════════════════
+# 1. WATCHDOG — Surveillance et redémarrage automatique
+# ══════════════════════════════════════════════════════════════════
+
+class ServiceWatchdog:
+    def __init__(self):
+        self.restart_counts = {s: 0 for s in SERVICES}
+        self.last_restart   = {s: 0 for s in SERVICES}
+        self.status         = {s: 'unknown' for s in SERVICES}
+
+    def check_service(self, name):
+        """Vérifie si un service systemd est actif."""
+        r = subprocess.run(
+            ['systemctl', 'is-active', name],
+            capture_output=True, text=True
+        )
+        return r.stdout.strip() == 'active'
+
+    def check_port(self, port):
+        """Vérifie qu'un port répond."""
+        if not port:
+            return True
+        r = subprocess.run(
+            ['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
+             '--max-time', '5', f'http://localhost:{port}/api/health'],
+            capture_output=True, text=True
+        )
+        code = r.stdout.strip()
+        return code in ('200', '404')  # 404 OK — Flask tourne
+
+    def restart_service(self, name):
+        """Redémarre un service avec backoff exponentiel."""
+        cfg = SERVICES[name]
+        now = time.time()
+
+        # Backoff : attendre avant de redémarrer
+        wait = min(300, 10 * (2 ** min(self.restart_counts[name], 4)))
+        if now - self.last_restart[name] < wait:
+            return False
+
+        log.warning(f'↻ Redémarrage {name} (tentative {self.restart_counts[name]+1})')
+        r = subprocess.run(['systemctl', 'restart', name],
+                           capture_output=True, text=True)
+        self.restart_counts[name] += 1
+        self.last_restart[name]    = now
+
+        if r.returncode == 0:
+            log.info(f'✅ {name} redémarré')
+            return True
+        else:
+            log.error(f'❌ {name} échec redémarrage: {r.stderr[:100]}')
+            return False
+
+    def check_all(self):
+        results = {}
+        for name, cfg in SERVICES.items():
+            active = self.check_service(name)
+            port_ok = self.check_port(cfg['port']) if active else False
+
+            if active and port_ok:
+                self.status[name] = 'ok'
+                self.restart_counts[name] = 0  # Reset compteur si OK
+            elif not active:
+                self.status[name] = 'down'
+                log.warning(f'⚠️  Service DOWN: {name}')
+                if self.restart_counts[name] < cfg['max_restarts']:
+                    self.restart_service(name)
+                else:
+                    log.error(f'🚨 {name} dépassé max_restarts — intervention manuelle requise')
+            else:
+                self.status[name] = 'degraded'
+                log.warning(f'⚠️  {name} actif mais port {cfg["port"]} ne répond pas')
+
+            results[name] = self.status[name]
+        return results
+
+
+# ══════════════════════════════════════════════════════════════════
+# 2. DATABASE GUARDIAN — Intégrité et maintenance automatique
+# ══════════════════════════════════════════════════════════════════
+
+class DatabaseGuardian:
+
+    def check_integrity(self):
+        """Vérifie l'intégrité de la DB SQLite."""
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=10)
+            c    = conn.cursor()
+            c.execute("PRAGMA integrity_check")
+            result = c.fetchone()[0]
+            conn.close()
+            if result == 'ok':
+                return True, 'OK'
+            else:
+                return False, result
+        except Exception as e:
+            return False, str(e)
+
+    def get_db_stats(self):
+        """Statistiques de la base."""
+        try:
+            size_mb = os.path.getsize(DB_PATH) / (1024*1024)
+            conn    = sqlite3.connect(DB_PATH, timeout=10)
+            c       = conn.cursor()
+            c.execute("SELECT COUNT(*) FROM observations")
+            total   = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM observations WHERE anomalie_score > 0.5")
+            anomalies = c.fetchone()[0]
+            conn.close()
+            return {'size_mb': round(size_mb,2), 'total': total, 'anomalies': anomalies}
+        except Exception as e:
+            log.error(f'DB stats: {e}')
+            return {}
+
+    def vacuum_if_needed(self):
+        """VACUUM automatique si la DB est fragmentée."""
+        try:
+            conn = sqlite3.connect(DB_PATH, timeout=30)
+            c    = conn.cursor()
+            c.execute("PRAGMA page_count")
+            pages = c.fetchone()[0]
+            c.execute("PRAGMA freelist_count")
+            free  = c.fetchone()[0]
+            conn.close()
+
+            if pages > 0 and (free / pages) > 0.2:  # >20% pages libres
+                log.info(f'🧹 VACUUM DB ({free}/{pages} pages libres)...')
+                conn = sqlite3.connect(DB_PATH, timeout=60)
+                conn.execute("VACUUM")
+                conn.close()
+                log.info('✅ VACUUM terminé')
+                return True
+        except Exception as e:
+            log.error(f'VACUUM: {e}')
+        return False
+
+    def backup(self):
+        """Backup automatique de la DB."""
+        backup_dir  = f'{ROOT}/data/backups'
+        os.makedirs(backup_dir, exist_ok=True)
+        ts          = datetime.now().strftime('%Y%m%d_%H%M')
+        backup_path = f'{backup_dir}/archive_stellaire_{ts}.db'
+
+        # Garder seulement les 5 derniers backups
+        backups = sorted(Path(backup_dir).glob('*.db'))
+        while len(backups) >= 5:
+            backups[0].unlink()
+            backups = backups[1:]
+
+        try:
+            shutil.copy2(DB_PATH, backup_path)
+            log.info(f'💾 Backup DB: {backup_path}')
+            return backup_path
+        except Exception as e:
+            log.error(f'Backup: {e}')
+            return None
+
+    def run(self):
+        ok, msg = self.check_integrity()
+        if not ok:
+            log.error(f'🚨 DB INTÉGRITÉ COMPROMISE: {msg}')
+            self.backup()  # Backup avant toute opération
+        else:
+            log.debug('DB intégrité OK')
+
+        stats = self.get_db_stats()
+        if stats:
+            if stats.get('size_mb', 0) > THRESHOLDS['db_max_size_mb']:
+                log.warning(f'⚠️  DB volumineuse: {stats["size_mb"]}MB')
+                self.vacuum_if_needed()
+
+        return ok, stats
+
+
+# ══════════════════════════════════════════════════════════════════
+# 3. RESOURCE MONITOR — CPU, RAM, Disque
+# ══════════════════════════════════════════════════════════════════
+
+class ResourceMonitor:
+
+    def get_disk(self):
+        stat = os.statvfs(ROOT)
+        total = stat.f_blocks * stat.f_frsize
+        free  = stat.f_bfree  * stat.f_frsize
+        used_pct = int((1 - free/total) * 100)
+        return {
+            'total_gb': round(total/1e9, 1),
+            'free_gb':  round(free/1e9,  1),
+            'used_pct': used_pct,
+        }
+
+    def get_mem(self):
+        try:
+            with open('/proc/meminfo') as f:
+                lines = f.readlines()
+            info = {}
+            for l in lines:
+                k, v = l.split(':')
+                info[k.strip()] = int(v.strip().split()[0])
+            total    = info.get('MemTotal', 1)
+            avail    = info.get('MemAvailable', total)
+            used_pct = int((1 - avail/total) * 100)
+            return {
+                'total_mb': round(total/1024),
+                'avail_mb': round(avail/1024),
+                'used_pct': used_pct,
+            }
+        except:
+            return {}
+
+    def get_cpu(self):
+        try:
+            r = subprocess.run(
+                ['top', '-bn1'],
+                capture_output=True, text=True
+            )
+            for line in r.stdout.split('\n'):
+                if 'Cpu(s)' in line or '%Cpu' in line:
+                    # Parser usage CPU
+                    parts = line.replace(',', '.').split()
+                    for i, p in enumerate(parts):
+                        if 'id' in p and i > 0:
+                            try:
+                                idle = float(parts[i-1])
+                                return round(100 - idle, 1)
+                            except:
+                                pass
+        except:
+            pass
+        return None
+
+    def check_disk_space(self):
+        """Nettoyage automatique si disque saturé."""
+        disk = self.get_disk()
+        pct  = disk.get('used_pct', 0)
+
+        if pct >= THRESHOLDS['disk_crit_pct']:
+            log.error(f'🚨 DISQUE CRITIQUE: {pct}% — Nettoyage d\'urgence')
+            self._emergency_cleanup()
+        elif pct >= THRESHOLDS['disk_warn_pct']:
+            log.warning(f'⚠️  Disque: {pct}% utilisé')
+            self._routine_cleanup()
+
+        return disk
+
+    def _routine_cleanup(self):
+        """Nettoyage de routine."""
+        cleaned = 0
+
+        # Vieilles images SkyView (> 100 fichiers → garder les 50 plus récents)
+        skyview_dir = f'{ROOT}/static/img/skyview'
+        if os.path.exists(skyview_dir):
+            files = sorted(Path(skyview_dir).glob('*.gif'), key=os.path.getmtime)
+            if len(files) > 100:
+                for f in files[:-50]:
+                    f.unlink()
+                    cleaned += 1
+
+        # Logs journalctl compressés
+        subprocess.run(['journalctl', '--vacuum-size=100M'], capture_output=True)
+
+        # Fichiers tmp
+        for f in Path('/tmp').glob('aegis_auto*.log'):
+            if f.stat().st_size > 10*1024*1024:  # > 10MB
+                f.unlink()
+                cleaned += 1
+
+        if cleaned:
+            log.info(f'🧹 Routine: {cleaned} fichiers nettoyés')
+
+    def _emergency_cleanup(self):
+        """Nettoyage d'urgence disque plein."""
+        self._routine_cleanup()
+
+        # Vider les vieux logs
+        for logf in Path(LOG_DIR).glob('*.log'):
+            if logf.stat().st_size > 5*1024*1024:
+                # Garder seulement les 1000 dernières lignes
+                lines = logf.read_text(errors='ignore').split('\n')
+                logf.write_text('\n'.join(lines[-1000:]))
+
+        # Purger les backups DB anciens (garder 2)
+        backup_dir = f'{ROOT}/data/backups'
+        if os.path.exists(backup_dir):
+            backups = sorted(Path(backup_dir).glob('*.db'))
+            for b in backups[:-2]:
+                b.unlink()
+
+        log.warning('🚨 Nettoyage urgence effectué')
+
+    def run(self):
+        disk = self.check_disk_space()
+        mem  = self.get_mem()
+        cpu  = self.get_cpu()
+
+        if mem.get('used_pct', 0) >= THRESHOLDS['mem_crit_pct']:
+            log.error(f'🚨 RAM CRITIQUE: {mem["used_pct"]}% — Redémarrage service web')
+            subprocess.run(['systemctl', 'restart', 'astroscan-web'])
+
+        return {'disk': disk, 'mem': mem, 'cpu': cpu}
+
+
+# ══════════════════════════════════════════════════════════════════
+# 4. LOG ROTATOR — Rotation automatique des logs
+# ══════════════════════════════════════════════════════════════════
+
+class LogRotator:
+    def rotate(self):
+        rotated = 0
+        for logf in Path(LOG_DIR).glob('*.log'):
+            size_mb = logf.stat().st_size / (1024*1024)
+            if size_mb > THRESHOLDS['log_max_mb']:
+                ts   = datetime.now().strftime('%Y%m%d_%H%M')
+                arch = logf.with_suffix(f'.{ts}.log.gz')
+                subprocess.run(['gzip', '-c', str(logf)],
+                               stdout=open(str(arch), 'wb'))
+                logf.write_text('')  # Vider sans supprimer
+                rotated += 1
+                log.info(f'📦 Rotation: {logf.name} → {arch.name}')
+
+        # Nettoyer les archives > 7 jours
+        for arch in Path(LOG_DIR).glob('*.log.gz'):
+            age = time.time() - arch.stat().st_mtime
+            if age > 7 * 86400:
+                arch.unlink()
+        return rotated
+
+
+# ══════════════════════════════════════════════════════════════════
+# 5. TUNNEL GUARDIAN — Cloudflare tunnel auto-reconnect
+# ══════════════════════════════════════════════════════════════════
+
+class TunnelGuardian:
+    def __init__(self):
+        self.last_url   = None
+        self.url_file   = '/tmp/orbital_tunnel_url.txt'
+
+    def get_current_url(self):
+        """Récupère l'URL actuelle du tunnel depuis les logs."""
+        r = subprocess.run(
+            ['journalctl', '-u', 'astroscan-tunnel', '--no-pager', '-n', '50'],
+            capture_output=True, text=True
+        )
+        for line in reversed(r.stdout.split('\n')):
+            if 'trycloudflare.com' in line:
+                import re
+                m = re.search(r'https://[\w-]+\.trycloudflare\.com', line)
+                if m:
+                    return m.group(0)
+        return None
+
+    def check_tunnel(self):
+        """Vérifie que le tunnel répond."""
+        url = self.get_current_url()
+        if not url:
+            return False, None
+
+        r = subprocess.run(
+            ['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
+             '--max-time', '10', url],
+            capture_output=True, text=True
+        )
+        ok = r.stdout.strip() in ('200', '302', '404')
+        if url != self.last_url:
+            log.info(f'🌐 Tunnel URL: {url}')
+            self.last_url = url
+            open(self.url_file, 'w').write(url)
+
+        return ok, url
+
+
+# ══════════════════════════════════════════════════════════════════
+# 6. STATE REPORTER — Rapport d'état global
+# ══════════════════════════════════════════════════════════════════
+
+class StateReporter:
+    def save(self, state):
+        try:
+            state['ts'] = datetime.utcnow().isoformat()
+            with open(STATE_FILE, 'w') as f:
+                json.dump(state, f, indent=2)
+        except Exception as e:
+            log.error(f'State save: {e}')
+
+    def load(self):
+        try:
+            if os.path.exists(STATE_FILE):
+                return json.load(open(STATE_FILE))
+        except:
+            pass
+        return {}
+
+
+# ══════════════════════════════════════════════════════════════════
+# BOUCLE PRINCIPALE
+# ══════════════════════════════════════════════════════════════════
+
+def main():
+    log.info('╔══════════════════════════════════════════╗')
+    log.info('║  ORBITAL-SHIELD DÉMARRÉ                  ║')
+    log.info(f'║  PID: {os.getpid():<34} ║')
+    log.info('╚══════════════════════════════════════════╝')
+
+    watchdog  = ServiceWatchdog()
+    db_guard  = DatabaseGuardian()
+    resources = ResourceMonitor()
+    rotator   = LogRotator()
+    tunnel    = TunnelGuardian()
+    reporter  = StateReporter()
+
+    cycle    = 0
+    db_cycle = 0  # DB check toutes les 10 cycles (5 min)
+
+    while True:
+        try:
+            cycle += 1
+            log.debug(f'── Cycle #{cycle} ──')
+
+            # ── Services (chaque cycle — 30s) ──
+            svc_status = watchdog.check_all()
+
+            # ── Ressources (chaque cycle) ──
+            res = resources.run()
+
+            # ── Tunnel (chaque cycle) ──
+            tunnel_ok, tunnel_url = tunnel.check_tunnel()
+
+            # ── DB + Rotation (toutes les 5 min) ──
+            db_ok, db_stats = True, {}
+            if db_cycle % 10 == 0:
+                db_ok, db_stats = db_guard.run()
+                rotator.rotate()
+
+                # Backup DB toutes les heures
+                if db_cycle % 120 == 0 and db_cycle > 0:
+                    db_guard.backup()
+
+            db_cycle += 1
+
+            # ── Rapport état ──
+            state = {
+                'cycle':    cycle,
+                'services': svc_status,
+                'resources': res,
+                'db':       {'ok': db_ok, **db_stats},
+                'tunnel':   {'ok': tunnel_ok, 'url': tunnel_url},
+            }
+            reporter.save(state)
+
+            # ── Log résumé périodique (toutes les 5 min) ──
+            if cycle % 10 == 0:
+                ok_svcs  = sum(1 for s in svc_status.values() if s == 'ok')
+                disk_pct = res.get('disk', {}).get('used_pct', '?')
+                mem_pct  = res.get('mem',  {}).get('used_pct', '?')
+                log.info(
+                    f'📊 STATUS | Services: {ok_svcs}/{len(SERVICES)} OK | '
+                    f'Disk: {disk_pct}% | RAM: {mem_pct}% | '
+                    f'DB: {db_stats.get("total","?"):,} obs | '
+                    f'Tunnel: {"✅" if tunnel_ok else "❌"}'
+                )
+
+        except KeyboardInterrupt:
+            log.info('SHIELD arrêté (SIGINT)')
+            break
+        except Exception as e:
+            log.error(f'Erreur cycle #{cycle}: {e}')
+
+        time.sleep(THRESHOLDS['check_interval'])
+
+
+if __name__ == '__main__':
+    main()

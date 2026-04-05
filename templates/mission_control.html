@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>AstroScan-Chohra - Contrôle mission</title>
+
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Cesium.js"></script>
+<link href="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
+<style>
+html,body,#cesiumContainer{
+width:100%;
+height:100%;
+margin:0;
+background:black;
+}
+</style>
+</head>
+
+<body>
+
+<div id="cesiumContainer"></div>
+
+<script>
+
+Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
+
+const viewer = new Cesium.Viewer('cesiumContainer', {
+timeline:true,
+animation:true,
+baseLayerPicker:true
+});
+
+viewer.scene.globe.enableLighting = true;
+
+const issTLE1 = "1 25544U 98067A   24153.51782528  .00016717  00000+0  10270-3 0  9004";
+const issTLE2 = "2 25544  51.6416 215.6054 0004578  54.8858  87.6423 15.50243893399554";
+
+const satellite = viewer.entities.add({
+name:"ISS",
+position: Cesium.Cartesian3.fromDegrees(0,0,400000),
+point:{
+pixelSize:10,
+color:Cesium.Color.YELLOW
+}
+});
+
+viewer.zoomTo(viewer.entities);
+
+</script>
+
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

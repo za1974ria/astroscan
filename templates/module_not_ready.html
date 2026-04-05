@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AstroScan-Chohra - Module en préparation</title>
+</head>
+<body style="background:#050b14;color:#00eaff;font-family:monospace;text-align:center;padding:100px">
+  <h1>Module {{ module }}</h1>
+  <p>Ce module est en cours d'activation.</p>
+  <a href="/portail" style="color:#00eaff">Retour au portail</a>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

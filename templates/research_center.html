@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AstroScan-Chohra - Centre de recherche</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--acid:#00ff88;--blue:#00d4ff;--purple:#aa44ff;--amber:#ffaa00;--red:#ff4466;--bg:#020810;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:#c8d8e8;font-family:'Share Tech Mono',monospace;min-height:100vh;}
+header{background:rgba(2,8,16,.97);border-bottom:1px solid rgba(0,255,136,.15);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;}
+.logo{font-family:Orbitron,monospace;font-size:18px;font-weight:900;color:var(--acid);letter-spacing:3px;}
+.section-title{font-family:Orbitron,monospace;font-size:12px;color:var(--acid);letter-spacing:4px;margin-bottom:12px;}
+main{padding:24px 28px;max-width:1200px;margin:0 auto;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;}
+.card{background:rgba(4,16,32,.95);border:1px solid rgba(0,255,136,.1);border-radius:8px;padding:18px;}
+.card-tag{font-size:8px;letter-spacing:3px;color:var(--blue);margin-bottom:8px;}
+.data-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;}
+.data-key{color:#8899aa;}
+.data-val{color:var(--acid);font-weight:bold;}
+.link-btn{display:inline-block;margin-top:10px;padding:8px 14px;background:rgba(0,255,136,.08);border:1px solid var(--acid);color:var(--acid);text-decoration:none;font-size:10px;letter-spacing:2px;border-radius:4px;}
+.link-btn:hover{background:rgba(0,255,136,.15);}
+.err{color:var(--red);font-size:10px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">📊 CENTRE DE RECHERCHE — AstroScan-Chohra</div>
+  <div style="font-size:10px;color:#8899aa">Plateforme de recherche · Observatoire + Labo Numérique + Moteur de découvertes</div>
+  <div>
+    <a href="/portail" style="color:var(--blue);font-size:10px;text-decoration:none;margin-right:12px">← PORTAIL</a>
+    <a href="/research" style="color:#8899aa;font-size:10px;text-decoration:none;margin-right:12px">RECHERCHE</a>
+    <a href="/scientific" style="color:var(--acid);font-size:10px;text-decoration:none">MODE SCIENTIFIQUE</a>
+  </div>
+</header>
+<main>
+  <div class="section-title">🔬 CENTRE DE RECHERCHE</div>
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-tag">Résumé agrégé</div>
+    <div id="research-summary">⟳ Chargement...</div>
+    <button type="button" class="link-btn" style="cursor:pointer;border:none;margin-top:8px" onclick="loadSummary()">Actualiser le résumé</button>
+  </div>
+
+  <div class="section-title">🌤️ MÉTÉO SPATIALE</div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-tag">Soleil · ISS</div>
+      <div id="research-space-weather">⟳ Chargement...</div>
+      <a href="/scientific" class="link-btn">Météo solaire</a>
+    </div>
+  </div>
+
+  <div class="section-title">☄️ OBJETS GÉOCROISEURS</div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-tag">NEO · Astéroïdes</div>
+      <div id="research-neo">⟳ Chargement...</div>
+      <a href="/scientific" class="link-btn">Détails NEO</a>
+    </div>
+  </div>
+
+  <div class="section-title">☀️ ACTIVITÉ SOLAIRE</div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-tag">Vent solaire · NOAA</div>
+      <div id="research-solar">⟳ Chargement...</div>
+      <a href="/scientific" class="link-btn">Météo solaire</a>
+    </div>
+  </div>
+
+  <div class="section-title">📁 RAPPORTS SCIENTIFIQUES RÉCENTS</div>
+  <div class="card" style="margin-bottom:24px">
+    <div id="research-events">⟳ Chargement...</div>
+    <button type="button" class="link-btn" style="cursor:pointer;border:none;margin-top:8px" onclick="loadEvents()">Actualiser les événements</button>
+  </div>
+  <div class="card">
+    <div class="card-tag">Logs de recherche</div>
+    <div id="research-logs">⟳ Chargement...</div>
+    <button type="button" class="link-btn" style="cursor:pointer;border:none;margin-top:8px" onclick="loadLogs()">Actualiser les logs</button>
+  </div>
+</main>
+<script>
+function loadSummary(){
+  var el=document.getElementById('research-summary');if(el)el.textContent='⟳ Chargement...';
+  fetch('/api/research/summary').then(function(r){return r.json();}).then(function(d){
+    if(!el)return;
+    if(d.error){el.innerHTML='<span class="err">'+d.error+'</span>';return;}
+    var s=d.solar_activity||{};var n=d.near_earth_objects||{};var i=d.iss_activity||{};
+    el.innerHTML='<div class="data-row"><span class="data-key">Soleil</span><span class="data-val">'+(s.status||'—')+'</span></div>'+
+      '<div class="data-row"><span class="data-key">NEO aujourd\'hui</span><span class="data-val">'+(n.total_today||0)+'</span></div>'+
+      '<div class="data-row"><span class="data-key">Dangereux</span><span class="data-val">'+(n.hazardous_count||0)+'</span></div>'+
+      '<div class="data-row"><span class="data-key">ISS</span><span class="data-val">Lat '+(i.lat!=null?i.lat:'—')+' · Crew '+(i.crew_count||0)+'</span></div>'+
+      '<div class="data-row"><span class="data-key">Découvertes récentes</span><span class="data-val">'+(d.recent_discoveries_count||0)+'</span></div>';
+  }).catch(function(){if(el)el.innerHTML='<span class="err">Indisponible</span>';});
+}
+function loadSpaceWeather(){
+  fetch('/api/research/summary').then(function(r){return r.json();}).then(function(d){
+    var el=document.getElementById('research-space-weather');
+    if(!el)return;
+    var s=d.solar_activity||{};var i=d.iss_activity||{};
+    el.innerHTML='<div class="data-row"><span class="data-key">Vent solaire</span><span class="data-val">'+(s.status||'—')+'</span></div>'+
+      '<div class="data-row"><span class="data-key">Vitesse</span><span class="data-val">'+(s.speed_kms||'—')+' km/s</span></div>'+
+      '<div class="data-row"><span class="data-key">ISS</span><span class="data-val">'+(i.lat!=null?i.lat+'°, '+i.lon+'°':'—')+'</span></div>';
+  }).catch(function(){var el=document.getElementById('research-space-weather');if(el)el.innerHTML='<span class="err">Indisponible</span>';});
+}
+function loadNEO(){
+  fetch('/api/research/summary').then(function(r){return r.json();}).then(function(d){
+    var el=document.getElementById('research-neo');
+    if(!el)return;
+    var n=d.near_earth_objects||{};
+    el.innerHTML='<div class="data-row"><span class="data-key">Total aujourd\'hui</span><span class="data-val">'+(n.total_today||0)+'</span></div>'+
+      '<div class="data-row"><span class="data-key">Potentiellement dangereux</span><span class="data-val" style="color:'+((n.hazardous_count||0)>0?'#ff4466':'#00ff88')+'">'+(n.hazardous_count||0)+'</span></div>'+
+      '<div class="data-row"><span class="data-key">Source</span><span class="data-val">'+(n.source||'—')+'</span></div>';
+  }).catch(function(){var el=document.getElementById('research-neo');if(el)el.innerHTML='<span class="err">Indisponible</span>';});
+}
+function loadSolar(){
+  fetch('/api/research/summary').then(function(r){return r.json();}).then(function(d){
+    var el=document.getElementById('research-solar');
+    if(!el)return;
+    var s=d.solar_activity||{};
+    el.innerHTML='<div class="data-row"><span class="data-key">Statut</span><span class="data-val">'+(s.status||'—')+'</span></div>'+
+      '<div class="data-row"><span class="data-key">Vitesse</span><span class="data-val">'+(s.speed_kms||'—')+' km/s</span></div>'+
+      '<div class="data-row"><span class="data-key">Densité</span><span class="data-val">'+(s.density!=null?s.density:'—')+'</span></div>';
+  }).catch(function(){var el=document.getElementById('research-solar');if(el)el.innerHTML='<span class="err">Indisponible</span>';});
+}
+function loadEvents(){
+  var el=document.getElementById('research-events');if(el)el.textContent='⟳ Chargement...';
+  fetch('/api/research/events').then(function(r){return r.json();}).then(function(d){
+    if(!el)return;
+    var list=d.events||[];
+    if(!list.length){el.innerHTML='<div style="font-size:11px;color:#8899aa">Aucun événement récent.</div>';return;}
+    el.innerHTML='<div style="display:grid;gap:8px">'+list.slice(0,15).map(function(x){
+      return '<div class="data-row" style="border:1px solid rgba(0,255,136,.1);padding:8px;border-radius:4px">'+
+        '<span class="data-key">'+x.type+'</span><span class="data-val" style="font-size:10px">'+(x.timestamp||'').substring(0,19)+'</span></div>'+
+        '<div style="font-size:10px;color:#aabbcc">'+x.title+(x.detail?': '+x.detail:'')+'</div>';
+    }).join('')+'</div>';
+  }).catch(function(){if(el)el.innerHTML='<span class="err">Indisponible</span>';});
+}
+function loadLogs(){
+  var el=document.getElementById('research-logs');if(el)el.textContent='⟳ Chargement...';
+  fetch('/api/research/logs').then(function(r){return r.json();}).then(function(d){
+    if(!el)return;
+    var list=d.logs||[];
+    if(!list.length){el.innerHTML='<div style="font-size:11px;color:#8899aa">Aucun log.</div>';return;}
+    el.innerHTML='<div style="display:grid;gap:6px">'+list.slice(0,10).map(function(x){
+      return '<div style="font-size:10px;color:#8899aa">'+x.timestamp+' — '+x.kind+'</div>';
+    }).join('')+'</div>';
+  }).catch(function(){if(el)el.innerHTML='<span class="err">Indisponible</span>';});
+}
+loadSummary();loadSpaceWeather();loadNEO();loadSolar();loadEvents();loadLogs();
+</script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>

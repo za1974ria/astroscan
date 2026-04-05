@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AstroScan-Chohra - Météo spatiale</title>
+  <style>
+    body { background: #020b14; color: #00eaff; font-family: monospace; padding: 24px; max-width: 700px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; color: #00d4ff; margin-bottom: 20px; letter-spacing: 2px; }
+    a { color: #00ffaa; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .card { background: rgba(0,30,50,0.4); border: 1px solid rgba(0,212,255,0.25); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .card h2 { font-size: 0.85rem; color: #7ddcff; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+    .value { font-size: 1.2rem; color: #fff; }
+    .kp { color: #ffaa00; }
+    .nominal { color: #00ff88; }
+    .warning { color: #ff8c00; }
+    .danger { color: #ff4444; }
+    #data { margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h1>☀ Météo spatiale NASA / NOAA</h1>
+  <p><a href="/portail">← Retour au portail</a></p>
+
+  <div class="card">
+    <h2>Indice Kp (géomagnétique)</h2>
+    <div id="kp" class="value kp">—</div>
+    <small>0 = calme, 9 = tempête extrême</small>
+  </div>
+  <div class="card">
+    <h2>État magnétosphère</h2>
+    <div id="magnetosphere" class="value nominal">—</div>
+  </div>
+  <div class="card">
+    <h2>Impact orbital & activité solaire</h2>
+    <div id="impact" class="value">—</div>
+  </div>
+  <div class="card">
+    <h2>Vent solaire & tempêtes</h2>
+    <div id="wind">Données dérivées du fichier météo spatiale (static/space_weather.json).</div>
+  </div>
+  <div id="data"></div>
+
+  <script>
+    function load() {
+      fetch('/api/space-weather')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var kpEl = document.getElementById('kp');
+          var magEl = document.getElementById('magnetosphere');
+          var impactEl = document.getElementById('impact');
+          var kp = d.kp_index;
+          if (kp != null) {
+            kpEl.textContent = kp;
+            if (kp >= 7) kpEl.className = 'value danger';
+            else if (kp >= 5) kpEl.className = 'value warning';
+            else kpEl.className = 'value nominal';
+          } else kpEl.textContent = 'Non disponible';
+          magEl.textContent = d.statut_magnetosphere || '—';
+          impactEl.textContent = d.impact_orbital || d.impact || '—';
+          document.getElementById('data').innerHTML = '<pre style="font-size:11px;color:#6a8a9a;margin-top:8px;">' +
+            JSON.stringify(d, null, 2) + '</pre>';
+        })
+        .catch(function() {
+          document.getElementById('kp').textContent = 'Erreur chargement';
+        });
+    }
+    load();
+    setInterval(load, 60000);
+  </script>
+
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script></body>
+</html>
