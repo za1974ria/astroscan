@@ -1,5 +1,4 @@
 User-agent: *
-
 Allow: /
 
 Disallow: /api/
@@ -19,4 +18,4 @@ Disallow: /selftest
 Disallow: /demo
 Disallow: /static/img/raw/
 
-Sitemap: https://astroscan.space/sitemap.xml
+Sitemap: https://astroscan.space/static/sitemap.xml

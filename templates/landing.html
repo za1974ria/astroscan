@@ -1,22 +1,21 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta name="google-site-verification" content="HRmcoe6EC6sH5EQwwkt2ktVyiQToMgMC8AFtz7n6-38" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ seo_title }}</title>
-  <meta name="description" content="{{ seo_description }}">
-  <meta name="keywords" content="ISS tracker, Voyager, météo spatiale, astronomie Algérie, space monitoring">
+  <meta name="google-site-verification" content="HRmcoe6EC6sH5EQwwkt2ktVyiQToMgMC8AFtz7n6-38" />
+  <title>AstroScan-Chohra | Observatoire Spatial Intelligent IA</title>
+  <meta name="description" content="AstroScan-Chohra est un observatoire spatial intelligent avec IA, données en temps réel, ISS, météo spatiale et visualisation avancée.">
+  <meta name="robots" content="index, follow">
   <meta property="og:title" content="AstroScan-Chohra">
+  <meta property="og:description" content="Observatoire spatial intelligent avec données en temps réel et IA">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://astroscan.space/">
-  <meta property="og:description" content="AstroScan-Chohra est une plateforme avancée d'analyse et de surveillance spatiale en temps réel.">
   <meta property="og:image" content="https://astroscan.space/static/preview.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="AstroScan-Chohra">
-  <meta name="twitter:description" content="Observatoire spatial intelligent en temps réel.">
+  <meta name="twitter:description" content="Observatoire spatial intelligent avec IA">
   <meta name="twitter:image" content="https://astroscan.space/static/preview.png">
-  <meta name="robots" content="index, follow">
   <style>
     :root {
       --bg: #030508;
@@ -71,19 +70,22 @@
       margin-bottom: 1rem;
       animation: fadeIn 1s ease both;
     }
-    .hero .h2 {
+    .hero h2 {
       font-size: clamp(1.05rem, 3vw, 1.45rem);
       font-weight: 600;
       letter-spacing: 0.04em;
       max-width: 28em;
+      margin-left: auto;
+      margin-right: auto;
       margin-bottom: 0.65rem;
       animation: fadeIn 1s ease 0.1s both;
     }
-    .hero .sub {
+    .hero h2 + h2 {
       font-size: clamp(0.85rem, 2vw, 1rem);
       color: var(--muted);
       letter-spacing: 0.12em;
       margin-bottom: 1.75rem;
+      font-weight: 500;
       animation: fadeIn 1s ease 0.2s both;
     }
     @keyframes fadeIn {
@@ -246,18 +248,14 @@
   </style>
 </head>
 <body>
-  <section style="max-width:900px;margin:auto;text-align:center;padding:20px;">
-    <h1>AstroScan-Chohra</h1>
-    <p>{{ seo_description }}</p>
-  </section>
   <canvas id="stars-canvas" aria-hidden="true"></canvas>
   <div class="layer-vignette" aria-hidden="true"></div>
 
   <main>
     <section class="hero">
       <h1 class="logo">AstroScan-Chohra</h1>
-      <p class="h2">L'Observatoire Intelligent de l'Algérie</p>
-      <p class="sub">ISS en direct · Voyager · Météo spatiale · IA</p>
+      <h2>Observatoire spatial en temps réel</h2>
+      <h2>Données ISS, météo spatiale et intelligence artificielle</h2>
 
       <p class="visit-line" id="visit-hero">
         <strong id="visit-num">000 000</strong> visiteurs du monde entier
