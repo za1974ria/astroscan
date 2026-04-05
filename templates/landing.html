@@ -318,7 +318,6 @@
       <p class="creator">Projet développé par Zakaria Chohra</p>
       <div class="links">
         <a href="/portail">Portail</a>
-        <a href="/dashboard-v2">Dashboard v2</a>
         <a href="https://github.com/" rel="noopener noreferrer" target="_blank">GitHub</a>
       </div>
     </footer>
@@ -365,18 +364,15 @@
   loop();
 })();
 
-function formatSix(n) {
-  var v = Math.max(0, parseInt(n, 10) || 0);
-  var s = String(v).padStart(6, '0');
-  return s.slice(0, 3) + ' ' + s.slice(3);
-}
-
 function setVisits(count) {
-  var t = formatSix(count);
+  var visits = Math.max(0, parseInt(count, 10) || 0);
+  var rounded = Math.floor(visits / 100) * 100;
+  var formatted = String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  var label = '+ de ' + formatted;
   var a = document.getElementById('visit-num');
   var b = document.getElementById('visit-stat');
-  if (a) a.textContent = t;
-  if (b) b.textContent = t;
+  if (a) a.textContent = label;
+  if (b) b.textContent = label;
 }
 
 function loadVisits() {
@@ -424,14 +420,3 @@ document.addEventListener('DOMContentLoaded', function () {
   </script>
 </body>
 </html>
-<title>AstroScan-Chohra | Observatoire Spatial Intelligent IA</title>
-
-<meta name="description" content="AstroScan-Chohra est un observatoire spatial intelligent basé sur l’intelligence artificielle. Suivez l’ISS en direct, la météo spatiale et les sondes Voyager en temps réel.">
-
-<meta property="og:title" content="AstroScan-Chohra | Observatoire Spatial Intelligent IA">
-<meta property="og:description" content="Plateforme d'observation spatiale avec IA : ISS en direct, météo spatiale, Voyager.">
-<meta property="og:image" content="https://astroscan.space/static/preview.png">
-
-<meta name="twitter:title" content="AstroScan-Chohra | Observatoire Spatial IA">
-<meta name="twitter:description" content="Suivez l’ISS, la météo spatiale et les sondes Voyager avec AstroScan-Chohra.">
-<meta name="twitter:image" content="https://astroscan.space/static/preview.png">
