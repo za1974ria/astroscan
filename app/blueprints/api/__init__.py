@@ -1,5 +1,6 @@
 """Blueprint API — documentation Swagger + spec OpenAPI."""
 from flask import Blueprint, render_template, jsonify
+from services.cache_service import cache_status
 
 bp = Blueprint("api_docs", __name__)
 
@@ -96,3 +97,9 @@ def api_docs():
 @bp.route("/api/spec.json")
 def api_spec_json():
     return jsonify(API_SPEC)
+
+
+@bp.route("/api/cache/status")
+def api_cache_status():
+    """Etat actuel du cache Redis : entrees, TTL, backend (admin/monitoring)."""
+    return jsonify(cache_status())
