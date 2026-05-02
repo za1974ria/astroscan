@@ -126,3 +126,17 @@ def api_admin_circuit_breakers():
             "closed": sum(1 for s in statuses if s["state"] == "CLOSED"),
         },
     })
+
+
+
+@bp.route("/api/version")
+def api_version():
+    """Version metadata for AstroScan."""
+    from datetime import datetime
+    return jsonify({
+        "ok": True,
+        "name": "AstroScan",
+        "version": "1.0.0",
+        "status": "production-ready",
+        "timestamp": datetime.utcnow().isoformat(),
+    })

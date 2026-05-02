@@ -2526,15 +2526,6 @@ API_SPEC = {
 
 
 
-@app.route("/api/version")
-def api_version():
-    return jsonify({
-        "ok": True,
-        "name": "AstroScan",
-        "version": "1.0.0",
-        "status": "production-ready",
-        "timestamp": datetime.utcnow().isoformat()
-    })
 
 
 @app.route("/api/modules-status")
