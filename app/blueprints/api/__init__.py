@@ -243,3 +243,14 @@ def api_owner_ips_get():
         return jsonify({"db_ips": result, "env_ips": env_ips})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+@bp.route("/ready", methods=["GET"])
+def ready():
+    """Indique si le worker a fini de charger l'app."""
+    try:
+        from station_web import server_ready
+        return jsonify({"ready": bool(server_ready)})
+    except Exception:
+        return jsonify({"ready": False})
