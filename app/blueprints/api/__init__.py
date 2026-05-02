@@ -140,3 +140,52 @@ def api_version():
         "status": "production-ready",
         "timestamp": datetime.utcnow().isoformat(),
     })
+
+
+
+@bp.route("/api/tle/status", methods=["GET"])
+def api_tle_status():
+    """Retourne l'etat actuel du cache TLE connecte/cache/simulation."""
+    from station_web import TLE_CACHE
+    try:
+        return jsonify({
+            "status": TLE_CACHE.get("status"),
+            "source": TLE_CACHE.get("source"),
+            "last_refresh_iso": TLE_CACHE.get("last_refresh_iso"),
+            "count": TLE_CACHE.get("count"),
+            "error": TLE_CACHE.get("error"),
+        })
+    except Exception as e:
+        log.warning(f"/api/tle/status: {e}")
+        return jsonify({
+            "status": "error",
+            "source": None,
+            "last_refresh_iso": None,
+            "count": 0,
+            "error": str(e),
+        })
+
+
+@bp.route("/api/tle/active", methods=["GET"])
+def api_tle_active():
+    """Retourne les TLE actifs depuis le cache connecte/disque/simulation."""
+    from station_web import TLE_CACHE
+    try:
+        return jsonify({
+            "status": TLE_CACHE.get("status"),
+            "source": TLE_CACHE.get("source"),
+            "last_refresh_iso": TLE_CACHE.get("last_refresh_iso"),
+            "count": TLE_CACHE.get("count"),
+            "items": TLE_CACHE.get("items") or [],
+            "error": TLE_CACHE.get("error"),
+        })
+    except Exception as e:
+        log.warning(f"/api/tle/active: {e}")
+        return jsonify({
+            "status": "error",
+            "source": None,
+            "last_refresh_iso": None,
+            "count": 0,
+            "items": [],
+            "error": str(e),
+        })

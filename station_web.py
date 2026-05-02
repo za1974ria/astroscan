@@ -2670,50 +2670,8 @@ def selftest():
 
 
 
-@app.route('/api/tle/status', methods=['GET'])
-def api_tle_status():
-    """Retourne l'état actuel du cache TLE connecté/caché/simulation."""
-    try:
-        return jsonify({
-            "status": TLE_CACHE.get("status"),
-            "source": TLE_CACHE.get("source"),
-            "last_refresh_iso": TLE_CACHE.get("last_refresh_iso"),
-            "count": TLE_CACHE.get("count"),
-            "error": TLE_CACHE.get("error"),
-        })
-    except Exception as e:
-        log.warning(f"/api/tle/status: {e}")
-        return jsonify({
-            "status": "error",
-            "source": None,
-            "last_refresh_iso": None,
-            "count": 0,
-            "error": str(e),
-        })
 
 
-@app.route('/api/tle/active', methods=['GET'])
-def api_tle_active():
-    """Retourne les TLE actifs depuis le cache connecté/disque/simulation."""
-    try:
-        return jsonify({
-            "status": TLE_CACHE.get("status"),
-            "source": TLE_CACHE.get("source"),
-            "last_refresh_iso": TLE_CACHE.get("last_refresh_iso"),
-            "count": TLE_CACHE.get("count"),
-            "items": TLE_CACHE.get("items") or [],
-            "error": TLE_CACHE.get("error"),
-        })
-    except Exception as e:
-        log.warning(f"/api/tle/active: {e}")
-        return jsonify({
-            "status": "error",
-            "source": None,
-            "last_refresh_iso": None,
-            "count": 0,
-            "items": [],
-            "error": str(e),
-        })
 
 
 @app.route('/api/tle/refresh', methods=['POST'])
