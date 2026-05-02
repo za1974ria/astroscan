@@ -490,6 +490,9 @@ app.register_blueprint(pages_bp)
 from app.blueprints.main import bp as main_bp
 app.register_blueprint(main_bp)
 
+from app.blueprints.system import bp as system_bp
+app.register_blueprint(system_bp)
+
 
 @app.context_processor
 def _inject_seo_site_description():
@@ -8632,16 +8635,6 @@ def api_dsn():
             })
 
 
-@app.route('/api/system-status')
-def api_system_status():
-    """Mode démo stable : statut système forcé ONLINE."""
-    return jsonify({
-        "ok": True,
-        "status": "online",
-        "master": "ONLINE",
-        "aegis": "ACTIVE",
-        "modules": "ALL_OPERATIONAL"
-    })
 
 
 @app.route('/api/system-status/cache')
@@ -8663,27 +8656,6 @@ def api_system_status_cache():
         ), 500
 
 
-@app.route('/api/system-alerts')
-def api_system_alerts():
-    """Alertes basées sur le cache système uniquement (core/alert_engine)."""
-    try:
-        from core import alert_engine as _alerts
-
-        return jsonify(_alerts.analyze_system_alerts(STATION))
-    except Exception as e:
-        log.warning("api/system-alerts: %s", e)
-        return jsonify(
-            {
-                "alerts": [
-                    {
-                        "level": "critical",
-                        "message": "Alert engine failure",
-                    }
-                ],
-                "count": 1,
-                "global_status": "unknown",
-            }
-        ), 500
 
 
 @app.route('/api/system-heal', methods=['POST'])
@@ -8698,16 +8670,6 @@ def api_system_heal():
         return jsonify({"actions": [], "count": 0, "error": str(e)}), 500
 
 
-@app.route('/api/system-notifications')
-def api_system_notifications():
-    """Notifications dérivées d'alert_engine uniquement (core/notification_engine)."""
-    try:
-        from core import notification_engine as _notify
-
-        return jsonify(_notify.check_and_notify(STATION))
-    except Exception as e:
-        log.warning("api/system-notifications: %s", e)
-        return jsonify({"notifications": [], "count": 0, "error": str(e)}), 500
 
 
 @app.route('/globe')
