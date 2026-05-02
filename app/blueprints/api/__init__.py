@@ -1,6 +1,9 @@
 """Blueprint API — documentation Swagger + spec OpenAPI."""
 from flask import Blueprint, render_template, jsonify
 from services.cache_service import cache_status
+from services.circuit_breaker import all_status as cb_all_status
+import os
+from flask import request
 
 bp = Blueprint("api_docs", __name__)
 
@@ -103,3 +106,23 @@ def api_spec_json():
 def api_cache_status():
     """Etat actuel du cache Redis : entrees, TTL, backend (admin/monitoring)."""
     return jsonify(cache_status())
+
+
+@bp.route("/api/admin/circuit-breakers")
+def api_admin_circuit_breakers():
+    """Etat des circuit breakers - Bearer token requis (ASTROSCAN_ADMIN_TOKEN)."""
+    auth = request.headers.get("Authorization", "")
+    expected = (os.environ.get("ASTROSCAN_ADMIN_TOKEN") or "").strip()
+    if expected and auth != f"Bearer {expected}":
+        return jsonify({"error": "Unauthorized"}), 401
+    statuses = cb_all_status()
+    return jsonify({
+        "ok": True,
+        "circuit_breakers": statuses,
+        "summary": {
+            "total": len(statuses),
+            "open": sum(1 for s in statuses if s["state"] == "OPEN"),
+            "half_open": sum(1 for s in statuses if s["state"] == "HALF_OPEN"),
+            "closed": sum(1 for s in statuses if s["state"] == "CLOSED"),
+        },
+    })
