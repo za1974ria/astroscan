@@ -254,3 +254,11 @@ def ready():
         return jsonify({"ready": bool(server_ready)})
     except Exception:
         return jsonify({"ready": False})
+
+
+
+@bp.route("/api/satellites")
+def api_satellites():
+    """Liste des satellites disponibles."""
+    from station_web import list_satellites
+    return jsonify({"available": list_satellites()})

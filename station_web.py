@@ -2530,13 +2530,6 @@ API_SPEC = {
 
 
 
-@app.route("/ready", methods=["GET"])
-def ready():
-    """Indique si le worker a fini de charger l'app (éviter /status trop tôt après restart)."""
-    try:
-        return jsonify({"ready": bool(server_ready)})
-    except Exception:
-        return jsonify({"ready": False})
 
 
 @app.route('/health', methods=['GET'])
@@ -4176,9 +4169,6 @@ def api_iss():
     )
 
 
-@app.route('/api/satellites')
-def api_satellites():
-    return jsonify({"available": list_satellites()})
 
 
 @app.route('/api/accuracy/history')
