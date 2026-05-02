@@ -12,7 +12,7 @@ Migration depuis station_web.py (CTO Critique 3 - Monolith reduction).
 import logging
 import sqlite3
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, redirect, request
 
 log = logging.getLogger(__name__)
 
@@ -69,3 +69,28 @@ def get_visits():
         return jsonify({"count": row[0] if row else 0})
     except Exception as e:
         return jsonify({"count": 0, "error": str(e)})
+
+
+
+@bp.route("/api/visitors/snapshot")
+def api_visitors_snapshot():
+    """REST one-shot : meme payload que le SSE - polling fallback."""
+    from station_web import get_global_stats
+    try:
+        exclude_my_ip = (request.args.get("exclude_my_ip", "1") or "0").strip().lower() in (
+            "1", "true", "yes", "on",
+        )
+        return jsonify(get_global_stats(exclude_my_ip=exclude_my_ip))
+    except Exception as e:
+        log.warning("visitors/snapshot: %s", e)
+        return jsonify({
+            "error": str(e), "total": 0, "online_now": 0, "top_countries": [],
+            "last_connections": [], "heatmap": [], "humans_total": 0,
+            "bots_total": 0, "humans_today": 0,
+        })
+
+
+@bp.route("/api/visitors/connection-time")
+def api_visitors_connection_time_legacy():
+    """Redirige 301 vers la version underscore (URL canonique)."""
+    return redirect("/api/visitors/connection_time", code=301)
