@@ -181,7 +181,7 @@ git clone https://github.com/za1974ria/astroscan
 cd astroscan
 pip install -r requirements.txt
 cp .env.example .env  # Add your API keys
-python station_web.py
+gunicorn wsgi:app --workers 4 --threads 4 --bind 127.0.0.1:5003
 ```
 
 **Required API Keys** (free tiers available):

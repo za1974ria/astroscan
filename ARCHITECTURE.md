@@ -42,7 +42,7 @@ L'architecture suit le **patron modulaire Flask Blueprints** avec ségrégation 
 ┌──────────────────────────────────────────────────────────────────┐
 │              GUNICORN (4 workers × 4 threads)                    │
 │              ─────────────────────────────────                   │
-│              FLASK APPLICATION (station_web:app)                 │
+│              FLASK APPLICATION (wsgi:app → station_web:app)                   │
 │                                                                  │
 │   ┌──────────────────────────────────────────────────────┐      │
 │   │  COUCHE BLUEPRINTS — Architecture modulaire          │      │
@@ -261,6 +261,45 @@ Chaque migration prévoit une **commande de rollback prête à l'emploi** utilis
 
 ---
 
+
+### 8.4 Conformité CTO — Phase 0 (02/05/2026)
+
+Suite à un audit CTO identifiant 7 anomalies (3 critiques, 2 élevées, 2 moyennes), une Phase 0 de remédiation a été lancée et progresse selon le protocole de validation triangulaire :
+
+| Anomalie CTO                    | Gravité  | Statut              | Commit    |
+|---------------------------------|----------|---------------------|-----------|
+| Double entrée wsgi/station_web  | Critique | ✅ Résolu           | 7f5786e   |
+| sentry-sdk non déclaré          | Élevée   | ✅ Résolu           | 7f5786e   |
+| Documentation alignée           | Moyenne  | 🔄 En cours         | -         |
+| orbit_sgp4 doublons             | Moyenne  | ⏳ Planifié         | -         |
+| Cache/CB par worker (Redis)     | Critique | ⏳ Planifié         | -         |
+| Monolithe 12k lignes            | Critique | 🔄 Continu (10%)    | continu   |
+| SQLite + lock global            | Élevée   | ⏳ Reporté (trafic) | -         |
+
+**Résolution CTO #1 (Critique) — Unification entrée Gunicorn :**
+
+- `wsgi.py` est désormais l'**entrée canonique** : `gunicorn wsgi:app`
+- Alias propre : `from station_web import app` (préserve les 8 Blueprints + threads daemon)
+- systemd basculé : `ExecStart` utilise `wsgi:app` au lieu de `station_web:app`
+- Validation post-bascule : 11/11 endpoints HTTP 200, 264 routes intactes
+- Élimine le risque "confusion déploiement" identifié par l'audit
+
+**Résolution CTO #2 (Élevée) — Dépendances déclarées :**
+
+- `sentry-sdk==2.58.0` ajouté à `requirements.txt`
+- Module utilisé en production (`station_web.py:31`) mais non déclaré
+- Élimine le risque "crash après réinstallation"
+- Permet la portabilité Docker/CI/CD
+
+**Backups Phase 0 (rollback toujours possible) :**
+
+- `wsgi.py.bak_cto1_20260502_1348`
+- `astroscan.service.bak_cto1_20260502_1406`
+- `requirements.txt.bak_cto2_20260502_1408`
+- `README.md.bak_cto_moy2_20260502_1421`
+- `ARCHITECTURE.md.bak_cto_moy2_20260502_1421`
+
+---
 ## 9. ROADMAP TECHNIQUE
 
 ### 9.1 Court terme (sprint en cours)
