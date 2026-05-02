@@ -493,6 +493,9 @@ app.register_blueprint(main_bp)
 from app.blueprints.system import bp as system_bp
 app.register_blueprint(system_bp)
 
+from app.blueprints.analytics import bp as analytics_bp
+app.register_blueprint(analytics_bp)
+
 
 @app.context_processor
 def _inject_seo_site_description():
@@ -2521,15 +2524,6 @@ API_SPEC = {
 
 # ────────────────────────────────────────────────────────────────────────────
 
-@app.route('/api/visits', methods=['GET'])
-def api_visits_get():
-    """Retourne le nombre actuel de visites."""
-    try:
-        count = _get_visits_count()
-        return jsonify({'count': count})
-    except Exception as e:
-        log.warning(f"api/visits: {e}")
-        return jsonify({'count': 0})
 
 
 @app.route("/api/version")
@@ -2683,15 +2677,6 @@ def selftest():
         )
 
 
-@app.route('/api/visits/increment', methods=['POST'])
-def api_visits_increment():
-    """Incrémente le compteur et retourne la nouvelle valeur."""
-    try:
-        count = _increment_visits()
-        return jsonify({'count': count})
-    except Exception as e:
-        log.warning(f"api/visits/increment: {e}")
-        return jsonify({'count': _get_visits_count()})
 
 
 @app.route('/api/tle/status', methods=['GET'])
@@ -10385,20 +10370,6 @@ def api_stellarium():
     from flask import jsonify
     return jsonify(data)
 
-@app.route('/api/visits/reset', methods=['POST'])
-def reset_visits():
-    """Reset compteur de visites — admin seulement."""
-    try:
-        import sqlite3
-        db = '/root/astro_scan/data/archive_stellaire.db'
-        conn = sqlite3.connect(db)
-        old = conn.execute('SELECT count FROM visits WHERE id=1').fetchone()
-        conn.execute('UPDATE visits SET count = 0 WHERE id=1')
-        conn.commit()
-        conn.close()
-        return jsonify({'ok': True, 'old_count': old[0], 'new_count': 0})
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 # ══════════════════════════════════════════════════════════════
@@ -10571,18 +10542,6 @@ def api_analytics_summary():
         log.warning("api_analytics_summary: %s", e)
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/visits/count')
-def get_visits():
-    """Retourne le compteur de visites actuel."""
-    try:
-        import sqlite3
-        db = '/root/astro_scan/data/archive_stellaire.db'
-        conn = sqlite3.connect(db)
-        row = conn.execute('SELECT count FROM visits WHERE id=1').fetchone()
-        conn.close()
-        return jsonify({'count': row[0] if row else 0})
-    except Exception as e:
-        return jsonify({'count': 0, 'error': str(e)})
 
 # ── GEO-IP TRACKER ───────────────────────────────────────
 import sqlite3 as _sqlite3
