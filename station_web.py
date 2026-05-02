@@ -10564,19 +10564,6 @@ def api_visitors_globe_data():
         return jsonify({"ok": False, "points": [], "error": str(e)})
 
 
-@app.route("/api/visitors/snapshot")
-def api_visitors_snapshot():
-    """REST one-shot : même payload que le SSE — utilisé pour le polling fallback."""
-    try:
-        exclude_my_ip = (request.args.get("exclude_my_ip", "1") or "0").strip().lower() in (
-            "1", "true", "yes", "on",
-        )
-        return jsonify(get_global_stats(exclude_my_ip=exclude_my_ip))
-    except Exception as e:
-        log.warning("visitors/snapshot: %s", e)
-        return jsonify({"error": str(e), "total": 0, "online_now": 0, "top_countries": [],
-                        "last_connections": [], "heatmap": [], "humans_total": 0,
-                        "bots_total": 0, "humans_today": 0})
 
 
 @app.route("/api/visitors/stream")
@@ -10749,10 +10736,6 @@ def api_visitors_stats():
         return jsonify({"error": str(e)})
 
 
-@app.route("/api/visitors/connection-time")
-def api_visitors_connection_time_legacy():
-    """Redirige 301 vers la version underscore (URL canonique)."""
-    return redirect("/api/visitors/connection_time", code=301)
 
 
 @app.route("/api/visitors/connection_time")
