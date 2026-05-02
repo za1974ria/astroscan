@@ -57,3 +57,63 @@ def api_system_notifications():
     except Exception as e:
         log.warning("api/system-notifications: %s", e)
         return jsonify({"notifications": [], "count": 0, "error": str(e)}), 500
+
+
+
+@bp.route("/api/system/server-info")
+def server_info():
+    """Server infrastructure metadata (Hetzner Hillsboro Oregon US-West)."""
+    return jsonify({
+        "ip": "5.78.153.17",
+        "provider": "Hetzner",
+        "status": "ONLINE",
+        "zone": "EU",
+        "ok": True,
+    })
+
+
+
+@bp.route("/api/system/diagnostics")
+def system_diagnostics():
+    """Diagnostics systeme : memoire, CPU, cache - monitoring operationnel."""
+    import time
+    from station_web import START_TIME
+    from services.cache_service import cache_status
+    try:
+        import psutil
+        proc = psutil.Process()
+        memory_mb = round(proc.memory_info().rss / 1024 / 1024, 2)
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+    except Exception:
+        memory_mb = 0
+        cpu_percent = 0
+    return jsonify({
+        "system": "Orbital-Chohra",
+        "status": "online",
+        "uptime": int(time.time() - START_TIME),
+        "memory_mb": memory_mb,
+        "cpu_percent": cpu_percent,
+        "cache_entries": cache_status()["api_cache"]["count"],
+    })
+
+
+
+@bp.route("/api/system/status")
+def api_system_status_orbital():
+    """Etat du systeme Orbital-Chohra - sante, heartbeat et uptime."""
+    import time
+    from station_web import START_TIME
+    modules_active = [
+        "portail", "observatoire", "galerie", "vision", "scientific", "lab",
+        "research", "research_center", "space", "dashboard", "overlord_live",
+    ]
+    return jsonify({
+        "system": "Orbital-Chohra",
+        "status": "online",
+        "modules": len(modules_active),
+        "apis": 10,
+        "timestamp": time.time(),
+        "uptime": int(time.time() - START_TIME),
+        "version": "1.0",
+        "modules_list": modules_active,
+    })

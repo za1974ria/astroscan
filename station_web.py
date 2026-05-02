@@ -10239,45 +10239,8 @@ def space_intelligence_page():
     return render_template('space_intelligence.html')
 
 
-@app.route('/api/system/diagnostics')
-def system_diagnostics():
-    """Diagnostics système : mémoire, CPU, cache — pour monitoring opérationnel."""
-    try:
-        import psutil
-        proc = psutil.Process()
-        memory_mb = round(proc.memory_info().rss / 1024 / 1024, 2)
-        cpu_percent = psutil.cpu_percent(interval=0.1)
-    except Exception:
-        memory_mb = 0
-        cpu_percent = 0
-    return jsonify({
-        'system': 'Orbital-Chohra',
-        'status': 'online',
-        'uptime': int(time.time() - START_TIME),
-        'memory_mb': memory_mb,
-        'cpu_percent': cpu_percent,
-        'cache_entries': cache_status()["api_cache"]["count"],
-    })
 
 
-@app.route('/api/system/status')
-def api_system_status_orbital():
-    """État du système Orbital-Chohra — santé, heartbeat et uptime (route /api/system/status)."""
-    system_log("System status check")
-    modules_active = [
-        'portail', 'observatoire', 'galerie', 'vision', 'scientific', 'lab',
-        'research', 'research_center', 'space', 'dashboard', 'overlord_live',
-    ]
-    return jsonify({
-        'system': 'Orbital-Chohra',
-        'status': 'online',
-        'modules': len(modules_active),
-        'apis': 10,
-        'timestamp': time.time(),
-        'uptime': int(time.time() - START_TIME),
-        'version': '1.0',
-        'modules_list': modules_active,
-    })
 
 
 @app.route('/favicon.ico')
@@ -11665,15 +11628,6 @@ def meteo_page():
     return render_template('meteo_reel.html')
 
 
-@app.route('/api/system/server-info')
-def server_info():
-    return jsonify({
-        "ip": "5.78.153.17",
-        "provider": "Hetzner",
-        "status": "ONLINE",
-        "zone": "EU",
-        "ok": True
-    })
 
 
 @app.route('/control')
