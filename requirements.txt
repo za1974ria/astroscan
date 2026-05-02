@@ -30,3 +30,4 @@ simple-websocket==1.1.0
 redis>=5.0.0,<6
 sgp4>=2.21,<3
 skyfield>=1.46,<2
+sentry-sdk==2.58.0
