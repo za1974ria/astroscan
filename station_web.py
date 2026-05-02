@@ -10294,20 +10294,6 @@ def api_stellarium():
 # OWNER IPs — gestion des IPs propriétaire via API
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/api/owner-ips', methods=['GET'])
-def api_owner_ips_get():
-    """Liste les IPs propriétaire (DB + env)."""
-    try:
-        conn = _get_db_visitors()
-        rows = conn.execute(
-            "SELECT id, ip, label, added_at FROM owner_ips ORDER BY added_at DESC"
-        ).fetchall()
-        conn.close()
-        result = [{"id": r[0], "ip": r[1], "label": r[2], "added_at": r[3]} for r in rows]
-        env_ips = [x.strip() for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(",") if x.strip()]
-        return jsonify({"db_ips": result, "env_ips": env_ips})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/owner-ips', methods=['POST'])
