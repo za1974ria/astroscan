@@ -25,6 +25,24 @@ ORBITAL-CHOHRA (also known as **ASTRO-SCAN**) is a free, open-access web platfor
 
 ---
 
+## 🆕 Latest Update — May 2, 2026
+
+**Major architectural refactoring — 8 active Flask Blueprints in production**
+
+In a single day, the 12,159-line Flask monolith was refactored into a modular Blueprint architecture with **zero service regression**:
+
+- ✅ **4 latent bugs** fixed (Phase 2A)
+- ✅ **7 successive Blueprint migrations** (Phase 2B)
+- ✅ **8 active Blueprints**: seo, apod, sdr, iss, i18n, api, pages, main
+- ✅ **26 modular routes** (10% of 260 monolith routes)
+- ✅ **11/11 critical endpoints** consistently returning HTTP 200
+- ✅ **10+ timestamped backups** for full traceability
+- ✅ Triangular validation protocol (Design → Preparation → Application)
+
+📐 **Full architecture documentation: [ARCHITECTURE.md](./ARCHITECTURE.md)**
+
+---
+
 ## ✨ Key Features
 
 ### 🛸 Live Space Tracking
@@ -69,7 +87,7 @@ ORBITAL-CHOHRA
 ├── Backend          Flask + Gunicorn (Python)
 ├── Database         SQLite (archive_stellaire.db)
 ├── Reverse Proxy    Nginx + Let's Encrypt (HTTPS)
-├── Hosting          Hetzner Cloud (Helsinki, Finland)
+├── Hosting          Hetzner Cloud (Hillsboro, Oregon, US-West)
 ├── Domain           astroscan.space (OVH) + DuckDNS
 ├── Analytics        Google Analytics GA4
 └── PWA              Android-installable (Service Worker v140)
@@ -131,7 +149,7 @@ A global search confirms: **no equivalent platform exists** combining all of the
 **Zakaria Chohra**
 Independent Developer & Observatory Director
 📍 Tlemcen, Algeria (34.87°N, 1.32°E)
-🌐 Station IP: 5.78.153.17 (Hetzner Helsinki)
+🌐 Station IP: 5.78.153.17 (Hetzner Hillsboro, Oregon)
 
 *Built solo with Python, Flask, JavaScript, and AI assistance.*
 *Dedicated to the scientific community of the Arab and Francophone world.*
@@ -159,7 +177,7 @@ We welcome collaboration with:
 ## 🚀 Running Locally
 
 ```bash
-git clone https://github.com/[your-username]/orbital-chohra
+git clone https://github.com/za1974ria/astroscan
 cd orbital-chohra
 pip install -r requirements.txt
 cp .env.example .env  # Add your API keys
