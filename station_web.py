@@ -8637,23 +8637,6 @@ def api_dsn():
 
 
 
-@app.route('/api/system-status/cache')
-def api_system_status_cache():
-    """État DSN / Weather / SkyView depuis les snapshots data_core uniquement (aucun réseau)."""
-    try:
-        from core import system_status_engine as _sysst
-
-        return jsonify(_sysst.build_system_status_cache_payload(STATION))
-    except Exception as e:
-        log.warning("api/system-status/cache: %s", e)
-        return jsonify(
-            {
-                "dsn": {"status": "fallback", "source": "error", "stale": True},
-                "weather": {"status": "fallback", "source": "error", "stale": True},
-                "skyview": {"status": "fallback", "source": "error", "stale": True},
-                "global_status": "critical",
-            }
-        ), 500
 
 
 
