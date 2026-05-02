@@ -135,3 +135,16 @@ def api_system_status_cache():
             "skyview": {"status": "fallback", "source": "error", "stale": True},
             "global_status": "critical",
         }), 500
+
+
+
+@bp.route("/api/system-heal", methods=["POST"])
+def api_system_heal():
+    """Auto-healing controle : refresh cache DSN / meteo / SkyView (core/auto_heal_engine)."""
+    from station_web import STATION
+    try:
+        from core import auto_heal_engine as _heal
+        return jsonify(_heal.run_auto_heal(STATION))
+    except Exception as e:
+        log.warning("api/system-heal: %s", e)
+        return jsonify({"actions": [], "count": 0, "error": str(e)}), 500

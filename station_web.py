@@ -8641,16 +8641,6 @@ def api_dsn():
 
 
 
-@app.route('/api/system-heal', methods=['POST'])
-def api_system_heal():
-    """Auto-healing contrôlé : refresh cache DSN / météo / SkyView (core/auto_heal_engine)."""
-    try:
-        from core import auto_heal_engine as _heal
-
-        return jsonify(_heal.run_auto_heal(STATION))
-    except Exception as e:
-        log.warning("api/system-heal: %s", e)
-        return jsonify({"actions": [], "count": 0, "error": str(e)}), 500
 
 
 
