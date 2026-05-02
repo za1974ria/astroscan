@@ -178,7 +178,7 @@ We welcome collaboration with:
 
 ```bash
 git clone https://github.com/za1974ria/astroscan
-cd orbital-chohra
+cd astroscan
 pip install -r requirements.txt
 cp .env.example .env  # Add your API keys
 python station_web.py
