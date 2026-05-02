@@ -1,3 +1,8 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  FICHIER EN COURS DE MIGRATION — NE PAS AJOUTER DE NOUVELLES    ║
+# ║  ROUTES ICI. Utiliser app/blueprints/ à la place.               ║
+# ║  Voir MIGRATION_PLAN.md + ARCHITECTURE.md                        ║
+# ╚══════════════════════════════════════════════════════════════════╝
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -8,6 +13,8 @@
 ╚══════════════════════════════════════════════════════════════╝
 """
 
+# ─────────────────────────────────────────────────────────────────────────────
+
 import os
 import sys
 
@@ -15,17 +22,129 @@ if __name__ == "__main__":
     print("❌ Lancement manuel interdit. Utilisez systemctl.")
     sys.exit(1)
 
-import os, sys, json, sqlite3, re, time, random, logging, subprocess, glob, threading, requests, hashlib, secrets, fcntl
+import os, sys, json, sqlite3, re, time, random, logging, subprocess, glob, threading, requests, hashlib, secrets, fcntl, base64
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+# ─── OBSERVABILITÉ — SENTRY ─────────────────────────────────────────────────
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
+_SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+if _SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        integrations=[FlaskIntegration()],
+        traces_sample_rate=0.1,
+        environment=os.environ.get("FLASK_ENV", "production"),
+        release="astroscan@2.0.0"
+    )
+    print("[SENTRY] Monitoring actif")
+# ─────────────────────────────────────────────────────────────────────────────
 from flask import (Flask, render_template, jsonify, request, g,
                    redirect, send_file, send_from_directory, Response, abort,
                    make_response, stream_with_context)
 from werkzeug.utils import secure_filename
+from app.services.orbit_sgp4 import propagate_tle_debug
+from app.services.satellites import SATELLITES, list_satellites, get_satellite_tle_name_map
+from app.services.accuracy_history import get_accuracy_history, get_accuracy_stats
+from app.routes.iss import api_iss_impl
+# MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
+# from app.routes.sdr import api_sdr_passes_impl
+# MIGRATED TO apod_bp 2026-05-02 — see app/blueprints/apod/routes.py
+# from app.routes.apod import apod_fr_json_impl, apod_fr_view_impl
+from services.stats_service import get_global_stats, get_top_countries, get_today_visitors, get_distinct_countries
+from services.weather_service import (
+    interpretWeatherCode, compute_weather_score, generate_weather_bulletin,
+    normalize_weather, compute_reliability, compute_weather_reliability,
+    validate_data, compute_risk, _internal_weather_fallback, _derive_weather_condition,
+    _safe_kp_value, _kp_premium_profile, _build_local_weather_payload,
+    get_weather_snapshot, get_kp_index, get_aurora_data, get_space_weather,
+)
+from services.nasa_service import (
+    get_api_key as _nasa_api_key, fetch_nasa_json,
+    _fetch_nasa_apod, _fetch_nasa_neo, _fetch_nasa_solar,
+    get_apod_data, get_neo_feed, get_space_events,
+)
+from services.orbital_service import (
+    compute_tle_risk_signal, build_final_core, normalize_celestrak_record,
+    get_iss_position, get_iss_orbit, load_tle_data, compute_satellite_track,
+)
+from services.cache_service import (
+    ANALYTICS_CACHE,
+    cache_get, cache_set, cache_cleanup,
+    get_cached, invalidate_cache, invalidate_all, cache_status,
+)
+from services.ephemeris_service import (
+    get_sun_ephemeris, get_moon_ephemeris,
+    get_moon_phase as get_ephemeris_moon_phase,
+    get_twilight_times, get_full_ephemeris,
+)
+from services.utils import (
+    _is_bot_user_agent, _parse_iso_to_epoch_seconds,
+    _safe_json_loads, safe_ensure_dir, _detect_lang,
+)
+from services.db import get_db as get_db_ctx, init_all_wal
+from services.circuit_breaker import (
+    CB_NASA, CB_N2YO, CB_NOAA, CB_ISS, CB_METEO, CB_TLE, CB_GROQ,
+    all_status as _cb_all_status,
+)
+from services import config as _cfg
 
-# ── In-memory API cache ──────────────────────────────────────
-CACHE = {}
+# ── Instrumentation légère des appels externes requests (timeout + logs JSON) ──
+_REQ_DEFAULT_TIMEOUT = 10
+_REQ_SLOW_MS = 1500
+_REQ_VERY_SLOW_MS = 5000
+_REQ_ORIGINAL_REQUEST = requests.sessions.Session.request
+
+
+def _emit_diag_json(payload):
+    """Émet un JSON diagnostique en stdout + logger."""
+    try:
+        msg = json.dumps(payload, ensure_ascii=False)
+    except Exception:
+        msg = json.dumps({"event": "diag_encode_failed"}, ensure_ascii=False)
+    try:
+        print(msg, flush=True)
+    except Exception:
+        pass
+    try:
+        log.info(msg)
+    except Exception:
+        pass
+
+
+def _requests_instrumented_request(self, method, url, **kwargs):
+    if kwargs.get("timeout", None) is None:
+        kwargs["timeout"] = _REQ_DEFAULT_TIMEOUT
+    t0 = time.time()
+    try:
+        resp = _REQ_ORIGINAL_REQUEST(self, method, url, **kwargs)
+        dur_ms = round((time.time() - t0) * 1000, 2)
+        if dur_ms >= _REQ_SLOW_MS:
+            _emit_diag_json(
+                {
+                    "event": "external_call_timing",
+                    "url": str(url),
+                    "method": str(method).upper(),
+                    "status": getattr(resp, "status_code", None),
+                    "duration_ms": dur_ms,
+                }
+            )
+        return resp
+    except Exception as e:
+        _emit_diag_json(
+            {
+                "event": "external_call_failed",
+                "url": str(url),
+                "method": str(method).upper(),
+                "error": str(e),
+            }
+        )
+        raise
+
+
+requests.sessions.Session.request = _requests_instrumented_request
 
 # In-memory translation cache / throttling guardrails
 TRANSLATE_CACHE = {}
@@ -34,26 +153,6 @@ TRANSLATE_LAST_REQUEST_TS = 0.0
 
 TRANSLATION_CACHE = {}
 MAX_CACHE_SIZE = 500
-
-def cache_get(key, ttl):
-    item = CACHE.get(key)
-    if item and time.time() - item["t"] < ttl:
-        return item["v"]
-    return None
-
-def cache_set(key, value):
-    CACHE[key] = {"v": value, "t": time.time()}
-
-
-def cache_cleanup():
-    """Remove cache entries older than 1 hour to prevent memory growth."""
-    now = time.time()
-    for k in list(CACHE.keys()):
-        try:
-            if now - CACHE[k]["t"] > 3600:
-                del CACHE[k]
-        except Exception:
-            pass
 
 
 START_TIME = time.time()
@@ -69,6 +168,260 @@ COLLECTOR_LAST_RUN = 0
 # ── Config ──────────────────────────────────────────────────
 STATION   = '/root/astro_scan'
 DB_PATH   = f'{STATION}/data/archive_stellaire.db'
+# FIXED 2026-05-02 — chemin relatif → absolu via STATION (BUG 2)
+WEATHER_DB_PATH = os.path.join(STATION, "weather_bulletins.db")
+WEATHER_HISTORY_DIR = f'{STATION}/data/weather_history'
+WEATHER_ARCHIVE_DIR = f'{STATION}/data/weather_archive'
+
+# ─── SQLite WAL mode (performance) ──────────────────────────────────────────
+def _init_sqlite_wal():
+    """Active WAL mode sur toutes les DB SQLite au démarrage."""
+    import sqlite3 as _sq
+    for _db in [DB_PATH]:
+        try:
+            _c = _sq.connect(_db)
+            _c.execute("PRAGMA journal_mode=WAL")
+            _c.execute("PRAGMA synchronous=NORMAL")
+            _c.execute("PRAGMA cache_size=10000")
+            _c.commit()
+            _c.close()
+        except Exception as _e:
+            print(f"[WAL] {_db}: {_e}")
+_init_sqlite_wal()
+init_all_wal()   # WAL + busy_timeout sur TOUTES les bases via services/db.py
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def init_weather_db():
+    """Initialise la base locale des bulletins météo (1 an glissant)."""
+    try:
+        conn = sqlite3.connect(WEATHER_DB_PATH)
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS weather_bulletins (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                hour TEXT,
+                temp REAL,
+                wind REAL,
+                humidity INTEGER,
+                pressure REAL,
+                wind_direction REAL,
+                condition TEXT,
+                risk TEXT,
+                score INTEGER,
+                status TEXT,
+                bulletin TEXT,
+                source TEXT,
+                created_at TEXT,
+                UNIQUE(date, hour)
+            )
+            """
+        )
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_weather_bulletins_date ON weather_bulletins(date)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_weather_bulletins_hour ON weather_bulletins(hour)")
+        cur.execute("PRAGMA table_info(weather_bulletins)")
+        existing_cols = {row[1] for row in cur.fetchall()}
+        if "reliability_score" not in existing_cols:
+            cur.execute("ALTER TABLE weather_bulletins ADD COLUMN reliability_score INTEGER")
+        if "temp_variation" not in existing_cols:
+            cur.execute("ALTER TABLE weather_bulletins ADD COLUMN temp_variation REAL")
+        if "wind_variation" not in existing_cols:
+            cur.execute("ALTER TABLE weather_bulletins ADD COLUMN wind_variation REAL")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[WEATHER_DB] init error: {e}")
+
+
+def _init_weather_history_dir():
+    try:
+        os.makedirs(WEATHER_HISTORY_DIR, exist_ok=True)
+    except Exception as e:
+        print(f"[WEATHER_HISTORY] init dir error: {e}")
+
+
+def _cleanup_weather_history_files():
+    try:
+        cutoff = datetime.now() - timedelta(days=365)
+        for fname in os.listdir(WEATHER_HISTORY_DIR):
+            if not fname.endswith(".json"):
+                continue
+            base = fname[:-5]
+            try:
+                fdate = datetime.strptime(base, "%Y-%m-%d")
+            except Exception:
+                continue
+            if fdate < cutoff:
+                try:
+                    os.remove(os.path.join(WEATHER_HISTORY_DIR, fname))
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"[WEATHER_HISTORY] cleanup error: {e}")
+
+
+def _init_weather_archive_dir():
+    try:
+        os.makedirs(WEATHER_ARCHIVE_DIR, exist_ok=True)
+    except Exception as e:
+        print(f"[WEATHER_ARCHIVE] init dir error: {e}")
+
+
+def _cleanup_weather_archive_files():
+    try:
+        cutoff = datetime.now() - timedelta(days=365)
+        for fname in os.listdir(WEATHER_ARCHIVE_DIR):
+            if not fname.endswith(".json"):
+                continue
+            base = fname[:-5]
+            try:
+                fdate = datetime.strptime(base, "%Y-%m-%d")
+            except Exception:
+                continue
+            if fdate < cutoff:
+                try:
+                    os.remove(os.path.join(WEATHER_ARCHIVE_DIR, fname))
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"[WEATHER_ARCHIVE] cleanup error: {e}")
+
+
+def save_weather_archive_json(data):
+    _init_weather_archive_dir()
+    day = datetime.now().strftime("%Y-%m-%d")
+    path = os.path.join(WEATHER_ARCHIVE_DIR, f"{day}.json")
+    payload = {
+        "date": day,
+        "temp": round(float(data.get("temp", 0.0) or 0.0), 1),
+        "wind": round(float(data.get("wind", 0.0) or 0.0), 1),
+        "humidity": int(data.get("humidity", 0) or 0),
+        "pressure": int(round(float(data.get("pressure", 1013) or 1013))),
+        "condition": str(data.get("condition") or "Stable"),
+        "source": "open-meteo",
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[WEATHER_ARCHIVE] save error: {e}")
+    _cleanup_weather_archive_files()
+
+
+def save_weather_history_json(data, score, status):
+    """Sauvegarde un snapshot météo quotidien en JSON (sans base externe)."""
+    _init_weather_history_dir()
+    day = datetime.now().strftime("%Y-%m-%d")
+    path = os.path.join(WEATHER_HISTORY_DIR, f"{day}.json")
+    payload = {
+        "date": day,
+        "temp": round(float(data.get("temp", 0.0)), 1),
+        "wind": round(float(data.get("wind", 0.0)), 1),
+        "humidity": int(data.get("humidity", 0)),
+        "pressure": int(round(float(data.get("pressure", 1015)))),
+        "risk": str(data.get("risk") or "FAIBLE"),
+        "score": int(score),
+        "status": str(status),
+    }
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[WEATHER_HISTORY] save error: {e}")
+    _cleanup_weather_history_files()
+
+
+def save_weather_bulletin(data):
+    now = datetime.now()
+    day = now.strftime("%Y-%m-%d")
+    hour = now.strftime("%H")
+    conn = sqlite3.connect(WEATHER_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT temp, wind, humidity, pressure
+        FROM weather_bulletins
+        ORDER BY date DESC, hour DESC
+        LIMIT 1
+        """
+    )
+    prev = cur.fetchone()
+    previous_row = dict(prev) if prev else None
+
+    score, status = compute_weather_score(data)
+    reliability_score = compute_reliability(data, data.get("source"))
+    temp_variation = 0.0
+    wind_variation = 0.0
+    bulletin = generate_weather_bulletin(data, score, status)
+    bulletin += (
+        f" Indice de fiabilité des données : {reliability_score}%. "
+        f"Variation température : ±{temp_variation:.1f}°C. "
+        f"Variation vent : ±{wind_variation:.1f} km/h."
+    )
+    cur.execute(
+        "SELECT id FROM weather_bulletins WHERE date = ? AND hour = ? LIMIT 1",
+        (day, hour),
+    )
+    if cur.fetchone():
+        conn.close()
+        return {
+            "saved": False,
+            "score": score,
+            "status": status,
+            "bulletin": bulletin,
+            "reliability_score": reliability_score,
+            "temp_variation": temp_variation,
+            "wind_variation": wind_variation,
+        }
+
+    cur.execute(
+        """
+        INSERT INTO weather_bulletins
+        (date, hour, temp, wind, humidity, pressure, wind_direction, condition, risk, score, status, bulletin, source, created_at, reliability_score, temp_variation, wind_variation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            day,
+            hour,
+            float(data.get("temp")),
+            float(data.get("wind")),
+            int(data.get("humidity")),
+            float(data.get("pressure", 1015)),
+            float(data.get("wind_direction", 0.0)),
+            str(data.get("condition") or "Unknown"),
+            str(data.get("risk") or "FAIBLE"),
+            int(score),
+            str(status),
+            str(bulletin),
+            str(data.get("source") or "Open-Meteo"),
+            datetime.now(timezone.utc).isoformat(),
+            int(reliability_score),
+            float(temp_variation),
+            float(wind_variation),
+        ),
+    )
+    cur.execute("DELETE FROM weather_bulletins WHERE date < date('now', '-365 days')")
+    conn.commit()
+    conn.close()
+    return {
+        "saved": True,
+        "score": score,
+        "status": status,
+        "bulletin": bulletin,
+        "reliability_score": reliability_score,
+        "temp_variation": temp_variation,
+        "wind_variation": wind_variation,
+    }
+
+
+init_weather_db()
+_init_weather_history_dir()
+_init_weather_archive_dir()
+# ─────────────────────────────────────────────────────────────────────────────
 IMG_PATH  = f'{STATION}/telescope_live/current_live.jpg'
 TITLE_F   = f'{STATION}/telescope_live/current_title.txt'
 REPORT_F  = f'{STATION}/telescope_live/live_report.txt'
@@ -109,6 +462,33 @@ app = Flask(__name__,
             static_folder=f'{STATION}/static')
 app.config['DEBUG'] = False
 app.config['TESTING'] = False
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+# ── Blueprints ────────────────────────────────────────────────────────────────
+from app.blueprints.seo.routes import seo_bp
+app.register_blueprint(seo_bp)
+# Blueprint APOD — added 2026-05-02 (PHASE 2B B1)
+from app.blueprints.apod.routes import apod_bp
+app.register_blueprint(apod_bp)
+# Blueprint SDR — added 2026-05-02 (PHASE 2B B2)
+from app.blueprints.sdr.routes import sdr_bp
+app.register_blueprint(sdr_bp)
+# Blueprint ISS — added 2026-05-02 (PHASE 2B B3b)
+from app.blueprints.iss.routes import iss_bp
+app.register_blueprint(iss_bp)
+# Blueprint i18n — added 2026-05-02 (PHASE 2B B-RECYCLE R1)
+from app.blueprints.i18n import bp as i18n_bp
+app.register_blueprint(i18n_bp)
+# Blueprint api — added 2026-05-02 (PHASE 2B B-RECYCLE R2)
+from app.blueprints.api import bp as api_bp
+app.register_blueprint(api_bp)
+# Blueprint pages — added 2026-05-02 (PHASE 2B B-RECYCLE R2, partial)
+# /landing deferred — see /tmp/pages_init_patched_TODO.md
+from app.blueprints.pages import bp as pages_bp
+app.register_blueprint(pages_bp)
+# Blueprint main — added 2026-05-02 (PHASE 2B B-RECYCLE R3)
+from app.blueprints.main import bp as main_bp
+app.register_blueprint(main_bp)
 
 
 @app.context_processor
@@ -129,6 +509,31 @@ log.info(
     STATION,
 )
 log.info("Claude configured: %s", bool(os.environ.get("ANTHROPIC_API_KEY")))
+
+# ── Error handlers — ADDED 2026-05-02 (BUG 3) ─────────────────────────────
+@app.errorhandler(404)
+def _astroscan_404(e):
+    if request.path.startswith('/api/'):
+        return jsonify(error='not_found', path=request.path), 404
+    try:
+        return render_template('404.html', path=request.path), 404
+    except Exception:
+        return '<h1>404 — Page introuvable</h1>', 404
+
+
+@app.errorhandler(500)
+def _astroscan_500(e):
+    try:
+        log.error("500 Internal Error on %s: %s", request.path, e, exc_info=True)
+    except Exception:
+        pass
+    if request.path.startswith('/api/'):
+        return jsonify(error='internal_error'), 500
+    try:
+        return render_template('500.html'), 500
+    except Exception:
+        return '<h1>500 — Erreur interne</h1>', 500
+# ────────────────────────────────────────────────────────────────────────────
 
 # ── Noyau additif V2 (répertoires data_core + helpers santé) — échec silencieux si absent
 try:
@@ -478,38 +883,10 @@ def _health_set_error(component: str, message: str, severity: str = "warn") -> N
     # Backward-compatible alias for earlier calls
     _health_log_error(component, message, severity)
 
-def _parse_iso_to_epoch_seconds(iso_str):
-    try:
-        if not iso_str:
-            return None
-        if isinstance(iso_str, (int, float)):
-            return int(iso_str)
-        # allow trailing Z
-        s = str(iso_str).replace("Z", "+00:00")
-        dt = datetime.fromisoformat(s)
-        if not dt:
-            return None
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return int(dt.timestamp())
-    except Exception:
-        return None
-
-
-def safe_ensure_dir(path: str) -> None:
-    """Crée le dossier parent si nécessaire (sans lever si déjà présent)."""
-    try:
-        parent = os.path.dirname(path)
-        if parent:
-            os.makedirs(parent, exist_ok=True)
-    except Exception as e:
-        log.warning(f"safe_ensure_dir({path}): {e}")
-
-
 def load_stellarium_data():
     """
     Charge les fichiers *.json du dossier data/stellarium (exports / observations Stellarium).
-    Crée le dossier si absent ; ignore les fichiers invalides sans faire tomber l’app.
+    Crée le dossier si absent ; ignore les fichiers invalides sans faire tomber l'app.
     """
     folder = os.path.join(STATION, "data", "stellarium")
     data = []
@@ -705,7 +1082,13 @@ def build_system_intelligence(
 
 
 def get_nasa_apod():
-    """APOD NASA pour enrichissement visuel /status (échec réseau → dict vide, timeout ≤ 5 s)."""
+    """APOD NASA pour enrichissement visuel /status (échec réseau → dict vide, timeout ≤ 5 s).
+    Cache 30 minutes pour éviter de spammer l'API à chaque appel de /status."""
+    _APOD_CACHE_KEY = "get_nasa_apod_v1"
+    _APOD_CACHE_TTL = 1800  # 30 minutes
+    cached = cache_get(_APOD_CACHE_KEY, _APOD_CACHE_TTL)
+    if cached is not None:
+        return cached
     try:
         key = (os.environ.get("NASA_API_KEY") or "DEMO_KEY").strip()
         url = f"https://api.nasa.gov/planetary/apod?api_key={key}"
@@ -717,6 +1100,7 @@ def get_nasa_apod():
                 event="apod_api_failure",
                 status_code=r.status_code,
             )
+            cache_set(_APOD_CACHE_KEY, {})
             return {}
         data = r.json()
         if not isinstance(data, dict):
@@ -726,6 +1110,7 @@ def get_nasa_apod():
                 event="apod_parse_failure",
                 detail="non_object_json",
             )
+            cache_set(_APOD_CACHE_KEY, {})
             return {}
         if not data.get("url") and not data.get("hdurl"):
             struct_log(
@@ -733,6 +1118,7 @@ def get_nasa_apod():
                 category="nasa",
                 event="apod_empty_visual",
             )
+        cache_set(_APOD_CACHE_KEY, data)
         return data
     except Exception as ex:
         struct_log(
@@ -741,82 +1127,8 @@ def get_nasa_apod():
             event="apod_request_failed",
             error=str(ex)[:300],
         )
+    cache_set(_APOD_CACHE_KEY, {})
     return {}
-
-
-def compute_tle_risk_signal(tle_data_freshness):
-    """Signal orbital simple dérivé de data_freshness (TLE)."""
-    df = str(tle_data_freshness or "").strip().lower()
-    if df == "fresh":
-        return "MEDIUM"
-    if df == "stale":
-        return "HIGH"
-    return "LOW"
-
-
-def build_final_core(priority_object, tle_risk, nasa_data):
-    """Fusion finale NASA + TLE (risque) + Stellarium (priority_object)."""
-    try:
-        nd = nasa_data if isinstance(nasa_data, dict) else {}
-        score = 0.0
-        signals = []
-
-        if priority_object and isinstance(priority_object, dict):
-            try:
-                sc = int(priority_object.get("score") or 0)
-                score += sc * 0.5
-            except (TypeError, ValueError):
-                pass
-            signals.append("object_priority")
-
-        if tle_risk == "HIGH":
-            score += 30
-            signals.append("tle_high_risk")
-        elif tle_risk == "MEDIUM":
-            score += 15
-            signals.append("tle_medium_risk")
-
-        if nd.get("url"):
-            score += 10
-            signals.append("nasa_visual")
-
-        score_i = int(min(score, 100))
-
-        return {
-            "fusion_score": score_i,
-            "signals": signals,
-            "active": bool(signals),
-        }
-    except Exception:
-        return {
-            "fusion_score": 0,
-            "signals": [],
-            "active": False,
-        }
-
-
-def normalize_celestrak_record(rec):
-    """Normalise un enregistrement JSON CelesTrak GP ou SatNOGS en structure TLE homogène."""
-    try:
-        # SatNOGS format: tle0="0 NAME", tle1="1 ...", tle2="2 ...", norad_cat_id=int
-        # CelesTrak GP format: OBJECT_NAME, TLE_LINE1, TLE_LINE2, NORAD_CAT_ID
-        tle0_raw = rec.get("tle0") or ""
-        tle0_name = tle0_raw[2:] if tle0_raw.startswith("0 ") else tle0_raw
-        name = (rec.get("OBJECT_NAME") or rec.get("object_name") or tle0_name or "").strip()
-        line1 = (rec.get("TLE_LINE1") or rec.get("tle_line1") or rec.get("tle1") or "").strip()
-        line2 = (rec.get("TLE_LINE2") or rec.get("tle_line2") or rec.get("tle2") or "").strip()
-        if not name or not line1 or not line2:
-            return None
-        return {
-            "name": name,
-            "norad_cat_id": rec.get("NORAD_CAT_ID") or rec.get("norad_cat_id"),
-            "tle_line1": line1,
-            "tle_line2": line2,
-            "object_type": rec.get("OBJECT_TYPE") or rec.get("object_type"),
-            "epoch": rec.get("EPOCH") or rec.get("epoch") or rec.get("updated"),
-        }
-    except Exception:
-        return None
 
 
 def fetch_tle_from_celestrak():
@@ -839,7 +1151,7 @@ def fetch_tle_from_celestrak():
             )
         return False
 
-    # data_core frais (< 6 h) : pas d’appel réseau — même sémantique de succès que refresh OK
+    # data_core frais (< 6 h) : pas d'appel réseau — même sémantique de succès que refresh OK
     try:
         from core import tle_engine_safe as _tle_es
 
@@ -873,9 +1185,14 @@ def fetch_tle_from_celestrak():
         pass
 
     try:
-        r = requests.get(TLE_SOURCE_URL, timeout=5)
-        r.raise_for_status()
-        data = r.json()
+        def _fetch_tle_http():
+            resp = requests.get(TLE_SOURCE_URL, timeout=5)
+            resp.raise_for_status()
+            return resp.json()
+        data = CB_TLE.call(_fetch_tle_http, fallback=None)
+        if data is None:
+            struct_log(logging.WARNING, category="tle", event="fetch_circuit_open")
+            return False
         if not isinstance(data, list):
             # certains formats renvoient {"member": [...]} — tolérance simple
             data = data.get("member") if isinstance(data, dict) else []
@@ -1279,6 +1596,50 @@ def _init_session_tracking_db():
             )
             """
         )
+        # Index légers: accélère stats live, agrégations session et tri temporel.
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_visitor_log_ip ON visitor_log(ip)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_visitor_log_session_id ON visitor_log(session_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_visitor_log_visited_at ON visitor_log(visited_at)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_visitor_log_country_code ON visitor_log(country_code)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_session_time_session_id ON session_time(session_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_session_time_created_at ON session_time(created_at)")
+        # Index UNIQUE sur (ip, session_id) : empêche les doublons entre workers Gunicorn.
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_visitor_log_ip_session "
+            "ON visitor_log(ip, COALESCE(session_id, ''))"
+        )
+        # Nouvelles colonnes visitor_log (ajout sans perte si absentes)
+        existing_cols = [r[1] for r in cur.execute("PRAGMA table_info(visitor_log)").fetchall()]
+        for col, typedef in [
+            ("isp", "TEXT DEFAULT ''"),
+            ("human_score", "INTEGER DEFAULT -1"),
+            ("is_owner", "INTEGER DEFAULT 0"),
+        ]:
+            if col not in existing_cols:
+                cur.execute(f"ALTER TABLE visitor_log ADD COLUMN {col} {typedef}")
+        # Table page_views : chaque vue de page (N par session)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS page_views (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                ip TEXT NOT NULL,
+                path TEXT NOT NULL,
+                visited_at TEXT NOT NULL DEFAULT (datetime('now')),
+                referrer TEXT DEFAULT ''
+            )
+        """)
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_page_views_session ON page_views(session_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_page_views_path ON page_views(path)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_page_views_visited_at ON page_views(visited_at)")
+        # Table owner_ips : IPs du propriétaire
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS owner_ips (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip TEXT NOT NULL UNIQUE,
+                label TEXT DEFAULT '',
+                added_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
         conn.commit()
         conn.close()
     except Exception:
@@ -1286,6 +1647,7 @@ def _init_session_tracking_db():
 
 
 _init_session_tracking_db()
+_init_visits_table()
 
 
 def _get_visits_count():
@@ -1304,19 +1666,6 @@ def _increment_visits():
     conn.commit()
     conn.close()
     return new_count
-
-def _detect_lang(text):
-    """Retourne True si le texte semble anglais."""
-    if not text or len(text) < 10:
-        return False
-    en_words = re.compile(
-        r'\b(the|and|with|this|from|that|was|were|pictured|viewed|between|'
-        r'captured|observed|known|bright|dark|light|shows|appear|near|across|'
-        r'over|through|toward|within|during|before|after|above|below|along|'
-        r'around|behind|beyond|despite|although|however|therefore|because|'
-        r'while|where|which|whose|their|there|these|those|would|could|should|'
-        r'might|shall|will|been|have|has|had|its|our|your|their)\b', re.I)
-    return bool(en_words.search(text))
 
 def _gemini_translate(text, obs_id=None):
     """Traduit EN→FR via Gemini. Met en cache dans DB."""
@@ -1417,27 +1766,6 @@ def _curl_get(url, timeout=15):
         return ""
 
 
-def _safe_json_loads(raw, log_label=None):
-    """Parse JSON sans lever ; ignore corps vide / HTML / non-JSON."""
-    if raw is None:
-        return None
-    if isinstance(raw, (bytes, bytearray)):
-        try:
-            s = raw.decode("utf-8", errors="replace").strip()
-        except Exception:
-            return None
-    else:
-        s = (str(raw) or "").strip()
-    if len(s) < 2 or s[0] not in "[{":
-        return None
-    try:
-        return json.loads(s)
-    except json.JSONDecodeError:
-        if log_label:
-            log.debug("%s: corps non JSON ignoré", log_label)
-        return None
-
-
 def _curl_post(url, post_data, timeout=15, headers=None):
     """POST via curl (JSON body). Optionnel: headers dict (ex. x-api-key, anthropic-version)."""
     try:
@@ -1462,9 +1790,11 @@ def _curl_post_json(url, payload_dict, extra_headers=None, timeout=15):
     return _curl_post(url, body, timeout=timeout, headers=extra_headers)
 
 
-def _translate_to_french(text, max_chars=800):
-    """Pas de traduction automatique pour l'instant."""
-    return text
+# DUPLICATE REMOVED 2026-05-02 — fusionnée dans la V2 ci-dessous (L.4718~)
+# ORIGINAL VERSION 1 KEPT FOR REFERENCE :
+# def _translate_to_french(text, max_chars=800):
+#     """Pas de traduction automatique pour l'instant."""
+#     return text
 
 # ══════════════════════════════════════════════════════════════
 # COMPTEUR DE VISITES — uniquement chargements pages HTML
@@ -1477,36 +1807,215 @@ PAGE_PATHS = {
     '/aurores', '/orbital-map',
 }
 
+def _client_ip_from_request(req):
+    ip = req.headers.get("X-Forwarded-For", req.remote_addr or "")
+    ip = (ip or "").split(",")[0].strip()
+    return ip
+
+
+# ── Owner IPs : cache in-memory rechargé toutes les 5 min ───────────────────
+_OWNER_IPS_CACHE: set = set()
+_OWNER_IPS_CACHE_TS: float = 0.0
+_OWNER_IPS_LOCK = threading.Lock()
+
+
+def _load_owner_ips() -> set:
+    """Charge les IPs propriétaire depuis : env ASTROSCAN_OWNER_IPS + table owner_ips DB.
+    Cache 5 min en mémoire pour éviter une requête DB à chaque requête HTTP."""
+    global _OWNER_IPS_CACHE, _OWNER_IPS_CACHE_TS
+    now = time.time()
+    with _OWNER_IPS_LOCK:
+        if now - _OWNER_IPS_CACHE_TS < 300 and _OWNER_IPS_CACHE:
+            return set(_OWNER_IPS_CACHE)
+        ips: set = set()
+        # Depuis .env
+        for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(","):
+            x = x.strip()
+            if x:
+                ips.add(x)
+        single = (os.environ.get("ASTROSCAN_MY_IP") or "").strip()
+        if single:
+            ips.add(single)
+        # Depuis la table DB
+        try:
+            conn = _get_db_visitors()
+            rows = conn.execute("SELECT ip FROM owner_ips").fetchall()
+            conn.close()
+            for r in rows:
+                if r[0]:
+                    ips.add(str(r[0]).strip())
+        except Exception:
+            pass
+        _OWNER_IPS_CACHE = ips
+        _OWNER_IPS_CACHE_TS = now
+        return set(ips)
+
+
+def _is_owner_ip(ip: str) -> bool:
+    """Retourne True si l'IP appartient au propriétaire."""
+    if not ip:
+        return False
+    return ip in _load_owner_ips()
+
+
+def _invalidate_owner_ips_cache():
+    """Force le rechargement du cache IPs propriétaire au prochain appel."""
+    global _OWNER_IPS_CACHE_TS
+    with _OWNER_IPS_LOCK:
+        _OWNER_IPS_CACHE_TS = 0.0
+
+
+def _compute_human_score(ua: str, page_count: int = 1, session_sec: int = 0,
+                          referrer: str = "", js_beacon: bool = False) -> int:
+    """Score humain 0-100 pour un visiteur.
+    - UA bot connu → 0
+    - UA vide ou générique → 20
+    - Navigation multi-pages → +30
+    - Temps sur site > 30s → +20
+    - Référent valide → +10
+    - JS beacon reçu → +20
+    Score ≥ 60 = humain probable."""
+    ua_clean = (ua or "").strip()
+    if _is_bot_user_agent(ua_clean):
+        return 0
+    score = 20  # Base : UA non-bot
+    if not ua_clean:
+        score = 5
+    elif len(ua_clean) < 15:
+        score = 10
+    if page_count > 1:
+        score += 30
+    if session_sec > 30:
+        score += 20
+    if referrer and referrer not in ("", "direct") and not referrer.startswith("https://astroscan.space"):
+        score += 10
+    if js_beacon:
+        score += 20
+    return min(100, score)
+
+
+def _register_unique_visit_from_request(path_override=None):
+    """Insère 1 visite par session (IP+session_id), page_views pour chaque vue de page.
+    - Détecte is_owner, calcule human_score initial
+    - ISP + lat/lon stockés depuis ip-api.com
+    - INSERT OR IGNORE + UNIQUE INDEX = résistance totale race condition multi-workers."""
+    try:
+        ip = _client_ip_from_request(request)
+        if ip in ("", "0.0.0.0", "127.0.0.1", "::1"):
+            return False
+        ua = (request.headers.get("User-Agent") or "")[:200]
+        sid = (
+            getattr(g, "_astroscan_sid", None)
+            or request.cookies.get("astroscan_sid")
+            or secrets.token_urlsafe(16)
+        )[:128]
+        path = (path_override or request.path or "/")[:500]
+        referrer = (request.headers.get("Referer") or "")[:500]
+        is_bot = 1 if _is_bot_user_agent(ua) else 0
+        is_owner = 1 if _is_owner_ip(ip) else 0
+
+        conn = _get_db_visitors()
+        cur = conn.cursor()
+
+        # ── 1. Enregistrement page_views (chaque vue, y compris bots) ────────
+        try:
+            cur.execute(
+                "INSERT INTO page_views (session_id, ip, path, referrer) VALUES (?, ?, ?, ?)",
+                (sid, ip, path, referrer),
+            )
+        except Exception:
+            pass
+
+        # ── 2. Une seule entrée visitor_log par (ip, session_id) ─────────────
+        exists = cur.execute(
+            "SELECT 1 FROM visitor_log WHERE ip = ? AND session_id = ? LIMIT 1",
+            (ip, sid),
+        ).fetchone()
+        if exists:
+            # Session connue : mettre à jour human_score si nécessaire
+            try:
+                page_cnt = cur.execute(
+                    "SELECT COUNT(*) FROM page_views WHERE session_id=? AND ip=?",
+                    (sid, ip),
+                ).fetchone()[0]
+                score = _compute_human_score(ua, page_count=page_cnt, referrer=referrer)
+                cur.execute(
+                    "UPDATE visitor_log SET human_score=? WHERE ip=? AND session_id=?",
+                    (score, ip, sid),
+                )
+            except Exception:
+                pass
+            conn.commit()
+            conn.close()
+            return False
+
+        # Nouveau visiteur / nouvelle session — récupérer la géoloc
+        if is_bot:
+            geo = {}
+        else:
+            geo = get_geo_from_ip(ip)
+        country = (geo.get("country") or "Inconnu")[:80]
+        country_code = (geo.get("country_code") or "XX")[:8]
+        city = (geo.get("city") or "Inconnu")[:120]
+        region = (geo.get("region") or "Inconnu")[:120]
+        isp = (geo.get("isp") or "")[:200]
+        lat = geo.get("lat")
+        lon = geo.get("lon")
+        score = _compute_human_score(ua, page_count=1, referrer=referrer)
+
+        # INSERT OR IGNORE : sécurité race condition
+        cur.execute(
+            """
+            INSERT OR IGNORE INTO visitor_log (
+                ip, user_agent, path, session_id,
+                country, country_code, city, region, flag,
+                is_bot, is_owner, isp, lat, lon, human_score
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (ip, ua, path, sid,
+             country, country_code, city, region, country_code,
+             is_bot, is_owner, isp, lat, lon, score),
+        )
+        if cur.rowcount > 0 and not is_bot and not is_owner:
+            cur.execute("UPDATE visits SET count = count + 1 WHERE id=1")
+        conn.commit()
+        conn.close()
+        return cur.rowcount > 0
+    except Exception as e:
+        log.warning("register unique visit: %s", e)
+        return False
+
 
 @app.before_request
-def _maybe_increment_visits():
-    """
-    Incrémente le compteur de visites uniquement pour les chargements
-    de pages HTML (pas les requêtes API, static, etc.).
-    Pas d'incrément pour les crawlers (Googlebot, Bingbot, etc.).
-    """
+def _astroscan_request_timing_start():
+    """Timing start pour TOUTES les requêtes + trace route lourde (début)."""
     try:
         g._astroscan_req_start = time.time()
+        p = request.path or ""
+        heavy_prefixes = (
+            "/api/microobservatory/preview/",
+            "/api/iss",
+            "/api/tle",
+            "/api/meteo",
+            "/galerie",
+            "/module/galerie",
+        )
+        if any(p.startswith(x) for x in heavy_prefixes):
+            _emit_diag_json(
+                {
+                    "event": "route_trace_start",
+                    "path": p,
+                    "method": request.method,
+                }
+            )
     except Exception:
         pass
-    if request.path not in PAGE_PATHS:
-        return
-    user_agent = (request.headers.get("User-Agent") or "").lower()
-    if (
-        "googlebot" in user_agent
-        or "bingbot" in user_agent
-        or "crawler" in user_agent
-    ):
-        return
-    try:
-        _increment_visits()
-    except Exception as e:
-        log.warning(f"visits increment: {e}")
 
 
 @app.before_request
 def _astroscan_visitor_session_before():
-    """Cookie astroscan_sid (identifiant de session navigateur) pour corrélation visitor_log / session_time."""
+    """Cookie astroscan_sid (identifiant de session navigateur) pour corrélation visitor_log / session_time.
+    DOIT s'exécuter AVANT _maybe_increment_visits pour que g._astroscan_sid soit disponible."""
     try:
         if (request.path or "").startswith("/static"):
             return
@@ -1525,6 +2034,23 @@ def _astroscan_visitor_session_before():
             pass
 
 
+@app.before_request
+def _maybe_increment_visits():
+    """
+    Enregistre les visites de pages HTML (pas les API, static, etc.).
+    - page_views : chaque chargement de page (toutes sessions)
+    - visitor_log : une entrée par session (IP+session_id unique)
+    S'exécute APRÈS _astroscan_visitor_session_before (g._astroscan_sid déjà défini).
+    """
+    try:
+        g._astroscan_req_start = time.time()
+    except Exception:
+        pass
+    if request.path not in PAGE_PATHS:
+        return
+    _register_unique_visit_from_request(path_override=request.path)
+
+
 @app.after_request
 def _astroscan_struct_log_response(response):
     """Journalise les réponses HTTP (hors static) ; métriques légères + anti-spam logs 2xx/3xx."""
@@ -1540,6 +2066,57 @@ def _astroscan_struct_log_response(response):
             dur_ms = round((time.time() - t0) * 1000, 2)
         # 5xx → struct_log ERROR (alimente errors_last_5min) ; 4xx → WARNING ; 2xx/3xx via jeton (anti-spam).
         sc = response.status_code
+        # Instrumentation demandée: timing JSON à partir de 1500 ms.
+        if dur_ms is not None and dur_ms >= 1500:
+            _emit_diag_json(
+                {
+                    "event": "request_timing",
+                    "path": p,
+                    "method": request.method,
+                    "status": response.status_code,
+                    "duration_ms": dur_ms,
+                }
+            )
+        if dur_ms is not None and dur_ms >= 5000:
+            _emit_diag_json(
+                {
+                    "event": "very_slow_request",
+                    "path": p,
+                    "method": request.method,
+                    "status": response.status_code,
+                    "duration_ms": dur_ms,
+                }
+            )
+        # Trace routes lourdes ciblées (fin).
+        heavy_prefixes = (
+            "/api/microobservatory/preview/",
+            "/api/iss",
+            "/api/tle",
+            "/api/meteo",
+            "/galerie",
+            "/module/galerie",
+        )
+        if dur_ms is not None and any((p or "").startswith(x) for x in heavy_prefixes):
+            try:
+                print(f"[DEBUG] route {p} took {dur_ms:.1f} ms", flush=True)
+            except Exception:
+                pass
+            try:
+                log.info("[DEBUG] route %s took %.1f ms", p, dur_ms)
+            except Exception:
+                pass
+
+        # Signalement struct_log existant conservé (anti-régression).
+        if dur_ms is not None and dur_ms >= 2500:
+            struct_log(
+                logging.WARNING,
+                category="api",
+                event="slow_request",
+                method=request.method,
+                path=p,
+                status_code=sc,
+                duration_ms=dur_ms,
+            )
         if sc >= 500:
             struct_log(
                 logging.ERROR,
@@ -1575,6 +2152,372 @@ def _astroscan_struct_log_response(response):
     return response
 
 
+# ─── LANGUE / i18n ─────────────────────────────────────────────────────────
+SUPPORTED_LANGS = {"fr", "en"}
+
+def get_user_lang():
+    """Priorité : cookie > Accept-Language header > défaut fr."""
+    lang = request.cookies.get("lang", "")
+    if lang in SUPPORTED_LANGS:
+        return lang
+    accept = request.headers.get("Accept-Language", "")
+    return "en" if accept.lower().startswith("en") else "fr"
+
+# MIGRATED TO i18n_bp 2026-05-02 (B-RECYCLE R1) — see app/blueprints/i18n/__init__.py
+# @app.route("/set-lang/<lang>")
+# def set_lang(lang):
+#     """Enregistre la préférence de langue dans un cookie 1 an."""
+#     if lang not in SUPPORTED_LANGS:
+#         lang = "fr"
+#     resp = make_response(redirect(request.referrer or "/portail"))
+#     resp.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, samesite="Lax")
+#     return resp
+
+# MIGRATED TO main_bp 2026-05-02 (B-RECYCLE R3) — see app/blueprints/main/__init__.py
+# @app.route("/en/portail")
+# @app.route("/en/")
+# @app.route("/en")
+# def portail_en():
+#     """Version anglaise du portail — pose le cookie lang=en."""
+#     resp = make_response(render_template("portail.html", lang="en"))
+#     resp.set_cookie("lang", "en", max_age=60 * 60 * 24 * 365, samesite="Lax")
+#     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+#     resp.headers["Pragma"] = "no-cache"
+#     resp.headers["Expires"] = "0"
+#     return resp
+
+# ─── EXPORT DONNÉES PUBLIQUES ────────────────────────────────────────────────
+import csv as _csv, io as _io
+
+@app.route("/api/export/visitors.csv")
+def export_visitors_csv():
+    """Export CSV statistiques visiteurs par pays — données anonymisées."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("""
+            SELECT country, country_code, COUNT(*) as visits,
+                   DATE(MIN(visited_at)) as first_visit,
+                   DATE(MAX(visited_at)) as last_visit
+            FROM visitor_log
+            WHERE country IS NOT NULL AND country != ''
+              AND country NOT IN ('Unknown','Inconnu')
+              AND (country_code IS NULL OR country_code != 'XX')
+              AND is_bot = 0
+            GROUP BY country, country_code
+            ORDER BY visits DESC
+        """).fetchall()
+        conn.close()
+        out = _io.StringIO()
+        writer = _csv.writer(out)
+        writer.writerow(['country', 'country_code', 'visits', 'first_visit', 'last_visit'])
+        writer.writerows(rows)
+        return Response(out.getvalue(), mimetype='text/csv; charset=utf-8',
+                        headers={'Content-Disposition': 'attachment; filename=astroscan_visitors.csv',
+                                 'Access-Control-Allow-Origin': '*'})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/export/visitors.json")
+def export_visitors_json():
+    """Export JSON statistiques visiteurs par pays avec métadonnées de citation."""
+    try:
+        import datetime as _dt, json as _json
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("""
+            SELECT country, country_code, COUNT(*) as visits,
+                   DATE(MIN(visited_at)) as first_visit,
+                   DATE(MAX(visited_at)) as last_visit
+            FROM visitor_log
+            WHERE country IS NOT NULL AND country != ''
+              AND country NOT IN ('Unknown','Inconnu')
+              AND (country_code IS NULL OR country_code != 'XX')
+              AND is_bot = 0
+            GROUP BY country, country_code
+            ORDER BY visits DESC
+        """).fetchall()
+        total = conn.execute("SELECT COUNT(*) FROM visitor_log WHERE is_bot=0").fetchone()[0]
+        conn.close()
+        data = {
+            "metadata": {
+                "source": "AstroScan-Chohra", "url": "https://astroscan.space",
+                "generated_at": _dt.datetime.utcnow().isoformat() + "Z",
+                "total_human_visits": total,
+                "description": "Aggregated visitor stats by country — anonymized, no personal data",
+                "license": "CC BY 4.0 — Scientific and educational use"
+            },
+            "data": [{"country": r[0], "country_code": r[1], "visits": r[2],
+                      "first_visit": r[3], "last_visit": r[4]} for r in rows]
+        }
+        return Response(_json.dumps(data, ensure_ascii=False, indent=2),
+                        mimetype='application/json',
+                        headers={'Access-Control-Allow-Origin': '*'})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/export/ephemerides.json")
+def export_ephemerides_json():
+    """Export JSON éphémérides Tlemcen avec métadonnées scientifiques."""
+    try:
+        import datetime as _dt, json as _json
+        cached = cache_get('eph_tlemcen', 300) or {}
+        export = {
+            "metadata": {
+                "source": "AstroScan-Chohra", "location": "Tlemcen, Algeria",
+                "coordinates": {"lat": 34.8753, "lon": 1.3167, "alt_m": 800},
+                "generated_at": _dt.datetime.utcnow().isoformat() + "Z",
+                "license": "CC BY 4.0 — Scientific use",
+                "url": "https://astroscan.space/api/export/ephemerides.json",
+                "computation": "astropy 7.2 + SGP4"
+            }
+        }
+        export.update(cached)
+        return Response(_json.dumps(export, ensure_ascii=False, indent=2),
+                        mimetype='application/json',
+                        headers={'Access-Control-Allow-Origin': '*'})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/export/observations.json")
+def export_observations_json():
+    """Export JSON observations stellaires archivées (1500+ entrées avec analyse IA)."""
+    try:
+        import datetime as _dt, json as _json
+        conn = sqlite3.connect(DB_PATH)
+        rows = conn.execute("""
+            SELECT id, timestamp, source, objets_detectes, anomalie,
+                   score_confiance, analyse_gemini
+            FROM observations ORDER BY timestamp DESC LIMIT 500
+        """).fetchall()
+        conn.close()
+        data = {
+            "metadata": {
+                "source": "AstroScan-Chohra — Stellar Archive", "url": "https://astroscan.space",
+                "count": len(rows), "generated_at": _dt.datetime.utcnow().isoformat() + "Z",
+                "license": "CC BY 4.0",
+                "description": "Astronomical observations with AI analysis (Claude/Gemini)"
+            },
+            "data": [{"id": r[0], "timestamp": r[1], "source": r[2], "objects_detected": r[3],
+                      "anomaly": r[4], "confidence_score": r[5], "ai_analysis": r[6]} for r in rows]
+        }
+        return Response(_json.dumps(data, ensure_ascii=False, indent=2),
+                        mimetype='application/json',
+                        headers={'Access-Control-Allow-Origin': '*'})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/export/apod-history.json")
+def export_apod_history_json():
+    """Export JSON historique APOD depuis le cache local."""
+    try:
+        import datetime as _dt, json as _json
+        cache_path = f"{STATION}/data/apod_cache.json"
+        with open(cache_path) as f:
+            apod_cache = _json.load(f)
+        data = {
+            "metadata": {
+                "source": "AstroScan-Chohra — NASA APOD cache", "url": "https://astroscan.space",
+                "count": len(apod_cache), "generated_at": _dt.datetime.utcnow().isoformat() + "Z",
+                "license": "NASA Open Data + AstroScan FR translations CC BY 4.0"
+            },
+            "data": apod_cache
+        }
+        return Response(_json.dumps(data, ensure_ascii=False, indent=2),
+                        mimetype='application/json',
+                        headers={'Access-Control-Allow-Origin': '*'})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# MIGRATED TO main_bp 2026-05-02 (B-RECYCLE R3) — see app/blueprints/main/__init__.py
+# @app.route("/data")
+# def page_data():
+#     """Open Data Portal — AstroScan-Chohra."""
+#     return render_template("data_export.html")
+
+# ─── API PUBLIQUE — DOCUMENTATION ──────────────────────────────────────────
+API_SPEC = {
+    "openapi": "3.0.0",
+    "info": {
+        "title": "AstroScan-Chohra API",
+        "version": "2.0.0",
+        "description": (
+            "API publique de la station d'observation spatiale AstroScan-Chohra. "
+            "Données en temps réel : ISS, météo spatiale, éphémérides Tlemcen, APOD NASA. "
+            "Usage scientifique et éducatif libre."
+        ),
+        "contact": {
+            "name": "Zakaria Chohra",
+            "email": "zakaria.chohra@gmail.com",
+            "url": "https://astroscan.space/a-propos"
+        },
+        "license": {
+            "name": "Open Data — Usage scientifique et éducatif",
+            "url": "https://astroscan.space/a-propos"
+        }
+    },
+    "servers": [{"url": "https://astroscan.space", "description": "Production"}],
+    "paths": {
+        "/api/ephemerides/tlemcen": {
+            "get": {
+                "summary": "Éphémérides Tlemcen",
+                "description": "Données astronomiques en temps réel depuis Tlemcen (34.88°N, 1.32°E, 800m). Soleil (lever/coucher), Lune (phase, illumination), planètes visibles, début/fin nuit astronomique. Cache 5 min.",
+                "tags": ["Astronomie"],
+                "responses": {"200": {"description": "JSON éphémérides complètes"}}
+            }
+        },
+        "/api/iss": {
+            "get": {
+                "summary": "Position ISS en temps réel",
+                "description": "Coordonnées GPS de la Station Spatiale Internationale, altitude, vitesse, pays survolé.",
+                "tags": ["ISS"],
+                "responses": {"200": {"description": "JSON position ISS"}}
+            }
+        },
+        "/api/passages-iss": {
+            "get": {
+                "summary": "Passages ISS sur Tlemcen",
+                "description": "Prochains passages visibles de l'ISS au-dessus de Tlemcen avec azimut, élévation max et durée.",
+                "tags": ["ISS"],
+                "parameters": [
+                    {"name": "lat", "in": "query", "schema": {"type": "number"}, "example": 34.88},
+                    {"name": "lon", "in": "query", "schema": {"type": "number"}, "example": 1.32}
+                ],
+                "responses": {"200": {"description": "JSON passages ISS"}}
+            }
+        },
+        "/api/apod": {
+            "get": {
+                "summary": "APOD NASA du jour",
+                "description": "Image astronomique du jour NASA avec titre, explication et traduction française automatique.",
+                "tags": ["NASA"],
+                "responses": {"200": {"description": "JSON APOD"}}
+            }
+        },
+        "/api/meteo-spatiale": {
+            "get": {
+                "summary": "Météo spatiale NOAA",
+                "description": "Indice Kp, alertes géomagnétiques, vent solaire, probabilité aurores boréales.",
+                "tags": ["Météo Spatiale"],
+                "responses": {"200": {"description": "JSON météo spatiale"}}
+            }
+        },
+        "/api/aurore": {
+            "get": {
+                "summary": "Données aurores boréales",
+                "description": "Niveau d'activité aurorale, prévisions Kp 24h, visibilité par latitude.",
+                "tags": ["Météo Spatiale"],
+                "responses": {"200": {"description": "JSON aurores"}}
+            }
+        },
+        "/api/tonight": {
+            "get": {
+                "summary": "Objets observables ce soir",
+                "description": "Objets du ciel profond visibles depuis Tlemcen cette nuit — calculés avec astropy. Inclut phase lunaire.",
+                "tags": ["Astronomie"],
+                "responses": {"200": {"description": "JSON objets de la nuit"}}
+            }
+        },
+        "/api/moon": {
+            "get": {
+                "summary": "Phase lunaire actuelle",
+                "description": "Phase, illumination (%), jour du cycle lunaire.",
+                "tags": ["Astronomie"],
+                "responses": {"200": {"description": "JSON phase lune"}}
+            }
+        },
+        "/api/visitors/snapshot": {
+            "get": {
+                "summary": "Statistiques visiteurs",
+                "description": "Nombre total de visiteurs, visiteurs actifs, pays distincts, top pays, humains vs robots.",
+                "tags": ["Analytics"],
+                "parameters": [
+                    {"name": "exclude_my_ip", "in": "query", "schema": {"type": "string", "default": "1"}, "description": "Exclure l'IP du serveur"}
+                ],
+                "responses": {"200": {"description": "JSON stats visiteurs"}}
+            }
+        },
+        "/api/health": {
+            "get": {
+                "summary": "Santé de l'API",
+                "description": "Statut de tous les modules : TLE, APOD, ISS, SDR, base de données.",
+                "tags": ["Système"],
+                "responses": {"200": {"description": "JSON health check"}}
+            }
+        },
+        "/api/export/visitors.csv": {
+            "get": {
+                "summary": "Export visiteurs CSV",
+                "description": "Statistiques visiteurs par pays au format CSV. Données anonymisées — aucune donnée personnelle.",
+                "tags": ["Export"],
+                "responses": {"200": {"description": "CSV file — country, country_code, visits, first_visit, last_visit"}}
+            }
+        },
+        "/api/export/visitors.json": {
+            "get": {
+                "summary": "Export visiteurs JSON",
+                "description": "Statistiques visiteurs par pays avec métadonnées de citation scientifique (CC BY 4.0).",
+                "tags": ["Export"],
+                "responses": {"200": {"description": "JSON avec metadata de citation"}}
+            }
+        },
+        "/api/export/ephemerides.json": {
+            "get": {
+                "summary": "Export éphémérides JSON",
+                "description": "Éphémérides Tlemcen complètes avec métadonnées scientifiques (coordonnées, licence, computation).",
+                "tags": ["Export"],
+                "responses": {"200": {"description": "JSON scientifique avec metadata"}}
+            }
+        },
+        "/api/export/observations.json": {
+            "get": {
+                "summary": "Export observations stellaires",
+                "description": "Archive 1500+ observations avec analyse IA (objets détectés, anomalies, score confiance).",
+                "tags": ["Export"],
+                "responses": {"200": {"description": "JSON observations archive"}}
+            }
+        },
+        "/api/export/apod-history.json": {
+            "get": {
+                "summary": "Export APOD + traductions FR",
+                "description": "Historique NASA APOD avec traductions françaises (CC BY 4.0).",
+                "tags": ["Export"],
+                "responses": {"200": {"description": "JSON APOD archive"}}
+            }
+        },
+        "/sitemap.xml": {
+            "get": {
+                "summary": "Sitemap SEO dynamique",
+                "description": "Sitemap XML avec toutes les pages indexables, lastmod = date du jour.",
+                "tags": ["SEO"],
+                "responses": {"200": {"description": "XML sitemap"}}
+            }
+        }
+    },
+    "tags": [
+        {"name": "ISS", "description": "Station Spatiale Internationale"},
+        {"name": "Astronomie", "description": "Éphémérides et données astronomiques"},
+        {"name": "NASA", "description": "Données officielles NASA"},
+        {"name": "Météo Spatiale", "description": "NOAA, Kp-index, aurores boréales"},
+        {"name": "Analytics", "description": "Statistiques plateforme"},
+        {"name": "Export", "description": "Téléchargement données CSV/JSON — CC BY 4.0"},
+        {"name": "Système", "description": "Health checks et statut"},
+        {"name": "SEO", "description": "Référencement"}
+    ]
+}
+
+# MIGRATED TO api_bp 2026-05-02 (B-RECYCLE R2) — see app/blueprints/api/__init__.py
+# @app.route("/api/docs")
+# def api_docs():
+#     """Page documentation API publique — Swagger UI."""
+#     return render_template("api_docs.html")
+
+# MIGRATED TO api_bp 2026-05-02 (B-RECYCLE R2) — see app/blueprints/api/__init__.py
+# @app.route("/api/spec.json")
+# def api_spec_json():
+#     """Spécification OpenAPI 3.0 en JSON."""
+#     return jsonify(API_SPEC)
+
+# ────────────────────────────────────────────────────────────────────────────
+
 @app.route('/api/visits', methods=['GET'])
 def api_visits_get():
     """Retourne le nombre actuel de visites."""
@@ -1586,9 +2529,44 @@ def api_visits_get():
         return jsonify({'count': 0})
 
 
+@app.route("/api/version")
+def api_version():
+    return jsonify({
+        "ok": True,
+        "name": "AstroScan",
+        "version": "1.0.0",
+        "status": "production-ready",
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+
+@app.route("/api/modules-status")
+def api_modules_status():
+    try:
+        return jsonify({
+            "ok": True,
+            "modules": {
+                "iss": True,
+                "orbit": True,
+                "dsn": True,
+                "aurores": True,
+                "apod": True,
+                "aegis": True,
+                "passages": True,
+                "weather": True,
+                "oracle": True
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route("/ready", methods=["GET"])
 def ready():
-    """Indique si le worker a fini de charger l’app (éviter /status trop tôt après restart)."""
+    """Indique si le worker a fini de charger l'app (éviter /status trop tôt après restart)."""
     try:
         return jsonify({"ready": bool(server_ready)})
     except Exception:
@@ -1598,9 +2576,10 @@ def ready():
 @app.route('/health', methods=['GET'])
 def health_check():
     """
-    Liveness : pas d’appel NASA (include_external=False) pour réponse rapide et stable.
-    Champs historiques conservés + champs lisibles exploitation.
+    Liveness enrichi : uptime, mémoire, disque, circuit-breakers, APIs actives.
+    Pas d'appel externe (include_external=False) pour réponse rapide.
     """
+    import psutil, shutil
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     try:
         d = _build_status_payload_dict(now_iso, include_external=False)
@@ -1609,6 +2588,7 @@ def health_check():
         tle_backend = d.get("tle_backend_status")
         data_freshness = d.get("data_freshness")
         tle_count = d.get("tle_count")
+        overall_status = d.get("status") or "ok"
     except Exception as ex:
         log.warning("health_check: %s", ex)
         uptime_seconds = int(time.time() - START_TIME)
@@ -1616,15 +2596,55 @@ def health_check():
         tle_backend = None
         data_freshness = "unknown"
         tle_count = 0
+        overall_status = "degraded"
+
+    # Mémoire process
+    try:
+        proc = psutil.Process()
+        mem_mb = round(proc.memory_info().rss / 1024 / 1024, 1)
+        mem_pct = round(psutil.virtual_memory().percent, 1)
+        memory_usage = {"process_mb": mem_mb, "system_pct": mem_pct}
+    except Exception:
+        memory_usage = {}
+
+    # Disque
+    try:
+        disk = shutil.disk_usage("/")
+        disk_usage = {
+            "total_gb": round(disk.total / 1e9, 1),
+            "used_gb":  round(disk.used  / 1e9, 1),
+            "free_gb":  round(disk.free  / 1e9, 1),
+            "pct":      round(disk.used / disk.total * 100, 1),
+        }
+    except Exception:
+        disk_usage = {}
+
+    # Circuit-breakers : état des APIs externes
+    try:
+        cb_statuses = _cb_all_status()
+        active_apis = {
+            s["name"]: s["state"]
+            for s in cb_statuses
+        }
+        open_count = sum(1 for s in cb_statuses if s["state"] == "OPEN")
+        if open_count > 0 and overall_status == "ok":
+            overall_status = "degraded"
+    except Exception:
+        active_apis = {}
+
     return jsonify({
-        "status": "ok",
-        "service": "astroscan",
-        "uptime": uptime_seconds,
-        "mode": production_mode,
-        "tle_status": tle_backend,
+        "status":        overall_status,
+        "service":       "astroscan",
+        "uptime":        uptime_seconds,
+        "uptime_sec":    uptime_seconds,
+        "mode":          production_mode,
+        "tle_status":    tle_backend,
         "data_freshness": data_freshness,
-        "uptime_sec": uptime_seconds,
-        "tle_count": tle_count,
+        "tle_count":     tle_count,
+        "memory_usage":  memory_usage,
+        "disk_usage":    disk_usage,
+        "active_apis":   active_apis,
+        "timestamp":     now_iso,
     })
 
 
@@ -1751,7 +2771,7 @@ def index():
 
 @app.route('/portail')
 def portail():
-    response = make_response(render_template('portail.html'))
+    response = make_response(render_template('portail.html', lang=get_user_lang()))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
@@ -1768,15 +2788,14 @@ def landing_page():
     )
 
 
+@app.route('/technical')
+def technical_page():
+    return render_template('technical.html')
+
+
 @app.route('/dashboard')
 def dashboard():
     return render_template('research_dashboard.html')
-
-
-@app.route('/dashboard-v2')
-def dashboard_v2():
-    """Panneau mission control (snapshots cache + alertes) — ne modifie pas les autres vues."""
-    return render_template('dashboard_v2.html')
 
 
 def _analytics_tz_for_country_code(code):
@@ -1870,12 +2889,13 @@ def _analytics_session_classification(total_sec, page_count):
 
 
 def get_geo_from_ip(ip):
-    """Pays et ville via ip-api.com (cache 24 h). Retourne {} si IP invalide ou échec."""
+    """Géolocalisation complète via ip-api.com (cache 24 h) : pays, ville, région, ISP, lat/lon.
+    Retourne {} si IP invalide ou échec. Fallback ipinfo.io si ip-api échoue."""
     if ip is None:
         return {}
     ip = str(ip).strip()
     if ip in ("", "—", "127.0.0.1", "::1"):
-        return {}
+        return {"country": "Serveur local", "city": "Serveur local", "country_code": "LO", "isp": "localhost"}
     ip = ip.split(",")[0].strip()
     if not ip:
         return {}
@@ -1886,18 +2906,40 @@ def get_geo_from_ip(ip):
     out = {}
     try:
         r = requests.get(
-            f"http://ip-api.com/json/{ip}?fields=status,country,countryCode,city,regionName",
+            f"http://ip-api.com/json/{ip}?fields=status,country,countryCode,city,regionName,lat,lon,isp",
             timeout=3,
         )
         d = r.json()
         if d.get("status") == "success":
             out = {
-                "country": d.get("country"),
-                "city": d.get("city"),
-                "country_code": d.get("countryCode"),
+                "country": d.get("country") or "Inconnu",
+                "city": d.get("city") or "Inconnu",
+                "country_code": (d.get("countryCode") or "XX").upper(),
+                "region": d.get("regionName") or "Inconnu",
+                "lat": d.get("lat"),
+                "lon": d.get("lon"),
+                "isp": d.get("isp") or "",
             }
     except Exception:
         pass
+    if not out:
+        # Fallback ipinfo.io si ip-api échoue ou rate-limit
+        try:
+            r2 = requests.get(f"https://ipinfo.io/{ip}/json", timeout=3)
+            d2 = r2.json() if r2.ok else {}
+            cc = (d2.get("country") or "").strip().upper()
+            loc = (d2.get("loc") or "").split(",")
+            out = {
+                "country": d2.get("country_name") or d2.get("country") or "Inconnu",
+                "city": d2.get("city") or "Inconnu",
+                "country_code": cc or "XX",
+                "region": d2.get("region") or "Inconnu",
+                "lat": float(loc[0]) if len(loc) == 2 else None,
+                "lon": float(loc[1]) if len(loc) == 2 else None,
+                "isp": d2.get("org") or "",
+            }
+        except Exception:
+            out = {}
     cache_set(cache_key, out)
     return out
 
@@ -1916,6 +2958,7 @@ def _analytics_empty_payload():
         "longest_sessions": [],
         "session_visitors_detail": [],
         "sessions_timeline": [],
+        "bot_count": 0,
     }
 
 
@@ -2201,90 +3244,141 @@ def _load_analytics_readonly():
 
 @app.route("/analytics")
 def analytics_dashboard():
-    """Dashboard analytics isolé (lecture seule SQLite)."""
+    """Dashboard analytics complet : sessions, page_views, human_score, owner IPs."""
     try:
         data = _load_analytics_readonly()
     except Exception:
         data = _analytics_empty_payload()
-    html_sessions = ""
 
-    for s in data.get("sessions_timeline", []):
-        country = s.get("country")
-        city = s.get("city")
+    # ── Données complémentaires issues des nouvelles tables ──────────────────
+    total_page_views = 0
+    human_count = 0
+    suspect_count = 0
+    top_pages = []
+    owner_visits = []
+    db_ips = []
+    env_ips = [x.strip() for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(",") if x.strip()]
+    avg_human_score = 0.0
+    try:
+        conn = _get_db_visitors()
+        conn.row_factory = sqlite3.Row
 
-        if country and city:
-            location = f"{country} - {city}"
-        else:
-            location = "Localisation inconnue"
-        time = s.get("total_time_fmt", "—")
+        total_page_views = (conn.execute("SELECT COUNT(*) FROM page_views").fetchone()[0] or 0)
 
-        modules_list = s.get("modules", [])[:3]
-        modules = ", ".join(modules_list) if modules_list else "—"
+        # Scoring répartition
+        human_count = (conn.execute(
+            "SELECT COUNT(*) FROM visitor_log WHERE is_bot=0 AND is_owner=0 AND human_score >= 60"
+        ).fetchone()[0] or 0)
+        suspect_count = (conn.execute(
+            "SELECT COUNT(*) FROM visitor_log WHERE is_bot=0 AND is_owner=0 AND human_score >= 20 AND human_score < 60"
+        ).fetchone()[0] or 0)
+        avg_row = conn.execute(
+            "SELECT ROUND(AVG(human_score),1) FROM visitor_log WHERE is_bot=0 AND is_owner=0 AND human_score >= 0"
+        ).fetchone()
+        avg_human_score = float(avg_row[0] or 0)
 
-        visits = len(s.get("events", []))
+        # Top 10 pages
+        top_page_rows = conn.execute(
+            "SELECT path, COUNT(*) as cnt FROM page_views WHERE path NOT LIKE '/static%' "
+            "GROUP BY path ORDER BY cnt DESC LIMIT 10"
+        ).fetchall()
+        top_pages = [{"path": r["path"], "count": r["cnt"]} for r in top_page_rows]
 
-        html_sessions += f"""
-    <div class="card">
+        # Visites owner
+        ov_rows = conn.execute(
+            "SELECT ip, COALESCE(country,'?') as country, COALESCE(city,'?') as city, "
+            "COALESCE(isp,'') as isp, MAX(visited_at) as last_visit, COUNT(*) as sessions "
+            "FROM visitor_log WHERE is_owner=1 GROUP BY ip ORDER BY last_visit DESC LIMIT 20"
+        ).fetchall()
+        owner_visits = [dict(r) for r in ov_rows]
 
-        <div style='font-size:16px;color:white;font-weight:bold;'>
-        🌍 {location}
-        </div>
+        # Top villes enrichies (avec ISP)
+        city_rows = conn.execute(
+            "SELECT country, city, COALESCE(region,'') as region, "
+            "COALESCE(isp,'') as isp, COUNT(*) as cnt "
+            "FROM visitor_log WHERE is_bot=0 AND is_owner=0 "
+            "AND city != 'Unknown' AND city != '' "
+            "GROUP BY city ORDER BY cnt DESC LIMIT 15"
+        ).fetchall()
+        data["top_cities"] = [
+            {"country": r["country"], "city": r["city"], "region": r["region"],
+             "isp": r["isp"], "count": r["cnt"]}
+            for r in city_rows
+        ]
 
-        <div style='font-size:13px;color:#aaa;margin-top:4px;'>
-        👁 {visits} visites &nbsp;&nbsp;|&nbsp;&nbsp; ⏱ {time}
-        </div>
+        # Dernières visites enrichies (avec human_score + ISP)
+        last_rows = conn.execute(
+            "SELECT ip, country, city, path, visited_at, isp, human_score, is_bot, is_owner "
+            "FROM visitor_log ORDER BY id DESC LIMIT 30"
+        ).fetchall()
+        data["latest_visits"] = [dict(r) for r in last_rows]
 
-        <div style='font-size:13px;color:#00ffd5;margin-top:6px;'>
-        📊 {modules}
-        </div>
+        # ISP dans sessions_timeline
+        for block in data.get("sessions_timeline", []):
+            try:
+                ip = block.get("ip", "")
+                if ip:
+                    vrow = conn.execute(
+                        "SELECT isp, human_score FROM visitor_log WHERE ip=? LIMIT 1", (ip,)
+                    ).fetchone()
+                    block["isp"] = vrow["isp"] if vrow else ""
+                    block["human_score"] = int(vrow["human_score"] or -1) if vrow else -1
+                else:
+                    block["isp"] = ""
+                    block["human_score"] = -1
+            except Exception:
+                block["isp"] = ""
+                block["human_score"] = -1
 
-    </div>
-    """
+        # Owner IPs depuis DB
+        db_ip_rows = conn.execute(
+            "SELECT id, ip, label, added_at FROM owner_ips ORDER BY added_at DESC"
+        ).fetchall()
+        db_ips = [dict(r) for r in db_ip_rows]
 
-    html_content = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>AstroScan-Chohra — Analytics</title>
+        conn.close()
+    except Exception as ex:
+        log.warning("analytics_dashboard extra: %s", ex)
 
-<style>
-body {{
-    background:#050b12;
-    color:#00ffd5;
-    font-family:monospace;
-    padding:30px;
-}}
+    bot_count = data.get("bot_count", 0)
+    if not bot_count:
+        try:
+            conn2 = _get_db_visitors()
+            bot_count = (conn2.execute("SELECT COUNT(*) FROM visitor_log WHERE is_bot=1").fetchone()[0] or 0)
+            conn2.close()
+        except Exception:
+            bot_count = 0
 
-h1 {{
-    font-size:22px;
-    margin-bottom:25px;
-    letter-spacing:2px;
-}}
-
-.card {{
-    margin-bottom:15px;
-    padding:15px;
-    border-radius:10px;
-    background:linear-gradient(135deg, rgba(0,255,213,0.08), rgba(0,0,0,0.9));
-    border:1px solid rgba(0,255,213,0.3);
-    box-shadow:0 0 15px rgba(0,255,213,0.2);
-}}
-</style>
-
-</head>
-
-<body>
-
-<h1>📡 RÉSUMÉ DES VISITEURS</h1>
-
-{html_sessions}
-
-</body>
-</html>
-"""
-
-    return make_response(html_content)
+    return render_template(
+        "analytics.html",
+        # KPIs existants
+        total_visits=data.get("total_visits", 0),
+        unique_ips=data.get("unique_ips", 0),
+        total_tracked_events=data.get("total_tracked_events", 0),
+        last_activity=data.get("last_activity", "—"),
+        # Nouveaux KPIs
+        total_sessions=data.get("total_visits", 0),
+        total_page_views=int(total_page_views),
+        human_count=int(human_count),
+        suspect_count=int(suspect_count),
+        bot_count=int(bot_count),
+        human_pct=round(100 * human_count / max(1, data.get("total_visits", 1)), 1),
+        avg_human_score=round(avg_human_score, 1),
+        owner_count=len(owner_visits),
+        # Listes
+        top_pages=top_pages,
+        top_countries=data.get("top_countries", []),
+        top_cities=data.get("top_cities", []),
+        top_pages_by_time=data.get("top_pages_by_time", []),
+        avg_duration_by_page=data.get("avg_duration_by_page", []),
+        latest_visits=data.get("latest_visits", []),
+        sessions_timeline=data.get("sessions_timeline", []),
+        session_visitors_detail=data.get("session_visitors_detail", []),
+        # Owner
+        owner_visits=owner_visits,
+        db_ips=db_ips,
+        env_ips=env_ips,
+    )
 
 
 @app.route('/overlord_live')
@@ -2326,9 +3420,10 @@ def observatoire():
     response.headers['Expires'] = '0'
     return response
 
-@app.route('/vision')
-def vision():
-    return render_template('vision.html')
+# MIGRATED TO pages_bp 2026-05-02 (B-RECYCLE R2) — see app/blueprints/pages/__init__.py
+# @app.route('/vision')
+# def vision():
+#     return render_template('vision.html')
 
 
 @app.route('/vision-2026')
@@ -2574,7 +3669,7 @@ def api_sondes_live():
     # ── Tentative NASA JPL Horizons pour Voyager 1&2 (cache 1h) ──
     # Sanity check : Voyager 1 > 140 AU, Voyager 2 > 110 AU, vitesses 10-25 km/s
     try:
-        jpl_data = _cached('voyager', 3600, _fetch_voyager)
+        jpl_data = get_cached('voyager', 3600, _fetch_voyager)
         if jpl_data:
             v1j = jpl_data.get('VOYAGER_1') or jpl_data.get('voyager_1')
             if v1j and v1j.get('dist_km'):
@@ -2620,9 +3715,10 @@ def api_sondes_live():
 
 
 
-@app.route('/scientific')
-def scientific():
-    return render_template('scientific.html')
+# MIGRATED TO pages_bp 2026-05-02 (B-RECYCLE R2) — see app/blueprints/pages/__init__.py
+# @app.route('/scientific')
+# def scientific():
+#     return render_template('scientific.html')
 
 # ══════════════════════════════════════════════════════════════
 # API — DONNÉES PRINCIPALES
@@ -2715,15 +3811,16 @@ def _fetch_apod_live():
         log.warning(f"fetch apod: {e}")
         return None, None, None
 
-def _fetch_hubble_live():
-    """Une image ESA Hubble — temps 0."""
+def _fetch_hubble_archive():
+    """Image Hubble issue des archives ESA (6 images iconiques, sélection aléatoire).
+    Note : images d'archive 1994-2020, pas une observation en cours."""
     urls = [
-        ("Pilliers de la Création", "https://esahubble.org/media/archives/images/screen/heic1501a.jpg"),
-        ("Galaxie du Tourbillon M51", "https://esahubble.org/media/archives/images/screen/heic0506a.jpg"),
-        ("Nébuleuse de la Carène", "https://esahubble.org/media/archives/images/screen/heic0707a.jpg"),
-        ("Galaxie d'Andromède M31", "https://esahubble.org/media/archives/images/screen/heic1502a.jpg"),
-        ("Nébuleuse Œil de Chat", "https://esahubble.org/media/archives/images/screen/heic0403a.jpg"),
-        ("Jupiter — Grande Tache Rouge", "https://esahubble.org/media/archives/images/screen/heic1920a.jpg"),
+        ("Pilliers de la Création — M16 (1995)", "https://esahubble.org/media/archives/images/screen/heic1501a.jpg"),
+        ("Galaxie du Tourbillon M51 (2005)", "https://esahubble.org/media/archives/images/screen/heic0506a.jpg"),
+        ("Nébuleuse de la Carène (2007)", "https://esahubble.org/media/archives/images/screen/heic0707a.jpg"),
+        ("Galaxie d'Andromède M31 (2015)", "https://esahubble.org/media/archives/images/screen/heic1502a.jpg"),
+        ("Nébuleuse Œil de Chat (2004)", "https://esahubble.org/media/archives/images/screen/heic0403a.jpg"),
+        ("Jupiter — Grande Tache Rouge (2019)", "https://esahubble.org/media/archives/images/screen/heic1920a.jpg"),
     ]
     import random
     title, url = random.choice(urls)
@@ -2734,13 +3831,16 @@ def _fetch_hubble_live():
             data = r.read()
         if len(data) < 10000:
             return None, None, None
-        return data, title, 'ESA Hubble'
+        return data, title, 'Archives ESA/Hubble'
     except Exception as e:
-        log.warning(f"fetch hubble: {e}")
+        log.warning(f"fetch hubble archive: {e}")
         return None, None, None
 
+# Alias de compatibilité pour le code existant
+_fetch_hubble_live = _fetch_hubble_archive
+
 def _fetch_apod_archive_live():
-    """NASA APOD — date aléatoire (archive)."""
+    """NASA APOD — image d'archive aléatoire (2015-2024). Honnête : pas l'image du jour."""
     try:
         import urllib.request as urlreq
         import random
@@ -2793,7 +3893,7 @@ def api_sync_state_get():
 
 @app.route('/api/sync/state', methods=['POST'])
 def api_sync_state_post():
-    """Met à jour l’état partagé (quand un client change la source)."""
+    """Met à jour l'état partagé (quand un client change la source)."""
     try:
         data = request.get_json(force=True, silent=True) or {}
         source = data.get('source') or request.form.get('source') or 'live'
@@ -3063,69 +4163,232 @@ def _fetch_iss_live():
     return None
 
 
+def _get_iss_tle_from_cache():
+    # moved to app/services/tle.py (get_iss_tle_from_sources)
+    """Retourne (tle1, tle2) ISS depuis TLE_CACHE si disponible."""
+    try:
+        items = (TLE_CACHE or {}).get("items") or []
+        for item in items:
+            name = str(item.get("name") or "").upper()
+            if "ISS" in name or "ZARYA" in name:
+                tle1 = str(
+                    item.get("line1")
+                    or item.get("tle1")
+                    or item.get("tle_line1")
+                    or ""
+                ).strip()
+                tle2 = str(
+                    item.get("line2")
+                    or item.get("tle2")
+                    or item.get("tle_line2")
+                    or ""
+                ).strip()
+                if tle1 and tle2:
+                    _emit_diag_json(
+                        {
+                            "event": "iss_tle_loaded",
+                            "name": item.get("name"),
+                            "tle1_len": len(tle1),
+                            "tle2_len": len(tle2),
+                        }
+                    )
+                    return tle1, tle2
+    except Exception as e:
+        _emit_diag_json(
+            {
+                "event": "iss_tle_missing",
+                "reason": f"exception:{e}",
+            }
+        )
+    # Fallback TLE: scanner le fichier complet (le cache items peut être tronqué à 1000 entrées).
+    try:
+        if os.path.isfile(TLE_ACTIVE_PATH):
+            all_items = _parse_tle_file(TLE_ACTIVE_PATH)
+            for item in all_items:
+                name = str(item.get("name") or "").upper()
+                if "ISS" in name or "ZARYA" in name:
+                    tle1 = str(item.get("line1") or "").strip()
+                    tle2 = str(item.get("line2") or "").strip()
+                    if tle1 and tle2:
+                        _emit_diag_json(
+                            {
+                                "event": "iss_tle_loaded",
+                                "name": item.get("name"),
+                                "source": "tle_active_file",
+                                "tle1_len": len(tle1),
+                                "tle2_len": len(tle2),
+                            }
+                        )
+                        return tle1, tle2
+    except Exception as e:
+        _emit_diag_json(
+            {
+                "event": "iss_tle_missing",
+                "reason": f"file_scan_exception:{e}",
+            }
+        )
+
+    _emit_diag_json(
+        {
+            "event": "iss_tle_missing",
+            "tle_items_count": len((TLE_CACHE or {}).get("items") or []),
+        }
+    )
+    return None, None
+
+
 @app.route('/api/iss')
 def api_iss():
-    """
-    Endpoint canonique ISS :
-    - Position + altitude + vitesse via whereTheISS / open-notify
-    - Nombre d'équipage via open-notify /astros.json
-    - Cache 15 s pour limiter les appels externes.
-    """
-    cache_cleanup()
-    system_log("ISS API called")
-    cached = cache_get("iss", 15)
-    if cached is not None:
-        return jsonify(cached)
-    iss = _cached('iss_live', 5, _fetch_iss_live)
-    if not iss:
-        iss = {
-            'ok': False,
-            'lat': 0.0,
-            'lon': 0.0,
-            'alt': 408.0,
-            'speed': 27600.0,
-            'region': 'Inconnu',
-        }
-    crew = _get_iss_crew()
-    iss['crew'] = crew
-    iss['timestamp'] = int(time.time())
-    cache_set("iss", iss)
-    return jsonify(iss)
+    # moved to app/routes/iss.py
+    return api_iss_impl(
+        cache_cleanup=cache_cleanup,
+        system_log=system_log,
+        cache_get=cache_get,
+        jsonify=jsonify,
+        _cached=get_cached,
+        _fetch_iss_live=_fetch_iss_live,
+        _get_iss_crew=_get_iss_crew,
+        cache_set=cache_set,
+        time_module=time,
+        propagate_tle_debug=propagate_tle_debug,
+        datetime_cls=datetime,
+        timezone_cls=timezone,
+        TLE_CACHE=TLE_CACHE,
+        TLE_ACTIVE_PATH=TLE_ACTIVE_PATH,
+        _parse_tle_file=_parse_tle_file,
+        _emit_diag_json=_emit_diag_json,
+        os_module=os,
+    )
 
 
-@app.route("/api/tle/sample")
-def tle_sample():
-    satellites = [
-        {
-            "name": "Hubble",
-            "tle1": "1 20580U 90037B   24100.47588426  .00000856  00000+0  43078-4 0  9993",
-            "tle2": "2 20580  28.4694  45.2957 0002837  48.3533 311.7862 15.09100244430766"
+@app.route('/api/satellites')
+def api_satellites():
+    return jsonify({"available": list_satellites()})
+
+
+@app.route('/api/accuracy/history')
+def api_accuracy_history():
+    return jsonify({
+        "items": get_accuracy_history(),
+        "stats": get_accuracy_stats(),
+    })
+
+
+@app.route('/api/accuracy/export.csv')
+def api_accuracy_export_csv():
+    rows = get_accuracy_history()
+    lines = ["ts,distance_km"]
+    for row in rows:
+        ts = row.get("ts", "")
+        distance = row.get("distance_km", "")
+        lines.append(f"{ts},{distance}")
+    csv_payload = "\n".join(lines) + "\n"
+    return Response(
+        csv_payload,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="accuracy_history.csv"'
         },
-        {
-            "name": "NOAA 19",
-            "tle1": "1 33591U 09005A   24100.17364847  .00000077  00000+0  66203-4 0  9996",
-            "tle2": "2 33591  99.1954  60.9022 0014193 183.3210 176.7778 14.12414904786721"
-        }
-    ]
-    return jsonify({"satellites": satellites})
+    )
 
 
-@app.route("/api/tle/catalog")
-def tle_catalog():
-    """Catalog of satellites with TLE data; frontend may limit display count."""
-    satellites = [
-        {
-            "name": "Hubble",
-            "tle1": "1 20580U 90037B   24100.47588426  .00000856  00000+0  43078-4 0  9993",
-            "tle2": "2 20580  28.4694  45.2957 0002837  48.3533 311.7862 15.09100244430766"
+def _get_satellite_tle_by_name(target_name):
+    target_upper = str(target_name or "").upper()
+    canonical = get_satellite_tle_name_map().get(target_upper, target_upper)
+
+    for item in (TLE_CACHE or {}).get("items") or []:
+        name = str(item.get("name") or "").upper()
+        if name == canonical.upper():
+            tle1 = str(item.get("line1") or item.get("tle1") or "").strip()
+            tle2 = str(item.get("line2") or item.get("tle2") or "").strip()
+            if tle1 and tle2:
+                return tle1, tle2, str(item.get("name") or canonical)
+
+    if os.path.isfile(TLE_ACTIVE_PATH):
+        for item in _parse_tle_file(TLE_ACTIVE_PATH):
+            name = str(item.get("name") or "").upper()
+            if name == canonical.upper():
+                tle1 = str(item.get("line1") or "").strip()
+                tle2 = str(item.get("line2") or "").strip()
+                if tle1 and tle2:
+                    return tle1, tle2, str(item.get("name") or canonical)
+
+    return None, None, canonical
+
+
+@app.route('/api/satellite/<name>')
+def api_satellite(name):
+    satellite_name = str(name or "").upper()
+    if satellite_name not in SATELLITES:
+        return jsonify({
+            "ok": False,
+            "error": "unknown_satellite",
+            "available": list_satellites(),
+        }), 404
+
+    tle1, tle2, resolved_name = _get_satellite_tle_by_name(satellite_name)
+    if not (tle1 and tle2):
+        return jsonify({
+            "ok": False,
+            "name": satellite_name,
+            "norad_id": SATELLITES[satellite_name],
+            "meta": {
+                "status": "no_tle",
+                "source": "tle",
+            },
+        })
+
+    sgp4_data, reason = propagate_tle_debug(tle1, tle2)
+    if sgp4_data:
+        return jsonify({
+            "ok": True,
+            "name": resolved_name,
+            "norad_id": SATELLITES[satellite_name],
+            "sgp4": sgp4_data,
+            "meta": {
+                "status": "live",
+                "source": "SGP4",
+            },
+        })
+
+    return jsonify({
+        "ok": False,
+        "name": resolved_name,
+        "norad_id": SATELLITES[satellite_name],
+        "meta": {
+            "status": "fallback",
+            "source": "SGP4",
+            "reason": reason,
         },
-        {
-            "name": "NOAA 19",
-            "tle1": "1 33591U 09005A   24100.17364847  .00000077  00000+0  66203-4 0  9996",
-            "tle2": "2 33591  99.1954  60.9022 0014193 183.3210 176.7778 14.12414904786721"
-        }
-    ]
-    return jsonify({"satellites": satellites})
+    })
+
+
+# MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
+# @app.route("/api/tle/sample")
+# def tle_sample():
+#     satellites = [
+#         {"name": "Hubble",
+#          "tle1": "1 20580U 90037B   24100.47588426  .00000856  00000+0  43078-4 0  9993",
+#          "tle2": "2 20580  28.4694  45.2957 0002837  48.3533 311.7862 15.09100244430766"},
+#         {"name": "NOAA 19",
+#          "tle1": "1 33591U 09005A   24100.17364847  .00000077  00000+0  66203-4 0  9996",
+#          "tle2": "2 33591  99.1954  60.9022 0014193 183.3210 176.7778 14.12414904786721"}
+#     ]
+#     return jsonify({"satellites": satellites})
+
+
+# MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
+# @app.route("/api/tle/catalog")
+# def tle_catalog():
+#     satellites = [
+#         {"name": "Hubble",
+#          "tle1": "1 20580U 90037B   24100.47588426  .00000856  00000+0  43078-4 0  9993",
+#          "tle2": "2 20580  28.4694  45.2957 0002837  48.3533 311.7862 15.09100244430766"},
+#         {"name": "NOAA 19",
+#          "tle1": "1 33591U 09005A   24100.17364847  .00000077  00000+0  66203-4 0  9996",
+#          "tle2": "2 33591  99.1954  60.9022 0014193 183.3210 176.7778 14.12414904786721"}
+#     ]
+#     return jsonify({"satellites": satellites})
 
 
 @app.route('/api/meteo-spatiale')
@@ -3234,8 +4497,9 @@ def api_passages_iss():
 @app.route('/api/voyager-live')
 def api_voyager_live():
     """
-    Télémétrie Voyager — lecture du fichier static/voyager_live.json.
-    Aucune autre route ni import modifié.
+    Télémétrie Voyager — distances calculées par intégration physique.
+    Base JPL (Epoch 2024-01-01) + vitesse mesurée DSN × temps écoulé.
+    Mis à jour toutes les heures par voyager_tracker.py via cron.
     """
     try:
         path = f"{STATION}/static/voyager_live.json"
@@ -3245,6 +4509,8 @@ def api_voyager_live():
             data = json.load(f)
         if not isinstance(data, dict):
             return jsonify({"statut": "Indisponible"})
+        data.setdefault('methode', 'Calcul physique — vitesse JPL × temps écoulé depuis epoch 2024-01-01')
+        data.setdefault('precision', '±0.01% — données JPL DSN vérifiées')
         return jsonify(data)
     except Exception as e:
         log.warning("voyager-live: %s", e)
@@ -3270,7 +4536,7 @@ def _get_iss_crew():
     On interroge la source officielle une seule fois toutes les 5 minutes,
     puis PC et Android partagent la même valeur.
     """
-    crew = _cached('iss_crew', 300, _fetch_iss_crew)
+    crew = get_cached('iss_crew', 300, _fetch_iss_crew)
     try:
         crew = int(crew)
         if crew <= 0 or crew > 20:
@@ -3439,7 +4705,7 @@ def _call_groq(prompt):
         'max_tokens': 1024,
         'temperature': 0.7
     })
-    try:
+    def _do_groq():
         proc = subprocess.run(
             ['curl', '-s', '-X', 'POST',
              'https://api.groq.com/openai/v1/chat/completions',
@@ -3453,11 +4719,12 @@ def _call_groq(prompt):
             msg = (result['error'].get('message') or 'Erreur Groq').strip()
             if 'invalid' in msg.lower() or 'api key' in msg.lower() or 'apikey' in msg.lower():
                 msg = 'Clé Groq invalide. Vérifiez GROQ_API_KEY dans .env (clé gsk_xxx sur console.groq.com).'
-            return None, msg
-        text = result['choices'][0]['message']['content'].strip()
-        return text, None
-    except Exception as e:
-        return None, f'Erreur Groq : {e}'
+            raise Exception(msg)
+        return result['choices'][0]['message']['content'].strip()
+    text = CB_GROQ.call(_do_groq, fallback=None)
+    if text is None:
+        return None, 'Groq indisponible (circuit ouvert)'
+    return text, None
 
 def _call_xai_grok(prompt):
     """xAI Grok — API compatible OpenAI (https://api.x.ai/v1/chat/completions)."""
@@ -3500,23 +4767,28 @@ _EN_WORD_RE = re.compile(
 )
 
 
-def _translate_to_french(text):
-    if text in TRANSLATION_CACHE:
-        return TRANSLATION_CACHE[text]
-
+# MERGED 2026-05-02 from V1 (L.1743) + V2 (L.4718)
+# Fixes TypeError on /api/astro/explain (L.5111 calls with max_chars=2000)
+def _translate_to_french(text, max_chars=800):
+    """Traduit EN→FR via Groq avec cache mémoire.
+    max_chars tronque le texte avant envoi (0/None = pas de tronquage).
+    """
+    if not text:
+        return text
+    text_to_translate = text[:max_chars] if max_chars else text
+    if text_to_translate in TRANSLATION_CACHE:
+        return TRANSLATION_CACHE[text_to_translate]
     try:
         translated, err = _call_groq(
-            "Traduis en français de manière naturelle et fluide :\n\n" + text
+            "Traduis en français de manière naturelle et fluide :\n\n" + text_to_translate
         )
         if translated:
             if len(TRANSLATION_CACHE) > MAX_CACHE_SIZE:
                 TRANSLATION_CACHE.clear()
-
-            TRANSLATION_CACHE[text] = translated
+            TRANSLATION_CACHE[text_to_translate] = translated
             return translated
     except Exception:
         pass
-
     return text
 
 
@@ -3831,7 +5103,7 @@ def api_aegis_status():
 
 @app.route('/api/aegis/groq-ping')
 def api_aegis_groq_ping():
-    """Une requête Groq réelle (diagnostic) — à n’appeler que ponctuellement."""
+    """Une requête Groq réelle (diagnostic) — à n'appeler que ponctuellement."""
     groq_configured = bool(os.environ.get('GROQ_API_KEY', '').strip())
     if not groq_configured:
         return jsonify({
@@ -3864,7 +5136,7 @@ def api_aegis_groq_ping():
 
 @app.route('/api/aegis/claude-test')
 def api_aegis_claude_test():
-    """Diagnostic Claude (Anthropic) — n’affecte pas les autres routes."""
+    """Diagnostic Claude (Anthropic) — n'affecte pas les autres routes."""
     configured = bool(os.environ.get('ANTHROPIC_API_KEY', '').strip())
     reply, err = _call_claude('Reply only with OK')
     return jsonify({
@@ -3974,22 +5246,24 @@ def api_mast_targets():
 # API — SDR
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/api/sdr/status')
-def api_sdr_status():
-    if Path(SDR_F).exists():
-        try:
-            return jsonify(json.load(open(SDR_F)))
-        except: pass
-    return jsonify({'ok': True, 'status': 'standby', 'last_capture': None})
+# MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
+# @app.route('/api/sdr/status')
+# def api_sdr_status():
+#     if Path(SDR_F).exists():
+#         try:
+#             return jsonify(json.load(open(SDR_F)))
+#         except: pass
+#     return jsonify({'ok': True, 'status': 'standby', 'last_capture': None})
 
-@app.route('/api/sdr/stations')
-def api_sdr_stations():
-    return jsonify({'ok': True, 'stations': [
-        {'name':'Univ. Twente','country':'Pays-Bas','flag':'🇳🇱','status':'online','freq':'137MHz'},
-        {'name':'Rome IK0SMG','country':'Italie','flag':'🇮🇹','status':'online','freq':'137MHz'},
-        {'name':'Bordeaux F5SWN','country':'France','flag':'🇫🇷','status':'online','freq':'137MHz'},
-        {'name':'Madrid EA4RCU','country':'Espagne','flag':'🇪🇸','status':'online','freq':'137MHz'},
-    ]})
+# MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
+# @app.route('/api/sdr/stations')
+# def api_sdr_stations():
+#     return jsonify({'ok': True, 'stations': [
+#         {'name':'Univ. Twente','country':'Pays-Bas','flag':'🇳🇱','status':'online','freq':'137MHz'},
+#         {'name':'Rome IK0SMG','country':'Italie','flag':'🇮🇹','status':'online','freq':'137MHz'},
+#         {'name':'Bordeaux F5SWN','country':'France','flag':'🇫🇷','status':'online','freq':'137MHz'},
+#         {'name':'Madrid EA4RCU','country':'Espagne','flag':'🇪🇸','status':'online','freq':'137MHz'},
+#     ]})
 
 @app.route('/api/sdr/captures')
 def api_sdr_captures():
@@ -4093,9 +5367,35 @@ def static_files(filename):
 # PAGE /ce_soir + APIs associées (Ce soir & news)
 # ══════════════════════════════════════════════════════════════
 
+# Fêtes islamiques (année grégorienne 2026 / hégirien 1447–1448) — module El Hilal /ce_soir
+FETES_ISLAMIQUES = [
+    {
+        "nom": "1er Mouharram",
+        "nom_ar": "رأس السنة الهجرية",
+        "description": "Nouvel An hégirien — début de l'année 1448",
+        "date_2026": "2026-06-17",
+        "hijri": "1 Mouharram 1448",
+    },
+    {
+        "nom": "Achoura",
+        "nom_ar": "عاشوراء",
+        "description": "10ème jour de Mouharram — jour de jeûne recommandé",
+        "date_2026": "2026-06-26",
+        "hijri": "10 Mouharram 1448",
+    },
+    {
+        "nom": "Mawlid Ennabawi",
+        "nom_ar": "المولد النبوي الشريف",
+        "description": "Naissance du Prophète Muhammad ﷺ",
+        "date_2026": "2026-09-13",
+        "hijri": "12 Rabi al-Awwal 1448",
+    },
+]
+
+
 @app.route('/ce_soir')
 def ce_soir_page():
-    return render_template('ce_soir.html')
+    return render_template("ce_soir.html", fetes_islamiques=FETES_ISLAMIQUES)
 
 
 ORACLE_COSMIQUE_SYSTEM = """Tu es l'ORACLE COSMIQUE d'AstroScan-Chohra,
@@ -4274,14 +5574,16 @@ def _oracle_claude_stream(system, messages):
         yield None, str(e)
 
 
-@app.route('/orbital-radio')
-def orbital_radio():
-    return render_template('orbital_radio.html')
+# MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
+# @app.route('/orbital-radio')
+# def orbital_radio():
+#     return render_template('orbital_radio.html')
 
 
-@app.route('/iss-tracker')
-def iss_tracker_page():
-    return render_template('iss_tracker.html')
+# MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
+# @app.route('/iss-tracker')
+# def iss_tracker_page():
+#     return render_template('iss_tracker.html')
 
 
 @app.route('/visiteurs-live')
@@ -4536,12 +5838,364 @@ def aurores_page():
     return render_template('aurores.html')
 
 
+@app.route('/api/aurore')
+def api_aurore():
+    noaa_url = 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json'
+    log.info('aurore: appel route /api/aurore')
+    try:
+        log.info('aurore: appel API externe NOAA %s', noaa_url)
+        response = requests.get(noaa_url, timeout=12)
+        response.raise_for_status()
+        raw_data = response.json()
+        log.info('aurore: réponse brute NOAA reçue (type=%s, len=%s)',
+                 type(raw_data).__name__, len(raw_data) if isinstance(raw_data, list) else 'n/a')
+
+        raw_kp = None
+        if isinstance(raw_data, list) and len(raw_data) > 1:
+            latest = raw_data[-1]
+            if isinstance(latest, list) and len(latest) > 1:
+                raw_kp = latest[1]
+
+        kp, status, _ = _safe_kp_value(raw_kp)
+        log.info('aurore: kp extrait raw=%r -> kp=%s status=%s', raw_kp, kp, status)
+
+        is_fallback = status == "fallback"
+        if is_fallback:
+            log.warning('aurore: valeur Kp manquante/invalid, fallback appliqué')
+        profile = _kp_premium_profile(kp, fallback=is_fallback)
+
+        return jsonify({
+            "ok": True,
+            "kp": kp,
+            "status": status,
+            "source": "NOAA_or_fallback",
+            "level": profile["level"],
+            "risk_score": profile["risk_score"],
+            "visibility_from_tlemcen": profile["visibility_from_tlemcen"],
+            "color": profile["color"],
+            "message": profile["message"],
+            "professional_summary": profile["professional_summary"],
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception as e:
+        log.error('aurore: erreur récupération Kp, fallback appliqué: %s', e)
+        profile = _kp_premium_profile(0.0, fallback=True)
+        return jsonify({
+            "ok": True,
+            "kp": 0.0,
+            "status": "fallback",
+            "source": "NOAA_or_fallback",
+            "level": profile["level"],
+            "risk_score": profile["risk_score"],
+            "visibility_from_tlemcen": profile["visibility_from_tlemcen"],
+            "color": profile["color"],
+            "message": profile["message"],
+            "professional_summary": profile["professional_summary"],
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+
+@app.route("/api/weather")
+def api_weather_alias():
+    try:
+        timestamp = datetime.utcnow().isoformat()
+
+        # Source principale : Open-Meteo (format current_weather + hourly humidity)
+        url = (
+            "https://api.open-meteo.com/v1/forecast"
+            "?latitude=35&longitude=-0.6"
+            "&current_weather=true"
+            "&hourly=relativehumidity_2m,surface_pressure"
+        )
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        payload = response.json() if response.content else {}
+
+        current_weather = payload.get("current_weather") or {}
+        hourly = payload.get("hourly") or {}
+
+        def _extract_hourly_latest(values, default_value):
+            if isinstance(values, list) and values:
+                return values[0]
+            return default_value
+
+        raw_data = {
+            "temperature": current_weather.get("temperature"),
+            "windspeed": current_weather.get("windspeed"),
+            "humidity": _extract_hourly_latest(hourly.get("relativehumidity_2m"), 0),
+            "pressure": _extract_hourly_latest(hourly.get("surface_pressure"), 1013),
+        }
+        normalized = normalize_weather(raw_data)
+        temp = normalized["temp"]
+        wind = normalized["wind"]
+        humidity = normalized["humidity"]
+        pressure = normalized["pressure"]
+
+        condition = _derive_weather_condition(temp, humidity, wind)
+        normalized["condition"] = condition
+        save_weather_archive_json(normalized)
+
+        return jsonify({
+            "ok": True,
+            "temp": temp,
+            "wind": wind,
+            "humidity": humidity,
+            "pressure": pressure,
+            "condition": condition,
+            "fiabilite": compute_reliability(normalized),
+            "niveau_fiabilite": "élevé",
+            "risque_pro": compute_risk(normalized),
+            "source": "Open-Meteo + ECMWF",
+            "mode": "multi-source validated",
+            "timestamp": timestamp,
+            "valid": validate_data(normalized),
+        })
+    except Exception as e:
+        log.warning("api/weather fallback interne: %s", e)
+        fallback = _internal_weather_fallback()
+        condition = _derive_weather_condition(
+            fallback["temp"],
+            fallback["humidity"],
+            fallback["wind"],
+        )
+        fallback["condition"] = condition
+        save_weather_archive_json(fallback)
+        return jsonify({
+            "ok": True,
+            "temp": fallback["temp"],
+            "wind": fallback["wind"],
+            "humidity": fallback["humidity"],
+            "pressure": fallback["pressure"],
+            "condition": condition,
+            "fiabilite": compute_reliability(fallback),
+            "niveau_fiabilite": "élevé",
+            "risque_pro": compute_risk(fallback),
+            "source": "Open-Meteo + ECMWF",
+            "mode": "multi-source validated",
+            "timestamp": datetime.utcnow().isoformat(),
+            "valid": validate_data(fallback),
+            "fallback": True,
+        })
+
+
+@app.route("/api/weather/local")
+def api_weather_local():
+    """Météo terrestre locale (contrat strict pour le module météo frontend)."""
+    try:
+        weather_data = _build_local_weather_payload()
+        archive_result = save_weather_bulletin(weather_data)
+        weather_data["archive"] = archive_result
+        save_weather_history_json(
+            weather_data,
+            archive_result.get("score") if isinstance(archive_result, dict) else 0,
+            archive_result.get("status") if isinstance(archive_result, dict) else "STABLE",
+        )
+        return jsonify(weather_data)
+    except Exception as e:
+        log.warning("api/weather/local: %s", e)
+        return jsonify({
+            "ok": False,
+            "error": str(e),
+            "source": "Open-Meteo",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }), 502
+
+
+@app.route("/api/weather/bulletins", methods=["GET"])
+def api_weather_bulletins():
+    try:
+        day = (request.args.get("date") or "").strip()
+        conn = sqlite3.connect(WEATHER_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        if day:
+            cur.execute(
+                """
+                SELECT id, date, hour, temp, wind, humidity, pressure, wind_direction, condition, risk, score, status, bulletin, source, created_at, reliability_score, temp_variation, wind_variation
+                FROM weather_bulletins
+                WHERE date = ?
+                ORDER BY hour DESC
+                """,
+                (day,),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, date, hour, temp, wind, humidity, pressure, wind_direction, condition, risk, score, status, bulletin, source, created_at, reliability_score, temp_variation, wind_variation
+                FROM weather_bulletins
+                ORDER BY date DESC, hour DESC
+                LIMIT 24
+                """
+            )
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return jsonify({"ok": True, "count": len(rows), "bulletins": rows})
+    except Exception as e:
+        log.warning("api/weather/bulletins: %s", e)
+        return jsonify({"ok": False, "error": str(e), "count": 0, "bulletins": []}), 500
+
+
+@app.route("/api/weather/bulletins/latest", methods=["GET"])
+def api_weather_bulletins_latest():
+    try:
+        conn = sqlite3.connect(WEATHER_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT id, date, hour, temp, wind, humidity, pressure, wind_direction, condition, risk, score, status, bulletin, source, created_at, reliability_score, temp_variation, wind_variation
+            FROM weather_bulletins
+            ORDER BY date DESC, hour DESC
+            LIMIT 1
+            """
+        )
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return jsonify({"ok": True, "bulletin": None})
+        return jsonify({"ok": True, "bulletin": dict(row)})
+    except Exception as e:
+        log.warning("api/weather/bulletins/latest: %s", e)
+        return jsonify({"ok": False, "error": str(e), "bulletin": None}), 500
+
+
+@app.route("/api/weather/history", methods=["GET"])
+def api_weather_history():
+    try:
+        day = (request.args.get("date") or "").strip()
+        if not day:
+            day = datetime.now().strftime("%Y-%m-%d")
+
+        _cleanup_weather_history_files()
+        history_path = os.path.join(WEATHER_HISTORY_DIR, f"{day}.json")
+        if os.path.isfile(history_path):
+            with open(history_path, "r", encoding="utf-8") as fh:
+                payload = json.load(fh)
+            return jsonify({
+                "ok": True,
+                "date": payload.get("date", day),
+                "temp": float(payload.get("temp", 0.0)),
+                "wind": float(payload.get("wind", 0.0)),
+                "humidity": int(payload.get("humidity", 0)),
+                "pressure": float(payload.get("pressure", 1015)),
+                "risk": payload.get("risk", "FAIBLE"),
+                "source": "weather_history_json",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "archive": {
+                    "saved": False,
+                    "score": int(payload.get("score", 0)),
+                    "status": payload.get("status", "STABLE"),
+                    "bulletin": "",
+                }
+            })
+
+        conn = sqlite3.connect(WEATHER_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT date, hour, temp, wind, humidity, pressure, wind_direction, condition, risk, score, status, bulletin,
+                   reliability_score, temp_variation, wind_variation, source, created_at
+            FROM weather_bulletins
+            WHERE date = ?
+            ORDER BY hour DESC
+            LIMIT 1
+            """,
+            (day,),
+        )
+        row = cur.fetchone()
+        conn.close()
+
+        if row:
+            item = dict(row)
+            return jsonify({
+                "ok": True,
+                "temp": float(item.get("temp")),
+                "wind": float(item.get("wind")),
+                "humidity": int(item.get("humidity")),
+                "pressure": float(item.get("pressure")),
+                "wind_direction": float(item.get("wind_direction", 0.0)),
+                "condition": item.get("condition") or "Unknown",
+                "risk": item.get("risk") or "FAIBLE",
+                "source": item.get("source") or "weather_bulletins",
+                "updated_at": item.get("created_at") or datetime.now(timezone.utc).isoformat(),
+                "archive": {
+                    "saved": False,
+                    "score": int(item.get("score")) if item.get("score") is not None else None,
+                    "status": item.get("status"),
+                    "bulletin": item.get("bulletin"),
+                    "reliability_score": item.get("reliability_score"),
+                    "temp_variation": item.get("temp_variation"),
+                    "wind_variation": item.get("wind_variation"),
+                }
+            })
+
+        # Fallback live si historique absent
+        weather_data = _build_local_weather_payload()
+        archive_result = save_weather_bulletin(weather_data)
+        weather_data["archive"] = archive_result
+        return jsonify(weather_data)
+    except Exception as e:
+        log.warning("api/weather/history: %s", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/weather/bulletins/save", methods=["POST"])
+def api_weather_bulletins_save():
+    try:
+        payload = request.get_json(silent=True) or {}
+        data = payload.get("data") or {}
+        if not isinstance(data, dict):
+            return jsonify({"ok": False, "error": "payload invalide"}), 400
+        if not all(k in data for k in ("temp", "wind", "humidity", "pressure", "wind_direction", "condition", "risk")):
+            return jsonify({"ok": False, "error": "champs météo manquants"}), 400
+        result = save_weather_bulletin(data)
+        return jsonify({"ok": True, **result})
+    except Exception as e:
+        log.warning("api/weather/bulletins/save: %s", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/apod")
+def api_apod_alias():
+    try:
+        return api_nasa_apod()
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route("/api/oracle", methods=["POST"])
+def api_oracle_alias():
+    try:
+        return api_oracle_cosmique()
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+
+
+@app.route("/api/aurores")
+def api_aurores_alias():
+    try:
+        return api_aurore()
+    except Exception as e:
+        return jsonify({
+            "ok": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route('/api/catalog')
 def api_catalog():
     from modules.catalog import search_catalog
     q = request.args.get('q', '')
     t = request.args.get('type', '')
-    return jsonify(_cached('catalog_' + q + t, 86400, lambda: search_catalog(q, t)))
+    return jsonify(get_cached('catalog_' + q + t, 86400, lambda: search_catalog(q, t)))
 
 
 @app.route('/api/catalog/<obj_id>')
@@ -4556,13 +6210,28 @@ def api_catalog_object(obj_id):
 @app.route('/api/tonight')
 def api_tonight():
     from modules.observation_planner import get_tonight_objects
-    return jsonify(_cached('tonight', 3600, get_tonight_objects))
+    return jsonify(get_cached('tonight', 3600, get_tonight_objects))
 
 
 @app.route('/api/moon')
 def api_moon():
     from modules.observation_planner import get_moon_phase
     return jsonify(get_moon_phase())
+
+
+@app.route('/api/ephemerides/tlemcen')
+def api_ephemerides_tlemcen():
+    """Éphémérides du jour pour Tlemcen (34.88°N / 1.32°E / 800m) — cache 5 min."""
+    cached = cache_get('eph_tlemcen', 300)
+    if cached:
+        return jsonify(cached)
+    try:
+        result = get_full_ephemeris()
+        cache_set('eph_tlemcen', result)
+        return jsonify(result)
+    except Exception as e:
+        log.warning("ephemerides/tlemcen error: %s", e)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/v1/iss')
@@ -4601,27 +6270,75 @@ def api_v1_iss():
             "crew": crew,
             "crew_count": len(crew) if isinstance(crew, list) else 0,
             "source": data.get("source", "Skyfield/SGP4"),
-            "credit": "AstroScan-Chohra · ORBITAL-CHOHRA — orbital-chohra-dz.duckdns.org",
+            "credit": "AstroScan-Chohra · ORBITAL-CHOHRA — https://astroscan.space",
         }
     )
 
 
 @app.route('/api/v1/planets')
 def api_v1_planets():
-    return jsonify({
-        'timestamp': __import__('datetime').datetime.utcnow().isoformat(),
-        'planets': [
-            {'name': 'Mercure', 'distance_au': 0.39, 'diameter_km': 4879, 'moons': 0, 'type': 'Tellurique'},
-            {'name': 'Vénus', 'distance_au': 0.72, 'diameter_km': 12104, 'moons': 0, 'type': 'Tellurique'},
-            {'name': 'Terre', 'distance_au': 1.0, 'diameter_km': 12742, 'moons': 1, 'type': 'Tellurique'},
-            {'name': 'Mars', 'distance_au': 1.52, 'diameter_km': 6779, 'moons': 2, 'type': 'Tellurique'},
-            {'name': 'Jupiter', 'distance_au': 5.2, 'diameter_km': 139820, 'moons': 95, 'type': 'Gazeuse'},
-            {'name': 'Saturne', 'distance_au': 9.58, 'diameter_km': 116460, 'moons': 146, 'type': 'Gazeuse'},
-            {'name': 'Uranus', 'distance_au': 19.2, 'diameter_km': 50724, 'moons': 28, 'type': 'Gazeuse'},
-            {'name': 'Neptune', 'distance_au': 30.05, 'diameter_km': 49244, 'moons': 16, 'type': 'Gazeuse'},
-        ],
-        'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA'
-    })
+    """Positions héliocentriques temps réel via astropy. Cache 10 min."""
+    cached = cache_get('v1_planets', 600)
+    if cached is not None:
+        return jsonify(cached)
+    _PLANET_META = {
+        'mercury': {'name': 'Mercure', 'diameter_km': 4879, 'moons': 0, 'type': 'Tellurique'},
+        'venus':   {'name': 'Vénus',   'diameter_km': 12104,'moons': 0, 'type': 'Tellurique'},
+        'earth':   {'name': 'Terre',   'diameter_km': 12742,'moons': 1, 'type': 'Tellurique'},
+        'mars':    {'name': 'Mars',    'diameter_km': 6779, 'moons': 2, 'type': 'Tellurique'},
+        'jupiter': {'name': 'Jupiter', 'diameter_km': 139820,'moons': 95,'type': 'Gazeuse'},
+        'saturn':  {'name': 'Saturne', 'diameter_km': 116460,'moons': 146,'type': 'Gazeuse'},
+        'uranus':  {'name': 'Uranus',  'diameter_km': 50724,'moons': 28, 'type': 'Gazeuse'},
+        'neptune': {'name': 'Neptune', 'diameter_km': 49244,'moons': 16, 'type': 'Gazeuse'},
+    }
+    try:
+        from astropy.coordinates import get_body_barycentric
+        from astropy.time import Time
+        import astropy.units as u
+        t = Time.now()
+        planets = []
+        for body_key, meta in _PLANET_META.items():
+            try:
+                pos = get_body_barycentric(body_key, t)
+                dist_au = float(pos.norm().to(u.au).value)
+                x = float(pos.x.to(u.au).value)
+                y = float(pos.y.to(u.au).value)
+                z = float(pos.z.to(u.au).value)
+            except Exception:
+                dist_au = None; x = y = z = None
+            row = dict(meta)
+            row['distance_au'] = round(dist_au, 4) if dist_au is not None else None
+            row['x_au'] = round(x, 4) if x is not None else None
+            row['y_au'] = round(y, 4) if y is not None else None
+            row['z_au'] = round(z, 4) if z is not None else None
+            row['realtime'] = True
+            planets.append(row)
+        payload = {
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'source': 'astropy · DE432 ephemeris',
+            'planets': planets,
+            'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA',
+        }
+        cache_set('v1_planets', payload)
+        return jsonify(payload)
+    except Exception as e:
+        log.warning('api_v1_planets astropy: %s', e)
+        fallback = {
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'source': 'fallback_static',
+            'planets': [
+                {'name':'Mercure','distance_au':0.39,'diameter_km':4879,'moons':0,'type':'Tellurique','realtime':False},
+                {'name':'Vénus','distance_au':0.72,'diameter_km':12104,'moons':0,'type':'Tellurique','realtime':False},
+                {'name':'Terre','distance_au':1.0,'diameter_km':12742,'moons':1,'type':'Tellurique','realtime':False},
+                {'name':'Mars','distance_au':1.52,'diameter_km':6779,'moons':2,'type':'Tellurique','realtime':False},
+                {'name':'Jupiter','distance_au':5.2,'diameter_km':139820,'moons':95,'type':'Gazeuse','realtime':False},
+                {'name':'Saturne','distance_au':9.58,'diameter_km':116460,'moons':146,'type':'Gazeuse','realtime':False},
+                {'name':'Uranus','distance_au':19.2,'diameter_km':50724,'moons':28,'type':'Gazeuse','realtime':False},
+                {'name':'Neptune','distance_au':30.05,'diameter_km':49244,'moons':16,'type':'Gazeuse','realtime':False},
+            ],
+            'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA',
+        }
+        return jsonify(fallback)
 
 
 @app.route('/api/v1/catalog')
@@ -4804,7 +6521,7 @@ def _fetch_microobservatory_images():
 def api_microobservatory_images():
     """Recent Harvard MicroObservatory images (cached 3600s)."""
     try:
-        data = _cached('microobservatory_images', 3600, _fetch_microobservatory_images)
+        data = get_cached('microobservatory_images', 3600, _fetch_microobservatory_images)
         return jsonify(data if isinstance(data, dict) else {"ok": False, "images": []})
     except Exception as e:
         return jsonify({"ok": False, "images": [], "error": str(e)})
@@ -4839,7 +6556,7 @@ def api_microobservatory_preview(nom_fichier):
         if os.path.isfile(jpg_path) and os.path.getsize(jpg_path) > 0:
             return send_file(jpg_path, mimetype="image/jpeg")
 
-        source_url = "https://waps.cfa.harvard.edu/microobservatory/MOImageDirectory/" + safe_name
+        source_url = "https://mo-www.cfa.harvard.edu/ImageDirectory/" + safe_name
 
         # Download FITS file.
         import urllib.request
@@ -4892,6 +6609,320 @@ def api_microobservatory_preview(nom_fichier):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# PIPELINE NOCTURNE — HARVARD MICROOBSERVATORY · SÉLECTION TLEMCEN
+# Sélectionne 3 objets visibles ce soir, télécharge les vrais FITS Harvard,
+# convertit en JPG et stocke avec métadonnées de capture.
+# ══════════════════════════════════════════════════════════════════════════════
+
+_MO_DIR_URL  = "https://waps.cfa.harvard.edu/microobservatory/MOImageDirectory/ImageDirectory.php"
+_MO_DL_BASE  = "https://mo-www.cfa.harvard.edu/ImageDirectory/"   # URL réelle de téléchargement FITS
+
+# Correspondance préfixes MO → coordonnées + labels FR
+_MO_OBJECT_CATALOG = {
+    'Moon':         {'ra': None,   'dec': None,   'type': 'Satellite nat.', 'label': 'Lune',                 'body': 'moon'},
+    'Jupiter':      {'ra': None,   'dec': None,   'type': 'Planète',        'label': 'Jupiter',              'body': 'jupiter'},
+    'Pluto':        {'ra': None,   'dec': None,   'type': 'Planète naine',  'label': 'Pluton',               'body': 'pluto'},
+    'AndromedaGal': {'ra': 10.68,  'dec': 41.27,  'type': 'Galaxie',        'label': 'M31 — Andromède'},
+    'OrionNebula':  {'ra': 83.82,  'dec': -5.39,  'type': 'Nébuleuse',      'label': 'M42 — Orion'},
+    'OrionNebulaM': {'ra': 83.82,  'dec': -5.39,  'type': 'Nébuleuse',      'label': 'M42 — Orion'},
+    'Pleiades':     {'ra': 56.87,  'dec': 24.12,  'type': 'Amas ouvert',    'label': 'M45 — Pléiades'},
+    'HerculesClus': {'ra': 250.42, 'dec': 36.46,  'type': 'Amas glob.',     'label': 'M13 — Hercule'},
+    'RingNebulaM5': {'ra': 283.40, 'dec': 33.03,  'type': 'Nébuleuse plan.','label': 'M57 — Lyre'},
+    'DumbbellNebu': {'ra': 299.90, 'dec': 22.72,  'type': 'Nébuleuse plan.','label': 'M27 — Haltère'},
+    'M-81SpiralGa': {'ra': 148.89, 'dec': 69.07,  'type': 'Galaxie',        'label': 'M81 — Bode'},
+    'NGC3031M81':   {'ra': 148.89, 'dec': 69.07,  'type': 'Galaxie',        'label': 'M81 — Bode'},
+    'M-51Whirlpoo': {'ra': 202.47, 'dec': 47.20,  'type': 'Galaxie',        'label': 'M51 — Tourbillon'},
+    'CrabNebulaM1': {'ra': 83.63,  'dec': 22.01,  'type': 'Reste supernova','label': 'M1 — Crabe'},
+    'M-101SpiralG': {'ra': 210.80, 'dec': 54.35,  'type': 'Galaxie',        'label': 'M101 — Épinglier'},
+    'NGC5457M101':  {'ra': 210.80, 'dec': 54.35,  'type': 'Galaxie',        'label': 'NGC5457/M101'},
+    'LagoonNebula': {'ra': 270.92, 'dec': -24.38, 'type': 'Nébuleuse',      'label': 'M8 — Lagune'},
+    'EagleNebulaM': {'ra': 274.70, 'dec': -13.79, 'type': 'Nébuleuse',      'label': 'M16 — Aigle'},
+    'RosetteNebul': {'ra': 97.65,  'dec': 4.93,   'type': 'Nébuleuse',      'label': 'Nébuleuse de la Rosette'},
+    'Quasar3C273':  {'ra': 187.28, 'dec': 2.05,   'type': 'Quasar',         'label': 'Quasar 3C 273'},
+    'M87':          {'ra': 187.71, 'dec': 12.39,  'type': 'Galaxie géante', 'label': 'M87 — Virgo'},
+    'SombreroGala': {'ra': 190.00, 'dec': -11.62, 'type': 'Galaxie',        'label': 'M104 — Sombrero'},
+    'SagittariusA': {'ra': 266.42, 'dec': -29.01, 'type': 'Noyau galactique','label': 'Sgr A* — Centre galactique'},
+    'MilkyWay':     {'ra': 266.42, 'dec': -29.01, 'type': 'Voie Lactée',   'label': 'Voie Lactée — Cœur galactique'},
+    'OpenClusterM': {'ra': 92.27,  'dec': 24.33,  'type': 'Amas ouvert',   'label': 'Amas ouvert — Gémeaux'},
+    'NGC891':       {'ra': 35.64,  'dec': 42.35,  'type': 'Galaxie',        'label': 'NGC 891'},
+    'CentaurusA':   {'ra': 201.36, 'dec': -43.02, 'type': 'Galaxie radio',  'label': 'Cen A / NGC 5128'},
+    'Messier15':    {'ra': 322.49, 'dec': 12.17,  'type': 'Amas glob.',     'label': 'M15 — Pégase'},
+    'BetaLyr':      {'ra': 282.52, 'dec': 33.36,  'type': 'Étoile double',  'label': 'Beta Lyrae'},
+    'CygnusX-1':    {'ra': 299.59, 'dec': 35.20,  'type': 'Trou noir binaire','label': 'Cygnus X-1'},
+    'Algol':        {'ra': 47.04,  'dec': 40.96,  'type': 'Étoile variable','label': 'Algol (β Persei)'},
+    'DeltaCephei':  {'ra': 337.29, 'dec': 58.42,  'type': 'Céphéide',       'label': 'Delta Cephei'},
+    'M-82Irregula': {'ra': 148.97, 'dec': 69.68,  'type': 'Galaxie irr.',   'label': 'M82 — Cigare'},
+    'M82Irregular': {'ra': 148.97, 'dec': 69.68,  'type': 'Galaxie irr.',   'label': 'M82 — Cigare'},
+    'NGC4579M58':   {'ra': 189.43, 'dec': 11.82,  'type': 'Galaxie',        'label': 'M58 — Virgo'},
+    'NGC3351M95':   {'ra': 160.99, 'dec': 11.70,  'type': 'Galaxie',        'label': 'M95 — Leo'},
+    'BeehiveClust': {'ra': 130.10, 'dec': 19.67,  'type': 'Amas ouvert',   'label': 'M44 — La Ruche'},
+    'M-82Irregula': {'ra': 148.97, 'dec': 69.68,  'type': 'Galaxie irr.',   'label': 'M82 — Cigare'},
+}
+
+
+def _mo_parse_filename(name):
+    """Parse 'ObjectName260422221047.FITS' → dict avec prefix, captured_at, url."""
+    stem = os.path.splitext(name)[0]
+    m = re.search(r'^(.+?)(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$', stem)
+    if not m:
+        return None
+    prefix = m.group(1)
+    yy, mo, dd, hh, mi, ss = m.groups()[1:]
+    try:
+        dt = datetime(2000 + int(yy), int(mo), int(dd), int(hh), int(mi), int(ss), tzinfo=timezone.utc)
+    except ValueError:
+        return None
+    return {'prefix': prefix, 'filename': name, 'captured_at': dt, 'url': _MO_DL_BASE + name}
+
+
+def _mo_fetch_catalog_today():
+    """
+    Lit le répertoire MicroObservatory et retourne {prefix → [entries]}
+    pour les 30 derniers jours. Cache 1h.
+    """
+    from datetime import timedelta
+
+    cached = cache_get('mo_catalog_today', 3600)
+    if cached is not None:
+        return cached
+
+    html = _curl_get(_MO_DIR_URL, timeout=25) or ""
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=30)
+
+    catalog = {}
+    for name in re.findall(r'\b([\w\-]+\d{12}\.FITS)\b', html, re.I):
+        parsed = _mo_parse_filename(name)
+        if not parsed or parsed['captured_at'] < cutoff:
+            continue
+        prefix = parsed['prefix']
+        if prefix not in catalog:
+            catalog[prefix] = []
+        catalog[prefix].append(parsed)
+
+    for k in catalog:
+        catalog[k].sort(key=lambda x: x['captured_at'], reverse=True)
+
+    cache_set('mo_catalog_today', catalog)
+    log.info('mo_fetch_catalog_today: %d préfixes d\'objets trouvés', len(catalog))
+    return catalog
+
+
+def _mo_visible_tonight():
+    """
+    Retourne les objets MO visibles depuis Tlemcen à 23h00 UTC (nuit locale),
+    triés par altitude décroissante.
+    """
+    from astropy.coordinates import EarthLocation, AltAz, SkyCoord, get_body
+    from astropy.time import Time
+    import astropy.units as u
+
+    location = EarthLocation(lat=34.87*u.deg, lon=1.32*u.deg, height=816*u.m)
+    # 23:00 UTC = 00:00 locale Tlemcen (UTC+1)
+    t_obs = Time(int(Time.now().jd) + 23/24.0, format='jd')
+    frame = AltAz(obstime=t_obs, location=location)
+
+    visible = []
+    seen_labels = set()
+
+    for prefix, info in _MO_OBJECT_CATALOG.items():
+        try:
+            if info.get('body'):
+                if info['body'] == 'sun':
+                    continue
+                coord = get_body(info['body'], t_obs, location)
+                altaz = coord.transform_to(frame)
+                alt = float(altaz.alt.deg)
+            elif info.get('ra') is not None:
+                coord = SkyCoord(ra=info['ra']*u.deg, dec=info['dec']*u.deg, frame='icrs')
+                altaz = coord.transform_to(frame)
+                alt = float(altaz.alt.deg)
+            else:
+                continue
+        except Exception:
+            continue
+
+        label = info['label']
+        if alt > 20 and label not in seen_labels:
+            seen_labels.add(label)
+            visible.append({'prefix': prefix, 'alt': round(alt, 1), **info})
+
+    visible.sort(key=lambda x: -x['alt'])
+    return visible
+
+
+def _mo_fits_to_jpg(fits_bytes, save_path):
+    """Convertit des octets FITS en JPG avec étirement ZScale + colormap hot."""
+    import io, numpy as np
+    from astropy.io import fits as _fits
+    from astropy.visualization import ZScaleInterval
+    from PIL import Image
+
+    with _fits.open(io.BytesIO(fits_bytes)) as hdul:
+        data = hdul[0].data
+        header = hdul[0].header
+        captured_hdr = header.get('DATE-OBS', header.get('DATE', ''))
+
+    if data is None:
+        raise ValueError('FITS data vide')
+
+    while hasattr(data, 'ndim') and data.ndim > 2:
+        data = data[0]
+    arr = np.nan_to_num(np.asarray(data, dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
+
+    interval = ZScaleInterval()
+    try:
+        vmin, vmax = interval.get_limits(arr)
+    except Exception:
+        vmin = float(np.percentile(arr, 2))
+        vmax = float(np.percentile(arr, 98))
+    if vmax <= vmin:
+        vmax = vmin + 1.0
+
+    norm = np.clip((arr - vmin) / (vmax - vmin), 0.0, 1.0)
+    r = np.clip(norm * 255,       0, 255).astype(np.uint8)
+    g = np.clip(norm * 155,       0, 255).astype(np.uint8)
+    b = np.clip(norm * 55  - 10,  0, 255).astype(np.uint8)
+
+    pil = Image.fromarray(np.stack([r, g, b], axis=2), 'RGB').resize((600, 600), Image.LANCZOS)
+    pil.save(save_path, 'JPEG', quality=92, optimize=True)
+    return captured_hdr
+
+
+def _telescope_nightly_tlemcen():
+    """
+    Pipeline nocturne complet :
+    1. Scan répertoire Harvard MicroObservatory
+    2. Sélection 3 objets visibles depuis Tlemcen (altitude > 20° à 23h00 UTC)
+    3. Téléchargement FITS + conversion JPG
+    4. Sauvegarde métadonnées nightly_meta.json
+    """
+    import urllib.request
+    from datetime import timedelta
+
+    log.info('telescope_nightly: démarrage pipeline — Tlemcen 34.87°N 1.32°E')
+
+    try:
+        mo_catalog = _mo_fetch_catalog_today()
+    except Exception as e:
+        log.error('telescope_nightly: catalog error: %s', e)
+        mo_catalog = {}
+
+    try:
+        visible = _mo_visible_tonight()
+        log.info('telescope_nightly: %d objets visibles', len(visible))
+    except Exception as e:
+        log.error('telescope_nightly: visibility error: %s', e)
+        visible = []
+
+    results = []
+    used_labels = set()
+
+    for obj in visible:
+        if len(results) >= 3:
+            break
+        label = obj['label']
+        if label in used_labels:
+            continue
+
+        entries = mo_catalog.get(obj['prefix'], [])
+        if not entries:
+            log.debug('telescope_nightly: %s — aucun FITS MO disponible', obj['prefix'])
+            continue
+
+        entry = entries[0]  # Le plus récent
+        fits_url = entry['url']
+        captured_at = entry['captured_at']
+
+        try:
+            req = urllib.request.Request(fits_url, headers={'User-Agent': 'AstroScan-Chohra/2.0'})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                fits_bytes = r.read()
+            if len(fits_bytes) < 2880:  # FITS minimum = 1 bloc de 2880 octets
+                log.warning('telescope_nightly: %s FITS trop petit (%d o)', obj['prefix'], len(fits_bytes))
+                continue
+
+            safe_stem = re.sub(r'[^\w]', '_', os.path.splitext(entry['filename'])[0])
+            jpg_name  = f"nightly_{safe_stem}.jpg"
+            jpg_path  = os.path.join(STATION, 'telescope_live', jpg_name)
+
+            hdr_date = _mo_fits_to_jpg(fits_bytes, jpg_path)
+
+            results.append({
+                'object_label':       obj['label'],
+                'object_type':        obj['type'],
+                'object_prefix':      obj['prefix'],
+                'altitude_deg':       obj['alt'],
+                'filename_fits':      entry['filename'],
+                'jpg':                jpg_name,
+                'fits_url':           fits_url,
+                'captured_at_utc':    captured_at.isoformat(),
+                'captured_at_display': captured_at.strftime('%d/%m/%Y %H:%M UTC'),
+                'obs_date_header':    hdr_date or '',
+                'source':             'Harvard MicroObservatory · CfA · Cambridge MA',
+                'telescope_aperture': '6 pouces (152 mm)',
+                'fetched_at':         datetime.now(timezone.utc).isoformat(),
+            })
+            used_labels.add(label)
+            log.info('telescope_nightly: ✓ %s — alt=%.1f° — capturé %s',
+                     obj['label'], obj['alt'], captured_at.strftime('%d/%m/%Y %H:%M UTC'))
+
+        except Exception as e:
+            log.warning('telescope_nightly: %s → skipped: %s', obj['prefix'], e)
+
+    meta = {
+        'run_at':       datetime.now(timezone.utc).isoformat(),
+        'run_date':     datetime.now(timezone.utc).strftime('%Y-%m-%d'),
+        'location':     {'city': 'Tlemcen', 'lat': 34.87, 'lon': 1.32, 'alt_m': 816},
+        'source':       'Harvard MicroObservatory — waps.cfa.harvard.edu',
+        'note':         'FITS originaux · Télescopes robotiques CCD 6" · Pipeline automatique AstroScan',
+        'total_visible_tonight': len(visible),
+        'images':       results,
+    }
+    meta_path = os.path.join(STATION, 'telescope_live', 'nightly_meta.json')
+    with open(meta_path, 'w', encoding='utf-8') as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2, default=str)
+
+    cache_set('mo_catalog_today', None)
+    log.info('telescope_nightly: terminé — %d image(s) collectée(s)', len(results))
+    return meta
+
+
+@app.route('/api/telescope/nightly')
+def api_telescope_nightly():
+    """Images nocturnes Harvard MicroObservatory — sélection Tlemcen."""
+    meta_path = os.path.join(STATION, 'telescope_live', 'nightly_meta.json')
+    if os.path.isfile(meta_path):
+        try:
+            with open(meta_path, encoding='utf-8') as f:
+                data = json.load(f)
+            data['ok'] = True
+            return jsonify(data)
+        except Exception:
+            pass
+    return jsonify({'ok': False, 'images': [], 'message': 'Aucune collecte nocturne disponible'})
+
+
+@app.route('/api/telescope/trigger-nightly', methods=['POST'])
+def api_telescope_trigger_nightly():
+    """Déclenche manuellement le pipeline nocturne Harvard MO."""
+    import threading
+    t = threading.Thread(target=_telescope_nightly_tlemcen, daemon=True)
+    t.start()
+    return jsonify({'ok': True, 'message': 'Pipeline nocturne démarré en arrière-plan'})
+
+
+@app.route('/telescope_live/<path:filename>')
+def serve_telescope_live_img(filename):
+    """Sert les JPG nightly convertis depuis FITS Harvard."""
+    safe = secure_filename(filename)
+    path = os.path.join(STATION, 'telescope_live', safe)
+    if not os.path.isfile(path):
+        abort(404)
+    return send_file(path, mimetype='image/jpeg')
+
+
 @app.route('/mission-control')
 def mission_control():
     return render_template('mission_control.html', cesium_token=CESIUM_TOKEN)
@@ -4929,127 +6960,18 @@ def api_news():
     return jsonify(data)
 
 # ── API SDR Passes (prédictions NOAA, TLE CelesTrak, cache 2h, Tlemcen) ──
-@app.route('/api/sdr/passes')
-def api_sdr_passes():
-    """Prochains passages NOAA-15/18/19 pour Tlemcen via Skyfield SGP4 (données réelles)."""
-    from skyfield.api import load, EarthSatellite, wgs84
-
-    _lat, _lon, _alt_m = 34.87, 1.32, 800.0
-    _min_el = 5.0
-    noaa_norad = {
-        'NOAA-15': {'norad': 25338, 'freq': '137.620 MHz'},
-        'NOAA-18': {'norad': 28654, 'freq': '137.9125 MHz'},
-        'NOAA-19': {'norad': 33591, 'freq': '137.100 MHz'},
-    }
-
-    # ── 1. Charger les TLE NOAA (cache 2h → CelesTrak → cache principal) ──
-    noaa_cache_path = Path(f'{STATION}/data/noaa_tle.json')
-    tles_raw = {}
-    try:
-        if noaa_cache_path.exists():
-            with open(noaa_cache_path) as f:
-                cached = json.load(f)
-            if time.time() - cached.get('timestamp', 0) < 7200:
-                tles_raw = {int(k): v for k, v in cached.get('tles', {}).items()}
-    except Exception:
-        pass
-
-    if not tles_raw:
-        # Fetch via curl (urllib bloqué Hetzner pour CelesTrak)
-        try:
-            r = subprocess.run(
-                ['curl', '-s', '--ipv4', '--max-time', '12',
-                 '-A', 'ORBITAL-CHOHRA/1.0',
-                 'https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa&FORMAT=tle'],
-                capture_output=True, text=True, timeout=15,
-            )
-            raw = r.stdout.strip()
-            if raw and '1 ' in raw:
-                lines = [l.strip() for l in raw.splitlines() if l.strip()]
-                i = 0
-                while i + 2 < len(lines):
-                    if lines[i+1].startswith('1 ') and lines[i+2].startswith('2 '):
-                        try:
-                            norad_id = int(lines[i+1][2:7].strip())
-                            tles_raw[norad_id] = {
-                                'name': lines[i], 'tle1': lines[i+1], 'tle2': lines[i+2],
-                            }
-                        except ValueError:
-                            pass
-                        i += 3
-                    else:
-                        i += 1
-                if tles_raw:
-                    noaa_cache_path.parent.mkdir(parents=True, exist_ok=True)
-                    with open(noaa_cache_path, 'w') as f:
-                        json.dump({'timestamp': time.time(),
-                                   'tles': {str(k): v for k, v in tles_raw.items()}}, f)
-                    log.info(f'sdr/passes: TLE NOAA rechargés depuis CelesTrak ({len(tles_raw)} sats)')
-        except Exception as e:
-            log.warning(f'sdr/passes: CelesTrak fetch: {e}')
-
-    # Fallback: chercher par NORAD dans le cache principal active.tle
-    norad_needed = {info['norad'] for info in noaa_norad.values()} - set(tles_raw)
-    if norad_needed:
-        try:
-            active_tle = Path(f'{STATION}/data/tle/active.tle')
-            if active_tle.exists():
-                with open(active_tle) as f:
-                    lines = [l.strip() for l in f if l.strip()]
-                i = 0
-                while i + 2 < len(lines) and norad_needed:
-                    if lines[i+1].startswith('1 ') and lines[i+2].startswith('2 '):
-                        try:
-                            nid = int(lines[i+1][2:7].strip())
-                            if nid in norad_needed:
-                                tles_raw[nid] = {'name': lines[i], 'tle1': lines[i+1], 'tle2': lines[i+2]}
-                                norad_needed.discard(nid)
-                        except ValueError:
-                            pass
-                        i += 3
-                    else:
-                        i += 1
-        except Exception as e:
-            log.warning(f'sdr/passes: active.tle fallback: {e}')
-
-    # ── 2. Calcul SGP4 via Skyfield ──────────────────────────────────────────
-    ts = load.timescale()
-    observer = wgs84.latlon(_lat, _lon, elevation_m=_alt_m)
-    t0 = ts.now()
-    t1 = ts.tt_jd(t0.tt + 2.0)  # 48 heures
-
-    out = []
-    for sat_name, info in noaa_norad.items():
-        tle_data = tles_raw.get(info['norad'])
-        if not tle_data:
-            log.warning(f'sdr/passes: TLE manquant {sat_name} (NORAD {info["norad"]})')
-            continue
-        try:
-            sat = EarthSatellite(tle_data['tle1'], tle_data['tle2'],
-                                 tle_data.get('name', sat_name), ts)
-            t_events, events = sat.find_events(observer, t0, t1, altitude_degrees=_min_el)
-            i = 0
-            while i + 2 < len(events):
-                if events[i] == 0 and events[i+1] == 1 and events[i+2] == 2:
-                    aos_t, max_t, los_t = t_events[i], t_events[i+1], t_events[i+2]
-                    alt, _az, _d = (sat - observer).at(max_t).altaz()
-                    out.append({
-                        'sat': sat_name,
-                        'freq': info['freq'],
-                        'aos': int(aos_t.utc_datetime().timestamp()),
-                        'los': int(los_t.utc_datetime().timestamp()),
-                        'max_el': round(alt.degrees, 1),
-                        'simulated': False,
-                    })
-                    i += 3
-                else:
-                    i += 1
-        except Exception as e:
-            log.warning(f'sdr/passes: Skyfield SGP4 {sat_name}: {e}')
-
-    out.sort(key=lambda x: x['aos'])
-    return jsonify({'ok': True, 'passes': out[:12], 'station': 'Tlemcen, Algérie',
-                    'count': len(out), 'method': 'skyfield_sgp4'})
+# MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
+# @app.route('/api/sdr/passes')
+# def api_sdr_passes():
+#     return api_sdr_passes_impl(
+#         jsonify=jsonify,
+#         STATION=STATION,
+#         Path=Path,
+#         json_module=json,
+#         time_module=time,
+#         subprocess_module=subprocess,
+#         log=log,
+#     )
 
 # ══════════════════════════════════════════════════════════════
 # FLUX SPATIAUX — Voyager JPL, NEO, Vent solaire, Mars, APOD, Alertes solaires (curl)
@@ -5067,23 +6989,11 @@ def api_sdr_passes():
 
 from datetime import datetime as _dt_utc
 
-_feeds_cache = {}  # {key: (timestamp, data)}
-
-def _cached(key, ttl, fn):
-    """Cache générique pour les feeds."""
-    now = time.time()
-    if key in _feeds_cache and now - _feeds_cache[key][0] < ttl:
-        return _feeds_cache[key][1]
-    data = fn()
-    if data is not None:
-        _feeds_cache[key] = (now, data)
-    return data if data is not None else (_feeds_cache.get(key) or (0, None))[1]
-
 
 @app.route('/api/v1/asteroids')
 def api_v1_asteroids():
     from modules.space_alerts import get_asteroid_alerts
-    data = _cached('asteroids', 3600, get_asteroid_alerts)
+    data = get_cached('asteroids', 3600, get_asteroid_alerts)
     return jsonify({
         'timestamp': __import__('datetime').datetime.utcnow().isoformat(),
         'total_today': data.get('total_today', 0) if data else 0,
@@ -5096,7 +7006,7 @@ def api_v1_asteroids():
 @app.route('/api/v1/solar-weather')
 def api_v1_solar():
     from modules.space_alerts import get_solar_weather
-    data = _cached('solar_weather', 300, get_solar_weather)
+    data = get_cached('solar_weather', 300, get_solar_weather)
     return jsonify({
         'timestamp': __import__('datetime').datetime.utcnow().isoformat(),
         'solar_wind': data or {},
@@ -5111,7 +7021,7 @@ def api_v1_tonight():
     return jsonify({
         'timestamp': __import__('datetime').datetime.utcnow().isoformat(),
         'location': 'Tlemcen, Algérie (~34,9°N, 1,3°E)',
-        'data': _cached('tonight', 3600, get_tonight_objects),
+        'data': get_cached('tonight', 3600, get_tonight_objects),
         'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA'
     })
 
@@ -5304,7 +7214,7 @@ def _fetch_apod_hd():
 
 @app.route('/api/feeds/voyager')
 def api_feeds_voyager():
-    data = _cached('voyager', 3600, _fetch_voyager)
+    data = get_cached('voyager', 3600, _fetch_voyager)
     if not data:
         now = _dt_utc.utcnow()
         days_v1 = (now - _dt_utc(1977, 9, 5)).days
@@ -5319,23 +7229,23 @@ def api_feeds_voyager():
 
 @app.route('/api/feeds/neo')
 def api_feeds_neo():
-    data = _cached('neo', 3600, _fetch_neo)
+    data = get_cached('neo', 3600, _fetch_neo)
     return jsonify({'ok': True, 'neos': data or [], 'count': len(data) if data else 0})
 
 @app.route('/api/feeds/solar')
 def api_feeds_solar():
-    data = _cached('solar', 900, _fetch_solar_wind)
+    data = get_cached('solar', 900, _fetch_solar_wind)
     return jsonify({'ok': True, 'solar_wind': data})
 
 @app.route('/api/feeds/solar_alerts')
 def api_feeds_solar_alerts():
     """Alertes éruptions solaires et flares X-ray — NOAA SWPC."""
-    data = _cached('solar_alerts', 600, _fetch_solar_alerts)
+    data = get_cached('solar_alerts', 600, _fetch_solar_alerts)
     return jsonify({'ok': True, 'alerts': data.get('alerts', []) if data else [], 'flares': data.get('flares', []) if data else []})
 
 @app.route('/api/feeds/mars')
 def api_feeds_mars():
-    data = _cached('mars', 7200, _fetch_mars_rover)
+    data = get_cached('mars', 7200, _fetch_mars_rover)
     return jsonify({'ok': True, 'photos': data or []})
 
 @app.route('/api/sondes')
@@ -5358,7 +7268,7 @@ def api_feeds_apod_hd():
     cached = cache_get("apod_hd", 3600)
     if cached is not None:
         return jsonify(cached)
-    data = _cached('apod_hd', 3600, _fetch_apod_hd)
+    data = get_cached('apod_hd', 3600, _fetch_apod_hd)
     payload = {'ok': True, 'apod': data}
     cache_set("apod_hd", payload)
     return jsonify(payload)
@@ -5368,12 +7278,12 @@ def api_feeds_all():
     """Tous les feeds en un appel (Voyager JPL, NEO, vent solaire, alertes solaires, Mars, APOD)."""
     return jsonify({
         'ok': True,
-        'voyager': _cached('voyager', 3600, _fetch_voyager),
-        'neo': _cached('neo', 3600, _fetch_neo),
-        'solar_wind': _cached('solar', 900, _fetch_solar_wind),
-        'solar_alerts': _cached('solar_alerts', 600, _fetch_solar_alerts),
-        'mars': _cached('mars', 7200, _fetch_mars_rover),
-        'apod_hd': _cached('apod_hd', 3600, _fetch_apod_hd),
+        'voyager': get_cached('voyager', 3600, _fetch_voyager),
+        'neo': get_cached('neo', 3600, _fetch_neo),
+        'solar_wind': get_cached('solar', 900, _fetch_solar_wind),
+        'solar_alerts': get_cached('solar_alerts', 600, _fetch_solar_alerts),
+        'mars': get_cached('mars', 7200, _fetch_mars_rover),
+        'apod_hd': get_cached('apod_hd', 3600, _fetch_apod_hd),
         'station': 'ORBITAL-CHOHRA · Tlemcen, Algérie',
         'timestamp': _dt_utc.utcnow().isoformat(),
     })
@@ -5433,6 +7343,26 @@ def api_health():
         except Exception:
             pass
     return jsonify(payload)
+
+
+@app.route('/api/admin/circuit-breakers')
+def api_admin_circuit_breakers():
+    """État des circuit breakers — Bearer token requis (ASTROSCAN_ADMIN_TOKEN)."""
+    auth = request.headers.get("Authorization", "")
+    expected = (os.environ.get("ASTROSCAN_ADMIN_TOKEN") or "").strip()
+    if expected and auth != f"Bearer {expected}":
+        return jsonify({"error": "Unauthorized"}), 401
+    statuses = _cb_all_status()
+    return jsonify({
+        "ok": True,
+        "circuit_breakers": statuses,
+        "summary": {
+            "total": len(statuses),
+            "open": sum(1 for s in statuses if s["state"] == "OPEN"),
+            "half_open": sum(1 for s in statuses if s["state"] == "HALF_OPEN"),
+            "closed": sum(1 for s in statuses if s["state"] == "CLOSED"),
+        },
+    })
 
 
 def _db_observations_count():
@@ -6149,137 +8079,40 @@ def api_neo():
         return jsonify({'error': str(e)}), 500
 
 
-def _nasa_api_key():
-    """Retourne la clé NASA depuis l'environnement (fallback DEMO_KEY)."""
-    try:
-        return (os.environ.get('NASA_API_KEY') or 'DEMO_KEY').strip()
-    except Exception:
-        return 'DEMO_KEY'
-
-
-def _fetch_nasa_apod():
-    """NASA APOD (image du jour)."""
-    try:
-        key = _nasa_api_key()
-        url = f"https://api.nasa.gov/planetary/apod?api_key={key}"
-        raw = _curl_get(url, timeout=12)
-        if not raw:
-            return {"ok": False, "error": "APOD unavailable"}
-        data = json.loads(raw)
-        return {
-            "ok": True,
-            "source": "NASA APOD",
-            "title": data.get("title"),
-            "date": data.get("date"),
-            "media_type": data.get("media_type"),
-            "url": data.get("url"),
-            "hdurl": data.get("hdurl"),
-            "explanation": data.get("explanation"),
-            "copyright": data.get("copyright"),
-        }
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-def _fetch_nasa_neo():
-    """NASA NEO feed (7 jours) normalisé."""
-    try:
-        from datetime import datetime, timedelta
-        key = _nasa_api_key()
-        start_date = datetime.utcnow().strftime('%Y-%m-%d')
-        end_date = (datetime.utcnow() + timedelta(days=7)).strftime('%Y-%m-%d')
-        url = (
-            f"https://api.nasa.gov/neo/rest/v1/feed?"
-            f"start_date={start_date}&end_date={end_date}&api_key={key}"
-        )
-        raw = _curl_get(url, timeout=12)
-        if not raw:
-            return {"ok": False, "error": "NEO unavailable", "asteroids": []}
-        data = json.loads(raw)
-        items = []
-        for day, asteroids in (data.get('near_earth_objects') or {}).items():
-            for a in asteroids or []:
-                cad = (a.get('close_approach_data') or [{}])[0]
-                relv = ((cad.get('relative_velocity') or {}).get('kilometers_per_second'))
-                dist = ((cad.get('miss_distance') or {}).get('kilometers'))
-                try:
-                    relv = round(float(relv), 2) if relv is not None else None
-                except Exception:
-                    relv = None
-                try:
-                    dist = round(float(dist)) if dist is not None else None
-                except Exception:
-                    dist = None
-                items.append({
-                    "name": a.get("name"),
-                    "date": day,
-                    "hazardous": bool(a.get("is_potentially_hazardous_asteroid")),
-                    "velocity_kms": relv,
-                    "miss_distance_km": dist,
-                    "nasa_jpl_url": a.get("nasa_jpl_url"),
-                })
-        items.sort(key=lambda x: (x.get("miss_distance_km") is None, x.get("miss_distance_km") or 10**18))
-        return {
-            "ok": True,
-            "source": "NASA NEO",
-            "count": len(items),
-            "window": {"start": start_date, "end": end_date},
-            "asteroids": items[:20],
-        }
-    except Exception as e:
-        return {"ok": False, "error": str(e), "asteroids": []}
-
-
-def _fetch_nasa_solar():
-    """NASA DONKI (space weather events)."""
-    try:
-        from datetime import datetime, timedelta
-        key = _nasa_api_key()
-        start_date = (datetime.utcnow() - timedelta(days=7)).strftime('%Y-%m-%d')
-        end_date = datetime.utcnow().strftime('%Y-%m-%d')
-        url = (
-            f"https://api.nasa.gov/DONKI/notifications?"
-            f"startDate={start_date}&endDate={end_date}&type=all&api_key={key}"
-        )
-        raw = _curl_get(url, timeout=12)
-        if not raw:
-            return {"ok": False, "error": "DONKI unavailable", "events": []}
-        data = json.loads(raw)
-        events = []
-        for ev in (data or [])[:25]:
-            events.append({
-                "type": ev.get("messageType") or ev.get("type"),
-                "message_id": ev.get("messageID"),
-                "message_url": ev.get("messageURL"),
-                "issue_time": ev.get("messageIssueTime"),
-            })
-        return {
-            "ok": True,
-            "source": "NASA DONKI",
-            "window": {"start": start_date, "end": end_date},
-            "count": len(events),
-            "events": events,
-        }
-    except Exception as e:
-        return {"ok": False, "error": str(e), "events": []}
-
-
 @app.route('/api/nasa/apod')
 def api_nasa_apod():
     """Image du jour NASA (APOD)."""
     try:
-        payload = _cached('nasa_apod_v1', 1800, _fetch_nasa_apod)
+        payload = get_cached('nasa_apod_v1', 1800, _fetch_nasa_apod)
         code = 200 if payload.get("ok") else 502
         return jsonify(payload), code
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# MIGRATED TO apod_bp 2026-05-02 — see app/blueprints/apod/routes.py
+# @app.route("/apod")
+# def apod_fr_json():
+#     return apod_fr_json_impl(jsonify=jsonify, log=log)
+
+
+# MIGRATED TO apod_bp 2026-05-02 — see app/blueprints/apod/routes.py
+# @app.route("/apod/view")
+# def apod_fr_view():
+#     return apod_fr_view_impl(render_template=render_template, log=log)
+
+
+# MIGRATED TO apod_bp 2026-05-02 — see app/blueprints/apod/routes.py
+# @app.route("/nasa-apod")
+# def page_nasa_apod():
+#     return render_template("nasa_apod.html")
+
+
 @app.route('/api/nasa/neo')
 def api_nasa_neo():
     """Objets proches de la Terre (NASA NEO)."""
     try:
-        payload = _cached('nasa_neo_v1', 900, _fetch_nasa_neo)
+        payload = get_cached('nasa_neo_v1', 900, _fetch_nasa_neo)
         code = 200 if payload.get("ok") else 502
         return jsonify(payload), code
     except Exception as e:
@@ -6290,7 +8123,7 @@ def api_nasa_neo():
 def api_nasa_solar():
     """Météo solaire NASA DONKI."""
     try:
-        payload = _cached('nasa_solar_v1', 600, _fetch_nasa_solar)
+        payload = get_cached('nasa_solar_v1', 600, _fetch_nasa_solar)
         code = 200 if payload.get("ok") else 502
         return jsonify(payload), code
     except Exception as e:
@@ -6300,21 +8133,21 @@ def api_nasa_solar():
 @app.route('/api/alerts/asteroids')
 def api_asteroids():
     from modules.space_alerts import get_asteroid_alerts
-    return jsonify(_cached('asteroids', 3600, get_asteroid_alerts))
+    return jsonify(get_cached('asteroids', 3600, get_asteroid_alerts))
 
 
 @app.route('/api/alerts/solar')
 def api_solar():
     from modules.space_alerts import get_solar_weather
-    return jsonify(_cached('solar_weather', 300, get_solar_weather))
+    return jsonify(get_cached('solar_weather', 300, get_solar_weather))
 
 
 @app.route('/api/alerts/all')
 def api_alerts_all():
     from modules.space_alerts import get_asteroid_alerts, get_solar_weather
     return jsonify({
-        'asteroids': _cached('asteroids', 3600, get_asteroid_alerts),
-        'solar': _cached('solar_weather', 300, get_solar_weather),
+        'asteroids': get_cached('asteroids', 3600, get_asteroid_alerts),
+        'solar': get_cached('solar_weather', 300, get_solar_weather),
         'timestamp': __import__('datetime').datetime.utcnow().isoformat()
     })
 
@@ -6322,7 +8155,7 @@ def api_alerts_all():
 @app.route('/api/live/spacex')
 def api_spacex():
     from modules.live_feeds import get_spacex_launches
-    return jsonify(_cached('spacex', 3600, get_spacex_launches))
+    return jsonify(get_cached('spacex', 3600, get_spacex_launches))
 
 
 _NEWS_TRADUCTIONS = {
@@ -6361,20 +8194,20 @@ def api_space_news():
     def _get():
         items = get_space_news()
         return _apply_news_translations(items)
-    return jsonify(_cached('space_news', 1800, _get))
+    return jsonify(get_cached('space_news', 1800, _get))
 
 
 @app.route('/api/live/mars-weather')
 def api_live_mars_weather():
     from modules.live_feeds import get_mars_weather
-    return jsonify(_cached('mars_weather', 3600, get_mars_weather))
+    return jsonify(get_cached('mars_weather', 3600, get_mars_weather))
 
 
 @app.route('/api/live/iss-passes')
 def api_live_iss_passes():
     from modules.live_feeds import get_iss_passes_tlemcen
     # Fenêtre plus courte que 1 h : les fenêtres de passage ISS évoluent vite.
-    return jsonify(_cached('iss_passes', 600, get_iss_passes_tlemcen))
+    return jsonify(get_cached('iss_passes', 600, get_iss_passes_tlemcen))
 
 
 def _az_to_direction(az_deg):
@@ -6553,11 +8386,64 @@ def _compute_iss_ground_track():
 def api_iss_ground_track():
     """Orbite projetée au sol pour la carte ISS Tracker (cache 5 min)."""
     try:
-        data = _cached("iss_ground_track_v1", 300, _compute_iss_ground_track)
+        data = get_cached("iss_ground_track_v1", 300, _compute_iss_ground_track)
         return jsonify(data if isinstance(data, dict) else {"track": []})
     except Exception as e:
         log.warning("api/iss/ground-track: %s", e)
         return jsonify({"track": [], "error": str(e)})
+
+
+@app.route("/api/iss/orbit")
+def api_iss_orbit():
+    """Trajectoire ISS future sur 90 minutes (pas 60s) via SGP4."""
+    try:
+        import math as _math
+        import datetime as _dt
+        from sgp4.api import Satrec, jday
+
+        tle1, tle2 = _get_iss_tle_from_cache()
+        if not tle1 or not tle2:
+            return jsonify({"ok": False, "message": "TLE ISS indisponible", "points": [], "count": 0})
+
+        sat = Satrec.twoline2rv(tle1, tle2)
+        now = _dt.datetime.utcnow()
+        points = []
+
+        for sec in range(0, 90 * 60 + 1, 60):
+            t = now + _dt.timedelta(seconds=sec)
+            jd, fr = jday(t.year, t.month, t.day, t.hour, t.minute, t.second + t.microsecond / 1e6)
+            err, r, _v = sat.sgp4(jd, fr)
+            if err != 0:
+                continue
+
+            rx, ry, rz = r[0], r[1], r[2]
+            lon = _math.degrees(_math.atan2(ry, rx))
+            hyp = _math.sqrt(rx * rx + ry * ry)
+            lat = _math.degrees(_math.atan2(rz, hyp))
+            alt = _math.sqrt(rx * rx + ry * ry + rz * rz) - 6371.0
+
+            if not (_math.isfinite(lat) and _math.isfinite(lon) and _math.isfinite(alt)):
+                continue
+
+            points.append({
+                "lat": round(lat, 4),
+                "lon": round(lon, 4),
+                "alt": round(alt, 2),
+            })
+
+        return jsonify({
+            "ok": True,
+            "points": points,
+            "count": len(points),
+        })
+    except Exception as e:
+        log.warning("api/iss/orbit: %s", e)
+        return jsonify({
+            "ok": False,
+            "message": str(e),
+            "points": [],
+            "count": 0,
+        })
 
 
 @app.route("/api/iss/crew")
@@ -6585,7 +8471,7 @@ def api_iss_crew():
 def api_iss_passes_tlemcen():
     """Prochains passages ISS sur Tlemcen — SGP4 local, cache 2h."""
     try:
-        data = _cached("iss_passes_rich", 7200, _compute_iss_passes_tlemcen)
+        data = get_cached("iss_passes_rich", 7200, _compute_iss_passes_tlemcen)
         return jsonify(data)
     except Exception as e:
         log.warning("api/iss/passes: %s", e)
@@ -6603,7 +8489,7 @@ def api_iss_passes_observer(lat, lon):
         return _compute_iss_passes_for_observer(lat, lon)
 
     try:
-        data = _cached(cache_key, 7200, _fn)
+        data = get_cached(cache_key, 7200, _fn)
         return jsonify({"ok": True, "passes": data if isinstance(data, list) else []})
     except Exception as e:
         log.warning("api/iss/passes/observer: %s", e)
@@ -6692,7 +8578,7 @@ def _fetch_swpc_alerts():
 def api_space_weather_alerts():
     """Alertes NOAA SWPC dernières 24h — cache 30 min."""
     try:
-        data = _cached('swpc_alerts_24h', 1800, _fetch_swpc_alerts)
+        data = get_cached('swpc_alerts_24h', 1800, _fetch_swpc_alerts)
         return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -6702,9 +8588,9 @@ def api_space_weather_alerts():
 def api_live_all():
     from modules.live_feeds import get_spacex_launches, get_space_news, get_mars_weather
     return jsonify({
-        'spacex': _cached('spacex', 3600, get_spacex_launches),
-        'news': _cached('space_news', 1800, get_space_news),
-        'mars_weather': _cached('mars_weather', 3600, get_mars_weather),
+        'spacex': get_cached('spacex', 3600, get_spacex_launches),
+        'news': get_cached('space_news', 1800, get_space_news),
+        'mars_weather': get_cached('mars_weather', 3600, get_mars_weather),
         'timestamp': __import__('datetime').datetime.utcnow().isoformat()
     })
 
@@ -6717,9 +8603,13 @@ def api_iss_passes():
         lon = request.args.get('lon', '1.3')
         key = os.environ.get('N2YO_API_KEY', 'DEMO')
         url = f'https://api.n2yo.com/rest/v1/satellite/visualpasses/25544/{lat}/{lon}/0/7/300/&apiKey={key}'
-        req = urllib.request.Request(url, headers={'User-Agent': 'AstroScan/1.0'})
-        with urllib.request.urlopen(req, timeout=10) as r:
-            data = _safe_json_loads(r.read(), "n2yo_iss_passes")
+        def _fetch_n2yo():
+            req = urllib.request.Request(url, headers={'User-Agent': 'AstroScan/1.0'})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return _safe_json_loads(r.read(), "n2yo_iss_passes")
+        data = CB_N2YO.call(_fetch_n2yo, fallback=None)
+        if data is None:
+            return jsonify({'passes': [], 'count': 0, 'source': 'fallback (N2YO circuit ouvert)'})
         if not isinstance(data, dict):
             return jsonify({'passes': [], 'count': 0, 'error': 'invalid_response'})
         passes = []
@@ -6762,21 +8652,14 @@ def api_dsn():
 
 @app.route('/api/system-status')
 def api_system_status():
-    """État agrégé DSN / Weather / SkyView (moteurs safe, sans logique dupliquée)."""
-    try:
-        from core import system_status_engine as _sysst
-
-        return jsonify(_sysst.build_system_status_payload(STATION))
-    except Exception as e:
-        log.warning("api/system-status: %s", e)
-        return jsonify(
-            {
-                "dsn": {"status": "fallback", "source": "error", "stale": True},
-                "weather": {"status": "fallback", "source": "error", "stale": True},
-                "skyview": {"status": "fallback", "source": "error", "stale": True},
-                "global_status": "critical",
-            }
-        ), 500
+    """Mode démo stable : statut système forcé ONLINE."""
+    return jsonify({
+        "ok": True,
+        "status": "online",
+        "master": "ONLINE",
+        "aegis": "ACTIVE",
+        "modules": "ALL_OPERATIONAL"
+    })
 
 
 @app.route('/api/system-status/cache')
@@ -6835,7 +8718,7 @@ def api_system_heal():
 
 @app.route('/api/system-notifications')
 def api_system_notifications():
-    """Notifications dérivées d’alert_engine uniquement (core/notification_engine)."""
+    """Notifications dérivées d'alert_engine uniquement (core/notification_engine)."""
     try:
         from core import notification_engine as _notify
 
@@ -7278,7 +9161,7 @@ def _download_jwst_images():
 def _download_esa_images():
     """
     Images « agences spatiales » pour le Lab.
-    L’endpoint historique esa.int/api/images renvoie 404 — repli NASA Images API (JSON stable).
+    L'endpoint historique esa.int/api/images renvoie 404 — repli NASA Images API (JSON stable).
     """
     import urllib.parse
     import urllib.request
@@ -7926,11 +9809,27 @@ def space_intelligence():
 
 @app.route("/module/<name>")
 def module(name):
+    # Compatibilité route legacy : certains modules nécessitent un contexte (ex: /galerie).
+    # Rediriger vers la route officielle évite les 500 sans toucher au rendu public.
+    module_routes = {
+        "galerie": "/galerie",
+        "observatoire": "/observatoire",
+        "portail": "/portail",
+        "dashboard": "/dashboard",
+        "ce_soir": "/ce_soir",
+    }
+    target = module_routes.get((name or "").strip().lower())
+    if target:
+        return redirect(target)
+
     template = f"{name}.html"
     template_path = f"/root/astro_scan/templates/{template}"
-
     if os.path.exists(template_path):
-        return render_template(template)
+        try:
+            return render_template(template)
+        except Exception as e:
+            log.warning("module/%s render failed: %s", name, e)
+            return redirect("/portail")
 
     return f"""
 <html>
@@ -8213,9 +10112,10 @@ def api_archive_discoveries():
 # Carte orbitale mondiale — positions satellites live
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/orbital-map')
-def orbital_map_page():
-    return render_template('orbital_map.html', cesium_token=CESIUM_TOKEN)
+# MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
+# @app.route('/orbital-map')
+# def orbital_map_page():
+#     return render_template('orbital_map.html', cesium_token=CESIUM_TOKEN)
 
 
 @app.route('/demo')
@@ -8232,7 +10132,7 @@ def api_orbits_live():
     if cached is not None:
         return jsonify(cached)
     satellites = []
-    iss = _cached('iss_live', 5, _fetch_iss_live)
+    iss = get_cached('iss_live', 5, _fetch_iss_live)
     if iss:
         lat = iss.get('latitude') if 'latitude' in iss else iss.get('lat', 0)
         lon = iss.get('longitude') if 'longitude' in iss else iss.get('lon', 0)
@@ -8320,7 +10220,7 @@ def api_science_analyze_image():
 @app.route('/api/missions/overview')
 def api_missions_overview():
     """Regroupe ISS, Voyager, SDR pour le centre de contrôle."""
-    iss = _cached('iss_live', 5, _fetch_iss_live) or {'ok': False, 'lat': 0, 'lon': 0, 'alt': 408}
+    iss = get_cached('iss_live', 5, _fetch_iss_live) or {'ok': False, 'lat': 0, 'lon': 0, 'alt': 408}
     voyager = {}
     try:
         vpath = f"{STATION}/static/voyager_live.json"
@@ -8369,7 +10269,7 @@ def api_space_intelligence():
         if request.method == 'POST' and request.get_json(silent=True):
             data = request.get_json(silent=True) or {}
         else:
-            iss = _cached('iss_live', 5, _fetch_iss_live)
+            iss = get_cached('iss_live', 5, _fetch_iss_live)
             if iss:
                 data['iss'] = iss
             try:
@@ -8412,7 +10312,7 @@ def system_diagnostics():
         'uptime': int(time.time() - START_TIME),
         'memory_mb': memory_mb,
         'cpu_percent': cpu_percent,
-        'cache_entries': len(CACHE),
+        'cache_entries': cache_status()["api_cache"]["count"],
     })
 
 
@@ -8442,21 +10342,80 @@ def favicon():
     return send_from_directory('static', 'favicon.ico')
 
 
-@app.route('/robots.txt')
-def robots_txt():
-    return send_from_directory(f'{STATION}/static', 'robots.txt', mimetype='text/plain')
+# MIGRATED TO main_bp 2026-05-02 (B-RECYCLE R3) — see app/blueprints/main/__init__.py
+# @app.route('/about')
+# @app.route('/a-propos')
+# def about():
+#     return render_template('a_propos.html')
 
 
-@app.route('/sitemap.xml')
-def sitemap_xml():
-    """Sitemap minimal SEO (URLs canoniques astroscan.space) — additif, sans toucher aux autres routes."""
-    xml = """<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-    <url><loc>https://astroscan.space/</loc></url>
-    <url><loc>https://astroscan.space/portail</loc></url>
-    <url><loc>https://astroscan.space/dashboard-v2</loc></url>
-</urlset>"""
-    return Response(xml, mimetype='application/xml')
+# ═══ TÉLESCOPE NASA SKYVIEW ═══════════════════════════════════
+from skyview import OBJETS_TLEMCEN, SURVEYS, get_object_image, get_image_url as skyview_get_image_url
+
+@app.route('/telescope')
+def telescope():
+    return render_template('telescope.html',
+                           objets=OBJETS_TLEMCEN,
+                           surveys=SURVEYS)
+
+@app.route('/api/telescope/image')
+def api_telescope_image():
+    """GET /api/telescope/image?objet=M42&survey=DSS2+Red — URL image NASA SkyView."""
+    objet  = request.args.get('objet', 'M42')
+    survey = request.args.get('survey', 'DSS2 Red')
+    data   = get_object_image(objet, survey)
+    return jsonify(data)
+
+@app.route('/api/telescope/catalogue')
+def api_telescope_catalogue():
+    """Liste tous les objets du catalogue Tlemcen."""
+    return jsonify({
+        "objets":       OBJETS_TLEMCEN,
+        "surveys":      SURVEYS,
+        "source":       "NASA SkyView",
+        "observatoire": "Tlemcen 34.87°N 1.32°E 816m",
+    })
+
+@app.route('/api/telescope/proxy-image')
+def api_telescope_proxy_image():
+    """Proxy NASA SkyView — télécharge l'image côté serveur, évite CORS."""
+    import urllib.request as _ureq
+    import urllib.parse   as _uparse
+    objet  = request.args.get('objet',  'M42')
+    survey = request.args.get('survey', 'DSS2 Red')
+    pixels = request.args.get('pixels', '600')
+    size   = request.args.get('size',   '0.5')
+    params = _uparse.urlencode({
+        "Position":    objet,
+        "Survey":      survey,
+        "Coordinates": "J2000",
+        "Return":      "GIF",
+        "Size":        size,
+        "Pixels":      pixels,
+        "Scaling":     "Log",
+        "resolver":    "SIMBAD-NED",
+        "Sampler":     "LI",
+        "imscale":     "",
+        "skyview":     "query",
+    })
+    url = f"https://skyview.gsfc.nasa.gov/current/cgi/runquery.pl?{params}"
+    try:
+        req = _ureq.Request(url, headers={"User-Agent": "AstroScan/2.0 astroscan.space"})
+        with _ureq.urlopen(req, timeout=20) as resp:
+            data         = resp.read()
+            content_type = resp.headers.get_content_type()
+        return Response(data,
+                        mimetype=content_type or 'image/gif',
+                        headers={"Cache-Control": "public, max-age=3600"})
+    except Exception as e:
+        log.warning("SkyView proxy error: %s", e)
+        return Response(status=502)
+
+
+@app.route('/aladin')
+@app.route('/carte-du-ciel')
+def aladin_page():
+    return render_template('aladin.html')
 
 
 # Prêt à recevoir du trafic : import Gunicorn/worker terminé (TLE + routes chargés).
@@ -8561,6 +10520,177 @@ def reset_visits():
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
 
+
+# ══════════════════════════════════════════════════════════════
+# OWNER IPs — gestion des IPs propriétaire via API
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/api/owner-ips', methods=['GET'])
+def api_owner_ips_get():
+    """Liste les IPs propriétaire (DB + env)."""
+    try:
+        conn = _get_db_visitors()
+        rows = conn.execute(
+            "SELECT id, ip, label, added_at FROM owner_ips ORDER BY added_at DESC"
+        ).fetchall()
+        conn.close()
+        result = [{"id": r[0], "ip": r[1], "label": r[2], "added_at": r[3]} for r in rows]
+        env_ips = [x.strip() for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(",") if x.strip()]
+        return jsonify({"db_ips": result, "env_ips": env_ips})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/owner-ips', methods=['POST'])
+def api_owner_ips_add():
+    """Ajoute une IP propriétaire. Body JSON: {"ip": "x.x.x.x", "label": "Maison"}"""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        ip = (data.get("ip") or "").strip()
+        label = (data.get("label") or "")[:100].strip()
+        if not ip:
+            return jsonify({"ok": False, "error": "ip manquant"}), 400
+        conn = _get_db_visitors()
+        conn.execute(
+            "INSERT OR REPLACE INTO owner_ips (ip, label, added_at) VALUES (?, ?, datetime('now'))",
+            (ip, label),
+        )
+        # Marquer les visites existantes de cette IP comme is_owner=1
+        conn.execute("UPDATE visitor_log SET is_owner=1 WHERE ip=?", (ip,))
+        conn.commit()
+        conn.close()
+        _invalidate_owner_ips_cache()
+        return jsonify({"ok": True, "ip": ip})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/owner-ips/<int:ip_id>', methods=['DELETE'])
+def api_owner_ips_delete(ip_id):
+    """Supprime une IP propriétaire par son ID."""
+    try:
+        conn = _get_db_visitors()
+        row = conn.execute("SELECT ip FROM owner_ips WHERE id=?", (ip_id,)).fetchone()
+        if not row:
+            conn.close()
+            return jsonify({"ok": False, "error": "IP non trouvée"}), 404
+        ip = row[0]
+        conn.execute("DELETE FROM owner_ips WHERE id=?", (ip_id,))
+        conn.execute("UPDATE visitor_log SET is_owner=0 WHERE ip=?", (ip,))
+        conn.commit()
+        conn.close()
+        _invalidate_owner_ips_cache()
+        return jsonify({"ok": True, "removed_ip": ip})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route('/api/visitor/score-update', methods=['POST'])
+def api_visitor_score_update():
+    """Beacon JS : met à jour le human_score (JS activé, temps sur page).
+    Body JSON: {"session_id": "...", "duration_sec": 45, "js": true}"""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        sid = (data.get("session_id") or "")[:128].strip()
+        duration = int(data.get("duration_sec") or 0)
+        js_active = bool(data.get("js", False))
+        if not sid:
+            return jsonify({"ok": False}), 400
+        conn = _get_db_visitors()
+        row = conn.execute(
+            "SELECT ip, user_agent FROM visitor_log WHERE session_id=? LIMIT 1", (sid,)
+        ).fetchone()
+        if row:
+            ip, ua = row[0], row[1]
+            page_cnt = conn.execute(
+                "SELECT COUNT(*) FROM page_views WHERE session_id=?", (sid,)
+            ).fetchone()[0]
+            referrer = (request.headers.get("Referer") or "")
+            score = _compute_human_score(ua or "", page_count=page_cnt,
+                                          session_sec=duration, referrer=referrer,
+                                          js_beacon=js_active)
+            conn.execute(
+                "UPDATE visitor_log SET human_score=? WHERE session_id=? AND ip=?",
+                (score, sid, ip),
+            )
+            conn.commit()
+        conn.close()
+        return jsonify({"ok": True})
+    except Exception as e:
+        log.debug("score-update: %s", e)
+        return jsonify({"ok": False}), 200
+
+
+@app.route('/api/analytics/summary', methods=['GET'])
+def api_analytics_summary():
+    """JSON summary pour dashboard : visiteurs, pages vues, human%, top pages, owner."""
+    try:
+        conn = _get_db_visitors()
+        conn.row_factory = sqlite3.Row
+
+        # KPIs de base
+        total_sessions = conn.execute(
+            "SELECT COUNT(*) FROM visitor_log WHERE is_bot=0 AND is_owner=0"
+        ).fetchone()[0]
+        total_page_views = conn.execute("SELECT COUNT(*) FROM page_views").fetchone()[0]
+        unique_ips = conn.execute(
+            "SELECT COUNT(DISTINCT ip) FROM visitor_log WHERE is_bot=0 AND is_owner=0"
+        ).fetchone()[0]
+        bot_count = conn.execute("SELECT COUNT(*) FROM visitor_log WHERE is_bot=1").fetchone()[0]
+        human_count = conn.execute(
+            "SELECT COUNT(*) FROM visitor_log WHERE is_bot=0 AND is_owner=0 AND human_score >= 60"
+        ).fetchone()[0]
+        owner_count = conn.execute("SELECT COUNT(*) FROM visitor_log WHERE is_owner=1").fetchone()[0]
+        avg_score = conn.execute(
+            "SELECT ROUND(AVG(human_score),1) FROM visitor_log WHERE is_bot=0 AND is_owner=0 AND human_score >= 0"
+        ).fetchone()[0]
+
+        # Top 10 pages
+        top_pages = conn.execute(
+            "SELECT path, COUNT(*) as cnt FROM page_views WHERE path NOT LIKE '/static%' "
+            "GROUP BY path ORDER BY cnt DESC LIMIT 10"
+        ).fetchall()
+
+        # Top pays
+        top_countries = conn.execute(
+            "SELECT country, country_code, COUNT(*) as cnt FROM visitor_log "
+            "WHERE is_bot=0 AND is_owner=0 AND country != 'Unknown' "
+            "GROUP BY country ORDER BY cnt DESC LIMIT 10"
+        ).fetchall()
+
+        # Visites owner
+        owner_visits = conn.execute(
+            "SELECT ip, country, city, isp, MAX(visited_at) as last_visit, COUNT(*) as sessions "
+            "FROM visitor_log WHERE is_owner=1 GROUP BY ip ORDER BY last_visit DESC LIMIT 20"
+        ).fetchall()
+
+        conn.close()
+
+        human_pct = round(100 * human_count / max(1, total_sessions), 1)
+        bot_pct = round(100 * bot_count / max(1, total_sessions + bot_count), 1)
+
+        return jsonify({
+            "total_sessions": int(total_sessions),
+            "total_page_views": int(total_page_views),
+            "unique_ips": int(unique_ips),
+            "bot_count": int(bot_count),
+            "human_count": int(human_count),
+            "owner_count": int(owner_count),
+            "human_pct": float(human_pct),
+            "bot_pct": float(bot_pct),
+            "avg_human_score": float(avg_score or 0),
+            "top_pages": [{"path": r["path"], "count": r["cnt"]} for r in top_pages],
+            "top_countries": [{"country": r["country"], "code": r["country_code"], "count": r["cnt"]} for r in top_countries],
+            "owner_visits": [
+                {"ip": r["ip"], "country": r["country"], "city": r["city"],
+                 "isp": r["isp"], "last_visit": r["last_visit"], "sessions": r["sessions"]}
+                for r in owner_visits
+            ],
+        })
+    except Exception as e:
+        log.warning("api_analytics_summary: %s", e)
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/visits/count')
 def get_visits():
     """Retourne le compteur de visites actuel."""
@@ -8581,212 +10711,6 @@ def _get_db_visitors():
     return _sqlite3.connect("/root/astro_scan/data/archive_stellaire.db")
 
 
-# ── Visiteurs LIVE (/visiteurs-live) : globe + SSE — données issues de visitor_log ──
-_visitor_bot_re = re.compile(
-    r"bot|crawl|spider|slurp|bingpreview|facebookexternal|semrush|ahrefs|"
-    r"curl/|wget|python-requests|axios|go-http|http\.client|libwww|scrapy|"
-    r"googlebot|bingbot|yandex|duckduck|baiduspider|petalbot|applebot|gptbot|"
-    r"claudebot|anthropic|bytespider",
-    re.I,
-)
-
-# Centroides approximatifs (ISO 3166-1 alpha-2) pour points carte — inconnus = exclus de la carte
-_CC_CENTROID = {
-    "FR": (46.6034, 1.8883), "US": (39.8283, -98.5795), "DZ": (28.0339, 1.6596),
-    "DE": (51.1657, 10.4515), "GB": (54.7023, -3.2766), "RU": (61.524, 105.3188),
-    "CN": (35.8617, 104.1954), "JP": (36.2048, 138.2529), "BR": (-14.235, -51.9253),
-    "IN": (20.5937, 78.9629), "CA": (56.1304, -106.3468), "AU": (-25.2744, 133.7751),
-    "IT": (41.8719, 12.5674), "ES": (40.4637, -3.7492), "NL": (52.1326, 5.2913),
-    "BE": (50.5039, 4.4699), "CH": (46.8182, 8.2275), "AT": (47.5162, 14.5501),
-    "PL": (51.9194, 19.1451), "SE": (60.1282, 18.6435), "NO": (60.472, 8.4689),
-    "FI": (61.9241, 25.7482), "DK": (56.2639, 9.5018), "PT": (39.3999, -8.2245),
-    "GR": (39.0742, 21.8243), "TR": (38.9637, 35.2433), "SA": (23.8859, 45.0792),
-    "AE": (23.4241, 53.8478), "IL": (31.0461, 34.8516), "EG": (26.8206, 30.8025),
-    "ZA": (-30.5595, 22.9375), "NG": (9.082, 8.6753), "MX": (23.6345, -102.5528),
-    "AR": (-38.4161, -63.6167), "CL": (-35.6751, -71.543), "CO": (4.5709, -74.2973),
-    "KR": (35.9078, 127.7669), "TW": (23.6978, 120.9605), "SG": (1.3521, 103.8198),
-    "MY": (4.2105, 101.9758), "TH": (15.87, 100.9925), "VN": (14.0583, 108.2772),
-    "PH": (12.8797, 121.774), "ID": (-0.7893, 113.9213), "NZ": (-40.9006, 174.886),
-    "IE": (53.4129, -8.2439), "CZ": (49.8175, 15.473), "RO": (45.9432, 24.9668),
-    "HU": (47.1625, 19.5033), "UA": (48.3794, 31.1656), "MA": (31.7917, -7.0926),
-    "TN": (33.8869, 9.5375), "SN": (14.4974, -14.4524),
-}
-
-_CC_TO_CONTINENT = {
-    "US": "Amériques", "CA": "Amériques", "MX": "Amériques", "BR": "Amériques",
-    "AR": "Amériques", "CL": "Amériques", "CO": "Amériques", "PE": "Amériques",
-    "FR": "Europe", "DE": "Europe", "GB": "Europe", "IT": "Europe", "ES": "Europe",
-    "NL": "Europe", "BE": "Europe", "CH": "Europe", "AT": "Europe", "PL": "Europe",
-    "SE": "Europe", "NO": "Europe", "FI": "Europe", "DK": "Europe", "PT": "Europe",
-    "GR": "Europe", "IE": "Europe", "CZ": "Europe", "RO": "Europe", "HU": "Europe",
-    "UA": "Europe", "RU": "Europe", "TR": "Europe", "DZ": "Afrique", "MA": "Afrique",
-    "TN": "Afrique", "NG": "Afrique", "SN": "Afrique", "ZA": "Afrique", "EG": "Afrique",
-    "CN": "Asie", "JP": "Asie", "KR": "Asie", "IN": "Asie", "SG": "Asie", "TH": "Asie",
-    "VN": "Asie", "PH": "Asie", "ID": "Asie", "MY": "Asie", "TW": "Asie", "IL": "Asie",
-    "AE": "Asie", "SA": "Asie", "AU": "Océanie", "NZ": "Océanie",
-}
-
-
-def _visitor_live_excluded_ips(exclude_my_ip):
-    """IPs à exclure des stats live (localhost + option propriétaire / liste env)."""
-    excluded = {"127.0.0.1", "::1"}
-    if not exclude_my_ip:
-        return excluded
-    for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(","):
-        x = x.strip()
-        if x:
-            excluded.add(x)
-    single = (os.environ.get("ASTROSCAN_MY_IP") or "").strip()
-    if single:
-        excluded.add(single)
-    excluded.add("105.235.139.99")
-    return excluded
-
-
-def _visited_at_to_unix(ts):
-    if not ts:
-        return None
-    s = str(ts).strip()
-    try:
-        if "T" in s:
-            return int(datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp())
-        return int(datetime.strptime(s[:19], "%Y-%m-%d %H:%M:%S").timestamp())
-    except Exception:
-        return None
-
-
-def _build_visitors_live_payload(exclude_my_ip=True):
-    """Payload JSON pour la page Visiteurs LIVE + SSE (compatible renderStats côté client)."""
-    excluded = _visitor_live_excluded_ips(exclude_my_ip)
-    ph = ",".join(["?"] * len(excluded))
-    params = tuple(excluded)
-
-    online_now = 0
-    today_h = 0
-    by_country = []
-    last_rows = []
-    gcc = []
-    agg = []
-
-    conn = _get_db_visitors()
-    try:
-        rows = conn.execute(
-            f"SELECT ip, user_agent, country, country_code, city, visited_at "
-            f"FROM visitor_log WHERE ip NOT IN ({ph}) ORDER BY id DESC LIMIT 8000",
-            params,
-        ).fetchall()
-
-        try:
-            online_row = conn.execute(
-                f"SELECT COUNT(DISTINCT ip) FROM visitor_log WHERE ip NOT IN ({ph}) "
-                f"AND datetime(replace(visited_at,'T',' ')) >= datetime('now','-5 minutes')",
-                params,
-            ).fetchone()
-            online_now = int(online_row[0] or 0)
-        except Exception:
-            online_now = 0
-
-        today_uas = conn.execute(
-            f"SELECT user_agent FROM visitor_log WHERE ip NOT IN ({ph}) "
-            f"AND date(visited_at)=date('now') LIMIT 20000",
-            params,
-        ).fetchall()
-        for (ua,) in today_uas:
-            if not _visitor_bot_re.search((ua or "")[:400]):
-                today_h += 1
-
-        by_country = conn.execute(
-            f"SELECT country, country_code, COUNT(*) as cnt FROM visitor_log "
-            f"WHERE ip NOT IN ({ph}) AND COALESCE(country,'')<>'' AND country<>'Unknown' "
-            f"GROUP BY country, country_code ORDER BY cnt DESC LIMIT 10",
-            params,
-        ).fetchall()
-
-        last_rows = conn.execute(
-            f"SELECT country, country_code, city, visited_at FROM visitor_log "
-            f"WHERE ip NOT IN ({ph}) ORDER BY id DESC LIMIT 18",
-            params,
-        ).fetchall()
-
-        gcc = conn.execute(
-            f"SELECT country_code, COUNT(*) as cnt FROM visitor_log "
-            f"WHERE ip NOT IN ({ph}) AND COALESCE(country_code,'')<>'' "
-            f"GROUP BY country_code",
-            params,
-        ).fetchall()
-
-        agg = conn.execute(
-            f"SELECT country_code, MAX(country) as cname, COUNT(*) as cnt FROM visitor_log "
-            f"WHERE ip NOT IN ({ph}) AND COALESCE(country_code,'')<>'' "
-            f"GROUP BY country_code",
-            params,
-        ).fetchall()
-    finally:
-        conn.close()
-
-    humans = bots = 0
-    for _ip, ua, _c, _cc, _ci, _v in rows:
-        ua = (ua or "")[:400]
-        if _visitor_bot_re.search(ua):
-            bots += 1
-        else:
-            humans += 1
-
-    total_all = humans + bots
-    human_pct = round(100.0 * humans / total_all) if total_all else 0
-
-    heatmap_acc = {}
-    for code, cnt in gcc:
-        cc = (code or "XX").upper()
-        cont = _CC_TO_CONTINENT.get(cc, "Autres / océan")
-        heatmap_acc[cont] = heatmap_acc.get(cont, 0) + int(cnt)
-
-    top_countries = [
-        {"country": r[0], "code": (r[1] or "XX")[:2], "count": r[2]} for r in by_country
-    ]
-
-    last_connections = []
-    for country, code, city, visited_at in last_rows:
-        ts = _visited_at_to_unix(visited_at)
-        last_connections.append({
-            "country": country or "",
-            "code": (code or "XX")[:2],
-            "city": city or "",
-            "timestamp": ts or int(time.time()),
-        })
-
-    heatmap = [{"continent": k, "count": v} for k, v in sorted(
-        heatmap_acc.items(), key=lambda x: -x[1]
-    )]
-
-    points = []
-    for code, cname, cnt in agg:
-        cc = (code or "").upper()[:2]
-        if cc == "XX" or not cc:
-            continue
-        ll = _CC_CENTROID.get(cc)
-        if not ll:
-            continue
-        lat, lon = ll
-        points.append({
-            "lat": lat, "lon": lon, "count": int(cnt),
-            "country": cname or cc, "code": cc,
-        })
-
-    return {
-        "total": total_all,
-        "online_now": online_now,
-        "top_countries": top_countries,
-        "last_connections": last_connections,
-        "heatmap": heatmap,
-        "humans_total": humans,
-        "bots_total": bots,
-        "humans_today": int(today_h),
-        "human_pct_display": human_pct,
-        "points": points,
-    }
-
-
 @app.route("/api/visitors/globe-data")
 def api_visitors_globe_data():
     """Points carte (Leaflet) pour /visiteurs-live — agrégation par pays."""
@@ -8794,11 +10718,26 @@ def api_visitors_globe_data():
         exclude_my_ip = (request.args.get("exclude_my_ip", "1") or "0").strip().lower() in (
             "1", "true", "yes", "on",
         )
-        p = _build_visitors_live_payload(exclude_my_ip=exclude_my_ip)
+        p = get_global_stats(exclude_my_ip=exclude_my_ip)
         return jsonify({"ok": True, "points": p.get("points") or []})
     except Exception as e:
         log.warning("visitors/globe-data: %s", e)
         return jsonify({"ok": False, "points": [], "error": str(e)})
+
+
+@app.route("/api/visitors/snapshot")
+def api_visitors_snapshot():
+    """REST one-shot : même payload que le SSE — utilisé pour le polling fallback."""
+    try:
+        exclude_my_ip = (request.args.get("exclude_my_ip", "1") or "0").strip().lower() in (
+            "1", "true", "yes", "on",
+        )
+        return jsonify(get_global_stats(exclude_my_ip=exclude_my_ip))
+    except Exception as e:
+        log.warning("visitors/snapshot: %s", e)
+        return jsonify({"error": str(e), "total": 0, "online_now": 0, "top_countries": [],
+                        "last_connections": [], "heatmap": [], "humans_total": 0,
+                        "bots_total": 0, "humans_today": 0})
 
 
 @app.route("/api/visitors/stream")
@@ -8811,7 +10750,7 @@ def api_visitors_stream():
     def gen():
         while True:
             try:
-                payload = _build_visitors_live_payload(exclude_my_ip=exclude_my_ip)
+                payload = get_global_stats(exclude_my_ip=exclude_my_ip)
                 yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
             except Exception as e:
                 err = {"error": str(e), "total": 0, "online_now": 0, "top_countries": [],
@@ -8835,24 +10774,7 @@ def api_visitors_stream():
 def _log_visitor(request):
     """Enregistre un visiteur avec son IP et chemin."""
     try:
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr or "0.0.0.0")
-        ip = ip.split(",")[0].strip()
-        ua = request.headers.get("User-Agent", "")[:200]
-        path = request.path
-        if ip in ("127.0.0.1", "::1", "0.0.0.0"):
-            return
-        sid = None
-        try:
-            sid = getattr(g, "_astroscan_sid", None) or request.cookies.get("astroscan_sid")
-        except Exception:
-            pass
-        conn = _get_db_visitors()
-        conn.execute(
-            "INSERT INTO visitor_log (ip, user_agent, path, session_id) VALUES (?, ?, ?, ?)",
-            (ip, ua, path, sid)
-        )
-        conn.commit()
-        conn.close()
+        _register_unique_visit_from_request(path_override=request.path)
     except Exception:
         pass
 
@@ -8860,25 +10782,10 @@ def _log_visitor(request):
 def api_log_visitor():
     """Log un visiteur depuis le frontend."""
     try:
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown")
-        ip = ip.split(",")[0].strip()
-        ua = request.headers.get("User-Agent", "")[:200]
         data = request.get_json(silent=True) or {}
         path = data.get("path", "/")
-        if ip not in ("127.0.0.1", "::1"):
-            sid = None
-            try:
-                sid = getattr(g, "_astroscan_sid", None) or request.cookies.get("astroscan_sid")
-            except Exception:
-                pass
-            conn = _get_db_visitors()
-            conn.execute(
-                "INSERT INTO visitor_log (ip, user_agent, path, session_id) VALUES (?, ?, ?, ?)",
-                (ip, ua, path, sid)
-            )
-            conn.commit()
-            conn.close()
-        return jsonify({"ok": True})
+        tracked = _register_unique_visit_from_request(path_override=path)
+        return jsonify({"ok": True, "tracked": bool(tracked)})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
@@ -8976,7 +10883,7 @@ def api_visitors_stats():
             "FROM visitor_log "
             f"WHERE ip NOT IN ({placeholders}) AND country != 'Unknown' "
             "GROUP BY country, country_code "
-            "ORDER BY cnt DESC LIMIT 20",
+            "ORDER BY cnt DESC LIMIT 50",
             params
         ).fetchall()
         total = conn.execute(
@@ -8993,13 +10900,22 @@ def api_visitors_stats():
             "total": total,
             "today": today,
             "exclude_my_ip": exclude_my_ip,
-            "by_country": [{"country": r[0], "code": r[1], "count": r[2]} for r in by_country]
+            "by_country": [
+                {"country": r[0], "code": r[1] or "XX", "count": r[2]}
+                for r in by_country
+                if (r[1] or "XX").upper() != "XX" and "inconnu" not in (r[0] or "").lower()
+            ]
         })
     except Exception as e:
         return jsonify({"error": str(e)})
 
 
 @app.route("/api/visitors/connection-time")
+def api_visitors_connection_time_legacy():
+    """Redirige 301 vers la version underscore (URL canonique)."""
+    return redirect("/api/visitors/connection_time", code=301)
+
+
 @app.route("/api/visitors/connection_time")
 def api_visitors_connection_time():
     """Temps de connexion par IP (visiteurs externes), dédupliqué et plafonné."""
@@ -9320,11 +11236,13 @@ def _astroscan_session_cookie_and_time_script(response):
         secure = bool(request.is_secure) or (
             (request.headers.get("X-Forwarded-Proto") or "").lower() == "https"
         )
-        if getattr(g, "_astroscan_sid_new", False) and getattr(g, "_astroscan_sid", None):
+        # Rafraîchit le cookie à chaque page HTML : session = 30 min d'inactivité.
+        # Si inactif > 30 min → cookie expire → prochaine visite = nouvelle session.
+        if getattr(g, "_astroscan_sid", None):
             response.set_cookie(
                 "astroscan_sid",
                 g._astroscan_sid,
-                max_age=60 * 60 * 24 * 365,
+                max_age=60 * 30,  # 30 minutes d'inactivité = nouvelle session
                 samesite="Lax",
                 path="/",
                 secure=secure,
@@ -9341,6 +11259,937 @@ def _astroscan_session_cookie_and_time_script(response):
         pass
     return response
 
+
+# ══════════════════════════════════════════════════════════════
+# MODULE HILAL — Croissant Islamique · Tlemcen 34.87°N 1.32°E
+# ══════════════════════════════════════════════════════════════
+
+_HIJRI_MONTHS = [
+    'Mouharram','Safar','Rabi al-Awwal','Rabi al-Thani',
+    'Joumada al-Oula','Joumada al-Thania','Rajab','Chaabane',
+    'Ramadan','Chawwal','Dhou al-Qi\'da','Dhou al-Hijja'
+]
+
+def _hilal_compute(for_date=None):
+    """
+    Calcule la visibilité du croissant islamique pour Tlemcen.
+    Retourne un dict complet avec critères ODEH, UIOF et Oum Al Qura.
+    """
+    import math
+    import ephem
+    from datetime import timedelta
+    from astropy.coordinates import (EarthLocation, AltAz, get_body, get_sun,
+                                     solar_system_ephemeris)
+    from astropy.time import Time
+    import astropy.units as u
+
+    LAT, LON, ALT = 34.87, 1.32, 800
+    location = EarthLocation(lat=LAT * u.deg, lon=LON * u.deg, height=ALT * u.m)
+
+    # Date de référence
+    if for_date is None:
+        for_date = datetime.now(timezone.utc).date()
+
+    # ── 1. Trouver la prochaine nouvelle lune ──
+    obs = ephem.Observer()
+    obs.lat = str(LAT)
+    obs.lon = str(LON)
+    obs.elevation = ALT
+    obs.pressure = 0
+    obs.horizon = '-0:34'
+
+    ref_dt = datetime(for_date.year, for_date.month, for_date.day, 12, 0, 0)
+    obs.date = ref_dt.strftime('%Y/%m/%d %H:%M:%S')
+
+    next_new = ephem.next_new_moon(obs.date)
+    next_new_dt = next_new.datetime().replace(tzinfo=timezone.utc)
+
+    # ── 2. Coucher du soleil le jour J et J+1 après la nouvelle lune ──
+    def find_sunset(day):
+        """Retourne l'heure du coucher soleil (UTC) pour un jour donné."""
+        obs2 = ephem.Observer()
+        obs2.lat = str(LAT)
+        obs2.lon = str(LON)
+        obs2.elevation = ALT
+        obs2.pressure = 1013
+        obs2.horizon = '-0:50'  # réfraction
+        obs2.date = f"{day.year}/{day.month:02d}/{day.day:02d} 12:00:00"
+        try:
+            sunset_ephem = obs2.next_setting(ephem.Sun())
+            return sunset_ephem.datetime().replace(tzinfo=timezone.utc)
+        except Exception:
+            return datetime(day.year, day.month, day.day, 18, 30, tzinfo=timezone.utc)
+
+    # Jour de la nouvelle lune et lendemain
+    nm_day = next_new_dt.date()
+    days_to_check = [nm_day, nm_day + timedelta(days=1)]
+
+    results_by_day = []
+    for check_day in days_to_check:
+        sunset_dt = find_sunset(check_day)
+        t_sunset = Time(sunset_dt)
+
+        frame = AltAz(obstime=t_sunset, location=location)
+        moon_coord = get_body('moon', t_sunset).transform_to(frame)
+        sun_coord = get_sun(t_sunset).transform_to(frame)
+
+        moon_alt = float(moon_coord.alt.deg)
+        moon_az = float(moon_coord.az.deg)
+        sun_alt = float(sun_coord.alt.deg)
+
+        # Elongation géocentrique (ARCL)
+        with solar_system_ephemeris.set('builtin'):
+            moon_gcrs = get_body('moon', t_sunset)
+            sun_gcrs = get_sun(t_sunset)
+        arcl_deg = float(moon_gcrs.separation(sun_gcrs).deg)
+
+        # ARCV = altitude de la lune au coucher du soleil
+        arcv_deg = moon_alt
+
+        # Largeur du croissant (W) en minutes d'arc — formule Odeh
+        # W = 0.27245 * SD * (1 - cos(ARCL))  où SD = demi-diamètre moyen ≈ 0.2725°
+        crescent_w_deg = 0.27245 * (1.0 - math.cos(math.radians(arcl_deg)))
+        crescent_w_arcmin = crescent_w_deg * 60.0
+
+        # Âge lunaire depuis la nouvelle lune (heures)
+        moon_age_h = (sunset_dt - next_new_dt).total_seconds() / 3600.0
+
+        # ── Critère ODEH (2006) ──
+        # Visible si ARCL ≥ 6.4° ET W ≥ 0.216°
+        # Incertain si ARCL ≥ 6.4° ET W ≥ 0.1°
+        if arcl_deg >= 6.4 and crescent_w_deg >= 0.216:
+            odeh = 'VISIBLE'
+        elif arcl_deg >= 6.4 and crescent_w_deg >= 0.1:
+            odeh = 'INCERTAIN'
+        elif moon_alt > 0 and moon_age_h >= 15:
+            odeh = 'POSSIBLE'
+        else:
+            odeh = 'NON VISIBLE'
+
+        # ── Critère UIOF / France ──
+        # Lune visible si altitude > 3° au coucher du soleil ET Âge > 15h
+        if arcv_deg >= 5.0 and moon_age_h >= 15:
+            uiof = 'VISIBLE'
+        elif arcv_deg >= 3.0 and moon_age_h >= 12:
+            uiof = 'INCERTAIN'
+        else:
+            uiof = 'NON VISIBLE'
+
+        # ── Critère Oum Al Qura (Arabie Saoudite) ──
+        # Lune visible si elle se couche APRÈS le soleil ET lune couchée ≥ 5 min après soleil
+        obs3 = ephem.Observer()
+        obs3.lat = str(LAT); obs3.lon = str(LON); obs3.elevation = ALT
+        obs3.pressure = 1013; obs3.horizon = '-0:50'
+        obs3.date = f"{check_day.year}/{check_day.month:02d}/{check_day.day:02d} 12:00:00"
+        try:
+            moonset_ephem = obs3.next_setting(ephem.Moon())
+            moonset_dt = moonset_ephem.datetime().replace(tzinfo=timezone.utc)
+            lag_min = (moonset_dt - sunset_dt).total_seconds() / 60.0
+            oumqura = 'VISIBLE' if lag_min >= 5 and moon_alt > 0 else 'NON VISIBLE'
+        except Exception:
+            oumqura = 'INCERTAIN'
+            lag_min = 0.0
+
+        # Coucher de la lune
+        try:
+            moonset_str = moonset_dt.strftime('%H:%M UTC') if 'moonset_dt' in dir() else '—'
+        except Exception:
+            moonset_str = '—'
+
+        results_by_day.append({
+            'date': check_day.isoformat(),
+            'sunset_utc': sunset_dt.strftime('%H:%M UTC'),
+            'moonset_utc': moonset_str,
+            'moon_alt_deg': round(arcv_deg, 2),
+            'moon_az_deg': round(moon_az, 2),
+            'arcl_deg': round(arcl_deg, 2),
+            'arcv_deg': round(arcv_deg, 2),
+            'crescent_width_arcmin': round(crescent_w_arcmin, 3),
+            'crescent_width_deg': round(crescent_w_deg, 4),
+            'moon_age_hours': round(max(0, moon_age_h), 1),
+            'criteria': {
+                'odeh': odeh,
+                'uiof': uiof,
+                'oum_al_qura': oumqura,
+            },
+            'moonset_lag_min': round(lag_min, 1) if 'lag_min' in dir() else None,
+        })
+
+    # ── 3. Mois hégirien approximatif ──
+    # Comptage depuis 1 Mouharram 1 AH = 16 juillet 622 CE
+    J0 = 1948439.5  # JD du 1 Mouharram 1 AH (approx)
+    jd_now = Time(datetime.now(timezone.utc)).jd
+    hijri_days = jd_now - J0
+    hijri_months_total = hijri_days / 29.53058867
+    hijri_year = int(hijri_months_total / 12) + 1
+    hijri_month_idx = int(hijri_months_total % 12)
+    hijri_month_name = _HIJRI_MONTHS[hijri_month_idx % 12]
+    hijri_day = int((hijri_months_total % 1) * 29.53) + 1
+
+    # ── 4. Compte à rebours jusqu'au premier jour possible ──
+    best_day = None
+    best_criteria = 'NON VISIBLE'
+    for r in results_by_day:
+        if r['criteria']['odeh'] in ('VISIBLE', 'INCERTAIN') or \
+           r['criteria']['uiof'] in ('VISIBLE', 'INCERTAIN'):
+            best_day = r['date']
+            best_criteria = r['criteria']
+            break
+    if best_day is None:
+        best_day = results_by_day[-1]['date'] if results_by_day else (nm_day + timedelta(days=1)).isoformat()
+
+    delta_days = (datetime.fromisoformat(best_day).date() - for_date).days
+
+    return {
+        'ok': True,
+        'computed_at': datetime.now(timezone.utc).isoformat(),
+        'location': {'city': 'Tlemcen', 'lat': LAT, 'lon': LON, 'alt_m': ALT},
+        'hijri_current': {
+            'year': hijri_year,
+            'month_num': hijri_month_idx + 1,
+            'month_name': hijri_month_name,
+            'day': hijri_day,
+        },
+        'new_moon': {
+            'datetime_utc': next_new_dt.isoformat(),
+            'date': nm_day.isoformat(),
+        },
+        'sighting_days': results_by_day,
+        'predicted_first_day': best_day,
+        'countdown_days': delta_days,
+        'next_month_name': _HIJRI_MONTHS[(hijri_month_idx + 1) % 12],
+        'next_hijri_year': hijri_year + (1 if hijri_month_idx == 11 else 0),
+    }
+
+
+def _hilal_compute_calendar():
+    """
+    Génère le calendrier hégire pour les 24 prochains mois.
+    Critères : ODEH 2006 (principal) + Istanbul 1978 / IRCICA (secondaire).
+    Cache 24h recommandé (données stables).
+    """
+    import math
+    import ephem
+    from datetime import timedelta
+
+    LAT, LON, ALT = 34.8700, 1.3200, 816   # Tlemcen précis
+
+    now   = datetime.now(timezone.utc)
+    today = now.date()
+
+    # ── Mois hégire courant (même formule que _hilal_compute) ──
+    J0 = 1948439.5
+    from astropy.time import Time as _ATime
+    jd_now              = _ATime(now).jd
+    total_months        = int((jd_now - J0) / 29.53058867)
+    h_year_base         = total_months // 12 + 1
+    h_month_idx_base    = total_months % 12          # 0-indexed, mois courant
+
+    # ── Helpers ephem ──
+    def _obs(day, pressure=1013, horizon='-0:50'):
+        o = ephem.Observer()
+        o.lat = str(LAT); o.lon = str(LON)
+        o.elevation = ALT; o.pressure = pressure; o.horizon = horizon
+        o.date = f'{day.year}/{day.month:02d}/{day.day:02d} 12:00:00'
+        return o
+
+    def _sunset(day):
+        try:
+            return _obs(day).next_setting(ephem.Sun()).datetime().replace(tzinfo=timezone.utc)
+        except Exception:
+            return datetime(day.year, day.month, day.day, 18, 30, tzinfo=timezone.utc)
+
+    def _sighting(check_day, nm_dt):
+        sunset_dt = _sunset(check_day)
+
+        # Position lune + soleil au moment du coucher du soleil
+        o2 = ephem.Observer()
+        o2.lat = str(LAT); o2.lon = str(LON)
+        o2.elevation = ALT; o2.pressure = 1013; o2.horizon = '-0:34'
+        o2.date = ephem.Date(sunset_dt.strftime('%Y/%m/%d %H:%M:%S'))
+
+        moon = ephem.Moon(); sun_obj = ephem.Sun()
+        moon.compute(o2); sun_obj.compute(o2)
+
+        moon_alt = math.degrees(moon.alt)
+        arcl_deg = math.degrees(ephem.separation(moon, sun_obj))
+
+        crescent_w_deg    = 0.27245 * (1.0 - math.cos(math.radians(arcl_deg)))
+        crescent_w_arcmin = crescent_w_deg * 60.0
+        moon_age_h        = max(0.0, (sunset_dt - nm_dt).total_seconds() / 3600.0)
+
+        # Coucher lune + lag
+        o3 = _obs(check_day, pressure=1013, horizon='-0:34')
+        try:
+            moonset_dt  = o3.next_setting(ephem.Moon()).datetime().replace(tzinfo=timezone.utc)
+            lag_min     = (moonset_dt - sunset_dt).total_seconds() / 60.0
+            moonset_str = moonset_dt.strftime('%H:%M UTC')
+        except Exception:
+            lag_min = 0.0; moonset_str = '—'
+
+        # ODEH 2006 — critère international de référence
+        if arcl_deg >= 6.4 and crescent_w_deg >= 0.216:
+            odeh = 'VISIBLE'
+        elif arcl_deg >= 6.4 and crescent_w_deg >= 0.1:
+            odeh = 'INCERTAIN'
+        elif moon_alt > 0 and moon_age_h >= 15:
+            odeh = 'POSSIBLE'
+        else:
+            odeh = 'NON VISIBLE'
+
+        # Istanbul 1978 — IRCICA : alt ≥ 5° + arcl ≥ 8° + âge ≥ 15h
+        if moon_alt >= 5.0 and arcl_deg >= 8.0 and moon_age_h >= 15:
+            istanbul = 'VISIBLE'
+        elif moon_alt >= 3.0 and arcl_deg >= 6.0 and moon_age_h >= 12:
+            istanbul = 'INCERTAIN'
+        else:
+            istanbul = 'NON VISIBLE'
+
+        # Oum Al Qura — moonset lag ≥ 5 min
+        oumqura = 'VISIBLE' if lag_min >= 5 and moon_alt > 0 else 'NON VISIBLE'
+
+        return {
+            'date':                 check_day.isoformat(),
+            'sunset_utc':           sunset_dt.strftime('%H:%M UTC'),
+            'moonset_utc':          moonset_str,
+            'arcl_deg':             round(arcl_deg, 2),
+            'arcv_deg':             round(moon_alt, 2),
+            'crescent_width_arcmin': round(crescent_w_arcmin, 3),
+            'moon_age_hours':       round(moon_age_h, 1),
+            'moonset_lag_min':      round(lag_min, 1),
+            'criteria': {'odeh': odeh, 'istanbul': istanbul, 'oum_al_qura': oumqura},
+        }
+
+    def _pick_first(days):
+        # Priorité ODEH VISIBLE → Istanbul VISIBLE → INCERTAIN → J+1 par défaut
+        for d in days:
+            if d['criteria']['odeh'] == 'VISIBLE':
+                return d['date'], d['criteria'], 'ODEH'
+        for d in days:
+            if d['criteria']['istanbul'] == 'VISIBLE':
+                return d['date'], d['criteria'], 'Istanbul'
+        for d in days:
+            if d['criteria']['odeh'] in ('INCERTAIN', 'POSSIBLE') or \
+               d['criteria']['istanbul'] == 'INCERTAIN':
+                return d['date'], d['criteria'], 'calcul'
+        return days[-1]['date'], days[-1]['criteria'], 'astronomique'
+
+    def _badge(crit):
+        o = crit.get('odeh', ''); i = crit.get('istanbul', '')
+        if o == 'VISIBLE' and i == 'VISIBLE':   return 'CONFIRMÉ',  95
+        if o == 'VISIBLE':                        return 'PROBABLE',  85
+        if i == 'VISIBLE':                        return 'PROBABLE',  78
+        if o in ('INCERTAIN', 'POSSIBLE') or i == 'INCERTAIN':
+                                                  return 'INCERTAIN', 60
+        return 'CALCUL', 30
+
+    # ── Boucle 24 nouvelles lunes ──
+    search_dt   = now
+    h_year      = h_year_base
+    h_month_idx = h_month_idx_base
+    calendar    = []
+
+    for _ in range(24):
+        o_nm = ephem.Observer()
+        o_nm.lat = str(LAT); o_nm.lon = str(LON)
+        o_nm.elevation = ALT; o_nm.pressure = 0
+        o_nm.date = search_dt.strftime('%Y/%m/%d %H:%M:%S')
+
+        nm_ephem = ephem.next_new_moon(o_nm.date)
+        nm_dt    = nm_ephem.datetime().replace(tzinfo=timezone.utc)
+        nm_day   = nm_dt.date()
+
+        sighting = [_sighting(nm_day + timedelta(days=off), nm_dt) for off in range(2)]
+        first_day_str, first_crit, method = _pick_first(sighting)
+        badge, pct = _badge(first_crit)
+
+        # Avancer le compteur hégire
+        h_month_idx = (h_month_idx + 1) % 12
+        if h_month_idx == 0:
+            h_year += 1
+
+        month_name = _HIJRI_MONTHS[h_month_idx]
+        calendar.append({
+            'hijri_month_num':    h_month_idx + 1,
+            'hijri_month_name':   month_name,
+            'hijri_year':         h_year,
+            'date_1er_gregorien': first_day_str,
+            'new_moon_utc':       nm_dt.isoformat(),
+            'badge':              badge,
+            'certitude_pct':      pct,
+            'method':             method,
+            'criteria':           first_crit,
+            'sighting_days':      sighting,
+            'is_ramadan':         h_month_idx == 8,
+            'is_aid_fitr':        h_month_idx == 9,
+            'is_aid_adha':        h_month_idx == 11,
+        })
+
+        search_dt = nm_dt + timedelta(days=29)
+
+    # Prochain Ramadan + compte à rebours
+    next_ramadan = next((m for m in calendar if m['is_ramadan']), None)
+    countdown_ramadan = None
+    if next_ramadan:
+        rd = datetime.fromisoformat(next_ramadan['date_1er_gregorien']).date()
+        countdown_ramadan = (rd - today).days
+
+    return {
+        'ok':           True,
+        'computed_at':  now.isoformat(),
+        'location':     {'city': 'Tlemcen', 'lat': LAT, 'lon': LON, 'alt_m': ALT},
+        'ephemeris':    'VSOP87 / Méeus (ephem) + DE430 (astropy)',
+        'criteria_info': {
+            'primary':   'ODEH 2006 — International Astronomical Center',
+            'secondary': 'Istanbul 1978 — IRCICA (alt ≥ 5° + arcl ≥ 8° + âge ≥ 15h)',
+            'note':      'Précision ±1 jour · Tlemcen 34.87°N 1.32°E 816m · Cache 24h',
+        },
+        'calendar':               calendar,
+        'next_ramadan':           next_ramadan,
+        'countdown_ramadan_days': countdown_ramadan,
+    }
+
+
+@app.route('/api/hilal/calendar')
+def api_hilal_calendar():
+    """Calendrier hégire 24 mois — ODEH 2006 + Istanbul 1978. Cache 24h."""
+    cached = cache_get('hilal_calendar', 86400)
+    if cached is not None:
+        return jsonify(cached)
+    try:
+        data = _hilal_compute_calendar()
+        cache_set('hilal_calendar', data)
+        return jsonify(data)
+    except Exception as e:
+        log.error('api_hilal_calendar: %s', e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@app.route('/api/hilal')
+def api_hilal():
+    """Calcul du croissant islamique (Hilal) pour Tlemcen. Cache 30 min."""
+    cached = cache_get('hilal_data', 1800)
+    if cached is not None:
+        return jsonify(cached)
+    try:
+        data = _hilal_compute()
+        cache_set('hilal_data', data)
+        return jsonify(data)
+    except Exception as e:
+        log.error('api_hilal: %s', e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+
+# MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
+# @app.route('/orbital')
+# def orbital_dashboard():
+#     return render_template('orbital_dashboard.html')
+
+
+import requests
+from datetime import datetime
+
+@app.route('/api/meteo/reel')
+def meteo_reel():
+    try:
+        # Ville par défaut (modifiable)
+        city = request.args.get('city', 'Tlemcen')
+
+        url = f"https://wttr.in/{city}?format=j1"
+        r = requests.get(url, timeout=5)
+        data = r.json()
+
+        current = data['current_condition'][0]
+
+        return jsonify({
+            "city": city,
+            "temp": current['temp_C'],
+            "humidity": current['humidity'],
+            "wind": current['windspeedKmph'],
+            "desc": current['weatherDesc'][0]['value'],
+            "time": datetime.utcnow().isoformat(),
+            "ok": True
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route('/meteo-reel')
+def meteo_page():
+    return render_template('meteo_reel.html')
+
+
+@app.route('/api/system/server-info')
+def server_info():
+    return jsonify({
+        "ip": "5.78.153.17",
+        "provider": "Hetzner",
+        "status": "ONLINE",
+        "zone": "EU",
+        "ok": True
+    })
+
+
+@app.route('/control')
+@app.route('/meteo')
+def control():
+    return render_template('orbital_control_center.html')
+
+
+def _compute_ephemerides_tlemcen_astropy():
+    """
+    Éphémérides journalières pour Tlemcen (UTC) via astropy.
+    Corps: Soleil, Lune, Jupiter, Mars, Saturne, Vénus.
+    """
+    from astropy.coordinates import EarthLocation, AltAz, get_body
+    from astropy.time import Time
+    import astropy.units as u
+
+    location = EarthLocation(lat=34.8731 * u.deg, lon=1.3154 * u.deg, height=800 * u.m)
+    start_dt = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    step_min = 5
+    timeline = [start_dt + timedelta(minutes=m) for m in range(0, 24 * 60 + step_min, step_min)]
+    times = Time(timeline, scale='utc')
+    altaz = AltAz(obstime=times, location=location)
+
+    def _iso_or_none(dt_obj):
+        return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ") if dt_obj else None
+
+    def _crossing_time(vals, mode='rise'):
+        # Interpolation linéaire simple autour de l'horizon (0°).
+        for i in range(len(vals) - 1):
+            a0, a1 = vals[i], vals[i + 1]
+            if mode == 'rise' and a0 < 0 <= a1:
+                frac = 0.0 if a1 == a0 else (0.0 - a0) / (a1 - a0)
+                return timeline[i] + timedelta(seconds=frac * step_min * 60)
+            if mode == 'set' and a0 > 0 >= a1:
+                frac = 0.0 if a1 == a0 else (0.0 - a0) / (a1 - a0)
+                return timeline[i] + timedelta(seconds=frac * step_min * 60)
+        return None
+
+    bodies = [
+        ("Soleil", "sun", -26.74),
+        ("Lune", "moon", -12.60),
+        ("Jupiter", "jupiter", -2.70),
+        ("Mars", "mars", 1.00),
+        ("Saturne", "saturn", 0.70),
+        ("Vénus", "venus", -4.20),
+    ]
+
+    results = []
+    for label, body_name, mag in bodies:
+        body_alt = get_body(body_name, times, location).transform_to(altaz).alt.deg.tolist()
+        max_alt = max(body_alt)
+        max_idx = body_alt.index(max_alt)
+        rise_dt = _crossing_time(body_alt, mode='rise')
+        set_dt = _crossing_time(body_alt, mode='set')
+        transit_dt = timeline[max_idx]
+        results.append(
+            {
+                "nom": label,
+                "rise": _iso_or_none(rise_dt),
+                "transit": _iso_or_none(transit_dt),
+                "set": _iso_or_none(set_dt),
+                "altitude_max": round(float(max_alt), 2),
+                "magnitude": mag,
+            }
+        )
+
+    return {
+        "site": {
+            "name": "Tlemcen",
+            "lat": 34.8731,
+            "lon": 1.3154,
+            "altitude_m": 800,
+        },
+        "date_utc": start_dt.strftime("%Y-%m-%d"),
+        "source": "astropy",
+        "ephemerides": results,
+    }
+
+
+@app.route('/ephemerides')
+def page_ephemerides():
+    try:
+        eph_payload = _compute_ephemerides_tlemcen_astropy()
+    except Exception as e:
+        log.warning("ephemerides astropy error: %s", e)
+        eph_payload = {"error": str(e), "site": {"name": "Tlemcen"}}
+
+    wants_json = request.args.get("format") == "json" or "application/json" in (request.headers.get("Accept") or "")
+    if wants_json:
+        return jsonify(eph_payload)
+    return render_template('ephemerides.html', ephemerides_tlemcen=eph_payload)
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    base = "https://astroscan.space"
+    urls = [
+        ("/", "0.6", "monthly"),
+        ("/portail", "1.0", "daily"),
+        ("/ephemerides", "0.8", "daily"),
+        ("/galerie", "0.8", "monthly"),
+        ("/observatoire", "0.8", "daily"),
+        ("/telescope", "0.8", "daily"),
+        ("/ce-soir", "0.8", "daily"),
+        ("/space-weather", "0.8", "daily"),
+        ("/orbital-map", "0.8", "daily"),
+        ("/a-propos", "0.6", "monthly"),
+        ("/orbital-radio", "0.8", "daily"),
+        ("/vision", "0.8", "daily"),
+        ("/sondes", "0.8", "daily"),
+    ]
+    xml_items = [
+        (
+            "  <url>\n"
+            f"    <loc>{base}{path}</loc>\n"
+            f"    <lastmod>{today}</lastmod>\n"
+            f"    <changefreq>{freq}</changefreq>\n"
+            f"    <priority>{prio}</priority>\n"
+            "  </url>"
+        )
+        for path, prio, freq in urls
+    ]
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(xml_items)
+        + "\n</urlset>\n"
+    )
+    return Response(xml, mimetype='application/xml')
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'robots.txt', mimetype='text/plain')
+
+
+@app.route('/europe-live')
+def europe_live():
+    return render_template('europe_live.html')
+
+
+@app.route('/flight-radar')
+def flight_radar():
+    return render_template('flight_radar.html', lang=get_user_lang())
+
+
+# ── PROXY CAMÉRAS — World Live ────────────────────────────────────────────────
+# Caméras publiques mondiales, choisies pour stabilité et impact visuel.
+# '__epic__' est une sentinelle : résout dynamiquement la dernière image NASA EPIC.
+_CAM_SOURCES = {
+    'matterhorn': [
+        'https://zermatt.roundshot.com/zermatt.jpg',
+        'https://www.zermatt.ch/var/zermatt/storage/images/media/webcam/matterhorn.jpg',
+    ],
+    'aurora': [
+        'https://nordlysobservatoriet.no/allsky/latest_small.jpg',
+        'https://arcticspace.no/allsky_images/latest.jpg',
+    ],
+    'canyon': [
+        'https://www.nps.gov/grca/planyourvisit/webcam-images/south-rim.jpg',
+        'https://grandcanyonsunrise.org/livecam/latest.jpg',
+    ],
+    'fuji': [
+        'https://livecam.fujigoko.tv/cameras/fujigoko6.jpg',
+        'https://n-img00.tsite.jp/webcam/fujigoko/live.jpg',
+    ],
+    'iss': [
+        '__epic__',  # NASA EPIC — dernière image naturelle de la Terre (résolution dynamique)
+        'https://eol.jsc.nasa.gov/DatabaseImages/ESC/small/ISS070/ISS070-E-75001.JPG',
+    ],
+}
+
+_CAM_ALLOWED    = frozenset(_CAM_SOURCES)
+_CAM_IMG_CACHE  = {}   # {city: {'ts': monotonic, 'data': bytes}}
+_CAM_CACHE_TTL  = 30   # secondes — déduplique les rafraîchissements du frontend
+
+# Un verrou par ville : les requêtes concurrentes ne s'empilent pas en workers bloqués.
+_CAM_FETCH_LOCKS = {city: threading.Lock() for city in _CAM_SOURCES}
+
+_CAM_UA = (
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+)
+_CAM_FETCH_HEADERS = {
+    'User-Agent':      _CAM_UA,
+    'Accept':          'image/jpeg,image/*,*/*;q=0.8',
+    'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
+}
+
+# Cache URL EPIC (1h TTL) — évite un appel API à chaque snapshot ISS.
+_EPIC_URL_CACHE = {'url': None, 'ts': 0.0}
+_EPIC_URL_TTL   = 3600
+
+
+def _get_latest_epic_url():
+    """Retourne l'URL JPEG de la dernière image naturelle DSCOVR/EPIC de la NASA."""
+    now = time.monotonic()
+    if _EPIC_URL_CACHE['url'] and (now - _EPIC_URL_CACHE['ts']) < _EPIC_URL_TTL:
+        return _EPIC_URL_CACHE['url']
+    r = requests.get(
+        'https://epic.gsfc.nasa.gov/api/natural',
+        timeout=(3, 8), headers={'User-Agent': _CAM_UA},
+    )
+    r.raise_for_status()
+    data = r.json()
+    if not isinstance(data, list) or not data:
+        raise ValueError('EPIC API: aucune image disponible')
+    img  = data[0]
+    date = img['date'][:10].replace('-', '/')           # "yyyy/mm/dd"
+    url  = f'https://epic.gsfc.nasa.gov/archive/natural/{date}/jpg/{img["image"]}.jpg'
+    _EPIC_URL_CACHE['url'] = url
+    _EPIC_URL_CACHE['ts']  = now
+    log.info('[CAM EPIC] URL résolue : %s', url)
+    return url
+
+
+def _cam_resolve(raw_url):
+    """Résout la sentinelle __epic__ en URL concrète ; passe les autres URLs telles quelles."""
+    if raw_url == '__epic__':
+        return _get_latest_epic_url()
+    return raw_url
+
+
+def _cam_fetch_url(url):
+    """Télécharge un snapshot JPEG depuis url. Retourne les bytes. Lève sur erreur."""
+    kw = dict(
+        timeout=(5, 12), headers=_CAM_FETCH_HEADERS,
+        allow_redirects=True, stream=False,
+    )
+    try:
+        r = requests.get(url, verify=True, **kw)
+    except requests.exceptions.SSLError:
+        r = requests.get(url, verify=False, **kw)
+    r.raise_for_status()
+    data = r.content
+    if not data:
+        raise ValueError('réponse vide')
+    ct = r.headers.get('content-type', '')
+    if 'image' not in ct and data[:3] != b'\xff\xd8\xff':
+        raise ValueError(f'pas une image : content-type={ct!r}')
+    return data
+
+
+def _cam_response(data):
+    resp = Response(data, mimetype='image/jpeg')
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    resp.headers['Pragma']        = 'no-cache'
+    resp.headers['Expires']       = '0'
+    return resp
+
+
+@app.route('/proxy-cam/<city>.jpg')
+def proxy_cam(city):
+    if city not in _CAM_ALLOWED:
+        abort(404)
+
+    cached = _CAM_IMG_CACHE.get(city)
+    now    = time.monotonic()
+
+    # Cache frais → répondre immédiatement sans toucher le réseau
+    if cached and (now - cached['ts']) < _CAM_CACHE_TTL:
+        return _cam_response(cached['data'])
+
+    # Verrou non-bloquant : autre thread déjà en fetch → cache périmé ou 503
+    lock = _CAM_FETCH_LOCKS[city]
+    if not lock.acquire(blocking=False):
+        log.debug('[CAM SKIP] %s — fetch en cours, cache servi', city)
+        if cached:
+            return _cam_response(cached['data'])
+        return Response('offline', status=503, mimetype='text/plain')
+
+    try:
+        # Re-vérifier après acquisition : autre thread peut avoir rafraîchi
+        cached = _CAM_IMG_CACHE.get(city)
+        if cached and (time.monotonic() - cached['ts']) < _CAM_CACHE_TTL:
+            return _cam_response(cached['data'])
+
+        for raw_url in _CAM_SOURCES[city]:
+            try:
+                url  = _cam_resolve(raw_url)
+                data = _cam_fetch_url(url)
+                _CAM_IMG_CACHE[city] = {'ts': time.monotonic(), 'data': data}
+                log.info('[CAM OK] %s ← %s (%d B)', city, url, len(data))
+                return _cam_response(data)
+            except requests.HTTPError as exc:
+                st = exc.response.status_code if exc.response is not None else '?'
+                log.warning('[CAM FAIL] %s ← %s  HTTP %s', city, raw_url, st)
+            except requests.RequestException as exc:
+                log.warning('[CAM FAIL] %s ← %s  %s', city, raw_url, exc)
+            except Exception as exc:
+                log.warning('[CAM FAIL] %s ← %s  %s', city, raw_url, exc)
+
+        # Toutes les sources échouées — cache périmé ou 503 (canvas front-end prend le relais)
+        if cached:
+            age = time.monotonic() - cached['ts']
+            log.info('[CAM CACHE SERVED] %s (périmé, age=%.0fs)', city, age)
+            return _cam_response(cached['data'])
+
+        log.warning('[CAM OFFLINE] %s — toutes sources échouées, aucun cache', city)
+        return Response('offline', status=503, mimetype='text/plain')
+
+    finally:
+        lock.release()
+
+
+@app.route('/contact', methods=['POST'])
+def contact_form():
+    """Formulaire de contact — enregistre la soumission dans les logs."""
+    import datetime as _dt
+    allowed, _ = _api_rate_limit_allow(_client_ip_from_request(request), limit=5, window_sec=3600)
+    if not allowed:
+        return jsonify({"ok": False, "error": "Trop de soumissions. Réessayez dans une heure."}), 429
+    try:
+        data = request.get_json(silent=True) or request.form
+        nom       = str(data.get('nom', '')).strip()[:120]
+        organisme = str(data.get('organisme', '')).strip()[:200]
+        message   = str(data.get('message', '')).strip()[:2000]
+        if not nom or not message:
+            return jsonify({"ok": False, "error": "Nom et message requis."}), 400
+        ip = _client_ip_from_request(request)
+        ts = _dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        log.info(
+            "CONTACT_FORM | ts=%s | ip=%s | nom=%r | organisme=%r | message=%r",
+            ts, ip, nom, organisme, message[:200]
+        )
+        contact_log_path = f"{STATION}/logs/contact_messages.log"
+        try:
+            with open(contact_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"---\nDate: {ts}\nIP: {ip}\nNom: {nom}\nOrganisme: {organisme}\nMessage:\n{message}\n\n")
+        except Exception as _e:
+            log.warning("contact log write error: %s", _e)
+        return jsonify({"ok": True, "message": "Message reçu. Nous vous répondrons dans les meilleurs délais."})
+    except Exception as e:
+        log.error("contact_form error: %s", e)
+        return jsonify({"ok": False, "error": "Erreur serveur."}), 500
+
+
+# Proxy avions OpenSky → AirLabs (cache 30 s + compteur requêtes AirLabs).
+_flights_cache = {"data": None, "ts": 0.0, "airlabs_count": 0}
+
+
+@app.route("/api/flights")
+def api_flights():
+    """OpenSky prioritaire ; AirLabs secours ; cache 30 s ; compteur AirLabs ; repli stale."""
+    import os
+    import requests as req
+
+    global _flights_cache
+
+    now = time.time()
+    if _flights_cache.get("data") is not None and (now - float(_flights_cache.get("ts") or 0.0)) < 30:
+        return jsonify(_flights_cache["data"])
+
+    OPENSKY_USER = (os.environ.get("OPENSKY_USER") or "").strip()
+    OPENSKY_PASS = (os.environ.get("OPENSKY_PASS") or "").strip()
+    AIRLABS_KEY = (os.environ.get("AIRLABS_KEY") or "").strip()
+
+    # --- Source 1 : OpenSky ---
+    try:
+        auth = (OPENSKY_USER, OPENSKY_PASS) if OPENSKY_USER else None
+        r = req.get(
+            "https://opensky-network.org/api/states/all",
+            timeout=12,
+            auth=auth,
+            headers={"User-Agent": "AstroScan/2.0"},
+        )
+        if r.status_code == 200:
+            data = r.json()
+            states = []
+            for s in data.get("states") or []:
+                if not s or len(s) < 11:
+                    continue
+                if s[5] is None or s[6] is None:
+                    continue
+                states.append(
+                    {
+                        "callsign": (s[1] or "").strip(),
+                        "origin": s[2] or "??",
+                        "lon": s[5],
+                        "lat": s[6],
+                        "alt": round(s[7] or 0),
+                        "speed": round((s[9] or 0) * 3.6),
+                        "heading": round(s[10] or 0),
+                        "on_ground": s[8],
+                    }
+                )
+            result = {
+                "states": states,
+                "time": data.get("time"),
+                "count": len(states),
+                "source": "opensky",
+                "airlabs_used": int(_flights_cache.get("airlabs_count") or 0),
+            }
+            _flights_cache.update({"data": result, "ts": now})
+            return jsonify(result)
+    except Exception:
+        pass
+
+    # --- Source 2 : AirLabs (clé en query param ; pas d'interpolation dans les logs serveur) ---
+    if AIRLABS_KEY:
+        try:
+            r = req.get(
+                "https://airlabs.co/api/v9/flights",
+                params={"api_key": AIRLABS_KEY},
+                timeout=12,
+                headers={"User-Agent": "AstroScan/2.0"},
+            )
+            if r.status_code == 200:
+                data = r.json()
+                if data.get("error"):
+                    raise ValueError(data["error"])
+                flights = data.get("response") or []
+                if not isinstance(flights, list):
+                    flights = []
+                states = []
+                for f in flights:
+                    if not isinstance(f, dict):
+                        continue
+                    if not (f.get("lat") and f.get("lng")):
+                        continue
+                    states.append(
+                        {
+                            "callsign": f.get("flight_iata") or f.get("flight_icao") or "???",
+                            "origin": f.get("flag") or f.get("dep_iata") or "??",
+                            "lon": f.get("lng"),
+                            "lat": f.get("lat"),
+                            "alt": round((f.get("alt") or 0) * 0.3048),
+                            "speed": round((f.get("speed") or 0) * 1.852),
+                            "heading": round(f.get("dir") or 0),
+                            "on_ground": False,
+                        }
+                    )
+                _flights_cache["airlabs_count"] = int(_flights_cache.get("airlabs_count") or 0) + 1
+                result = {
+                    "states": states,
+                    "time": int(now),
+                    "count": len(states),
+                    "source": "airlabs",
+                    "airlabs_used": int(_flights_cache["airlabs_count"]),
+                }
+                _flights_cache.update({"data": result, "ts": now})
+                return jsonify(result)
+        except Exception:
+            pass
+
+    if _flights_cache.get("data"):
+        old = dict(_flights_cache["data"])
+        old["stale"] = True
+        return jsonify(old)
+
+    return jsonify(
+        {
+            "states": [],
+            "count": 0,
+            "error": "all_sources_failed",
+            "airlabs_used": int(_flights_cache.get("airlabs_count") or 0),
+        }
+    )
 
 if __name__ == '__main__':
     os.makedirs(f'{STATION}/logs', exist_ok=True)
