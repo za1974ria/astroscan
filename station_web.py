@@ -2528,28 +2528,6 @@ API_SPEC = {
 
 
 
-@app.route("/api/modules-status")
-def api_modules_status():
-    try:
-        return jsonify({
-            "ok": True,
-            "modules": {
-                "iss": True,
-                "orbit": True,
-                "dsn": True,
-                "aurores": True,
-                "apod": True,
-                "aegis": True,
-                "passages": True,
-                "weather": True,
-                "oracle": True
-            }
-        })
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e)
-        }), 500
 
 
 @app.route("/ready", methods=["GET"])
@@ -9507,15 +9485,6 @@ def debug_tle():
     })
 
 
-@app.route("/api/tle/full")
-def api_tle_full():
-    """Catalogue TLE complet (parsed depuis data/tle/active.tle). orbital_map.html peut charger cette API."""
-    try:
-        satellites = _parse_tle_file(TLE_ACTIVE_PATH)
-        return jsonify({"satellites": satellites})
-    except Exception as e:
-        log.warning("api/tle/full: %s", e)
-        return jsonify({"satellites": []})
 
 
 def _run_tle_download_once():
