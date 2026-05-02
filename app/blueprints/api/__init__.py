@@ -262,3 +262,14 @@ def api_satellites():
     """Liste des satellites disponibles."""
     from station_web import list_satellites
     return jsonify({"available": list_satellites()})
+
+
+
+@bp.route("/api/accuracy/history")
+def api_accuracy_history():
+    """Historique et stats de precision des predictions."""
+    from station_web import get_accuracy_history, get_accuracy_stats
+    return jsonify({
+        "items": get_accuracy_history(),
+        "stats": get_accuracy_stats(),
+    })
