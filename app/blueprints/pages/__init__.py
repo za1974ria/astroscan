@@ -274,3 +274,11 @@ def galerie():
         observations=observations,
         classification_stats=classification_stats,
     )
+
+
+# ── PASS 11 — Globe Mission Control 3D ────────────────────────────────
+@bp.route("/globe")
+def globe():
+    """Mission Control 3D plein écran — token Cesium depuis .env uniquement."""
+    cesium_token = os.environ.get("CESIUM_ION_TOKEN", "")
+    return render_template("globe.html", cesium_token=cesium_token)

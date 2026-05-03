@@ -3081,141 +3081,7 @@ def api_sky_camera_simulate():
     })
 
 
-@app.route('/api/sondes/live')
-def api_sondes_live():
-    """Télémétrie temps réel — Voyager 1&2, James Webb, New Horizons.
-    Tente NASA JPL Horizons, fallback sur calcul physique local.
-    Cache 5 min pour ne pas surcharger JPL.
-    """
-    cached = cache_get('sondes_live', 240)
-    if cached is not None:
-        return jsonify(cached)
-
-    C_KM_S = 299792.458  # vitesse lumière km/s
-    now = datetime.now(timezone.utc)
-
-    # ── Calculs physiques de référence (fallback) ──
-    # Voyager 1 : lancée 5 sep 1977, ~17.03 km/s
-    V1_LAUNCH = datetime(1977, 9, 5, tzinfo=timezone.utc)
-    V1_SPEED  = 17.026  # km/s moyen actuel
-    v1_elapsed_s = (now - V1_LAUNCH).total_seconds()
-    v1_dist_km = v1_elapsed_s * V1_SPEED
-    v1_dist_au = v1_dist_km / 149_597_870.7
-
-    # Voyager 2 : lancée 20 aoû 1977, ~15.37 km/s
-    V2_LAUNCH = datetime(1977, 8, 20, tzinfo=timezone.utc)
-    V2_SPEED  = 15.374
-    v2_elapsed_s = (now - V2_LAUNCH).total_seconds()
-    v2_dist_km = v2_elapsed_s * V2_SPEED
-    v2_dist_au = v2_dist_km / 149_597_870.7
-
-    # New Horizons : lancée 19 jan 2006, ~14.0 km/s
-    NH_LAUNCH = datetime(2006, 1, 19, tzinfo=timezone.utc)
-    NH_SPEED  = 14.03
-    nh_elapsed_s = (now - NH_LAUNCH).total_seconds()
-    nh_dist_km = nh_elapsed_s * NH_SPEED
-    nh_dist_au = nh_dist_km / 149_597_870.7
-
-    # JWST : distance L2 quasi-fixe ~1,5M km, temp miroir ~-233°C
-    webb_dist_km  = 1_500_000.0
-    webb_temp_c   = -233.0
-    webb_delay_s  = webb_dist_km / C_KM_S
-
-    _now_iso = now.isoformat()
-    _local_dq = {
-        'source': 'calcul_physique_local',
-        'last_update': _now_iso,
-        'confidence': 0.92,
-        'stale': False,
-    }
-    payload = {
-        'ok': True,
-        'timestamp': _now_iso,
-        'source': 'calcul_local',
-        'voyager_1': {
-            'dist_km': round(v1_dist_km),
-            'dist_au': round(v1_dist_au, 3),
-            'speed_km_s': V1_SPEED,
-            'signal_delay_s': round(v1_dist_km / C_KM_S),
-            'status': 'MISSION ACTIVE — Espace interstellaire',
-            'data_quality': dict(_local_dq),
-        },
-        'voyager_2': {
-            'dist_km': round(v2_dist_km),
-            'dist_au': round(v2_dist_au, 3),
-            'speed_km_s': V2_SPEED,
-            'signal_delay_s': round(v2_dist_km / C_KM_S),
-            'status': 'MISSION ACTIVE — Espace interstellaire',
-            'data_quality': dict(_local_dq),
-        },
-        'james_webb': {
-            'dist_km': webb_dist_km,
-            'position': 'Point Lagrange L2',
-            'mirror_temp_c': webb_temp_c,
-            'signal_delay_s': round(webb_delay_s),
-            'status': 'EN OBSERVATION',
-            'data_quality': {
-                'source': 'ESA/NASA public data',
-                'last_update': _now_iso,
-                'confidence': 0.95,
-                'stale': False,
-            },
-        },
-        'new_horizons': {
-            'dist_km': round(nh_dist_km),
-            'dist_au': round(nh_dist_au, 3),
-            'speed_km_s': NH_SPEED,
-            'signal_delay_s': round(nh_dist_km / C_KM_S),
-            'status': 'MODE HIBERNATION — Ceinture de Kuiper',
-            'data_quality': dict(_local_dq),
-        },
-    }
-
-    # ── Tentative NASA JPL Horizons pour Voyager 1&2 (cache 1h) ──
-    # Sanity check : Voyager 1 > 140 AU, Voyager 2 > 110 AU, vitesses 10-25 km/s
-    try:
-        jpl_data = get_cached('voyager', 3600, _fetch_voyager)
-        if jpl_data:
-            v1j = jpl_data.get('VOYAGER_1') or jpl_data.get('voyager_1')
-            if v1j and v1j.get('dist_km'):
-                d_au = v1j.get('dist_au', v1j['dist_km'] / 149_597_870.7)
-                spd  = v1j.get('speed_km_s', 0) or 0
-                if d_au > 140 and 10 < spd < 25:
-                    payload['voyager_1'].update({
-                        'dist_km': v1j['dist_km'],
-                        'dist_au': round(d_au, 3),
-                        'speed_km_s': round(spd, 3),
-                        'signal_delay_s': round(v1j['dist_km'] / C_KM_S),
-                        'data_quality': v1j.get('data_quality', {
-                            'source': 'NASA JPL Horizons',
-                            'last_update': _now_iso,
-                            'confidence': 0.999,
-                            'stale': False,
-                        }),
-                    })
-                    payload['source'] = 'NASA JPL Horizons'
-            v2j = jpl_data.get('VOYAGER_2') or jpl_data.get('voyager_2')
-            if v2j and v2j.get('dist_km'):
-                d_au = v2j.get('dist_au', v2j['dist_km'] / 149_597_870.7)
-                spd  = v2j.get('speed_km_s', 0) or 0
-                if d_au > 110 and 10 < spd < 25:
-                    payload['voyager_2'].update({
-                        'dist_km': v2j['dist_km'],
-                        'dist_au': round(d_au, 3),
-                        'speed_km_s': round(spd, 3),
-                        'signal_delay_s': round(v2j['dist_km'] / C_KM_S),
-                        'data_quality': v2j.get('data_quality', {
-                            'source': 'NASA JPL Horizons',
-                            'last_update': _now_iso,
-                            'confidence': 0.999,
-                            'stale': False,
-                        }),
-                    })
-    except Exception as e:
-        log.warning('api_sondes_live JPL: %s', e)
-
-    cache_set('sondes_live', payload)
-    return jsonify(payload)
+# MIGRATED TO feeds_bp PASS 11 — /api/sondes/live → see app/blueprints/feeds/__init__.py (api_sondes_live)
 
 
 
@@ -3681,82 +3547,7 @@ def api_satellite(name):
 # MIGRATED TO weather_bp PASS 7 — /meteo-spatiale → see app/blueprints/weather/__init__.py (meteo_spatiale_page)
 
 
-@app.route('/api/passages-iss')
-def api_passages_iss():
-    """
-    Prochains passages ISS — lecture directe du fichier
-    static/passages_iss.json. Aucun impact sur le reste de l'app.
-    """
-    log.info('passages-iss: requête GET /api/passages-iss')
-    path = PASSAGES_ISS_JSON
-    try:
-        if not os.path.isfile(path):
-            log.warning('passages-iss: fichier manquant, tentative recalcul automatique')
-            if not _run_calculateur_passages_iss():
-                return (
-                    jsonify(
-                        {
-                            'error': 'not_found',
-                            'message': 'passages_iss.json introuvable',
-                            'prochains_passages': [],
-                        }
-                    ),
-                    404,
-                )
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                raw = f.read()
-        except OSError as e:
-            log.error('passages-iss: lecture impossible %s', e)
-            return (
-                jsonify(
-                    {
-                        'error': 'io_error',
-                        'message': 'Lecture du fichier impossible',
-                        'prochains_passages': [],
-                    }
-                ),
-                500,
-            )
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError as e:
-            log.error('passages-iss: JSON corrompu %s', e)
-            return (
-                jsonify(
-                    {
-                        'error': 'invalid_json',
-                        'message': 'passages_iss.json illisible ou corrompu',
-                        'prochains_passages': [],
-                    }
-                ),
-                500,
-            )
-        if not isinstance(data, dict):
-            log.error('passages-iss: racine JSON non-objet')
-            return (
-                jsonify(
-                    {
-                        'error': 'invalid_structure',
-                        'message': 'Structure JSON invalide',
-                        'prochains_passages': [],
-                    }
-                ),
-                500,
-            )
-        return jsonify(data)
-    except Exception as e:
-        log.exception('passages-iss: erreur inattendue %s', e)
-        return (
-            jsonify(
-                {
-                    'error': 'internal_error',
-                    'message': 'Erreur serveur',
-                    'prochains_passages': [],
-                }
-            ),
-            500,
-        )
+# MIGRATED TO iss_bp PASS 11 — /api/passages-iss → see app/blueprints/iss/routes.py (api_passages_iss)
 
 
 # MIGRATED TO feeds_bp PASS 8 — /api/voyager-live → see app/blueprints/feeds/__init__.py (api_voyager_live)
@@ -4650,21 +4441,8 @@ def api_oracle_alias():
 # MIGRATED TO weather_bp PASS 7 — /api/aurores → see app/blueprints/weather/__init__.py (api_aurores_alias)
 
 
-@app.route('/api/catalog')
-def api_catalog():
-    from modules.catalog import search_catalog
-    q = request.args.get('q', '')
-    t = request.args.get('type', '')
-    return jsonify(get_cached('catalog_' + q + t, 86400, lambda: search_catalog(q, t)))
-
-
-@app.route('/api/catalog/<obj_id>')
-def api_catalog_object(obj_id):
-    from modules.catalog import get_object
-    obj = get_object(obj_id)
-    if obj:
-        return jsonify(obj)
-    return jsonify({'error': 'Objet non trouvé'}), 404
+# MIGRATED TO api_bp PASS 11 — /api/catalog → see app/blueprints/api/__init__.py (api_catalog)
+# MIGRATED TO api_bp PASS 11 — /api/catalog/<obj_id> → see app/blueprints/api/__init__.py (api_catalog_object)
 
 
 # MIGRATED TO astro_bp PASS 7 — /api/tonight → see app/blueprints/astro/__init__.py (api_tonight)
@@ -4672,123 +4450,13 @@ def api_catalog_object(obj_id):
 # MIGRATED TO astro_bp PASS 7 — /api/ephemerides/tlemcen → see app/blueprints/astro/__init__.py (api_ephemerides_tlemcen)
 
 
-@app.route('/api/v1/iss')
-def api_v1_iss():
-    from modules.orbit_engine import get_iss_precise, get_iss_crew
-    data = get_iss_precise()
-    if data.get("error"):
-        return (
-            jsonify(
-                {
-                    "object": "ISS",
-                    "error": data.get("error"),
-                    "position": None,
-                    "crew": [],
-                    "crew_count": 0,
-                }
-            ),
-            503,
-        )
-    crew = get_iss_crew()
-    sk = float(data.get("speed_kms", 7.66))
-    return jsonify(
-        {
-            "object": "ISS",
-            "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
-            "position": {
-                "latitude": data.get("lat", 0),
-                "longitude": data.get("lon", 0),
-                "altitude_km": data.get("alt_km", 408),
-                "speed_kms": sk,
-            },
-            "velocity_kmh": round(sk * 3600.0, 1),
-            "visibility": data.get("visibility", "nominal"),
-            "orbits_today_estimate": data.get("orbits_today_estimate"),
-            "orbital_period_min_approx": data.get("orbital_period_min_approx", 92),
-            "crew": crew,
-            "crew_count": len(crew) if isinstance(crew, list) else 0,
-            "source": data.get("source", "Skyfield/SGP4"),
-            "credit": "AstroScan-Chohra · ORBITAL-CHOHRA — https://astroscan.space",
-        }
-    )
+# MIGRATED TO api_bp PASS 11 — /api/v1/iss → see app/blueprints/api/__init__.py (api_v1_iss)
 
 
-@app.route('/api/v1/planets')
-def api_v1_planets():
-    """Positions héliocentriques temps réel via astropy. Cache 10 min."""
-    cached = cache_get('v1_planets', 600)
-    if cached is not None:
-        return jsonify(cached)
-    _PLANET_META = {
-        'mercury': {'name': 'Mercure', 'diameter_km': 4879, 'moons': 0, 'type': 'Tellurique'},
-        'venus':   {'name': 'Vénus',   'diameter_km': 12104,'moons': 0, 'type': 'Tellurique'},
-        'earth':   {'name': 'Terre',   'diameter_km': 12742,'moons': 1, 'type': 'Tellurique'},
-        'mars':    {'name': 'Mars',    'diameter_km': 6779, 'moons': 2, 'type': 'Tellurique'},
-        'jupiter': {'name': 'Jupiter', 'diameter_km': 139820,'moons': 95,'type': 'Gazeuse'},
-        'saturn':  {'name': 'Saturne', 'diameter_km': 116460,'moons': 146,'type': 'Gazeuse'},
-        'uranus':  {'name': 'Uranus',  'diameter_km': 50724,'moons': 28, 'type': 'Gazeuse'},
-        'neptune': {'name': 'Neptune', 'diameter_km': 49244,'moons': 16, 'type': 'Gazeuse'},
-    }
-    try:
-        from astropy.coordinates import get_body_barycentric
-        from astropy.time import Time
-        import astropy.units as u
-        t = Time.now()
-        planets = []
-        for body_key, meta in _PLANET_META.items():
-            try:
-                pos = get_body_barycentric(body_key, t)
-                dist_au = float(pos.norm().to(u.au).value)
-                x = float(pos.x.to(u.au).value)
-                y = float(pos.y.to(u.au).value)
-                z = float(pos.z.to(u.au).value)
-            except Exception:
-                dist_au = None; x = y = z = None
-            row = dict(meta)
-            row['distance_au'] = round(dist_au, 4) if dist_au is not None else None
-            row['x_au'] = round(x, 4) if x is not None else None
-            row['y_au'] = round(y, 4) if y is not None else None
-            row['z_au'] = round(z, 4) if z is not None else None
-            row['realtime'] = True
-            planets.append(row)
-        payload = {
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'source': 'astropy · DE432 ephemeris',
-            'planets': planets,
-            'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA',
-        }
-        cache_set('v1_planets', payload)
-        return jsonify(payload)
-    except Exception as e:
-        log.warning('api_v1_planets astropy: %s', e)
-        fallback = {
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'source': 'fallback_static',
-            'planets': [
-                {'name':'Mercure','distance_au':0.39,'diameter_km':4879,'moons':0,'type':'Tellurique','realtime':False},
-                {'name':'Vénus','distance_au':0.72,'diameter_km':12104,'moons':0,'type':'Tellurique','realtime':False},
-                {'name':'Terre','distance_au':1.0,'diameter_km':12742,'moons':1,'type':'Tellurique','realtime':False},
-                {'name':'Mars','distance_au':1.52,'diameter_km':6779,'moons':2,'type':'Tellurique','realtime':False},
-                {'name':'Jupiter','distance_au':5.2,'diameter_km':139820,'moons':95,'type':'Gazeuse','realtime':False},
-                {'name':'Saturne','distance_au':9.58,'diameter_km':116460,'moons':146,'type':'Gazeuse','realtime':False},
-                {'name':'Uranus','distance_au':19.2,'diameter_km':50724,'moons':28,'type':'Gazeuse','realtime':False},
-                {'name':'Neptune','distance_au':30.05,'diameter_km':49244,'moons':16,'type':'Gazeuse','realtime':False},
-            ],
-            'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA',
-        }
-        return jsonify(fallback)
+# MIGRATED TO api_bp PASS 11 — /api/v1/planets → see app/blueprints/api/__init__.py (api_v1_planets)
 
 
-@app.route('/api/v1/catalog')
-def api_v1_catalog():
-    from modules.catalog import search_catalog
-    q = request.args.get('q', '')
-    return jsonify({
-        'timestamp': __import__('datetime').datetime.utcnow().isoformat(),
-        'query': q,
-        'results': search_catalog(q),
-        'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA'
-    })
+# MIGRATED TO api_bp PASS 11 — /api/v1/catalog → see app/blueprints/api/__init__.py (api_v1_catalog)
 
 
 # MIGRATED TO archive_bp PASS 6 — /api/microobservatory → see app/blueprints/archive/__init__.py (api_microobservatory)
@@ -5367,17 +5035,7 @@ def api_telescope_trigger_nightly():
 from datetime import datetime as _dt_utc
 
 
-@app.route('/api/v1/asteroids')
-def api_v1_asteroids():
-    from modules.space_alerts import get_asteroid_alerts
-    data = get_cached('asteroids', 3600, get_asteroid_alerts)
-    return jsonify({
-        'timestamp': __import__('datetime').datetime.utcnow().isoformat(),
-        'total_today': data.get('total_today', 0) if data else 0,
-        'hazardous': data.get('alerts', []) if data else [],
-        'source': 'NASA NeoWs',
-        'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA'
-    })
+# MIGRATED TO api_bp PASS 11 — /api/v1/asteroids → see app/blueprints/api/__init__.py (api_v1_asteroids)
 
 
 # MIGRATED TO weather_bp PASS 7 — /api/v1/solar-weather → see app/blueprints/weather/__init__.py (api_v1_solar)
@@ -6532,78 +6190,10 @@ def api_iss_ground_track():
         return jsonify({"track": [], "error": str(e)})
 
 
-@app.route("/api/iss/orbit")
-def api_iss_orbit():
-    """Trajectoire ISS future sur 90 minutes (pas 60s) via SGP4."""
-    try:
-        import math as _math
-        import datetime as _dt
-        from sgp4.api import Satrec, jday
-
-        tle1, tle2 = _get_iss_tle_from_cache()
-        if not tle1 or not tle2:
-            return jsonify({"ok": False, "message": "TLE ISS indisponible", "points": [], "count": 0})
-
-        sat = Satrec.twoline2rv(tle1, tle2)
-        now = _dt.datetime.utcnow()
-        points = []
-
-        for sec in range(0, 90 * 60 + 1, 60):
-            t = now + _dt.timedelta(seconds=sec)
-            jd, fr = jday(t.year, t.month, t.day, t.hour, t.minute, t.second + t.microsecond / 1e6)
-            err, r, _v = sat.sgp4(jd, fr)
-            if err != 0:
-                continue
-
-            rx, ry, rz = r[0], r[1], r[2]
-            lon = _math.degrees(_math.atan2(ry, rx))
-            hyp = _math.sqrt(rx * rx + ry * ry)
-            lat = _math.degrees(_math.atan2(rz, hyp))
-            alt = _math.sqrt(rx * rx + ry * ry + rz * rz) - 6371.0
-
-            if not (_math.isfinite(lat) and _math.isfinite(lon) and _math.isfinite(alt)):
-                continue
-
-            points.append({
-                "lat": round(lat, 4),
-                "lon": round(lon, 4),
-                "alt": round(alt, 2),
-            })
-
-        return jsonify({
-            "ok": True,
-            "points": points,
-            "count": len(points),
-        })
-    except Exception as e:
-        log.warning("api/iss/orbit: %s", e)
-        return jsonify({
-            "ok": False,
-            "message": str(e),
-            "points": [],
-            "count": 0,
-        })
+# MIGRATED TO iss_bp PASS 11 — /api/iss/orbit → see app/blueprints/iss/routes.py (api_iss_orbit)
 
 
-@app.route("/api/iss/crew")
-def api_iss_crew():
-    """Équipage ISS — noms (open-notify / fallback), format UI iss_tracker."""
-    try:
-        from modules.orbit_engine import get_iss_crew
-        raw = get_iss_crew()
-        crew = []
-        for c in raw or []:
-            if isinstance(c, str):
-                crew.append({"name": c, "photo_url": ""})
-            elif isinstance(c, dict):
-                crew.append({
-                    "name": c.get("name") or "?",
-                    "photo_url": c.get("photo_url") or "",
-                })
-        return jsonify({"ok": True, "crew": crew})
-    except Exception as e:
-        log.warning("api/iss/crew: %s", e)
-        return jsonify({"ok": False, "crew": [], "error": str(e)})
+# MIGRATED TO iss_bp PASS 11 — /api/iss/crew → see app/blueprints/iss/routes.py (api_iss_crew)
 
 
 @app.route("/api/iss/passes")
@@ -6717,59 +6307,10 @@ def _fetch_swpc_alerts():
 # MIGRATED TO feeds_bp PASS 8 — /api/live/all → see app/blueprints/feeds/__init__.py (api_live_all)
 
 
-@app.route('/api/iss-passes')
-def api_iss_passes():
-    import urllib.request
-    try:
-        lat = request.args.get('lat', '34.8')
-        lon = request.args.get('lon', '1.3')
-        key = os.environ.get('N2YO_API_KEY', 'DEMO')
-        url = f'https://api.n2yo.com/rest/v1/satellite/visualpasses/25544/{lat}/{lon}/0/7/300/&apiKey={key}'
-        def _fetch_n2yo():
-            req = urllib.request.Request(url, headers={'User-Agent': 'AstroScan/1.0'})
-            with urllib.request.urlopen(req, timeout=10) as r:
-                return _safe_json_loads(r.read(), "n2yo_iss_passes")
-        data = CB_N2YO.call(_fetch_n2yo, fallback=None)
-        if data is None:
-            return jsonify({'passes': [], 'count': 0, 'source': 'fallback (N2YO circuit ouvert)'})
-        if not isinstance(data, dict):
-            return jsonify({'passes': [], 'count': 0, 'error': 'invalid_response'})
-        passes = []
-        for p in data.get('passes', []):
-            passes.append({
-                'startUTC': p['startUTC'],
-                'startAzCompass': p.get('startAzCompass', ''),
-                'maxEl': p.get('maxEl', 0),
-                'duration': p.get('duration', 0),
-                'mag': p.get('mag', 0)
-            })
-        return jsonify({'passes': passes, 'count': len(passes)})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+# MIGRATED TO iss_bp PASS 11 — /api/iss-passes → see app/blueprints/iss/routes.py (api_iss_passes_n2yo)
 
 
-@app.route('/api/dsn')
-def api_dsn():
-    # DSN : fetch NASA + snapshot data_core/dsn/ + fallback — parsing XML inchangé dans core/dsn_engine_safe.parse_dsn_xml_to_payload
-    try:
-        from core import dsn_engine_safe as _dsn
-
-        return jsonify(_dsn.get_dsn_safe(STATION))
-    except Exception as e:
-        log.warning("api/dsn: %s", e)
-        try:
-            from core import dsn_engine_safe as _dsn
-
-            return jsonify(_dsn.build_dsn_fallback_payload())
-        except Exception:
-            return jsonify({
-                'stations': [
-                    {'friendlyName': 'Goldstone (USA)', 'name': 'GDS', 'dishes': []},
-                    {'friendlyName': 'Madrid (Spain)', 'name': 'MDS', 'dishes': []},
-                    {'friendlyName': 'Canberra (Australia)', 'name': 'CDS', 'dishes': []},
-                ],
-                'status': 'fallback',
-            })
+# MIGRATED TO system_bp PASS 11 — /api/dsn → see app/blueprints/system/__init__.py (api_dsn)
 
 
 
@@ -6782,11 +6323,7 @@ def api_dsn():
 
 
 
-@app.route('/globe')
-def globe():
-    """Mission Control 3D plein écran — token Cesium depuis .env uniquement."""
-    cesium_token = os.environ.get('CESIUM_ION_TOKEN', '')
-    return render_template('globe.html', cesium_token=cesium_token)
+# MIGRATED TO pages_bp PASS 11 — /globe → see app/blueprints/pages/__init__.py (globe)
 
 
 @app.route('/api/survol')
@@ -8048,31 +7585,7 @@ def api_research_logs():
 # MIGRATED TO pages_bp PASS 5 — /demo → see app/blueprints/pages/__init__.py (astroscan_demo_page)
 
 
-@app.route('/api/orbits/live')
-def api_orbits_live():
-    """Positions satellites pour la carte orbitale : ISS, NOAA (placeholder si dispo). Cache 30 s."""
-    cache_cleanup()
-    cached = cache_get("orbits_live", 30)
-    if cached is not None:
-        return jsonify(cached)
-    satellites = []
-    iss = get_cached('iss_live', 5, _fetch_iss_live)
-    if iss:
-        lat = iss.get('latitude') if 'latitude' in iss else iss.get('lat', 0)
-        lon = iss.get('longitude') if 'longitude' in iss else iss.get('lon', 0)
-        satellites.append({
-            'id': 'iss',
-            'name': 'ISS',
-            'lat': float(lat),
-            'lon': float(lon),
-            'type': 'iss',
-            'alt': iss.get('alt', iss.get('altitude', 408)),
-        })
-    for name, lat, lon in [('NOAA-19', 45.0, -122.0), ('NOAA-18', -30.0, 10.0), ('NOAA-15', 20.0, 80.0)]:
-        satellites.append({'id': name.lower().replace('-', '_'), 'name': name, 'lat': lat, 'lon': lon, 'type': 'noaa'})
-    payload = {'satellites': satellites, 'timestamp': int(time.time())}
-    cache_set("orbits_live", payload)
-    return jsonify(payload)
+# MIGRATED TO feeds_bp PASS 11 — /api/orbits/live → see app/blueprints/feeds/__init__.py (api_orbits_live)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -8117,43 +7630,7 @@ def api_science_analyze_image():
 # Mission Control — vue consolidée
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/api/missions/overview')
-def api_missions_overview():
-    """Regroupe ISS, Voyager, SDR pour le centre de contrôle."""
-    iss = get_cached('iss_live', 5, _fetch_iss_live) or {'ok': False, 'lat': 0, 'lon': 0, 'alt': 408}
-    voyager = {}
-    try:
-        vpath = f"{STATION}/static/voyager_live.json"
-        if os.path.exists(vpath):
-            with open(vpath, 'r', encoding='utf-8') as f:
-                voyager = json.load(f)
-    except Exception:
-        voyager = {'statut': 'Indisponible'}
-    sdr = {}
-    if Path(SDR_F).exists():
-        try:
-            sdr = json.load(open(SDR_F))
-        except Exception:
-            sdr = {'status': 'standby'}
-    else:
-        sdr = {'status': 'standby', 'ok': True}
-    alerts = []
-    try:
-        apath = f"{STATION}/static/space_weather.json"
-        if os.path.exists(apath):
-            with open(apath, 'r', encoding='utf-8') as f:
-                sw = json.load(f)
-            if isinstance(sw, dict) and (sw.get('kp_index') or 0) >= 5:
-                alerts.append('Activité géomagnétique élevée')
-    except Exception:
-        pass
-    return jsonify({
-        'iss': iss,
-        'voyager': voyager,
-        'sdr': sdr,
-        'alerts': alerts,
-        'timestamp': int(time.time()),
-    })
+# MIGRATED TO feeds_bp PASS 11 — /api/missions/overview → see app/blueprints/feeds/__init__.py (api_missions_overview)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -8223,31 +7700,7 @@ server_ready = True
 
 
 
-# ── ISS SSE Stream (temps réel sub-5s) ──────────────────
-@app.route('/api/iss/stream')
-def iss_stream():
-    """Stream ISS position via SSE — mise à jour toutes les 3s."""
-    def generate():
-        import time, json, requests
-        while True:
-            try:
-                r = requests.get("https://api.wheretheiss.at/v1/satellites/25544", timeout=4)
-                d = r.json()
-                payload = json.dumps({
-                    "lat": round(d["latitude"], 4),
-                    "lon": round(d["longitude"], 4),
-                    "alt": round(d["altitude"], 1),
-                    "vel": round(d["velocity"], 1),
-                    "ts": int(d["timestamp"]),
-                    "vis": d.get("visibility", "unknown"),
-                })
-                yield f"data: {payload}\n\n"
-            except Exception as e:
-                yield f"data: {{\"error\": \"{str(e)}\"}}\n\n"
-            time.sleep(3)
-    from flask import Response
-    return Response(generate(), mimetype="text/event-stream",
-                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+# MIGRATED TO iss_bp PASS 11 — /api/iss/stream → see app/blueprints/iss/routes.py (iss_stream)
 
 # MIGRATED TO telescope_bp PASS 9 — /api/telescope/stream → see app/blueprints/telescope/__init__.py (telescope_stream)
 # MIGRATED TO telescope_bp PASS 9 — /api/telescope/status → see app/blueprints/telescope/__init__.py (telescope_status)

@@ -491,3 +491,27 @@ def stream_status_sse():
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ── PASS 11 — DSN (Deep Space Network NASA) ───────────────────────────
+@bp.route("/api/dsn")
+def api_dsn():
+    """DSN : fetch NASA + snapshot data_core/dsn/ + fallback."""
+    from app.config import STATION as _STATION
+    try:
+        from core import dsn_engine_safe as _dsn
+        return jsonify(_dsn.get_dsn_safe(_STATION))
+    except Exception as e:
+        log.warning("api/dsn: %s", e)
+        try:
+            from core import dsn_engine_safe as _dsn
+            return jsonify(_dsn.build_dsn_fallback_payload())
+        except Exception:
+            return jsonify({
+                "stations": [
+                    {"friendlyName": "Goldstone (USA)", "name": "GDS", "dishes": []},
+                    {"friendlyName": "Madrid (Spain)", "name": "MDS", "dishes": []},
+                    {"friendlyName": "Canberra (Australia)", "name": "CDS", "dishes": []},
+                ],
+                "status": "fallback",
+            })

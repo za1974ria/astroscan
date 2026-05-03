@@ -9,9 +9,9 @@
 ### Monolithe station_web.py
 | Métrique | Valeur |
 |----------|--------|
-| Lignes totales | 9 731 (après PASS 10) |
-| `@app.route` actifs | **75** |
-| `# MIGRATED TO` markers (migrés) | 161 |
+| Lignes totales | 9 184 (après PASS 11) |
+| `@app.route` actifs | **59** |
+| `# MIGRATED TO` markers (migrés) | 177 |
 | Total occurrences `@app.route` | 236 |
 
 ### Blueprints actifs en production (via station_web)
@@ -20,22 +20,22 @@
 | seo_bp | app/blueprints/seo/routes.py | 3 |
 | apod_bp | app/blueprints/apod/routes.py | 3 |
 | sdr_bp | app/blueprints/sdr/routes.py | 4 |
-| iss_bp | app/blueprints/iss/routes.py | 5 |
+| iss_bp | app/blueprints/iss/routes.py | 10 (+5 PASS 11) |
 | i18n_bp | app/blueprints/i18n/__init__.py | 1 |
-| api_bp | app/blueprints/api/__init__.py | 13 |
-| pages_bp | app/blueprints/pages/__init__.py | 24 (+21 PASS 5) |
+| api_bp | app/blueprints/api/__init__.py | 19 (+6 PASS 11) |
+| pages_bp | app/blueprints/pages/__init__.py | 25 (+21 PASS 5, +1 PASS 11) |
 | main_bp | app/blueprints/main/__init__.py | 10 (+4 PASS 5) |
-| system_bp | app/blueprints/system/__init__.py | 19 (+11 PASS 4) |
+| system_bp | app/blueprints/system/__init__.py | 20 (+11 PASS 4, +1 PASS 11) |
 | analytics_bp | app/blueprints/analytics/__init__.py | 6 |
 | export_bp | app/blueprints/export/__init__.py | 5 (+2 PASS 4) |
 | cameras_bp | app/blueprints/cameras/__init__.py | 11 (NEW PASS 6) |
 | archive_bp | app/blueprints/archive/__init__.py | 7 (NEW PASS 6) |
 | weather_bp | app/blueprints/weather/__init__.py | 18 (NEW PASS 7) |
 | astro_bp | app/blueprints/astro/__init__.py | 6 (NEW PASS 7) |
-| feeds_bp | app/blueprints/feeds/__init__.py | 24 (NEW PASS 8) |
+| feeds_bp | app/blueprints/feeds/__init__.py | 27 (NEW PASS 8, +3 PASS 11) |
 | telescope_bp | app/blueprints/telescope/__init__.py | 15 (NEW PASS 9) |
 | ai_bp | app/blueprints/ai/__init__.py | 13 (NEW PASS 10) |
-| **TOTAL MIGRÉ** | | **188 routes** |
+| **TOTAL MIGRÉ** | | **204 routes** |
 
 > **Note PASS 4 :** export_bp enregistré (était créé mais non enregistré). system_bp +11 routes (health, selftest, tle/refresh, latest, sync/state, telescope/sources, accuracy/export.csv, api/health, status, stream/status).  
 > **Note PASS 5 :** pages_bp +21 routes (/, /portail, /technical, /dashboard, /overlord_live, /galerie, /observatoire, /vision-2026, /sondes, /telemetrie-sondes, /ce_soir, /research, /space, /space-intelligence, /module/<name>, /demo, /space-intelligence-page, /aladin, /carte-du-ciel, /europe-live, /flight-radar). main_bp +4 routes (/sw.js, /manifest.json, /api/push/subscribe, /favicon.ico). 2 doublons supprimés du monolithe (/sitemap.xml, /robots.txt — déjà dans seo_bp).  
@@ -44,11 +44,13 @@
 > **Note PASS 8 :** 1 nouveau BP créé (feeds_bp +24 routes). 2 services extraits : app/services/http_client.py (97 lignes — _curl_get, _curl_post, _curl_post_json, _safe_json_loads) et app/services/external_feeds.py (305 lignes — fetch_voyager, fetch_neo, fetch_solar_wind, fetch_solar_alerts, fetch_mars_rover, fetch_apod_hd, fetch_swpc_alerts). Sources couvertes : NASA (APOD/NEO/Mars/Solar/JPL Horizons), NOAA SWPC (alerts/solar/flares), modules.live_feeds (SpaceX/news/ISS-passes), modules.space_alerts.  
 > **Note PASS 9 :** 1 nouveau BP créé (telescope_bp +15 routes). Service extrait : app/services/telescope_sources.py (130 lignes — _fetch_apod_live, _fetch_hubble_live=_fetch_hubble_archive, _fetch_apod_archive_live, fetch_hubble_images, _source_path, _IMAGE_CACHE_TTL). Domaines : H (Telescope), AO (Mission Control). Bug pré-existant corrigé : décorateurs orphelins L3391 et L3402 (PASS 4) qui suspendaient @app.route('/api/sync/state' POST) et @app.route('/api/telescope/sources') sur api_telescope_live — maintenant proprement commentés (pas d'impact prod car system_bp gagne).  
 > **Note PASS 10 :** 1 nouveau BP créé (ai_bp +13 routes). 2 services extraits : app/services/ai_translate.py (~440 lignes — _call_claude, _call_groq, _call_gemini, _call_xai_grok, _gemini_translate, _translate_to_french, _enforce_french, _call_ai orchestrateur, _is_complex_prompt, _english_score, get_ai_counters + état globaux TRANSLATION_CACHE/TRANSLATE_CACHE/_chat_cache/_key_usage/CLAUDE_CALL_COUNT/GROQ_CALL_COUNT) et app/services/observatory_feeds.py (~165 lignes — fetch_jwst_live_images + _JWST_STATIC 6 entrées). Domaines : N (Chat/AI), U partiel (Guide/Oracle pages). Différés levés : /api/telescope/live (PASS 9), /api/jwst/{images,refresh} (PASS 8/9), /api/astro/explain (PASS 7).  
+> **Note PASS 11 :** Migration ciblée 16 routes via extension de 5 BPs existants (api_bp +6, iss_bp +5, feeds_bp +3, pages_bp +1, system_bp +1). Aucun nouveau BP créé. Domaines couverts : I (ISS étendu : crew, orbit, stream, n2yo passes, file passages), X/Y (Catalog + V1 API : catalog, v1/iss, v1/planets, v1/catalog, v1/asteroids), M (sondes/live, orbits/live, missions/overview), AF (globe page), AN (DSN). station_web.py −547 lignes (9731 → 9184).  
+> **🎯 Cap des 75% atteint à PASS 11.**  
 > **⚠️ RESTART REQUIS** : `sudo systemctl restart astroscan` — modifications en attente de reload Gunicorn.
 
 ### Progression
-- Routes migrées : **188 / 269** ≈ **70%**
-- Routes restantes dans monolithe : **75 actives** (−13 vs PASS 9)
+- Routes migrées : **204 / 269** ≈ **76%**
+- Routes restantes dans monolithe : **59 actives** (−16 vs PASS 10)
 
 ---
 
@@ -575,4 +577,6 @@ systemctl restart astroscan && sleep 15 && curl -I https://astroscan.space/
 *PASS 8 — 2026-05-03 — Feeds NASA/NOAA/JPL : feeds_bp NEW (+24 routes). 2 services extraits : http_client.py (97 lignes) et external_feeds.py (305 lignes). station_web −215 lignes (10601 → 10386). Sources : NASA (5 routes), NOAA SWPC (3), JPL Horizons (1), modules.live_feeds (5), modules.space_alerts (3), agrégateurs (3), module sondes (1), module news (1), file-based voyager-live (1), nasa_service direct (1). Différé : /api/jwst/{images,refresh} (helper _fetch_jwst_live_images ~80 lignes + _JWST_STATIC ~50 lignes → futur PASS 13/15), /api/hubble/images (helper _fetch_hubble + cascade NASA APOD → futur PASS 13/15), /api/bepi/telemetry (petit mais touche JPL Horizons text parsing → futur).*  
 *PASS 9 — 2026-05-03 — Telescope+MissionControl : telescope_bp NEW (+15 routes). 1 service extrait : telescope_sources.py (130 lignes — APOD live, Hubble archive, APOD archive, Hubble images, _source_path, _IMAGE_CACHE_TTL). station_web −254 lignes (10386 → 10132). Différé PASS 8 levé : /api/hubble/images. Domaines : H (Telescope), AO (Mission Control). Différé restant : /api/telescope/live (deps _gemini_translate + _call_claude → PASS 11), /api/telescope/trigger-nightly (helper _telescope_nightly_tlemcen ~100 lignes + _mo_* helpers FITS+JPG → PASS 15), /api/jwst/{images,refresh} (deps _call_claude → PASS 11), /api/bepi/telemetry (petit, gardé en monolithe). Bonus : 2 décorateurs orphelins (PASS 4 oversight) corrigés.*  
 *PASS 10 — 2026-05-03 — AI+Claude+Gemini : ai_bp NEW (+13 routes). 2 services extraits : ai_translate.py (~440 lignes — wrappers Claude/Groq/Gemini/Grok + _gemini_translate avec cache + _translate_to_french + _enforce_french + orchestrateur _call_ai) et observatory_feeds.py (~165 lignes — fetch_jwst_live_images + 6 images statiques). station_web −401 lignes (10132 → 9731). Différés levés : /api/telescope/live (PASS 9), /api/jwst/{images,refresh} (PASS 8/9), /api/astro/explain (PASS 7). Routes AEGIS migrées : /api/chat, /api/aegis/{chat,status,groq-ping,claude-test}. Pages migrées : /guide-stellaire, /oracle-cosmique. Différé restant : /api/oracle-cosmique POST (helpers oracle ~200 lignes — futur PASS), /api/guide-stellaire POST (deps weather/sunrise/planets ~80 lignes — futur), /api/oracle alias.*  
-**🎯 Cap des 70% atteint à PASS 10.**
+**🎯 Cap des 70% atteint à PASS 10.**  
+*PASS 11 — 2026-05-03 — Audit + Migration ciblée : extension 5 BPs (api_bp +6, iss_bp +5, feeds_bp +3, pages_bp +1, system_bp +1) = 16 routes. Aucun nouveau BP, aucun nouveau service. station_web −547 lignes (9731 → 9184). Routes : /api/{catalog,catalog/<id>,v1/{iss,planets,catalog,asteroids}}, /api/iss/{crew,orbit,stream}, /api/iss-passes, /api/passages-iss, /api/sondes/live, /api/orbits/live, /api/missions/overview, /globe, /api/dsn. Différé restant : /api/iss (DI lourd), /api/iss/ground-track + /api/iss/passes (helpers SGP4 ~150 lignes), /api/satellites/* (TLE), /lab/* + /research/* (PASS futur), /api/visitors/* (PASS 12 analytics), /api/owner-ips, /api/oracle-cosmique POST, /api/guide-stellaire POST, /api/contact, /api/flights, /api/space/intelligence, /api/science/analyze-image.*  
+**🎯 Cap des 75% atteint à PASS 11.**
