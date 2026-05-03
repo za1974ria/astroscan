@@ -151,3 +151,36 @@ def api_astro_object():
     except Exception as e:
         log.warning("api/astro/object: %s", e)
         return jsonify({"ok": False, "error": str(e)})
+
+
+# ── PASS 15 — Hilal (Croissant Islamique) ──────────────────────────────
+@bp.route("/api/hilal/calendar")
+def api_hilal_calendar():
+    """Calendrier hégire 24 mois — ODEH 2006 + Istanbul 1978. Cache 24h."""
+    cached = cache_get("hilal_calendar", 86400)
+    if cached is not None:
+        return jsonify(cached)
+    try:
+        from app.services.hilal_compute import hilal_compute_calendar
+        data = hilal_compute_calendar()
+        cache_set("hilal_calendar", data)
+        return jsonify(data)
+    except Exception as e:
+        log.error("api_hilal_calendar: %s", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/hilal")
+def api_hilal():
+    """Calcul du croissant islamique (Hilal) pour Tlemcen. Cache 30 min."""
+    cached = cache_get("hilal_data", 1800)
+    if cached is not None:
+        return jsonify(cached)
+    try:
+        from app.services.hilal_compute import hilal_compute
+        data = hilal_compute()
+        cache_set("hilal_data", data)
+        return jsonify(data)
+    except Exception as e:
+        log.error("api_hilal: %s", e)
+        return jsonify({"ok": False, "error": str(e)}), 500

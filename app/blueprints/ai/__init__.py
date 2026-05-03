@@ -482,3 +482,14 @@ def api_jwst_refresh():
         return jsonify({"ok": True, "count": len(data)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── PASS 15 — Oracle alias (POST → délègue vers /api/oracle-cosmique monolith) ──
+@bp.route("/api/oracle", methods=["POST"])
+def api_oracle_alias():
+    """Alias /api/oracle → /api/oracle-cosmique (POST). Délégation lazy-import."""
+    try:
+        from station_web import api_oracle_cosmique
+        return api_oracle_cosmique()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500

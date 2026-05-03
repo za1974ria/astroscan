@@ -694,3 +694,29 @@ def api_flights():
         stale["stale"] = True
         return jsonify(stale)
     return jsonify({"states": [], "source": "none", "count": 0, "error": "all sources failed"})
+
+
+# ── PASS 15 — BepiColombo telemetry (JPL Horizons) ────────────────────
+@bp.route("/api/bepi/telemetry")
+def api_bepi():
+    """BepiColombo — synthèse + tentative JPL Horizons."""
+    out = {
+        "status": "EN ROUTE VERS MERCURE",
+        "agence": "ESA/JAXA",
+        "lancement": "2018",
+        "arrivee": "2025",
+        "name": "BepiColombo",
+    }
+    try:
+        raw = _curl_get(
+            "https://ssd.jpl.nasa.gov/api/horizons.api?"
+            "format=text&COMMAND=-121&OBJ_DATA=YES"
+            "&MAKE_EPHEM=YES&EPHEM_TYPE=VECTORS&CENTER=500@10"
+            "&START_TIME=today&STOP_TIME=today&STEP_SIZE=1d&QUANTITIES=20",
+            timeout=12,
+        )
+        if raw:
+            out["raw"] = raw[:500]
+    except Exception as e:
+        out["error"] = str(e)
+    return jsonify(out)

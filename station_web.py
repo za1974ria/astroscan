@@ -3062,35 +3062,7 @@ def analytics_dashboard():
 # MIGRATED TO cameras_bp PASS 6 — /api/sky-camera/analyze → see app/blueprints/cameras/__init__.py (api_sky_camera_analyze)
 
 
-@app.route('/api/sky-camera/simulate')
-def api_sky_camera_simulate():
-    """Retourne une image de ciel nocturne pour le mode simulation.
-    Priorité : APOD NASA → image statique locale.
-    """
-    try:
-        nasa_key = (os.environ.get('NASA_API_KEY') or 'DEMO_KEY').strip()
-        apod = cache_get('apod_hd', 3600)
-        if not apod:
-            raw = _curl_get(f'https://api.nasa.gov/planetary/apod?api_key={nasa_key}', timeout=12)
-            if raw:
-                apod_data = json.loads(raw)
-                if apod_data.get('media_type') == 'image':
-                    url = apod_data.get('hdurl') or apod_data.get('url', '')
-                    return jsonify({'ok': True, 'url': url, 'title': apod_data.get('title', ''), 'source': 'NASA APOD'})
-        if apod and isinstance(apod, dict):
-            inner = apod.get('apod') or apod
-            url = inner.get('hdurl') or inner.get('url', '')
-            if url:
-                return jsonify({'ok': True, 'url': url, 'source': 'NASA APOD (cache)'})
-    except Exception as e:
-        log.warning('sky_simulate APOD: %s', e)
-    # Fallback image NASA publique connue
-    return jsonify({
-        'ok': True,
-        'url': 'https://apod.nasa.gov/apod/image/2401/OrionMolCloud_Addis_960.jpg',
-        'title': 'Orion Molecular Cloud',
-        'source': 'NASA APOD fallback'
-    })
+# MIGRATED TO cameras_bp PASS 15 — /api/sky-camera/simulate → see app/blueprints/cameras/__init__.py (api_sky_camera_simulate)
 
 
 # MIGRATED TO feeds_bp PASS 11 — /api/sondes/live → see app/blueprints/feeds/__init__.py (api_sondes_live)
@@ -4374,15 +4346,7 @@ def api_guide_stellaire():
 # MIGRATED TO feeds_bp PASS 14 — /api/apod alias → see app/blueprints/feeds/__init__.py (api_apod_alias)
 
 
-@app.route("/api/oracle", methods=["POST"])
-def api_oracle_alias():
-    try:
-        return api_oracle_cosmique()
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e)
-        }), 500
+# MIGRATED TO ai_bp PASS 15 — /api/oracle alias → see app/blueprints/ai/__init__.py (api_oracle_alias)
 
 
 # MIGRATED TO weather_bp PASS 7 — /api/aurores → see app/blueprints/weather/__init__.py (api_aurores_alias)
@@ -4556,96 +4520,9 @@ def _fetch_microobservatory_images():
         return {"ok": False, "images": [], "source": page_url, "error": str(e)}
 
 
-@app.route('/api/microobservatory/images')
-def api_microobservatory_images():
-    """Recent Harvard MicroObservatory images (cached 3600s)."""
-    try:
-        data = get_cached('microobservatory_images', 3600, _fetch_microobservatory_images)
-        return jsonify(data if isinstance(data, dict) else {"ok": False, "images": []})
-    except Exception as e:
-        return jsonify({"ok": False, "images": [], "error": str(e)})
-
-
-@app.route('/api/microobservatory/preview/<nom_fichier>')
-def api_microobservatory_preview(nom_fichier):
-    """
-    Download FITS from Harvard MicroObservatory, convert to JPG and return it.
-    Uses local file cache to avoid repeated conversions.
-    """
-    try:
-        safe_name = secure_filename(nom_fichier or "")
-        if not safe_name:
-            return jsonify({"ok": False, "error": "invalid filename"}), 400
-
-        ext = os.path.splitext(safe_name)[1].lower()
-        if ext not in (".fits", ".fit"):
-            return jsonify({"ok": False, "error": "preview supports FITS only"}), 400
-
-        preview_dir = os.path.join(STATION, "data", "microobservatory_previews")
-        fits_dir = os.path.join(preview_dir, "fits")
-        jpg_dir = os.path.join(preview_dir, "jpg")
-        os.makedirs(fits_dir, exist_ok=True)
-        os.makedirs(jpg_dir, exist_ok=True)
-
-        fits_path = os.path.join(fits_dir, safe_name)
-        jpg_name = os.path.splitext(safe_name)[0] + ".jpg"
-        jpg_path = os.path.join(jpg_dir, jpg_name)
-
-        # Serve cached JPG when possible.
-        if os.path.isfile(jpg_path) and os.path.getsize(jpg_path) > 0:
-            return send_file(jpg_path, mimetype="image/jpeg")
-
-        source_url = "https://mo-www.cfa.harvard.edu/ImageDirectory/" + safe_name
-
-        # Download FITS file.
-        import urllib.request
-        req = urllib.request.Request(source_url, headers={"User-Agent": "AstroScan/1.0"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            data = r.read()
-        if not data:
-            return jsonify({"ok": False, "error": "empty FITS download"}), 502
-        with open(fits_path, "wb") as f:
-            f.write(data)
-
-        # Convert FITS to JPG.
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        from astropy.io import fits
-        import numpy as np
-
-        arr = fits.getdata(fits_path)
-        if arr is None:
-            return jsonify({"ok": False, "error": "invalid FITS data"}), 502
-
-        # Reduce dimensions if needed.
-        while hasattr(arr, "ndim") and arr.ndim > 2:
-            arr = arr[0]
-        arr = np.asarray(arr, dtype=float)
-        arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
-        if arr.size == 0:
-            return jsonify({"ok": False, "error": "empty FITS array"}), 502
-
-        # Robust contrast stretch (2-98 percentile).
-        vmin = np.percentile(arr, 2)
-        vmax = np.percentile(arr, 98)
-        if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
-            vmin = float(np.min(arr))
-            vmax = float(np.max(arr)) if float(np.max(arr)) > float(np.min(arr)) else float(np.min(arr)) + 1.0
-
-        plt.figure(figsize=(8, 8), dpi=120)
-        plt.imshow(arr, cmap="gray", origin="lower", vmin=vmin, vmax=vmax)
-        plt.axis("off")
-        plt.tight_layout(pad=0)
-        plt.savefig(jpg_path, format="jpg", bbox_inches="tight", pad_inches=0)
-        plt.close()
-
-        if not os.path.isfile(jpg_path) or os.path.getsize(jpg_path) == 0:
-            return jsonify({"ok": False, "error": "jpg conversion failed"}), 502
-        return send_file(jpg_path, mimetype="image/jpeg")
-    except Exception as e:
-        log.warning("microobservatory/preview: %s", e)
-        return jsonify({"ok": False, "error": str(e)}), 500
+# MIGRATED TO cameras_bp PASS 15 — /api/microobservatory/images → see app/blueprints/cameras/__init__.py (api_microobservatory_images)
+# MIGRATED TO cameras_bp PASS 15 — /api/microobservatory/preview/<nom_fichier> → see app/blueprints/cameras/__init__.py (api_microobservatory_preview)
+# Helper _fetch_microobservatory_images extrait → app/services/microobservatory.py
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -5861,27 +5738,7 @@ def _fetch_jwst():
 # MIGRATED TO feeds_bp PASS 8 — /api/mars/weather → see app/blueprints/feeds/__init__.py (api_mars_weather)
 
 
-@app.route('/api/bepi/telemetry')
-def api_bepi():
-    """BepiColombo — synthèse + tentative JPL Horizons."""
-    out = {
-        'status': 'EN ROUTE VERS MERCURE',
-        'agence': 'ESA/JAXA',
-        'lancement': '2018',
-        'arrivee': '2025',
-        'name': 'BepiColombo',
-    }
-    try:
-        raw = _curl_get(
-            'https://ssd.jpl.nasa.gov/api/horizons.api?format=text&COMMAND=-121&OBJ_DATA=YES'
-            '&MAKE_EPHEM=YES&EPHEM_TYPE=VECTORS&CENTER=500@10&START_TIME=today&STOP_TIME=today&STEP_SIZE=1d&QUANTITIES=20',
-            timeout=12,
-        )
-        if raw:
-            out['raw'] = raw[:500]
-    except Exception as e:
-        out['error'] = str(e)
-    return jsonify(out)
+# MIGRATED TO feeds_bp PASS 15 — /api/bepi/telemetry → see app/blueprints/feeds/__init__.py (api_bepi)
 
 
 # MIGRATED TO ai_bp PASS 10 — /api/jwst/images → see app/blueprints/ai/__init__.py (api_jwst_images)
@@ -7800,35 +7657,9 @@ def _hilal_compute_calendar():
     }
 
 
-@app.route('/api/hilal/calendar')
-def api_hilal_calendar():
-    """Calendrier hégire 24 mois — ODEH 2006 + Istanbul 1978. Cache 24h."""
-    cached = cache_get('hilal_calendar', 86400)
-    if cached is not None:
-        return jsonify(cached)
-    try:
-        data = _hilal_compute_calendar()
-        cache_set('hilal_calendar', data)
-        return jsonify(data)
-    except Exception as e:
-        log.error('api_hilal_calendar: %s', e)
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
-
-@app.route('/api/hilal')
-def api_hilal():
-    """Calcul du croissant islamique (Hilal) pour Tlemcen. Cache 30 min."""
-    cached = cache_get('hilal_data', 1800)
-    if cached is not None:
-        return jsonify(cached)
-    try:
-        data = _hilal_compute()
-        cache_set('hilal_data', data)
-        return jsonify(data)
-    except Exception as e:
-        log.error('api_hilal: %s', e)
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
+# MIGRATED TO astro_bp PASS 15 — /api/hilal/calendar → see app/blueprints/astro/__init__.py (api_hilal_calendar)
+# MIGRATED TO astro_bp PASS 15 — /api/hilal → see app/blueprints/astro/__init__.py (api_hilal)
+# Helpers _hilal_compute, _hilal_compute_calendar, _HIJRI_MONTHS extraits → app/services/hilal_compute.py
 
 
 # MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
@@ -7956,58 +7787,8 @@ def _cam_response(data):
     return resp
 
 
-@app.route('/proxy-cam/<city>.jpg')
-def proxy_cam(city):
-    if city not in _CAM_ALLOWED:
-        abort(404)
-
-    cached = _CAM_IMG_CACHE.get(city)
-    now    = time.monotonic()
-
-    # Cache frais → répondre immédiatement sans toucher le réseau
-    if cached and (now - cached['ts']) < _CAM_CACHE_TTL:
-        return _cam_response(cached['data'])
-
-    # Verrou non-bloquant : autre thread déjà en fetch → cache périmé ou 503
-    lock = _CAM_FETCH_LOCKS[city]
-    if not lock.acquire(blocking=False):
-        log.debug('[CAM SKIP] %s — fetch en cours, cache servi', city)
-        if cached:
-            return _cam_response(cached['data'])
-        return Response('offline', status=503, mimetype='text/plain')
-
-    try:
-        # Re-vérifier après acquisition : autre thread peut avoir rafraîchi
-        cached = _CAM_IMG_CACHE.get(city)
-        if cached and (time.monotonic() - cached['ts']) < _CAM_CACHE_TTL:
-            return _cam_response(cached['data'])
-
-        for raw_url in _CAM_SOURCES[city]:
-            try:
-                url  = _cam_resolve(raw_url)
-                data = _cam_fetch_url(url)
-                _CAM_IMG_CACHE[city] = {'ts': time.monotonic(), 'data': data}
-                log.info('[CAM OK] %s ← %s (%d B)', city, url, len(data))
-                return _cam_response(data)
-            except requests.HTTPError as exc:
-                st = exc.response.status_code if exc.response is not None else '?'
-                log.warning('[CAM FAIL] %s ← %s  HTTP %s', city, raw_url, st)
-            except requests.RequestException as exc:
-                log.warning('[CAM FAIL] %s ← %s  %s', city, raw_url, exc)
-            except Exception as exc:
-                log.warning('[CAM FAIL] %s ← %s  %s', city, raw_url, exc)
-
-        # Toutes les sources échouées — cache périmé ou 503 (canvas front-end prend le relais)
-        if cached:
-            age = time.monotonic() - cached['ts']
-            log.info('[CAM CACHE SERVED] %s (périmé, age=%.0fs)', city, age)
-            return _cam_response(cached['data'])
-
-        log.warning('[CAM OFFLINE] %s — toutes sources échouées, aucun cache', city)
-        return Response('offline', status=503, mimetype='text/plain')
-
-    finally:
-        lock.release()
+# MIGRATED TO cameras_bp PASS 15 — /proxy-cam/<city>.jpg → see app/blueprints/cameras/__init__.py (proxy_cam)
+# Helpers _CAM_*, _cam_resolve, _cam_fetch_url, _cam_response, _get_latest_epic_url copiés dans cameras_bp
 
 
 # MIGRATED TO main_bp PASS 14 — /contact POST → see app/blueprints/main/__init__.py (contact_form)

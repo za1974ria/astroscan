@@ -304,3 +304,282 @@ def api_audio_proxy():
     except Exception as e:
         log.warning("audio-proxy: %s", e)
         abort(502)
+
+
+# ── PASS 15 — Sky Camera simulate (différé PASS 6 levé) ───────────────
+@bp.route("/api/sky-camera/simulate")
+def api_sky_camera_simulate():
+    """Retourne une image de ciel nocturne pour le mode simulation.
+    Priorité : APOD NASA → image statique fallback.
+    """
+    from app.utils.cache import cache_get
+    from app.services.http_client import _curl_get
+    try:
+        nasa_key = (os.environ.get("NASA_API_KEY") or "DEMO_KEY").strip()
+        apod = cache_get("apod_hd", 3600)
+        if not apod:
+            raw = _curl_get(
+                f"https://api.nasa.gov/planetary/apod?api_key={nasa_key}",
+                timeout=12,
+            )
+            if raw:
+                apod_data = json.loads(raw)
+                if apod_data.get("media_type") == "image":
+                    url = apod_data.get("hdurl") or apod_data.get("url", "")
+                    return jsonify({
+                        "ok": True, "url": url,
+                        "title": apod_data.get("title", ""),
+                        "source": "NASA APOD",
+                    })
+        if apod and isinstance(apod, dict):
+            inner = apod.get("apod") or apod
+            url = inner.get("hdurl") or inner.get("url", "")
+            if url:
+                return jsonify({
+                    "ok": True, "url": url,
+                    "source": "NASA APOD (cache)",
+                })
+    except Exception as e:
+        log.warning("sky_simulate APOD: %s", e)
+    return jsonify({
+        "ok": True,
+        "url": "https://apod.nasa.gov/apod/image/2401/OrionMolCloud_Addis_960.jpg",
+        "title": "Orion Molecular Cloud",
+        "source": "NASA APOD fallback",
+    })
+
+
+# ── PASS 15 — MicroObservatory images + preview FITS ──────────────────
+@bp.route("/api/microobservatory/images")
+def api_microobservatory_images():
+    """Recent Harvard MicroObservatory images (cached 3600s)."""
+    from app.utils.cache import get_cached
+    from app.services.microobservatory import fetch_microobservatory_images
+    try:
+        data = get_cached("microobservatory_images", 3600, fetch_microobservatory_images)
+        return jsonify(data if isinstance(data, dict) else {"ok": False, "images": []})
+    except Exception as e:
+        return jsonify({"ok": False, "images": [], "error": str(e)})
+
+
+@bp.route("/api/microobservatory/preview/<nom_fichier>")
+def api_microobservatory_preview(nom_fichier):
+    """Download FITS from Harvard MicroObservatory, convert to JPG and return it."""
+    try:
+        safe_name = secure_filename(nom_fichier or "")
+        if not safe_name:
+            return jsonify({"ok": False, "error": "invalid filename"}), 400
+
+        ext = os.path.splitext(safe_name)[1].lower()
+        if ext not in (".fits", ".fit"):
+            return jsonify({"ok": False, "error": "preview supports FITS only"}), 400
+
+        preview_dir = os.path.join(STATION, "data", "microobservatory_previews")
+        fits_dir = os.path.join(preview_dir, "fits")
+        jpg_dir = os.path.join(preview_dir, "jpg")
+        os.makedirs(fits_dir, exist_ok=True)
+        os.makedirs(jpg_dir, exist_ok=True)
+
+        fits_path = os.path.join(fits_dir, safe_name)
+        jpg_name = os.path.splitext(safe_name)[0] + ".jpg"
+        jpg_path = os.path.join(jpg_dir, jpg_name)
+
+        # Serve cached JPG when possible.
+        if os.path.isfile(jpg_path) and os.path.getsize(jpg_path) > 0:
+            return send_file(jpg_path, mimetype="image/jpeg")
+
+        source_url = "https://mo-www.cfa.harvard.edu/ImageDirectory/" + safe_name
+
+        # Download FITS.
+        import urllib.request
+        req = urllib.request.Request(source_url, headers={"User-Agent": "AstroScan/1.0"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            data = r.read()
+        if not data:
+            return jsonify({"ok": False, "error": "empty FITS download"}), 502
+        with open(fits_path, "wb") as f:
+            f.write(data)
+
+        # Convert FITS → JPG.
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        from astropy.io import fits
+        import numpy as np
+
+        arr = fits.getdata(fits_path)
+        if arr is None:
+            return jsonify({"ok": False, "error": "invalid FITS data"}), 502
+
+        while hasattr(arr, "ndim") and arr.ndim > 2:
+            arr = arr[0]
+        arr = np.asarray(arr, dtype=float)
+        arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+        if arr.size == 0:
+            return jsonify({"ok": False, "error": "empty FITS array"}), 502
+
+        vmin = np.percentile(arr, 2)
+        vmax = np.percentile(arr, 98)
+        if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
+            vmin = float(np.min(arr))
+            vmax = float(np.max(arr)) if float(np.max(arr)) > float(np.min(arr)) else float(np.min(arr)) + 1.0
+
+        plt.figure(figsize=(8, 8), dpi=120)
+        plt.imshow(arr, cmap="gray", origin="lower", vmin=vmin, vmax=vmax)
+        plt.axis("off")
+        plt.tight_layout(pad=0)
+        plt.savefig(jpg_path, format="jpg", bbox_inches="tight", pad_inches=0)
+        plt.close()
+
+        if not os.path.isfile(jpg_path) or os.path.getsize(jpg_path) == 0:
+            return jsonify({"ok": False, "error": "jpg conversion failed"}), 502
+        return send_file(jpg_path, mimetype="image/jpeg")
+    except Exception as e:
+        log.warning("microobservatory/preview: %s", e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── PASS 15 — Proxy-cam World Live (5 caméras + EPIC NASA dynamique) ──
+import threading as _threading
+import time as _time
+import requests as _requests
+
+_CAM_SOURCES = {
+    "matterhorn": [
+        "https://zermatt.roundshot.com/zermatt.jpg",
+        "https://www.zermatt.ch/var/zermatt/storage/images/media/webcam/matterhorn.jpg",
+    ],
+    "aurora": [
+        "https://nordlysobservatoriet.no/allsky/latest_small.jpg",
+        "https://arcticspace.no/allsky_images/latest.jpg",
+    ],
+    "canyon": [
+        "https://www.nps.gov/grca/planyourvisit/webcam-images/south-rim.jpg",
+        "https://grandcanyonsunrise.org/livecam/latest.jpg",
+    ],
+    "fuji": [
+        "https://livecam.fujigoko.tv/cameras/fujigoko6.jpg",
+        "https://n-img00.tsite.jp/webcam/fujigoko/live.jpg",
+    ],
+    "iss": [
+        "__epic__",
+        "https://eol.jsc.nasa.gov/DatabaseImages/ESC/small/ISS070/ISS070-E-75001.JPG",
+    ],
+}
+_CAM_ALLOWED = frozenset(_CAM_SOURCES)
+_CAM_IMG_CACHE: dict = {}
+_CAM_CACHE_TTL = 30
+_CAM_FETCH_LOCKS = {city: _threading.Lock() for city in _CAM_SOURCES}
+_CAM_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
+_CAM_FETCH_HEADERS = {
+    "User-Agent": _CAM_UA,
+    "Accept": "image/jpeg,image/*,*/*;q=0.8",
+    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+}
+_EPIC_URL_CACHE = {"url": None, "ts": 0.0}
+_EPIC_URL_TTL = 3600
+
+
+def _get_latest_epic_url():
+    """Retourne l'URL JPEG de la dernière image naturelle DSCOVR/EPIC NASA."""
+    now = _time.monotonic()
+    if _EPIC_URL_CACHE["url"] and (now - _EPIC_URL_CACHE["ts"]) < _EPIC_URL_TTL:
+        return _EPIC_URL_CACHE["url"]
+    r = _requests.get(
+        "https://epic.gsfc.nasa.gov/api/natural",
+        timeout=(3, 8), headers={"User-Agent": _CAM_UA},
+    )
+    r.raise_for_status()
+    data = r.json()
+    if not isinstance(data, list) or not data:
+        raise ValueError("EPIC API: aucune image disponible")
+    img = data[0]
+    date = img["date"][:10].replace("-", "/")
+    url = f'https://epic.gsfc.nasa.gov/archive/natural/{date}/jpg/{img["image"]}.jpg'
+    _EPIC_URL_CACHE["url"] = url
+    _EPIC_URL_CACHE["ts"] = now
+    log.info("[CAM EPIC] URL résolue : %s", url)
+    return url
+
+
+def _cam_resolve(raw_url):
+    if raw_url == "__epic__":
+        return _get_latest_epic_url()
+    return raw_url
+
+
+def _cam_fetch_url(url):
+    kw = dict(
+        timeout=(5, 12), headers=_CAM_FETCH_HEADERS,
+        allow_redirects=True, stream=False,
+    )
+    try:
+        r = _requests.get(url, verify=True, **kw)
+    except _requests.exceptions.SSLError:
+        r = _requests.get(url, verify=False, **kw)
+    r.raise_for_status()
+    data = r.content
+    if not data:
+        raise ValueError("réponse vide")
+    ct = r.headers.get("content-type", "")
+    if "image" not in ct and data[:3] != b"\xff\xd8\xff":
+        raise ValueError(f"pas une image : content-type={ct!r}")
+    return data
+
+
+def _cam_response(data):
+    resp = Response(data, mimetype="image/jpeg")
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+
+@bp.route("/proxy-cam/<city>.jpg")
+def proxy_cam(city):
+    if city not in _CAM_ALLOWED:
+        abort(404)
+    cached = _CAM_IMG_CACHE.get(city)
+    now = _time.monotonic()
+    if cached and (now - cached["ts"]) < _CAM_CACHE_TTL:
+        return _cam_response(cached["data"])
+
+    lock = _CAM_FETCH_LOCKS[city]
+    if not lock.acquire(blocking=False):
+        log.debug("[CAM SKIP] %s — fetch en cours, cache servi", city)
+        if cached:
+            return _cam_response(cached["data"])
+        return Response("offline", status=503, mimetype="text/plain")
+
+    try:
+        cached = _CAM_IMG_CACHE.get(city)
+        if cached and (_time.monotonic() - cached["ts"]) < _CAM_CACHE_TTL:
+            return _cam_response(cached["data"])
+
+        for raw_url in _CAM_SOURCES[city]:
+            try:
+                url = _cam_resolve(raw_url)
+                data = _cam_fetch_url(url)
+                _CAM_IMG_CACHE[city] = {"ts": _time.monotonic(), "data": data}
+                log.info("[CAM OK] %s ← %s (%d B)", city, url, len(data))
+                return _cam_response(data)
+            except _requests.HTTPError as exc:
+                st = exc.response.status_code if exc.response is not None else "?"
+                log.warning("[CAM FAIL] %s ← %s  HTTP %s", city, raw_url, st)
+            except _requests.RequestException as exc:
+                log.warning("[CAM FAIL] %s ← %s  %s", city, raw_url, exc)
+            except Exception as exc:
+                log.warning("[CAM FAIL] %s ← %s  %s", city, raw_url, exc)
+
+        if cached:
+            age = _time.monotonic() - cached["ts"]
+            log.info("[CAM CACHE SERVED] %s (périmé, age=%.0fs)", city, age)
+            return _cam_response(cached["data"])
+
+        log.warning("[CAM OFFLINE] %s — toutes sources échouées, aucun cache", city)
+        return Response("offline", status=503, mimetype="text/plain")
+    finally:
+        lock.release()
