@@ -524,6 +524,10 @@ app.register_blueprint(feeds_bp)
 from app.blueprints.telescope import bp as telescope_bp
 app.register_blueprint(telescope_bp)
 
+# Blueprint ai — added PASS 10 (AEGIS chat, Claude/Gemini/Groq, telescope/live, jwst, translate, explain)
+from app.blueprints.ai import bp as ai_bp
+app.register_blueprint(ai_bp)
+
 
 @app.context_processor
 def _inject_seo_site_description():
@@ -3396,98 +3400,8 @@ def _sync_state_write(source):
 # MIGRATED TO cameras_bp PASS 6 — /observatory/status → see app/blueprints/cameras/__init__.py (observatory_status_page)
 
 
-@app.route('/api/telescope/live')
-def api_telescope_live():
-    """APOD du jour NASA : titre + description traduits en FR via Gemini.
-    Lit d'abord le cache apod_meta.json (produit par nasa_feeder.py) ;
-    si absent ou périmé, traduit en ligne via _gemini_translate()."""
-    try:
-        # ── 1. Essai depuis le cache feeder (apod_meta.json) ──────────────
-        meta_path = os.path.join(STATION, 'telescope_live', 'apod_meta.json')
-        today = datetime.utcnow().strftime('%Y-%m-%d')
-        if os.path.isfile(meta_path):
-            try:
-                with open(meta_path, encoding='utf-8') as f:
-                    meta = json.load(f)
-                if meta.get('date') == today or meta.get('fetched_at', '').startswith(today):
-                    analyse_claude = meta.get('analyse_claude', '')
-                    # Si pas d'analyse Claude dans le cache, la générer maintenant
-                    if not analyse_claude:
-                        title_en = meta.get('title_original') or meta.get('title', '')
-                        expl_en  = meta.get('explanation_original') or meta.get('explanation', '')
-                        if title_en and expl_en:
-                            prompt_analyse = (
-                                f"Image astronomique NASA APOD du {meta.get('date','aujourd\'hui')}.\n"
-                                f"Titre : {title_en}\n"
-                                f"Description : {expl_en[:800]}\n\n"
-                                "Rédige en 3 à 4 phrases une analyse scientifique approfondie de cette image : "
-                                "type d'objet céleste, phénomènes physiques visibles, intérêt astronomique, "
-                                "contexte dans l'univers observable. Style expert, en français."
-                            )
-                            analyse_claude, err_c = _call_claude(prompt_analyse)
-                            if analyse_claude:
-                                log.info('api/telescope/live: analyse Claude générée (%d car)', len(analyse_claude))
-                                # Sauvegarder dans le cache
-                                try:
-                                    meta['analyse_claude'] = analyse_claude
-                                    with open(meta_path, 'w', encoding='utf-8') as fout:
-                                        json.dump(meta, fout, ensure_ascii=False, indent=2)
-                                except Exception:
-                                    pass
-                            else:
-                                log.warning('api/telescope/live: Claude analyse: %s', err_c)
-                    return jsonify({
-                        'title':          meta.get('title', ''),
-                        'title_original': meta.get('title_original', ''),
-                        'date':           meta.get('date', ''),
-                        'explanation':    meta.get('explanation', ''),
-                        'url':            meta.get('url', ''),
-                        'source':         'NASA APOD',
-                        'media_type':     'image',
-                        'translated':     meta.get('translated', False),
-                        'analyse_claude': analyse_claude or '',
-                        'from_cache':     True,
-                    })
-            except Exception:
-                pass
-
-        # ── 2. Fallback : fetch NASA + traduction Gemini en ligne ──────────
-        nasa_key = (os.environ.get('NASA_API_KEY') or 'DEMO_KEY').strip()
-        raw = _curl_get(f'https://api.nasa.gov/planetary/apod?api_key={nasa_key}', timeout=14)
-        if not raw:
-            return jsonify({'error': 'Indisponible'}), 503
-        data = json.loads(raw)
-        title_en = data.get('title', '')
-        expl_en  = data.get('explanation', '')
-        title_fr = _gemini_translate(title_en) if title_en else title_en
-        expl_fr  = _gemini_translate(expl_en)  if expl_en  else expl_en
-        # Analyse scientifique Claude
-        analyse_claude = ''
-        if title_en and expl_en:
-            prompt_analyse = (
-                f"Image astronomique NASA APOD du {data.get('date', 'aujourd\'hui')}.\n"
-                f"Titre : {title_en}\n"
-                f"Description : {expl_en[:800]}\n\n"
-                "Rédige en 3 à 4 phrases une analyse scientifique approfondie de cette image : "
-                "type d'objet céleste, phénomènes physiques visibles, intérêt astronomique, "
-                "contexte dans l'univers observable. Style expert, en français."
-            )
-            analyse_claude, _ = _call_claude(prompt_analyse)
-        return jsonify({
-            'title':          title_fr or title_en,
-            'title_original': title_en,
-            'date':           data.get('date', ''),
-            'explanation':    expl_fr or expl_en,
-            'url':            data.get('hdurl') or data.get('url', ''),
-            'source':         'NASA APOD',
-            'media_type':     data.get('media_type', 'image'),
-            'translated':     bool(expl_fr and expl_fr != expl_en),
-            'analyse_claude': analyse_claude or '',
-            'from_cache':     False,
-        })
-    except Exception as e:
-        log.warning('api/telescope/live: %s', e)
-        return jsonify({'error': 'Indisponible'}), 503
+# MIGRATED TO ai_bp PASS 10 — /api/telescope/live → see app/blueprints/ai/__init__.py (api_telescope_live)
+# (différé PASS 9 levé : utilise _gemini_translate + _call_claude depuis app.services.ai_translate)
 
 # MIGRATED TO telescope_bp PASS 9 — /api/image → see app/blueprints/telescope/__init__.py (api_image)
 # MIGRATED TO telescope_bp PASS 9 — /api/title → see app/blueprints/telescope/__init__.py (api_title)
@@ -4201,303 +4115,21 @@ def _call_ai(prompt):
         log.warning('_call_ai Groq indisponible: %s', err)
     return None, err or 'Service IA temporairement indisponible. Réessayez plus tard.', 'groq'
 
-@app.route('/api/chat', methods=['POST'])
-def api_chat():
-    import hashlib
-    ua = (request.headers.get('User-Agent') or '').lower()
-    bot_tokens = (
-        'bot', 'crawler', 'spider', 'curl', 'wget', 'python-requests',
-        'go-http-client', 'postman', 'scanner', 'headless', 'puppeteer', 'scrapy'
-    )
-    if (not ua) or any(tok in ua for tok in bot_tokens):
-        return jsonify({
-            'ok': False,
-            'error': 'AEGIS: acces automatise bloque',
-            'status': 'aegis_blocked',
-            'tokens_consumed': 0,
-        }), 403
-    data = request.get_json(silent=True) or {}
-    msg  = data.get('message', '').strip()
-    extra_ctx = (data.get('context') or '').strip()  # Contexte Overlord (ex: image courante)
-
-    if not msg:
-        return jsonify({'ok': False, 'error': 'message vide'})
-
-    # Cache 5 min — même question → réponse instantanée sans API
-    msg_hash = hashlib.md5(msg.lower().strip().encode()).hexdigest()
-    if msg_hash in _chat_cache:
-        ts, cached_resp = _chat_cache[msg_hash]
-        if time.time() - ts < 300:
-            return jsonify({'ok': True, 'response': cached_resp, 'cached': True})
-
-    # Contexte station (une seule requête DB)
-    ctx = ''
-    try:
-        conn = get_db()
-        total = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
-        anom  = conn.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
-        last  = conn.execute(
-            "SELECT COALESCE(title, objets_detectes, '') as t, COALESCE(analyse_gemini,'') as r "
-            "FROM observations ORDER BY id DESC LIMIT 1"
-        ).fetchone()
-        conn.close()
-        ctx = (f"Station ORBITAL-CHOHRA à Tlemcen, Algérie (~34,9°N, 1,3°E). "
-               f"Directeur : Zakaria Chohra. "
-               f"Base de données : {total} observations, {anom} anomalies détectées. "
-               f"Dernière observation : {last['t'] if last else 'inconnue'}. "
-               f"Analyse AEGIS : {(last['r'] if last else '')[:200]}. "
-               f"Sources actives : NASA APOD, ESA Hubble, SIMBAD, Chandra, IRSA/WISE, MPC. "
-               f"Pipeline SDR NOAA actif. Répondre en français.")
-    except Exception as e:
-        log.warning(f"chat ctx: {e}")
-        ctx = "Station ORBITAL-CHOHRA — Tlemcen, Algérie."
-
-    if extra_ctx:
-        ctx = ctx + " " + extra_ctx
-
-    prompt = (
-        f"Tu es AEGIS — IA de la station astronomique ORBITAL-CHOHRA.\n"
-        f"Directeur : Zakaria Chohra, Tlemcen, Algérie.\n"
-        f"Contexte : {ctx}\n\n"
-        "RÈGLES STRICTES :\n"
-        "1. Réponds EXACTEMENT à la question posée — ni plus ni moins. Pas de digression.\n"
-        "2. Si la question est factuelle (quoi, combien, où, quand) → une réponse courte et précise.\n"
-        "3. Si la question est astronomique → ton savoir scientifique, concis et exact.\n"
-        "4. Si la question concerne la station ou l'écran → utilise le contexte ci-dessus.\n"
-        "5. Jamais de demande de précision. Toujours en français. Pas d'introduction ni de liste inutile.\n\n"
-        f"Question : {msg}"
-    )
-
-    reply, err, model_used = _call_ai(prompt)
-    if err:
-        log.error(f"chat: {err}")
-        return jsonify({'ok': False, 'response': err})
-
-    _chat_cache[msg_hash] = (time.time(), reply)
-    old_keys = [k for k, v in _chat_cache.items() if time.time() - v[0] > 300]
-    for k in old_keys:
-        del _chat_cache[k]
-
-    return jsonify({'ok': True, 'response': reply, 'model': model_used})
+# MIGRATED TO ai_bp PASS 10 — /api/chat → see app/blueprints/ai/__init__.py (api_chat)
 
 
-@app.route('/api/aegis/chat', methods=['POST'])
-def api_aegis_chat():
-    """AEGIS chatbot — Claude haiku avec historique multi-tours et contexte live."""
-    data = request.get_json(silent=True) or {}
-    msg = (data.get('message') or '').strip()
-    history = data.get('history') or []
-
-    if not msg:
-        return jsonify({'ok': False, 'error': 'message vide'})
-
-    api_key = os.environ.get('ANTHROPIC_API_KEY', '').strip()
-    if not api_key:
-        # Fallback Groq si pas de clé Claude
-        prompt_fallback = (
-            "Tu es AEGIS, assistant astronomique expert de l'Observatoire ORBITAL-CHOHRA "
-            "dirigé par Zakaria Chohra à Tlemcen, Algérie. Réponds UNIQUEMENT en français, "
-            "de façon experte et passionnée.\n\nQuestion : " + msg
-        )
-        reply, err = _call_groq(prompt_fallback)
-        if reply:
-            return jsonify({'ok': True, 'response': _enforce_french(reply), 'model': 'groq'})
-        return jsonify({'ok': False, 'error': err or 'Service indisponible'})
-
-    # Contexte live (DB + station)
-    live_ctx = ''
-    try:
-        conn = get_db()
-        total = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
-        anom  = conn.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
-        last  = conn.execute(
-            "SELECT COALESCE(title,'') as t, COALESCE(analyse_gemini,'') as r "
-            "FROM observations ORDER BY id DESC LIMIT 1"
-        ).fetchone()
-        conn.close()
-        live_ctx = (
-            f"Données live station : {total} observations archivées, {anom} anomalies. "
-            f"Dernière obs : {last['t'] if last else '?'}. "
-        )
-    except Exception:
-        live_ctx = ''
-
-    # Météo spatiale live
-    try:
-        sw_path = os.path.join(STATION, 'static', 'space_weather.json')
-        if os.path.isfile(sw_path):
-            sw = json.load(open(sw_path))
-            live_ctx += f"Météo spatiale : Kp={sw.get('kp_index','?')}, {sw.get('statut_magnetosphere','?')}. "
-    except Exception:
-        pass
-
-    system_prompt = (
-        "Tu es AEGIS, assistant astronomique expert de l'Observatoire ORBITAL-CHOHRA "
-        "dirigé par Zakaria Chohra à Tlemcen, Algérie (34.87°N, 1.32°E). "
-        "Tu réponds UNIQUEMENT en français, de façon experte et passionnée. "
-        "Tu connais parfaitement l'astronomie, l'astrophysique, l'ISS, les nébuleuses, "
-        "les exoplanètes, la météo spatiale, les missions spatiales. "
-        "Tu intègres les données live du site quand pertinent. "
-        "Réponds de façon concise, précise et engageante. "
-        "Pas de préambule inutile. " + live_ctx
-    )
-
-    # Construire les messages avec historique (max 3 échanges)
-    messages = []
-    for h in history[-6:]:  # max 3 paires user/assistant
-        role = h.get('role', '')
-        content = h.get('content', '').strip()
-        if role in ('user', 'assistant') and content:
-            messages.append({'role': role, 'content': content})
-    messages.append({'role': 'user', 'content': msg})
-
-    body = {
-        'model': 'claude-haiku-4-5-20251001',
-        'max_tokens': 1024,
-        'system': system_prompt,
-        'messages': messages,
-    }
-    try:
-        r = requests.post(
-            'https://api.anthropic.com/v1/messages',
-            headers={
-                'x-api-key': api_key,
-                'anthropic-version': '2023-06-01',
-                'content-type': 'application/json',
-            },
-            json=body, timeout=30
-        )
-        d = r.json()
-        if r.status_code != 200:
-            err_msg = (d.get('error') or {}).get('message', f'HTTP {r.status_code}')
-            log.warning('aegis/chat Claude error: %s', err_msg)
-            # Fallback Groq
-            reply_g, err_g = _call_groq(system_prompt + '\n\nQuestion : ' + msg)
-            if reply_g:
-                return jsonify({'ok': True, 'response': _enforce_french(reply_g), 'model': 'groq'})
-            return jsonify({'ok': False, 'error': err_msg})
-        reply_text = d['content'][0]['text'].strip()
-        return jsonify({'ok': True, 'response': reply_text, 'model': 'claude'})
-    except Exception as e:
-        log.warning('aegis/chat exception: %s', e)
-        reply_g, _ = _call_groq(system_prompt + '\n\nQuestion : ' + msg)
-        if reply_g:
-            return jsonify({'ok': True, 'response': _enforce_french(reply_g), 'model': 'groq'})
-        return jsonify({'ok': False, 'error': str(e)})
-
-
-@app.route('/api/aegis/status')
-def api_aegis_status():
-    """Statut AEGIS + métriques légères (lecture seule, sans appel API externe)."""
-    try:
-        groq_configured = bool(os.environ.get('GROQ_API_KEY', '').strip())
-        grok_configured = False
-        grok_ok = False
-        grok_error = None
-        gemini_configured = False
-        # Pas de sonde réseau ici : garde la route rapide (compat. champs historiques).
-        groq_ok = groq_configured
-        groq_error = None
-        return jsonify({
-            'ok': True,
-            'gemini_configured': gemini_configured,
-            'grok_configured': grok_configured,
-            'grok_ok': grok_ok,
-            'grok_error': grok_error,
-            'groq_configured': groq_configured,
-            'groq_ok': groq_ok,
-            'groq_error': groq_error,
-            'claude_calls': CLAUDE_CALL_COUNT,
-            'claude_limit': CLAUDE_MAX_CALLS,
-            'groq_calls': GROQ_CALL_COUNT,
-            'collector_last_run': COLLECTOR_LAST_RUN,
-            'timestamp': time.time(),
-        })
-    except Exception as e:
-        log.exception("aegis/status")
-        return jsonify({
-            'ok': False,
-            'gemini_configured': False,
-            'grok_configured': False,
-            'grok_ok': False,
-            'grok_error': None,
-            'groq_configured': bool(os.environ.get('GROQ_API_KEY', '').strip()),
-            'groq_ok': False,
-            'groq_error': str(e),
-            'claude_calls': CLAUDE_CALL_COUNT,
-            'claude_limit': CLAUDE_MAX_CALLS,
-            'groq_calls': GROQ_CALL_COUNT,
-            'collector_last_run': COLLECTOR_LAST_RUN,
-            'timestamp': time.time(),
-        })
-
-
-@app.route('/api/aegis/groq-ping')
-def api_aegis_groq_ping():
-    """Une requête Groq réelle (diagnostic) — à n'appeler que ponctuellement."""
-    groq_configured = bool(os.environ.get('GROQ_API_KEY', '').strip())
-    if not groq_configured:
-        return jsonify({
-            'ok': False,
-            'groq_configured': False,
-            'groq_ok': False,
-            'groq_error': 'GROQ_API_KEY non configurée',
-            'timestamp': time.time(),
-        })
-    try:
-        reply, err = _call_groq('Réponds uniquement par: OK')
-        groq_ok = reply is not None and ('OK' in (reply or ''))
-        return jsonify({
-            'ok': True,
-            'groq_configured': True,
-            'groq_ok': groq_ok,
-            'groq_error': err,
-            'timestamp': time.time(),
-        })
-    except Exception as e:
-        log.exception('aegis/groq-ping')
-        return jsonify({
-            'ok': False,
-            'groq_configured': True,
-            'groq_ok': False,
-            'groq_error': str(e),
-            'timestamp': time.time(),
-        })
-
-
-@app.route('/api/aegis/claude-test')
-def api_aegis_claude_test():
-    """Diagnostic Claude (Anthropic) — n'affecte pas les autres routes."""
-    configured = bool(os.environ.get('ANTHROPIC_API_KEY', '').strip())
-    reply, err = _call_claude('Reply only with OK')
-    return jsonify({
-        'claude_configured': configured,
-        'claude_ok': reply is not None,
-        'error': err if err else None,
-    })
+# MIGRATED TO ai_bp PASS 10 — /api/aegis/chat → see app/blueprints/ai/__init__.py (api_aegis_chat)
+# MIGRATED TO ai_bp PASS 10 — /api/aegis/status → see app/blueprints/ai/__init__.py (api_aegis_status)
+# MIGRATED TO ai_bp PASS 10 — /api/aegis/groq-ping → see app/blueprints/ai/__init__.py (api_aegis_groq_ping)
+# MIGRATED TO ai_bp PASS 10 — /api/aegis/claude-test → see app/blueprints/ai/__init__.py (api_aegis_claude_test)
 
 
 # ══════════════════════════════════════════════════════════════
 # API — TRANSLATE
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/api/translate', methods=['POST'])
-def api_translate():
-    data = request.get_json(silent=True) or {}
-    text = data.get('text', '')
-    translated = _gemini_translate(text)
-    return jsonify({'ok': True, 'translated': translated})
-
-
-@app.route('/api/astro/explain', methods=['POST'])
-def api_astro_explain():
-    """Traduction EN→FR d'un texte (ex. analyse Gemini) via Anthropic."""
-    data = request.get_json(silent=True) or {}
-    text = (data.get('text') or '').strip()
-    if not text:
-        return jsonify({'ok': False, 'translated': ''})
-    translated = _translate_to_french(text, max_chars=2000)
-    return jsonify({'ok': True, 'translated': translated})
+# MIGRATED TO ai_bp PASS 10 — /api/translate → see app/blueprints/ai/__init__.py (api_translate)
+# MIGRATED TO ai_bp PASS 10 — /api/astro/explain → see app/blueprints/ai/__init__.py (api_astro_explain)
 
 # ══════════════════════════════════════════════════════════════
 # API — TELESCOPE HUB
@@ -4813,14 +4445,8 @@ def _oracle_claude_stream(system, messages):
 # GUIDE TOURISTIQUE STELLAIRE (Claude + éphémérides)
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/guide-stellaire')
-def guide_stellaire_page():
-    return render_template('guide_stellaire.html')
-
-
-@app.route('/oracle-cosmique')
-def oracle_cosmique_page():
-    return render_template('oracle_cosmique.html')
+# MIGRATED TO ai_bp PASS 10 — /guide-stellaire → see app/blueprints/ai/__init__.py (guide_stellaire_page)
+# MIGRATED TO ai_bp PASS 10 — /oracle-cosmique → see app/blueprints/ai/__init__.py (oracle_cosmique_page)
 
 
 @app.route('/api/oracle-cosmique', methods=['POST'])
@@ -4889,16 +4515,7 @@ def api_oracle_cosmique():
     return jsonify({"ok": True, "response": reply})
 
 
-@app.route('/api/guide-geocode', methods=['GET', 'POST'])
-def api_guide_geocode():
-    from modules.guide_stellaire import geocode_search
-
-    if request.method == 'POST':
-        body = request.get_json(silent=True) or {}
-        q = (body.get('q') or body.get('query') or '').strip()
-    else:
-        q = (request.args.get('q') or '').strip()
-    return jsonify({'ok': True, 'results': geocode_search(q, limit=8)})
+# MIGRATED TO ai_bp PASS 10 — /api/guide-geocode → see app/blueprints/ai/__init__.py (api_guide_geocode)
 
 
 @app.route('/api/guide-stellaire', methods=['POST'])
@@ -6662,28 +6279,10 @@ def api_bepi():
     return jsonify(out)
 
 
-@app.route('/api/jwst/images')
-def api_jwst_images():
-    """Images JWST — NASA Images API + Claude AI descriptions + fallback statique."""
-    try:
-        data = _fetch_jwst_live_images()
-        if not data:
-            return jsonify({'error': 'no data'}), 502
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/jwst/refresh', methods=['POST'])
-def api_jwst_refresh():
-    """Force le rechargement du cache JWST."""
-    try:
-        if os.path.exists(_JWST_CACHE_FILE):
-            os.remove(_JWST_CACHE_FILE)
-        data = _fetch_jwst_live_images()
-        return jsonify({'ok': True, 'count': len(data)})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+# MIGRATED TO ai_bp PASS 10 — /api/jwst/images → see app/blueprints/ai/__init__.py (api_jwst_images)
+# MIGRATED TO ai_bp PASS 10 — /api/jwst/refresh → see app/blueprints/ai/__init__.py (api_jwst_refresh)
+# (différés PASS 8/9 levés : helpers _fetch_jwst_live_images + _JWST_STATIC déplacés vers
+#  app/services/observatory_feeds.py)
 
 
 # MIGRATED TO feeds_bp PASS 8 — /api/neo → see app/blueprints/feeds/__init__.py (api_neo)
