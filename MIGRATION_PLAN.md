@@ -9,9 +9,9 @@
 ### Monolithe station_web.py
 | Métrique | Valeur |
 |----------|--------|
-| Lignes totales | 8 835 (après PASS 12) |
-| `@app.route` actifs | **49** |
-| `# MIGRATED TO` markers (migrés) | 187 |
+| Lignes totales | 8 419 (après PASS 13) |
+| `@app.route` actifs | **27** |
+| `# MIGRATED TO` markers (migrés) | 209 |
 | Total occurrences `@app.route` | 236 |
 
 ### Blueprints actifs en production (via station_web)
@@ -35,7 +35,9 @@
 | feeds_bp | app/blueprints/feeds/__init__.py | 27 (NEW PASS 8, +3 PASS 11) |
 | telescope_bp | app/blueprints/telescope/__init__.py | 15 (NEW PASS 9) |
 | ai_bp | app/blueprints/ai/__init__.py | 13 (NEW PASS 10) |
-| **TOTAL MIGRÉ** | | **214 routes** |
+| lab_bp | app/blueprints/lab/__init__.py | 16 (NEW PASS 13) |
+| research_bp | app/blueprints/research/__init__.py | 6 (NEW PASS 13) |
+| **TOTAL MIGRÉ** | | **236 routes** |
 
 > **Note PASS 4 :** export_bp enregistré (était créé mais non enregistré). system_bp +11 routes (health, selftest, tle/refresh, latest, sync/state, telescope/sources, accuracy/export.csv, api/health, status, stream/status).  
 > **Note PASS 5 :** pages_bp +21 routes (/, /portail, /technical, /dashboard, /overlord_live, /galerie, /observatoire, /vision-2026, /sondes, /telemetrie-sondes, /ce_soir, /research, /space, /space-intelligence, /module/<name>, /demo, /space-intelligence-page, /aladin, /carte-du-ciel, /europe-live, /flight-radar). main_bp +4 routes (/sw.js, /manifest.json, /api/push/subscribe, /favicon.ico). 2 doublons supprimés du monolithe (/sitemap.xml, /robots.txt — déjà dans seo_bp).  
@@ -46,12 +48,13 @@
 > **Note PASS 10 :** 1 nouveau BP créé (ai_bp +13 routes). 2 services extraits : app/services/ai_translate.py (~440 lignes — _call_claude, _call_groq, _call_gemini, _call_xai_grok, _gemini_translate, _translate_to_french, _enforce_french, _call_ai orchestrateur, _is_complex_prompt, _english_score, get_ai_counters + état globaux TRANSLATION_CACHE/TRANSLATE_CACHE/_chat_cache/_key_usage/CLAUDE_CALL_COUNT/GROQ_CALL_COUNT) et app/services/observatory_feeds.py (~165 lignes — fetch_jwst_live_images + _JWST_STATIC 6 entrées). Domaines : N (Chat/AI), U partiel (Guide/Oracle pages). Différés levés : /api/telescope/live (PASS 9), /api/jwst/{images,refresh} (PASS 8/9), /api/astro/explain (PASS 7).  
 > **Note PASS 11 :** Migration ciblée 16 routes via extension de 5 BPs existants (api_bp +6, iss_bp +5, feeds_bp +3, pages_bp +1, system_bp +1). Aucun nouveau BP créé. Domaines couverts : I (ISS étendu : crew, orbit, stream, n2yo passes, file passages), X/Y (Catalog + V1 API : catalog, v1/iss, v1/planets, v1/catalog, v1/asteroids), M (sondes/live, orbits/live, missions/overview), AF (globe page), AN (DSN). station_web.py −547 lignes (9731 → 9184).  
 > **Note PASS 12 :** analytics_bp étendu (+10 routes) : Owner IPs CRUD (POST + DELETE), visitor scoring (score-update), analytics summary (KPIs+top), visitors live (globe-data, stream SSE, log, geo via ip-api.com, stats), track-time. Helpers réutilisés via `from station_web import` (`_get_db_visitors`, `_invalidate_owner_ips_cache`, `_compute_human_score`, `_register_unique_visit_from_request`, `get_global_stats`). Aucun service extrait — pattern import-late. station_web.py −349 lignes (9184 → 8835).  
-> **🎯 Cap des 75% atteint à PASS 11. Cap des 79% atteint à PASS 12.**  
+> **Note PASS 13 :** 2 nouveaux BPs créés. lab_bp (+16 routes) — Digital Lab pages (`/lab`, `/lab/dashboard`, `/lab/images`, `/lab/raw/<file>`), upload+analyze (`/lab/upload`, `/lab/analyze`, `/api/lab/{upload,analyze,report,images,metadata,run_analysis,skyview/sync}`), Space Analysis Engine (`/api/analysis/{run,compare,discoveries}`). research_bp (+6 routes) — `/research-center` page, `/api/research/{summary,events,logs}`, `/api/science/analyze-image`, `/api/space/intelligence`. Aucun service extrait — pattern lazy-import pour `SPACE_IMAGE_DB`, `METADATA_DB`, `RAW_IMAGES`, `LAB_UPLOADS`, `_lab_last_report`, `_api_rate_limit_allow`, `_sync_skyview_to_lab`, `_fetch_iss_live`. station_web.py −416 lignes (8835 → 8419).  
+> **🎯 Cap des 75% atteint à PASS 11. Cap des 79% atteint à PASS 12. Cap des 87% atteint à PASS 13.**  
 > **⚠️ RESTART REQUIS** : `sudo systemctl restart astroscan` — modifications en attente de reload Gunicorn.
 
 ### Progression
-- Routes migrées : **214 / 269** ≈ **80%**
-- Routes restantes dans monolithe : **49 actives** (−10 vs PASS 11)
+- Routes migrées : **236 / 269** ≈ **88%**
+- Routes restantes dans monolithe : **27 actives** (−22 vs PASS 12)
 
 ---
 
@@ -582,4 +585,6 @@ systemctl restart astroscan && sleep 15 && curl -I https://astroscan.space/
 *PASS 11 — 2026-05-03 — Audit + Migration ciblée : extension 5 BPs (api_bp +6, iss_bp +5, feeds_bp +3, pages_bp +1, system_bp +1) = 16 routes. Aucun nouveau BP, aucun nouveau service. station_web −547 lignes (9731 → 9184). Routes : /api/{catalog,catalog/<id>,v1/{iss,planets,catalog,asteroids}}, /api/iss/{crew,orbit,stream}, /api/iss-passes, /api/passages-iss, /api/sondes/live, /api/orbits/live, /api/missions/overview, /globe, /api/dsn. Différé restant : /api/iss (DI lourd), /api/iss/ground-track + /api/iss/passes (helpers SGP4 ~150 lignes), /api/satellites/* (TLE), /lab/* + /research/* (PASS futur), /api/visitors/* (PASS 12 analytics), /api/owner-ips, /api/oracle-cosmique POST, /api/guide-stellaire POST, /api/contact, /api/flights, /api/space/intelligence, /api/science/analyze-image.*  
 **🎯 Cap des 75% atteint à PASS 11.**  
 *PASS 12 — 2026-05-03 — Visitors+Analytics : analytics_bp étendu (+10 routes) — /api/owner-ips POST + DELETE, /api/visitor/score-update, /api/analytics/summary, /api/visitors/{globe-data,stream,log,geo,stats}, /track-time. Aucun nouveau BP, pattern `from station_web import` (lazy import) pour helpers globaux. station_web −349 lignes (9184 → 8835). Différé : /analytics page (~157L + helpers `_load_analytics_readonly`/`_analytics_empty_payload`), /api/visitors/connection_time (~280L logique sessions/dédoublonnage IP) — module dédié futur.*  
-**🎯 Cap des 80% atteint à PASS 12.**
+**🎯 Cap des 80% atteint à PASS 12.**  
+*PASS 13 — 2026-05-03 — Lab+Research+Science : 2 nouveaux BPs (lab_bp +16 routes, research_bp +6 routes), +22 routes total. Aucun service extrait, pattern lazy-import. station_web −416 lignes (8835 → 8419). Domaines : AA (Lab/Analysis 13 routes), AB (Research 4 + Science 1), AH (Space Intelligence 1). Différé : /api/visitors/connection_time (~280L), /analytics page (~157L), /api/oracle-cosmique POST, /api/guide-stellaire POST, /api/iss/{ground-track,passes/*} (helpers SGP4 ~150L), /api/satellites/* (TLE), /api/contact, /api/flights, /api/sdr/captures, /api/survol, /api/sky-camera/simulate, /api/microobservatory/{images,preview}, /api/hilal*, /api/telescope/trigger-nightly, /api/bepi/telemetry, /proxy-cam, /static/<path>.*  
+**🎯 Cap des 87% atteint à PASS 13.**

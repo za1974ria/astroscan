@@ -528,6 +528,14 @@ app.register_blueprint(telescope_bp)
 from app.blueprints.ai import bp as ai_bp
 app.register_blueprint(ai_bp)
 
+# Blueprint lab — added PASS 13 (Digital Lab + Space Analysis Engine)
+from app.blueprints.lab import bp as lab_bp
+app.register_blueprint(lab_bp)
+
+# Blueprint research — added PASS 13 (Research Center + Science + Space Intelligence)
+from app.blueprints.research import bp as research_bp
+app.register_blueprint(research_bp)
+
 
 @app.context_processor
 def _inject_seo_site_description():
@@ -6406,218 +6414,16 @@ def save_normalized_metadata(meta_dict):
         log.warning("save_normalized_metadata failed: %s", e)
 
 
-@app.route('/lab')
-def digital_lab():
-    return render_template('lab.html')
-
-
-@app.route("/lab/upload", methods=["POST"])
-def lab_upload():
-    if "image" not in request.files:
-        return jsonify({"error": "no image"}), 400
-    file = request.files["image"]
-    if not file.filename:
-        return jsonify({"error": "no image"}), 400
-    allowed = (".jpg", ".jpeg", ".png", ".fits", ".fit")
-    filename = secure_filename(file.filename)
-    req_len = request.content_length or 0
-    if req_len and req_len > MAX_LAB_IMAGE_BYTES:
-        return jsonify({"error": "image too large"}), 413
-    if not filename.lower().endswith(allowed):
-        return jsonify({"error": "invalid format"}), 400
-    path = os.path.join(SPACE_IMAGE_DB, filename)
-    if os.path.exists(path):
-        filename = str(int(time.time())) + "_" + filename
-        path = os.path.join(SPACE_IMAGE_DB, filename)
-    try:
-        file.save(path)
-        # Métadonnées scientifiques étendues
-        meta = {
-            "source": "UPLOAD",
-            "filename": filename,
-            "date": datetime.utcnow().isoformat() + "Z",
-            "telescope": "unknown",
-            "object_name": "unknown",
-            "instrument": "unknown",
-        }
-        meta_path = os.path.join(METADATA_DB, filename + ".json")
-        try:
-            with open(meta_path, "w", encoding="utf-8") as f:
-                json.dump(meta, f, indent=2)
-        except Exception as e:
-            log.warning("lab/upload metadata: %s", e)
-        return jsonify({"status": "saved", "file": filename, "path": path})
-    except Exception as e:
-        log.warning("lab/upload: %s", e)
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/lab/images")
-def lab_images():
-    try:
-        files = [f for f in os.listdir(SPACE_IMAGE_DB) if os.path.isfile(os.path.join(SPACE_IMAGE_DB, f)) and not f.endswith(".json")]
-        return jsonify({"images": files})
-    except Exception as e:
-        log.warning("lab/images: %s", e)
-        return jsonify({"images": []})
-
-
-@app.route("/api/lab/images")
-def api_lab_images():
-    """Liste les images brutes disponibles pour le Digital Lab (PNG/JPG)."""
-    try:
-        exts = (".png", ".jpg", ".jpeg")
-        entries = []
-        for name in os.listdir(RAW_IMAGES):
-            if not name.lower().endswith(exts):
-                continue
-            path = os.path.join(RAW_IMAGES, name)
-            if not os.path.isfile(path):
-                continue
-            entries.append({"file": name, "mtime": os.path.getmtime(path)})
-        entries.sort(key=lambda x: x["mtime"], reverse=True)
-        images = [{"file": e["file"], "url": f"/lab/raw/{e['file']}"} for e in entries]
-        return jsonify({"images": images})
-    except Exception as e:
-        log.warning("api/lab/images: %s", e)
-        return jsonify({"images": []})
-
-
-@app.route("/lab/raw/<path:filename>")
-def lab_raw_file(filename):
-    """Servez les fichiers bruts du laboratoire (images) depuis RAW_IMAGES."""
-    return send_from_directory(RAW_IMAGES, filename, as_attachment=False)
-
-
-@app.route("/api/lab/metadata/<path:filename>")
-def api_lab_metadata(filename):
-    """Return normalized metadata JSON for a lab image file, if present."""
-    try:
-        safe = secure_filename(os.path.basename(filename)) or filename
-        meta_path = os.path.join(METADATA_DB, safe + ".json")
-        if not os.path.isfile(meta_path):
-            return jsonify({})
-        with open(meta_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return jsonify(data)
-    except Exception as e:
-        log.warning("api/lab/metadata: %s", e)
-        return jsonify({})
-
-
-@app.route("/lab/analyze", methods=["POST"])
-def lab_analyze():
-    if "image" not in request.files:
-        return jsonify({"error": "no image", "stars_detected": 0, "objects_detected": 0, "brightness_mean": 0, "report": {}}), 400
-    file = request.files["image"]
-    if not file.filename:
-        return jsonify({"error": "no image", "stars_detected": 0, "objects_detected": 0, "brightness_mean": 0, "report": {}}), 400
-    try:
-        from modules.digital_lab import run_pipeline
-        filename = secure_filename(file.filename) or "analyzed.png"
-        data_bytes = file.read()
-        try:
-            os.makedirs(ANALYSED_IMAGES, exist_ok=True)
-            analysed_path = os.path.join(ANALYSED_IMAGES, filename)
-            with open(analysed_path, "wb") as out_f:
-                out_f.write(data_bytes)
-        except Exception as e:
-            log.warning("lab/analyze save analysed: %s", e)
-        result = run_pipeline(data_bytes)
-        stars_detected = len(result.get("stars") or [])
-        objects_detected = len(result.get("objects") or [])
-        brightness = result.get("brightness") or {}
-        brightness_mean = float(brightness.get("global_mean", 0.0))
-        report = result.get("report") or {}
-        def _to_native(obj):
-            if hasattr(obj, "item"):
-                return obj.item()
-            if isinstance(obj, dict):
-                return {k: _to_native(v) for k, v in obj.items()}
-            if isinstance(obj, list):
-                return [_to_native(x) for x in obj]
-            return obj
-        return jsonify({
-            "stars_detected": stars_detected,
-            "objects_detected": objects_detected,
-            "brightness_mean": _to_native(brightness_mean),
-            "report": _to_native(report),
-        })
-    except Exception as e:
-        log.warning("lab/analyze: %s", e)
-        return jsonify({
-            "error": str(e),
-            "stars_detected": 0,
-            "objects_detected": 0,
-            "brightness_mean": 0,
-            "report": {},
-        }), 500
-
-
-@app.route("/lab/dashboard")
-def lab_dashboard():
-    """Dashboard: number_of_images, latest_images, sources (from metadata)."""
-    try:
-        files = [f for f in os.listdir(SPACE_IMAGE_DB)
-                 if os.path.isfile(os.path.join(SPACE_IMAGE_DB, f))
-                 and not f.endswith(".json")]
-        latest = sorted(files, key=lambda f: os.path.getmtime(os.path.join(SPACE_IMAGE_DB, f)), reverse=True)[:10]
-        sources = set()
-        for f in files:
-            meta_path = os.path.join(METADATA_DB, f + ".json")
-            if os.path.isfile(meta_path):
-                try:
-                    with open(meta_path, "r", encoding="utf-8") as fp:
-                        m = json.load(fp)
-                        sources.add(m.get("source", "unknown"))
-                except Exception:
-                    pass
-        return jsonify({
-            "number_of_images": len(files),
-            "latest_images": latest,
-            "sources": list(sources) if sources else ["NASA APOD", "HUBBLE", "JWST", "ESA", "UPLOAD"],
-        })
-    except Exception as e:
-        log.warning("lab/dashboard: %s", e)
-        return jsonify({"number_of_images": 0, "latest_images": [], "sources": []})
-
-
-@app.route("/api/lab/run_analysis", methods=["POST"])
-def api_lab_run_analysis():
-    """Analyze the newest image in RAW_IMAGES using the Digital Lab pipeline."""
-    from modules.digital_lab import run_pipeline
-
-    exts = (".png", ".jpg", ".jpeg", ".fits", ".fit")
-    candidates = []
-
-    for name in os.listdir(RAW_IMAGES):
-        if name.lower().endswith(exts):
-            path = os.path.join(RAW_IMAGES, name)
-            if os.path.isfile(path):
-                candidates.append((os.path.getmtime(path), name))
-
-    if not candidates:
-        return jsonify({"error": "no images available"}), 400
-
-    candidates.sort(reverse=True)
-
-    filename = candidates[0][1]
-    path = os.path.join(RAW_IMAGES, filename)
-
-    result = run_pipeline(path)
-
-    return jsonify({
-        "status": "ok",
-        "filename": filename,
-        "report": result
-    })
-
-
-@app.route("/api/lab/skyview/sync")
-def force_skyview_sync():
-    """Force une synchronisation immédiate SkyView → Lab."""
-    _sync_skyview_to_lab()
-    return jsonify({"status": "skyview_sync_ok"})
+# MIGRATED TO lab_bp PASS 13 — /lab → see app/blueprints/lab/__init__.py (digital_lab)
+# MIGRATED TO lab_bp PASS 13 — /lab/upload POST → see app/blueprints/lab/__init__.py (lab_upload)
+# MIGRATED TO lab_bp PASS 13 — /lab/images → see app/blueprints/lab/__init__.py (lab_images)
+# MIGRATED TO lab_bp PASS 13 — /api/lab/images → see app/blueprints/lab/__init__.py (api_lab_images)
+# MIGRATED TO lab_bp PASS 13 — /lab/raw/<path:filename> → see app/blueprints/lab/__init__.py (lab_raw_file)
+# MIGRATED TO lab_bp PASS 13 — /api/lab/metadata/<path:filename> → see app/blueprints/lab/__init__.py (api_lab_metadata)
+# MIGRATED TO lab_bp PASS 13 — /lab/analyze POST → see app/blueprints/lab/__init__.py (lab_analyze)
+# MIGRATED TO lab_bp PASS 13 — /lab/dashboard → see app/blueprints/lab/__init__.py (lab_dashboard)
+# MIGRATED TO lab_bp PASS 13 — /api/lab/run_analysis POST → see app/blueprints/lab/__init__.py (api_lab_run_analysis)
+# MIGRATED TO lab_bp PASS 13 — /api/lab/skyview/sync → see app/blueprints/lab/__init__.py (force_skyview_sync)
 
 
 def _download_nasa_apod():
@@ -7378,189 +7184,16 @@ def api_satellite_passes():
 # MIGRATED TO pages_bp PASS 5 — /space-intelligence → see app/blueprints/pages/__init__.py (space_intelligence)
 # MIGRATED TO pages_bp PASS 5 — /module/<name> → see app/blueprints/pages/__init__.py (module)
 
-
-@app.route('/api/lab/upload', methods=['POST'])
-def api_lab_upload():
-    try:
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown")
-        ip = ip.split(",")[0].strip()
-        allowed, retry = _api_rate_limit_allow(f"lab_upload:{ip}", limit=30, window_sec=60)
-        if not allowed:
-            return jsonify({
-                'error': f'Trop de televersements. Reessayez dans {retry}s.',
-                'retry_after': retry
-            }), 429
-        os.makedirs(LAB_UPLOADS, exist_ok=True)
-        f = request.files.get('image')
-        if not f or not f.filename:
-            return jsonify({'error': 'No image file provided'}), 400
-        req_len = request.content_length or 0
-        if req_len and req_len > MAX_LAB_IMAGE_BYTES:
-            return jsonify({'error': 'Image trop volumineuse (max 25 MB)'}), 413
-        import uuid
-        ext = os.path.splitext(f.filename)[1] or '.png'
-        name = str(uuid.uuid4()) + ext
-        path = os.path.join(LAB_UPLOADS, name)
-        f.save(path)
-        return jsonify({'id': name, 'path': name, 'uploaded': True})
-    except Exception as e:
-        log.warning("api/lab/upload: %s", e)
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/lab/analyze', methods=['POST'])
-def api_lab_analyze():
-    try:
-        ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown")
-        ip = ip.split(",")[0].strip()
-        allowed, retry = _api_rate_limit_allow(f"lab_analyze:{ip}", limit=20, window_sec=60)
-        if not allowed:
-            return jsonify({
-                'error': f'Trop d analyses. Reessayez dans {retry}s.',
-                'retry_after': retry
-            }), 429
-        from modules.digital_lab import run_pipeline
-        source = None
-        payload = request.get_json(silent=True) or {}
-        if request.files.get('image'):
-            f = request.files['image']
-            req_len = request.content_length or 0
-            if req_len and req_len > MAX_LAB_IMAGE_BYTES:
-                return jsonify({'error': 'Image trop volumineuse pour analyse (max 25 MB)', 'report': {}}), 413
-            source = f.read()
-        elif payload.get('upload_id'):
-            path = os.path.join(LAB_UPLOADS, payload['upload_id'])
-            if os.path.isfile(path):
-                source = path
-        elif payload.get('raw_file'):
-            raw_name = secure_filename(os.path.basename(str(payload.get('raw_file'))))
-            raw_path = os.path.join(RAW_IMAGES, raw_name)
-            if os.path.isfile(raw_path):
-                source = raw_path
-        if source is None:
-            return jsonify({'error': 'Provide image file, upload_id or raw_file in JSON'}), 400
-        result = run_pipeline(source)
-        def _to_native(obj):
-            if hasattr(obj, 'item'):
-                return obj.item()
-            if isinstance(obj, dict):
-                return {k: _to_native(v) for k, v in obj.items()}
-            if isinstance(obj, list):
-                return [_to_native(x) for x in obj]
-            return obj
-        result = _to_native(result)
-        _lab_last_report['report'] = result.get('report', {})
-        _lab_last_report['full'] = {k: v for k, v in result.items() if k != 'report' and not (isinstance(v, (list, dict)) and len(str(v)) > 2000)}
-        return jsonify(result)
-    except Exception as e:
-        log.warning("api/lab/analyze: %s", e)
-        return jsonify({'error': str(e), 'report': {}}), 500
-
-
-@app.route('/api/lab/report', methods=['GET'])
-def api_lab_report():
-    try:
-        report = _lab_last_report.get('report', {})
-        if not report:
-            return jsonify({'report': {}, 'message': 'Run /api/lab/analyze first'})
-        return jsonify({'report': report})
-    except Exception as e:
-        return jsonify({'error': str(e), 'report': {}}), 500
-
-
-# ══════════════════════════════════════════════════════════════
-# SPACE ANALYSIS ENGINE — Advanced scientific module (new)
-# Consumes digital_lab pipeline results; does not modify digital_lab
-# ══════════════════════════════════════════════════════════════
-@app.route('/api/analysis/run', methods=['POST'])
-def api_analysis_run():
-    try:
-        from modules.space_analysis_engine import run_analysis
-        data = request.get_json(silent=True) or {}
-        pipeline_result = data.get('pipeline_result')
-        source = data.get('source', 'upload')
-        if not pipeline_result:
-            return jsonify({'error': 'Provide pipeline_result (output of digital_lab run_pipeline)'}), 400
-        result = run_analysis(pipeline_result, source=source)
-        return jsonify(result)
-    except Exception as e:
-        log.warning("api/analysis/run: %s", e)
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/analysis/compare', methods=['POST'])
-def api_analysis_compare():
-    try:
-        from modules.space_analysis_engine import compare_results_from_sources
-        data = request.get_json(silent=True) or {}
-        result_a = data.get('result_a')
-        result_b = data.get('result_b')
-        source_a = data.get('source_a', 'source_a')
-        source_b = data.get('source_b', 'source_b')
-        if not result_a or not result_b:
-            return jsonify({'error': 'Provide result_a and result_b (pipeline results)'}), 400
-        out = compare_results_from_sources(result_a, result_b, source_a=source_a, source_b=source_b)
-        return jsonify(out)
-    except Exception as e:
-        log.warning("api/analysis/compare: %s", e)
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/analysis/discoveries', methods=['GET'])
-def api_analysis_discoveries():
-    try:
-        from modules.space_analysis_engine import get_discoveries
-        limit = request.args.get('limit', 100, type=int)
-        discoveries = get_discoveries(limit=min(limit, 500))
-        return jsonify({'discoveries': discoveries, 'count': len(discoveries)})
-    except Exception as e:
-        log.warning("api/analysis/discoveries: %s", e)
-        return jsonify({'error': str(e), 'discoveries': []}), 500
-
-
-# ══════════════════════════════════════════════════════════════
-# RESEARCH CENTER — Aggregated scientific data (new)
-# Uses modules.research_center; does not modify existing modules
-# ══════════════════════════════════════════════════════════════
-@app.route('/research-center')
-def research_center_page():
-    """Research Center dashboard: Space Weather, NEO, Solar Activity, Reports."""
-    return render_template('research_center.html')
-
-
-@app.route('/api/research/summary', methods=['GET'])
-def api_research_summary():
-    try:
-        from modules.research_center import get_research_summary
-        data = get_research_summary()
-        return jsonify(data)
-    except Exception as e:
-        log.warning("api/research/summary: %s", e)
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/research/events', methods=['GET'])
-def api_research_events():
-    try:
-        from modules.research_center import get_research_events
-        limit = request.args.get('limit', 50, type=int)
-        events = get_research_events(limit=min(limit, 200))
-        return jsonify({'events': events})
-    except Exception as e:
-        log.warning("api/research/events: %s", e)
-        return jsonify({'error': str(e), 'events': []}), 500
-
-
-@app.route('/api/research/logs', methods=['GET'])
-def api_research_logs():
-    try:
-        from modules.research_center import list_logs
-        limit = request.args.get('limit', 50, type=int)
-        logs = list_logs(limit=min(limit, 200))
-        return jsonify({'logs': logs})
-    except Exception as e:
-        log.warning("api/research/logs: %s", e)
-        return jsonify({'error': str(e), 'logs': []}), 500
+# MIGRATED TO lab_bp PASS 13 — /api/lab/upload POST → see app/blueprints/lab/__init__.py (api_lab_upload)
+# MIGRATED TO lab_bp PASS 13 — /api/lab/analyze POST → see app/blueprints/lab/__init__.py (api_lab_analyze)
+# MIGRATED TO lab_bp PASS 13 — /api/lab/report → see app/blueprints/lab/__init__.py (api_lab_report)
+# MIGRATED TO lab_bp PASS 13 — /api/analysis/run POST → see app/blueprints/lab/__init__.py (api_analysis_run)
+# MIGRATED TO lab_bp PASS 13 — /api/analysis/compare POST → see app/blueprints/lab/__init__.py (api_analysis_compare)
+# MIGRATED TO lab_bp PASS 13 — /api/analysis/discoveries → see app/blueprints/lab/__init__.py (api_analysis_discoveries)
+# MIGRATED TO research_bp PASS 13 — /research-center → see app/blueprints/research/__init__.py (research_center_page)
+# MIGRATED TO research_bp PASS 13 — /api/research/summary → see app/blueprints/research/__init__.py (api_research_summary)
+# MIGRATED TO research_bp PASS 13 — /api/research/events → see app/blueprints/research/__init__.py (api_research_events)
+# MIGRATED TO research_bp PASS 13 — /api/research/logs → see app/blueprints/research/__init__.py (api_research_logs)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -7600,30 +7233,7 @@ def api_research_logs():
 # Analyse scientifique d'images
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/api/science/analyze-image', methods=['POST'])
-def api_science_analyze_image():
-    """Analyse d'image spatiale via image_science_engine."""
-    try:
-        from modules.image_science_engine import analyze_space_image
-        f = request.files.get('image')
-        if f and f.filename:
-            import uuid
-            ext = os.path.splitext(f.filename)[1] or '.png'
-            name = str(uuid.uuid4()) + ext
-            path = os.path.join(LAB_UPLOADS, name)
-            os.makedirs(LAB_UPLOADS, exist_ok=True)
-            f.save(path)
-            result = analyze_space_image(path)
-            return jsonify(result)
-        path = request.form.get('path') or (request.get_json(silent=True) or {}).get('path')
-        if path:
-            full = path if os.path.isabs(path) else os.path.join(STATION, path)
-            result = analyze_space_image(full)
-            return jsonify(result)
-        return jsonify({'error': 'Aucune image fournie (fichier ou path)'}), 400
-    except Exception as e:
-        log.warning("api/science/analyze-image: %s", e)
-        return jsonify({'error': str(e), 'stars': 0, 'galaxies': 0, 'nebula': False, 'anomalies': []}), 500
+# MIGRATED TO research_bp PASS 13 — /api/science/analyze-image POST → see app/blueprints/research/__init__.py (api_science_analyze_image)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -7637,33 +7247,7 @@ def api_science_analyze_image():
 # Intelligence spatiale
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/api/space/intelligence', methods=['GET', 'POST'])
-def api_space_intelligence():
-    """Analyse spatiale : alertes, événements, niveau de risque."""
-    try:
-        from modules.space_intelligence_engine import detect_space_event
-        data = {}
-        if request.method == 'POST' and request.get_json(silent=True):
-            data = request.get_json(silent=True) or {}
-        else:
-            iss = get_cached('iss_live', 5, _fetch_iss_live)
-            if iss:
-                data['iss'] = iss
-            try:
-                with open(f"{STATION}/static/space_weather.json", 'r', encoding='utf-8') as f:
-                    data['solar'] = json.load(f)
-            except Exception:
-                data['solar'] = {}
-            try:
-                with open(f"{STATION}/static/voyager_live.json", 'r', encoding='utf-8') as f:
-                    data['voyager'] = json.load(f)
-            except Exception:
-                data['voyager'] = {}
-        out = detect_space_event(data)
-        return jsonify(out)
-    except Exception as e:
-        log.warning("api/space/intelligence: %s", e)
-        return jsonify({'alerts': [], 'events': [], 'risk_level': 'medium', 'error': str(e)})
+# MIGRATED TO research_bp PASS 13 — /api/space/intelligence GET+POST → see app/blueprints/research/__init__.py (api_space_intelligence)
 
 
 # MIGRATED TO pages_bp PASS 5 — /space-intelligence-page → see app/blueprints/pages/__init__.py (space_intelligence_page)
