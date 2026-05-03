@@ -536,3 +536,161 @@ def api_missions_overview():
         "alerts": alerts,
         "timestamp": int(time.time()),
     })
+
+
+# ── PASS 14 — APOD alias + Survol ISS + Flights OpenSky/AirLabs ────────
+@bp.route("/api/apod")
+def api_apod_alias():
+    """Alias /api/apod → fetch direct via services.nasa_service."""
+    try:
+        from services.nasa_service import _fetch_nasa_apod
+        payload = get_cached("nasa_apod_v1", 1800, _fetch_nasa_apod)
+        code = 200 if payload.get("ok") else 502
+        return jsonify(payload), code
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/survol")
+def api_survol():
+    """Position ISS + zone survolée (Nominatim reverse geocoding)."""
+    import urllib.request
+    try:
+        iss_url = "https://api.wheretheiss.at/v1/satellites/25544"
+        req = urllib.request.Request(iss_url)
+        with urllib.request.urlopen(req, timeout=10) as r:
+            iss_data = json.loads(r.read())
+        lat = iss_data.get("latitude", 0)
+        lon = iss_data.get("longitude", 0)
+
+        geo_url = (
+            f"https://nominatim.openstreetmap.org/reverse?"
+            f"format=json&lat={lat}&lon={lon}&zoom=5"
+        )
+        req2 = urllib.request.Request(
+            geo_url,
+            headers={
+                "User-Agent": "AstroScan-OrbitalChohra/2.0",
+                "Accept-Language": "fr",
+            },
+        )
+        with urllib.request.urlopen(req2, timeout=10) as r2:
+            geo_data = json.loads(r2.read())
+
+        if isinstance(geo_data, dict) and geo_data.get("error"):
+            zone = "🌊 Océan / Zone non cartographiée"
+            pays = "Océan"
+        else:
+            addr = geo_data.get("address") or {}
+            zone = geo_data.get("display_name", "Inconnu")
+            pays = addr.get("country", "Inconnu")
+
+        return jsonify({"lat": lat, "lon": lon, "zone": zone, "pays": pays, "statut": "ok"})
+    except Exception as e:
+        log.warning("api/survol: %s", e)
+        return jsonify({"statut": "erreur", "message": str(e)})
+
+
+# Cache local OpenSky / AirLabs (30s, partagé entre workers via Redis idéalement)
+_flights_cache: dict = {"data": None, "ts": 0.0, "airlabs_count": 0}
+
+
+@bp.route("/api/flights")
+def api_flights():
+    """OpenSky prioritaire ; AirLabs secours ; cache 30 s ; repli stale."""
+    import time as _time
+    import requests as _req
+
+    now = _time.time()
+    if (
+        _flights_cache.get("data") is not None
+        and (now - float(_flights_cache.get("ts") or 0.0)) < 30
+    ):
+        return jsonify(_flights_cache["data"])
+
+    OPENSKY_USER = (os.environ.get("OPENSKY_USER") or "").strip()
+    OPENSKY_PASS = (os.environ.get("OPENSKY_PASS") or "").strip()
+    AIRLABS_KEY = (os.environ.get("AIRLABS_KEY") or "").strip()
+
+    # Source 1 : OpenSky
+    try:
+        auth = (OPENSKY_USER, OPENSKY_PASS) if OPENSKY_USER else None
+        r = _req.get(
+            "https://opensky-network.org/api/states/all",
+            timeout=12,
+            auth=auth,
+            headers={"User-Agent": "AstroScan/2.0"},
+        )
+        if r.status_code == 200:
+            data = r.json()
+            states = []
+            for s in data.get("states") or []:
+                if not s or len(s) < 11:
+                    continue
+                if s[5] is None or s[6] is None:
+                    continue
+                states.append({
+                    "callsign": (s[1] or "").strip(),
+                    "origin": s[2] or "??",
+                    "lon": s[5],
+                    "lat": s[6],
+                    "alt": round(s[7] or 0),
+                    "speed": round((s[9] or 0) * 3.6),
+                    "heading": round(s[10] or 0),
+                    "on_ground": s[8],
+                })
+            result = {
+                "states": states,
+                "source": "OpenSky",
+                "count": len(states),
+                "timestamp": int(now),
+            }
+            _flights_cache["data"] = result
+            _flights_cache["ts"] = now
+            return jsonify(result)
+    except Exception as e:
+        log.warning("flights OpenSky: %s", e)
+
+    # Source 2 : AirLabs (fallback)
+    if AIRLABS_KEY:
+        try:
+            r = _req.get(
+                f"https://airlabs.co/api/v9/flights?api_key={AIRLABS_KEY}",
+                timeout=12,
+            )
+            if r.status_code == 200:
+                d = r.json()
+                states = []
+                for f in (d.get("response") or [])[:300]:
+                    if f.get("lat") is None or f.get("lng") is None:
+                        continue
+                    states.append({
+                        "callsign": f.get("flight_iata") or f.get("flight_icao") or "",
+                        "origin": f.get("flag") or "??",
+                        "lon": f["lng"],
+                        "lat": f["lat"],
+                        "alt": round(f.get("alt") or 0),
+                        "speed": round((f.get("speed") or 0)),
+                        "heading": round(f.get("dir") or 0),
+                        "on_ground": False,
+                    })
+                _flights_cache["airlabs_count"] = int(_flights_cache.get("airlabs_count", 0)) + 1
+                result = {
+                    "states": states,
+                    "source": "AirLabs",
+                    "count": len(states),
+                    "airlabs_calls": _flights_cache["airlabs_count"],
+                    "timestamp": int(now),
+                }
+                _flights_cache["data"] = result
+                _flights_cache["ts"] = now
+                return jsonify(result)
+        except Exception as e:
+            log.warning("flights AirLabs: %s", e)
+
+    # Repli stale (cache périmé) ou échec total
+    if _flights_cache.get("data"):
+        stale = dict(_flights_cache["data"])
+        stale["stale"] = True
+        return jsonify(stale)
+    return jsonify({"states": [], "source": "none", "count": 0, "error": "all sources failed"})

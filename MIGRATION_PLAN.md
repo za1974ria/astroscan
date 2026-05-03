@@ -9,9 +9,9 @@
 ### Monolithe station_web.py
 | Métrique | Valeur |
 |----------|--------|
-| Lignes totales | 8 419 (après PASS 13) |
-| `@app.route` actifs | **27** |
-| `# MIGRATED TO` markers (migrés) | 209 |
+| Lignes totales | 8 040 (après PASS 14) |
+| `@app.route` actifs | **15** |
+| `# MIGRATED TO` markers (migrés) | 221 |
 | Total occurrences `@app.route` | 236 |
 
 ### Blueprints actifs en production (via station_web)
@@ -19,12 +19,12 @@
 |-----------|--------|--------|
 | seo_bp | app/blueprints/seo/routes.py | 3 |
 | apod_bp | app/blueprints/apod/routes.py | 3 |
-| sdr_bp | app/blueprints/sdr/routes.py | 4 |
-| iss_bp | app/blueprints/iss/routes.py | 10 (+5 PASS 11) |
+| sdr_bp | app/blueprints/sdr/routes.py | 5 (+1 PASS 14) |
+| iss_bp | app/blueprints/iss/routes.py | 13 (+5 PASS 11, +3 PASS 14) |
 | i18n_bp | app/blueprints/i18n/__init__.py | 1 |
 | api_bp | app/blueprints/api/__init__.py | 19 (+6 PASS 11) |
 | pages_bp | app/blueprints/pages/__init__.py | 25 (+21 PASS 5, +1 PASS 11) |
-| main_bp | app/blueprints/main/__init__.py | 10 (+4 PASS 5) |
+| main_bp | app/blueprints/main/__init__.py | 11 (+4 PASS 5, +1 PASS 14) |
 | system_bp | app/blueprints/system/__init__.py | 20 (+11 PASS 4, +1 PASS 11) |
 | analytics_bp | app/blueprints/analytics/__init__.py | 16 (+10 PASS 12) |
 | export_bp | app/blueprints/export/__init__.py | 5 (+2 PASS 4) |
@@ -32,12 +32,13 @@
 | archive_bp | app/blueprints/archive/__init__.py | 7 (NEW PASS 6) |
 | weather_bp | app/blueprints/weather/__init__.py | 18 (NEW PASS 7) |
 | astro_bp | app/blueprints/astro/__init__.py | 6 (NEW PASS 7) |
-| feeds_bp | app/blueprints/feeds/__init__.py | 27 (NEW PASS 8, +3 PASS 11) |
+| feeds_bp | app/blueprints/feeds/__init__.py | 30 (NEW PASS 8, +3 PASS 11, +3 PASS 14) |
 | telescope_bp | app/blueprints/telescope/__init__.py | 15 (NEW PASS 9) |
 | ai_bp | app/blueprints/ai/__init__.py | 13 (NEW PASS 10) |
 | lab_bp | app/blueprints/lab/__init__.py | 16 (NEW PASS 13) |
 | research_bp | app/blueprints/research/__init__.py | 6 (NEW PASS 13) |
-| **TOTAL MIGRÉ** | | **236 routes** |
+| satellites_bp | app/blueprints/satellites/__init__.py | 4 (NEW PASS 14) |
+| **TOTAL MIGRÉ** | | **248 routes** |
 
 > **Note PASS 4 :** export_bp enregistré (était créé mais non enregistré). system_bp +11 routes (health, selftest, tle/refresh, latest, sync/state, telescope/sources, accuracy/export.csv, api/health, status, stream/status).  
 > **Note PASS 5 :** pages_bp +21 routes (/, /portail, /technical, /dashboard, /overlord_live, /galerie, /observatoire, /vision-2026, /sondes, /telemetrie-sondes, /ce_soir, /research, /space, /space-intelligence, /module/<name>, /demo, /space-intelligence-page, /aladin, /carte-du-ciel, /europe-live, /flight-radar). main_bp +4 routes (/sw.js, /manifest.json, /api/push/subscribe, /favicon.ico). 2 doublons supprimés du monolithe (/sitemap.xml, /robots.txt — déjà dans seo_bp).  
@@ -49,12 +50,13 @@
 > **Note PASS 11 :** Migration ciblée 16 routes via extension de 5 BPs existants (api_bp +6, iss_bp +5, feeds_bp +3, pages_bp +1, system_bp +1). Aucun nouveau BP créé. Domaines couverts : I (ISS étendu : crew, orbit, stream, n2yo passes, file passages), X/Y (Catalog + V1 API : catalog, v1/iss, v1/planets, v1/catalog, v1/asteroids), M (sondes/live, orbits/live, missions/overview), AF (globe page), AN (DSN). station_web.py −547 lignes (9731 → 9184).  
 > **Note PASS 12 :** analytics_bp étendu (+10 routes) : Owner IPs CRUD (POST + DELETE), visitor scoring (score-update), analytics summary (KPIs+top), visitors live (globe-data, stream SSE, log, geo via ip-api.com, stats), track-time. Helpers réutilisés via `from station_web import` (`_get_db_visitors`, `_invalidate_owner_ips_cache`, `_compute_human_score`, `_register_unique_visit_from_request`, `get_global_stats`). Aucun service extrait — pattern import-late. station_web.py −349 lignes (9184 → 8835).  
 > **Note PASS 13 :** 2 nouveaux BPs créés. lab_bp (+16 routes) — Digital Lab pages (`/lab`, `/lab/dashboard`, `/lab/images`, `/lab/raw/<file>`), upload+analyze (`/lab/upload`, `/lab/analyze`, `/api/lab/{upload,analyze,report,images,metadata,run_analysis,skyview/sync}`), Space Analysis Engine (`/api/analysis/{run,compare,discoveries}`). research_bp (+6 routes) — `/research-center` page, `/api/research/{summary,events,logs}`, `/api/science/analyze-image`, `/api/space/intelligence`. Aucun service extrait — pattern lazy-import pour `SPACE_IMAGE_DB`, `METADATA_DB`, `RAW_IMAGES`, `LAB_UPLOADS`, `_lab_last_report`, `_api_rate_limit_allow`, `_sync_skyview_to_lab`, `_fetch_iss_live`. station_web.py −416 lignes (8835 → 8419).  
-> **🎯 Cap des 75% atteint à PASS 11. Cap des 79% atteint à PASS 12. Cap des 87% atteint à PASS 13.**  
+> **Note PASS 14 :** 1 nouveau BP créé (satellites_bp +4 routes : `/api/satellite/<name>`, `/api/satellites/tle`, `/api/satellites/tle/debug`, `/api/satellite/passes`). 4 BPs étendus : iss_bp +3 (ground-track, passes, passes/<lat>/<lon>), feeds_bp +3 (apod alias, survol, flights), sdr_bp +1 (captures — différé PASS 2B levé), main_bp +1 (contact form). 1 service extrait : app/services/iss_compute.py (~190 lignes — `compute_iss_ground_track`, `compute_iss_passes_for_observer`, `compute_iss_passes_tlemcen`, `_az_to_direction`). Total +12 routes. station_web.py −379 lignes (8419 → 8040).  
+> **🎯 Cap des 75% atteint à PASS 11. Cap des 79% à PASS 12. Cap des 87% à PASS 13. Cap des 92% à PASS 14.**  
 > **⚠️ RESTART REQUIS** : `sudo systemctl restart astroscan` — modifications en attente de reload Gunicorn.
 
 ### Progression
-- Routes migrées : **236 / 269** ≈ **88%**
-- Routes restantes dans monolithe : **27 actives** (−22 vs PASS 12)
+- Routes migrées : **248 / 269** ≈ **92%**
+- Routes restantes dans monolithe : **15 actives** (−12 vs PASS 13)
 
 ---
 
@@ -587,4 +589,6 @@ systemctl restart astroscan && sleep 15 && curl -I https://astroscan.space/
 *PASS 12 — 2026-05-03 — Visitors+Analytics : analytics_bp étendu (+10 routes) — /api/owner-ips POST + DELETE, /api/visitor/score-update, /api/analytics/summary, /api/visitors/{globe-data,stream,log,geo,stats}, /track-time. Aucun nouveau BP, pattern `from station_web import` (lazy import) pour helpers globaux. station_web −349 lignes (9184 → 8835). Différé : /analytics page (~157L + helpers `_load_analytics_readonly`/`_analytics_empty_payload`), /api/visitors/connection_time (~280L logique sessions/dédoublonnage IP) — module dédié futur.*  
 **🎯 Cap des 80% atteint à PASS 12.**  
 *PASS 13 — 2026-05-03 — Lab+Research+Science : 2 nouveaux BPs (lab_bp +16 routes, research_bp +6 routes), +22 routes total. Aucun service extrait, pattern lazy-import. station_web −416 lignes (8835 → 8419). Domaines : AA (Lab/Analysis 13 routes), AB (Research 4 + Science 1), AH (Space Intelligence 1). Différé : /api/visitors/connection_time (~280L), /analytics page (~157L), /api/oracle-cosmique POST, /api/guide-stellaire POST, /api/iss/{ground-track,passes/*} (helpers SGP4 ~150L), /api/satellites/* (TLE), /api/contact, /api/flights, /api/sdr/captures, /api/survol, /api/sky-camera/simulate, /api/microobservatory/{images,preview}, /api/hilal*, /api/telescope/trigger-nightly, /api/bepi/telemetry, /proxy-cam, /static/<path>.*  
-**🎯 Cap des 87% atteint à PASS 13.**
+**🎯 Cap des 87% atteint à PASS 13.**  
+*PASS 14 — 2026-05-03 — ISS Compute + Satellites + résiduels : 1 nouveau BP (satellites_bp 4 routes), 4 BPs étendus (iss_bp +3, feeds_bp +3, sdr_bp +1, main_bp +1) = +12 routes. 1 service extrait : iss_compute.py (~190L — SGP4 ground-track + passes Tlemcen/observateur + _az_to_direction). station_web −379 lignes (8419 → 8040). Différé PASS 2B levé : /api/sdr/captures (DB extraite). Différé restant : /analytics page (~157L), /api/visitors/connection_time (~280L), /api/oracle-cosmique POST (~200L), /api/guide-stellaire POST (~80L), /api/iss (DI 16 args), /api/sky-camera/simulate, /api/microobservatory/{images,preview}, /api/hilal* (~400L astropy), /api/telescope/trigger-nightly, /api/bepi/telemetry, /proxy-cam, /static/<path>, /api/oracle alias, /api/voyager-live (vérifier), /api/feeds/all (vérifier).*  
+**🎯 Cap des 92% atteint à PASS 14.**

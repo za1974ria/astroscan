@@ -265,3 +265,55 @@ def api_passages_iss():
             "message": str(e),
             "prochains_passages": [],
         }), 500
+
+
+# ── PASS 14 — ISS compute (SGP4 ground-track + passes) ───────────────
+@iss_bp.route("/api/iss/ground-track")
+def api_iss_ground_track():
+    """Orbite projetée au sol pour la carte ISS Tracker (cache 5 min)."""
+    from flask import jsonify as _jsonify
+    from app.utils.cache import get_cached
+    from app.services.iss_compute import compute_iss_ground_track
+    try:
+        data = get_cached("iss_ground_track_v1", 300, compute_iss_ground_track)
+        return _jsonify(data if isinstance(data, dict) else {"track": []})
+    except Exception as e:
+        log.warning("api/iss/ground-track: %s", e)
+        return _jsonify({"track": [], "error": str(e)})
+
+
+@iss_bp.route("/api/iss/passes")
+def api_iss_passes_tlemcen():
+    """Prochains passages ISS sur Tlemcen — SGP4 local, cache 2h."""
+    from flask import jsonify as _jsonify
+    from app.utils.cache import get_cached
+    from app.services.iss_compute import compute_iss_passes_tlemcen
+    try:
+        data = get_cached("iss_passes_rich", 7200, compute_iss_passes_tlemcen)
+        return _jsonify(data)
+    except Exception as e:
+        log.warning("api/iss/passes: %s", e)
+        return _jsonify({"error": str(e)}), 500
+
+
+@iss_bp.route("/api/iss/passes/<float:lat>/<float:lon>")
+def api_iss_passes_observer(lat, lon):
+    """Prochains passages pour coordonnées (ville) — même moteur que Tlemcen."""
+    from flask import jsonify as _jsonify
+    from app.utils.cache import get_cached
+    from app.services.iss_compute import compute_iss_passes_for_observer
+    if abs(lat) > 90 or abs(lon) > 180:
+        return _jsonify({
+            "ok": False, "passes": [], "error": "coordonnées invalides",
+        }), 400
+    cache_key = "iss_passes_obs_{:.4f}_{:.4f}".format(lat, lon)
+
+    def _fn():
+        return compute_iss_passes_for_observer(lat, lon)
+
+    try:
+        data = get_cached(cache_key, 7200, _fn)
+        return _jsonify({"ok": True, "passes": data if isinstance(data, list) else []})
+    except Exception as e:
+        log.warning("api/iss/passes/observer: %s", e)
+        return _jsonify({"ok": False, "passes": [], "error": str(e)}), 500

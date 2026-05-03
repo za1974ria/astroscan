@@ -536,6 +536,10 @@ app.register_blueprint(lab_bp)
 from app.blueprints.research import bp as research_bp
 app.register_blueprint(research_bp)
 
+# Blueprint satellites — added PASS 14 (TLE catalog + per-satellite SGP4 + passes)
+from app.blueprints.satellites import bp as satellites_bp
+app.register_blueprint(satellites_bp)
+
 
 @app.context_processor
 def _inject_seo_site_description():
@@ -3476,51 +3480,7 @@ def _get_satellite_tle_by_name(target_name):
     return None, None, canonical
 
 
-@app.route('/api/satellite/<name>')
-def api_satellite(name):
-    satellite_name = str(name or "").upper()
-    if satellite_name not in SATELLITES:
-        return jsonify({
-            "ok": False,
-            "error": "unknown_satellite",
-            "available": list_satellites(),
-        }), 404
-
-    tle1, tle2, resolved_name = _get_satellite_tle_by_name(satellite_name)
-    if not (tle1 and tle2):
-        return jsonify({
-            "ok": False,
-            "name": satellite_name,
-            "norad_id": SATELLITES[satellite_name],
-            "meta": {
-                "status": "no_tle",
-                "source": "tle",
-            },
-        })
-
-    sgp4_data, reason = propagate_tle_debug(tle1, tle2)
-    if sgp4_data:
-        return jsonify({
-            "ok": True,
-            "name": resolved_name,
-            "norad_id": SATELLITES[satellite_name],
-            "sgp4": sgp4_data,
-            "meta": {
-                "status": "live",
-                "source": "SGP4",
-            },
-        })
-
-    return jsonify({
-        "ok": False,
-        "name": resolved_name,
-        "norad_id": SATELLITES[satellite_name],
-        "meta": {
-            "status": "fallback",
-            "source": "SGP4",
-            "reason": reason,
-        },
-    })
+# MIGRATED TO satellites_bp PASS 14 — /api/satellite/<name> → see app/blueprints/satellites/__init__.py (api_satellite)
 
 
 # MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
@@ -3967,19 +3927,7 @@ def _call_ai(prompt):
 #         {'name':'Madrid EA4RCU','country':'Espagne','flag':'🇪🇸','status':'online','freq':'137MHz'},
 #     ]})
 
-@app.route('/api/sdr/captures')
-def api_sdr_captures():
-    try:
-        conn = get_db()
-        rows = conn.execute(
-            "SELECT id, timestamp, source, COALESCE(title,'') as title "
-            "FROM observations WHERE source LIKE '%SDR%' OR source LIKE '%NOAA%' "
-            "ORDER BY id DESC LIMIT 10"
-        ).fetchall()
-        conn.close()
-        return jsonify({'ok': True, 'captures': [dict(r) for r in rows]})
-    except Exception as e:
-        return jsonify({'ok': False, 'captures': []})
+# MIGRATED TO sdr_bp PASS 14 — /api/sdr/captures → see app/blueprints/sdr/routes.py (api_sdr_captures)
 
 # ══════════════════════════════════════════════════════════════
 # API — NASA SkyView (Goddard / HEASARC, gratuit, sans compte)
@@ -4423,16 +4371,7 @@ def api_guide_stellaire():
 # MIGRATED TO weather_bp PASS 7 — /api/weather/bulletins/save → see app/blueprints/weather/__init__.py (api_weather_bulletins_save)
 
 
-@app.route("/api/apod")
-def api_apod_alias():
-    """Alias /api/apod → /api/nasa/apod (feeds_bp PASS 8)."""
-    try:
-        from services.nasa_service import _fetch_nasa_apod
-        payload = get_cached('nasa_apod_v1', 1800, _fetch_nasa_apod)
-        code = 200 if payload.get("ok") else 502
-        return jsonify(payload), code
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+# MIGRATED TO feeds_bp PASS 14 — /api/apod alias → see app/blueprints/feeds/__init__.py (api_apod_alias)
 
 
 @app.route("/api/oracle", methods=["POST"])
@@ -6187,15 +6126,7 @@ def _compute_iss_ground_track():
         return {"track": []}
 
 
-@app.route("/api/iss/ground-track")
-def api_iss_ground_track():
-    """Orbite projetée au sol pour la carte ISS Tracker (cache 5 min)."""
-    try:
-        data = get_cached("iss_ground_track_v1", 300, _compute_iss_ground_track)
-        return jsonify(data if isinstance(data, dict) else {"track": []})
-    except Exception as e:
-        log.warning("api/iss/ground-track: %s", e)
-        return jsonify({"track": [], "error": str(e)})
+# MIGRATED TO iss_bp PASS 14 — /api/iss/ground-track → see app/blueprints/iss/routes.py (api_iss_ground_track)
 
 
 # MIGRATED TO iss_bp PASS 11 — /api/iss/orbit → see app/blueprints/iss/routes.py (api_iss_orbit)
@@ -6204,33 +6135,8 @@ def api_iss_ground_track():
 # MIGRATED TO iss_bp PASS 11 — /api/iss/crew → see app/blueprints/iss/routes.py (api_iss_crew)
 
 
-@app.route("/api/iss/passes")
-def api_iss_passes_tlemcen():
-    """Prochains passages ISS sur Tlemcen — SGP4 local, cache 2h."""
-    try:
-        data = get_cached("iss_passes_rich", 7200, _compute_iss_passes_tlemcen)
-        return jsonify(data)
-    except Exception as e:
-        log.warning("api/iss/passes: %s", e)
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/iss/passes/<float:lat>/<float:lon>")
-def api_iss_passes_observer(lat, lon):
-    """Prochains passages pour coordonnées (ville) — même moteur que Tlemcen."""
-    if abs(lat) > 90 or abs(lon) > 180:
-        return jsonify({"ok": False, "passes": [], "error": "coordonnées invalides"}), 400
-    cache_key = "iss_passes_obs_{:.4f}_{:.4f}".format(lat, lon)
-
-    def _fn():
-        return _compute_iss_passes_for_observer(lat, lon)
-
-    try:
-        data = get_cached(cache_key, 7200, _fn)
-        return jsonify({"ok": True, "passes": data if isinstance(data, list) else []})
-    except Exception as e:
-        log.warning("api/iss/passes/observer: %s", e)
-        return jsonify({"ok": False, "passes": [], "error": str(e)}), 500
+# MIGRATED TO iss_bp PASS 14 — /api/iss/passes → see app/blueprints/iss/routes.py (api_iss_passes_tlemcen)
+# MIGRATED TO iss_bp PASS 14 — /api/iss/passes/<float:lat>/<float:lon> → see app/blueprints/iss/routes.py (api_iss_passes_observer)
 
 
 def _fetch_swpc_alerts():
@@ -6334,34 +6240,7 @@ def _fetch_swpc_alerts():
 # MIGRATED TO pages_bp PASS 11 — /globe → see app/blueprints/pages/__init__.py (globe)
 
 
-@app.route('/api/survol')
-def api_survol():
-    try:
-        import urllib.request
-        iss_url = "https://api.wheretheiss.at/v1/satellites/25544"
-        req = urllib.request.Request(iss_url)
-        with urllib.request.urlopen(req, timeout=10) as r:
-            iss_data = json.loads(r.read())
-        lat = iss_data.get('latitude', 0)
-        lon = iss_data.get('longitude', 0)
-
-        geo_url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&zoom=5"
-        req2 = urllib.request.Request(geo_url, headers={'User-Agent': 'AstroScan-OrbitalChohra/2.0', 'Accept-Language': 'fr'})
-        with urllib.request.urlopen(req2, timeout=10) as r2:
-            geo_data = json.loads(r2.read())
-
-        if isinstance(geo_data, dict) and geo_data.get('error'):
-            zone = "🌊 Océan / Zone non cartographiée"
-            pays = "Océan"
-        else:
-            addr = geo_data.get('address') or {}
-            zone = geo_data.get('display_name', 'Inconnu')
-            pays = addr.get('country', 'Inconnu')
-
-        return jsonify({'lat': lat, 'lon': lon, 'zone': zone, 'pays': pays, 'statut': 'ok'})
-    except Exception as e:
-        log.warning("api/survol: %s", e)
-        return jsonify({'statut': 'erreur', 'message': str(e)})
+# MIGRATED TO feeds_bp PASS 14 — /api/survol → see app/blueprints/feeds/__init__.py (api_survol)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -7004,53 +6883,8 @@ def _parse_tle_file(path, limit=None):
     return out
 
 
-@app.route("/api/satellites/tle")
-def api_satellites_tle():
-    """
-    Serves real Celestrak active TLE from data/tle/active.tle. Fallback only if file missing or empty.
-    """
-    try:
-        satellites = _parse_tle_file(TLE_ACTIVE_PATH, limit=TLE_MAX_SATELLITES)
-        if not satellites:
-            log.info("api/satellites/tle: cache empty or missing, using fallback TLE")
-            satellites = [
-                {"name": s["name"], "line1": s["tle1"], "line2": s["tle2"]}
-                for s in _TLE_FOR_PASSES
-            ]
-        out = [
-            {"name": s.get("name", "Unknown"), "tle1": s.get("line1", ""), "tle2": s.get("line2", "")}
-            for s in satellites[:TLE_MAX_SATELLITES]
-        ]
-        log.info("TLE satellites served: %s", len(out))
-        if os.path.isfile(TLE_ACTIVE_PATH):
-            log.info("TLE FILE SIZE: %s", os.path.getsize(TLE_ACTIVE_PATH))
-        return jsonify({
-            "source": "celestrak",
-            "group": "active",
-            "format": "tle",
-            "satellites": out,
-        })
-    except Exception as e:
-        log.warning("api/satellites/tle: %s", e)
-        return jsonify({
-            "source": "celestrak",
-            "group": "active",
-            "format": "tle",
-            "satellites": [],
-        })
-
-
-@app.route("/api/satellites/tle/debug")
-def debug_tle():
-    exists = os.path.exists(TLE_ACTIVE_PATH)
-    size = os.path.getsize(TLE_ACTIVE_PATH) if exists else 0
-    sats = _parse_tle_file(TLE_ACTIVE_PATH, limit=10) if exists else []
-    return jsonify({
-        "file_exists": exists,
-        "file_size": size,
-        "satellite_count": len(sats),
-        "sample": sats[:2],
-    })
+# MIGRATED TO satellites_bp PASS 14 — /api/satellites/tle → see app/blueprints/satellites/__init__.py (api_satellites_tle)
+# MIGRATED TO satellites_bp PASS 14 — /api/satellites/tle/debug → see app/blueprints/satellites/__init__.py (debug_tle)
 
 
 
@@ -7113,70 +6947,7 @@ def _elevation_above_observer(lat, lon, jd, fr, obs_teme, obs_norm, sat_teme):
     return math.degrees(math.asin(max(-1, min(1, dot))))
 
 
-@app.route("/api/satellite/passes")
-def api_satellite_passes():
-    """Prédiction des prochains passages (élévation > 10°) pour un observateur lat/lon. Utilisable par le radar."""
-    lat = request.args.get("lat", type=float)
-    lon = request.args.get("lon", type=float)
-    if lat is None or lon is None:
-        return jsonify({"error": "lat and lon required", "passes": []}), 400
-    passes_out = []
-    try:
-        from sgp4.api import Satrec, jday
-        import math
-        # Observateur ECEF (km) puis conversion TEME pour un jd donné
-        rad = math.radians
-        a, b = 6378.137, 6356.752
-        coslat = math.cos(rad(lat))
-        sinlat = math.sin(rad(lat))
-        n = a * a / math.sqrt(a * a * coslat * coslat + b * b * sinlat * sinlat)
-        x_ecef = (n + 0) * coslat * math.cos(rad(lon))
-        y_ecef = (n + 0) * coslat * math.sin(rad(lon))
-        z_ecef = (n * (b * b) / (a * a) + 0) * sinlat
-        obs_ecef = (x_ecef, y_ecef, z_ecef)
-        obs_norm = math.sqrt(x_ecef * x_ecef + y_ecef * y_ecef + z_ecef * z_ecef)
-
-        def obs_teme_at(jd, fr):
-            t = (jd - 2451545.0) + fr
-            gmst_deg = (280.46061837 + 360.98564736629 * t) % 360
-            gmst = math.radians(gmst_deg)
-            c, s = math.cos(gmst), math.sin(gmst)
-            return (c * obs_ecef[0] - s * obs_ecef[1], s * obs_ecef[0] + c * obs_ecef[1], obs_ecef[2])
-
-        from datetime import timedelta
-        now = datetime.utcnow()
-        # Fenêtre 24 h, pas 2 min
-        for sat in _TLE_FOR_PASSES:
-            rec = Satrec.twoline2rv(sat["tle1"], sat["tle2"])
-            next_pass_dt = None
-            max_elev = 0.0
-            for minute in range(0, 24 * 60, 2):
-                t = now + timedelta(minutes=minute)
-                jd, fr = jday(t.year, t.month, t.day, t.hour, t.minute, t.second + t.microsecond / 1e6)
-                obs_teme = obs_teme_at(jd, fr)
-                e, r, v = rec.sgp4(jd, fr)
-                if e != 0:
-                    continue
-                elev = _elevation_above_observer(lat, lon, jd, fr, obs_teme, obs_norm, (r[0], r[1], r[2]))
-                if elev > 10:
-                    if next_pass_dt is None:
-                        next_pass_dt = t
-                    max_elev = max(max_elev, elev)
-                elif next_pass_dt is not None:
-                    break
-            if next_pass_dt is not None:
-                passes_out.append({
-                    "name": sat["name"],
-                    "elevation": round(max_elev, 1),
-                    "next_pass": next_pass_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                })
-    except ImportError:
-        log.warning("api/satellite/passes: sgp4 not installed, returning empty passes")
-        return jsonify({"passes": [], "message": "Install sgp4 for pass prediction"})
-    except Exception as e:
-        log.warning("api/satellite/passes: %s", e)
-        return jsonify({"passes": [], "error": str(e)})
-    return jsonify({"passes": passes_out})
+# MIGRATED TO satellites_bp PASS 14 — /api/satellite/passes → see app/blueprints/satellites/__init__.py (api_satellite_passes)
 
 
 # MIGRATED TO pages_bp PASS 5 — /research → see app/blueprints/pages/__init__.py (research)
@@ -8239,159 +8010,9 @@ def proxy_cam(city):
         lock.release()
 
 
-@app.route('/contact', methods=['POST'])
-def contact_form():
-    """Formulaire de contact — enregistre la soumission dans les logs."""
-    import datetime as _dt
-    allowed, _ = _api_rate_limit_allow(_client_ip_from_request(request), limit=5, window_sec=3600)
-    if not allowed:
-        return jsonify({"ok": False, "error": "Trop de soumissions. Réessayez dans une heure."}), 429
-    try:
-        data = request.get_json(silent=True) or request.form
-        nom       = str(data.get('nom', '')).strip()[:120]
-        organisme = str(data.get('organisme', '')).strip()[:200]
-        message   = str(data.get('message', '')).strip()[:2000]
-        if not nom or not message:
-            return jsonify({"ok": False, "error": "Nom et message requis."}), 400
-        ip = _client_ip_from_request(request)
-        ts = _dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-        log.info(
-            "CONTACT_FORM | ts=%s | ip=%s | nom=%r | organisme=%r | message=%r",
-            ts, ip, nom, organisme, message[:200]
-        )
-        contact_log_path = f"{STATION}/logs/contact_messages.log"
-        try:
-            with open(contact_log_path, 'a', encoding='utf-8') as f:
-                f.write(f"---\nDate: {ts}\nIP: {ip}\nNom: {nom}\nOrganisme: {organisme}\nMessage:\n{message}\n\n")
-        except Exception as _e:
-            log.warning("contact log write error: %s", _e)
-        return jsonify({"ok": True, "message": "Message reçu. Nous vous répondrons dans les meilleurs délais."})
-    except Exception as e:
-        log.error("contact_form error: %s", e)
-        return jsonify({"ok": False, "error": "Erreur serveur."}), 500
+# MIGRATED TO main_bp PASS 14 — /contact POST → see app/blueprints/main/__init__.py (contact_form)
+# MIGRATED TO feeds_bp PASS 14 — /api/flights → see app/blueprints/feeds/__init__.py (api_flights)
 
-
-# Proxy avions OpenSky → AirLabs (cache 30 s + compteur requêtes AirLabs).
-_flights_cache = {"data": None, "ts": 0.0, "airlabs_count": 0}
-
-
-@app.route("/api/flights")
-def api_flights():
-    """OpenSky prioritaire ; AirLabs secours ; cache 30 s ; compteur AirLabs ; repli stale."""
-    import os
-    import requests as req
-
-    global _flights_cache
-
-    now = time.time()
-    if _flights_cache.get("data") is not None and (now - float(_flights_cache.get("ts") or 0.0)) < 30:
-        return jsonify(_flights_cache["data"])
-
-    OPENSKY_USER = (os.environ.get("OPENSKY_USER") or "").strip()
-    OPENSKY_PASS = (os.environ.get("OPENSKY_PASS") or "").strip()
-    AIRLABS_KEY = (os.environ.get("AIRLABS_KEY") or "").strip()
-
-    # --- Source 1 : OpenSky ---
-    try:
-        auth = (OPENSKY_USER, OPENSKY_PASS) if OPENSKY_USER else None
-        r = req.get(
-            "https://opensky-network.org/api/states/all",
-            timeout=12,
-            auth=auth,
-            headers={"User-Agent": "AstroScan/2.0"},
-        )
-        if r.status_code == 200:
-            data = r.json()
-            states = []
-            for s in data.get("states") or []:
-                if not s or len(s) < 11:
-                    continue
-                if s[5] is None or s[6] is None:
-                    continue
-                states.append(
-                    {
-                        "callsign": (s[1] or "").strip(),
-                        "origin": s[2] or "??",
-                        "lon": s[5],
-                        "lat": s[6],
-                        "alt": round(s[7] or 0),
-                        "speed": round((s[9] or 0) * 3.6),
-                        "heading": round(s[10] or 0),
-                        "on_ground": s[8],
-                    }
-                )
-            result = {
-                "states": states,
-                "time": data.get("time"),
-                "count": len(states),
-                "source": "opensky",
-                "airlabs_used": int(_flights_cache.get("airlabs_count") or 0),
-            }
-            _flights_cache.update({"data": result, "ts": now})
-            return jsonify(result)
-    except Exception:
-        pass
-
-    # --- Source 2 : AirLabs (clé en query param ; pas d'interpolation dans les logs serveur) ---
-    if AIRLABS_KEY:
-        try:
-            r = req.get(
-                "https://airlabs.co/api/v9/flights",
-                params={"api_key": AIRLABS_KEY},
-                timeout=12,
-                headers={"User-Agent": "AstroScan/2.0"},
-            )
-            if r.status_code == 200:
-                data = r.json()
-                if data.get("error"):
-                    raise ValueError(data["error"])
-                flights = data.get("response") or []
-                if not isinstance(flights, list):
-                    flights = []
-                states = []
-                for f in flights:
-                    if not isinstance(f, dict):
-                        continue
-                    if not (f.get("lat") and f.get("lng")):
-                        continue
-                    states.append(
-                        {
-                            "callsign": f.get("flight_iata") or f.get("flight_icao") or "???",
-                            "origin": f.get("flag") or f.get("dep_iata") or "??",
-                            "lon": f.get("lng"),
-                            "lat": f.get("lat"),
-                            "alt": round((f.get("alt") or 0) * 0.3048),
-                            "speed": round((f.get("speed") or 0) * 1.852),
-                            "heading": round(f.get("dir") or 0),
-                            "on_ground": False,
-                        }
-                    )
-                _flights_cache["airlabs_count"] = int(_flights_cache.get("airlabs_count") or 0) + 1
-                result = {
-                    "states": states,
-                    "time": int(now),
-                    "count": len(states),
-                    "source": "airlabs",
-                    "airlabs_used": int(_flights_cache["airlabs_count"]),
-                }
-                _flights_cache.update({"data": result, "ts": now})
-                return jsonify(result)
-        except Exception:
-            pass
-
-    if _flights_cache.get("data"):
-        old = dict(_flights_cache["data"])
-        old["stale"] = True
-        return jsonify(old)
-
-    return jsonify(
-        {
-            "states": [],
-            "count": 0,
-            "error": "all_sources_failed",
-            "airlabs_used": int(_flights_cache.get("airlabs_count") or 0),
-        }
-    )
 
 if __name__ == '__main__':
     os.makedirs(f'{STATION}/logs', exist_ok=True)

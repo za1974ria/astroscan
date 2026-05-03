@@ -83,3 +83,52 @@ def favicon():
     return send_from_directory(
         os.path.join(STATION, "static"), "favicon.ico"
     )
+
+
+# ── PASS 14 — Contact form (Domaine AM) ───────────────────────────────
+@bp.route("/contact", methods=["POST"])
+def contact_form():
+    """Formulaire de contact — enregistre la soumission dans les logs."""
+    import datetime as _dt
+    import logging as _logging
+    from flask import request
+    from station_web import _api_rate_limit_allow, _client_ip_from_request
+    log = _logging.getLogger(__name__)
+
+    allowed, _ = _api_rate_limit_allow(
+        _client_ip_from_request(request), limit=5, window_sec=3600,
+    )
+    if not allowed:
+        return jsonify({
+            "ok": False,
+            "error": "Trop de soumissions. Réessayez dans une heure.",
+        }), 429
+    try:
+        data = request.get_json(silent=True) or request.form
+        nom = str(data.get("nom", "")).strip()[:120]
+        organisme = str(data.get("organisme", "")).strip()[:200]
+        message = str(data.get("message", "")).strip()[:2000]
+        if not nom or not message:
+            return jsonify({"ok": False, "error": "Nom et message requis."}), 400
+        ip = _client_ip_from_request(request)
+        ts = _dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        log.info(
+            "CONTACT_FORM | ts=%s | ip=%s | nom=%r | organisme=%r | message=%r",
+            ts, ip, nom, organisme, message[:200],
+        )
+        contact_log_path = f"{STATION}/logs/contact_messages.log"
+        try:
+            with open(contact_log_path, "a", encoding="utf-8") as f:
+                f.write(
+                    f"---\nDate: {ts}\nIP: {ip}\nNom: {nom}\n"
+                    f"Organisme: {organisme}\nMessage:\n{message}\n\n"
+                )
+        except Exception as _e:
+            log.warning("contact log write error: %s", _e)
+        return jsonify({
+            "ok": True,
+            "message": "Message reçu. Nous vous répondrons dans les meilleurs délais.",
+        })
+    except Exception as e:
+        log.error("contact_form error: %s", e)
+        return jsonify({"ok": False, "error": "Erreur serveur."}), 500
