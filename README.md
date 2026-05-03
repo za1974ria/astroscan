@@ -210,6 +210,27 @@ Full route map is generated at runtime: `python3 -c "from wsgi import app; [prin
 
 ---
 
+## Testing
+
+The codebase ships with a three-tier pytest suite (`tests/smoke/`, `tests/unit/`,
+`tests/integration/`) and a GitHub Actions workflow that runs smoke + unit on
+every push.
+
+```bash
+make install-dev    # pytest + pytest-cov + pytest-mock
+make test           # full suite
+make test-smoke     # smoke tier only (factory, critical endpoints, WSGI loader)
+make test-unit      # pure-logic services + blueprint registration
+make test-coverage  # HTML + terminal coverage report (app/ + services/)
+```
+
+Baseline on a non-root host: **51 passed, 85 skipped, 0 failed**. Skips are
+deliberate and environment-bound (root-only `.env`, Redis-backed circuit
+breakers) — not regressions. See [tests/README.md](./tests/README.md) for
+the full layout, markers, fixtures, and skip rationale.
+
+---
+
 ## Migration History
 
 This codebase underwent a 19-pass migration from a 12,159-line monolith to a blueprint+factory architecture, executed without service interruption:
