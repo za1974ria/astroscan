@@ -496,6 +496,10 @@ app.register_blueprint(system_bp)
 from app.blueprints.analytics import bp as analytics_bp
 app.register_blueprint(analytics_bp)
 
+# Blueprint export — added PASS 4 (ephemerides, apod-history, existing CSV/JSON)
+from app.blueprints.export import bp as export_bp
+app.register_blueprint(export_bp)
+
 
 @app.context_processor
 def _inject_seo_site_description():
@@ -2193,145 +2197,12 @@ def get_user_lang():
 #     return resp
 
 # ─── EXPORT DONNÉES PUBLIQUES ────────────────────────────────────────────────
-import csv as _csv, io as _io
-
-@app.route("/api/export/visitors.csv")
-def export_visitors_csv():
-    """Export CSV statistiques visiteurs par pays — données anonymisées."""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        rows = conn.execute("""
-            SELECT country, country_code, COUNT(*) as visits,
-                   DATE(MIN(visited_at)) as first_visit,
-                   DATE(MAX(visited_at)) as last_visit
-            FROM visitor_log
-            WHERE country IS NOT NULL AND country != ''
-              AND country NOT IN ('Unknown','Inconnu')
-              AND (country_code IS NULL OR country_code != 'XX')
-              AND is_bot = 0
-            GROUP BY country, country_code
-            ORDER BY visits DESC
-        """).fetchall()
-        conn.close()
-        out = _io.StringIO()
-        writer = _csv.writer(out)
-        writer.writerow(['country', 'country_code', 'visits', 'first_visit', 'last_visit'])
-        writer.writerows(rows)
-        return Response(out.getvalue(), mimetype='text/csv; charset=utf-8',
-                        headers={'Content-Disposition': 'attachment; filename=astroscan_visitors.csv',
-                                 'Access-Control-Allow-Origin': '*'})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/export/visitors.json")
-def export_visitors_json():
-    """Export JSON statistiques visiteurs par pays avec métadonnées de citation."""
-    try:
-        import datetime as _dt, json as _json
-        conn = sqlite3.connect(DB_PATH)
-        rows = conn.execute("""
-            SELECT country, country_code, COUNT(*) as visits,
-                   DATE(MIN(visited_at)) as first_visit,
-                   DATE(MAX(visited_at)) as last_visit
-            FROM visitor_log
-            WHERE country IS NOT NULL AND country != ''
-              AND country NOT IN ('Unknown','Inconnu')
-              AND (country_code IS NULL OR country_code != 'XX')
-              AND is_bot = 0
-            GROUP BY country, country_code
-            ORDER BY visits DESC
-        """).fetchall()
-        total = conn.execute("SELECT COUNT(*) FROM visitor_log WHERE is_bot=0").fetchone()[0]
-        conn.close()
-        data = {
-            "metadata": {
-                "source": "AstroScan-Chohra", "url": "https://astroscan.space",
-                "generated_at": _dt.datetime.utcnow().isoformat() + "Z",
-                "total_human_visits": total,
-                "description": "Aggregated visitor stats by country — anonymized, no personal data",
-                "license": "CC BY 4.0 — Scientific and educational use"
-            },
-            "data": [{"country": r[0], "country_code": r[1], "visits": r[2],
-                      "first_visit": r[3], "last_visit": r[4]} for r in rows]
-        }
-        return Response(_json.dumps(data, ensure_ascii=False, indent=2),
-                        mimetype='application/json',
-                        headers={'Access-Control-Allow-Origin': '*'})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/export/ephemerides.json")
-def export_ephemerides_json():
-    """Export JSON éphémérides Tlemcen avec métadonnées scientifiques."""
-    try:
-        import datetime as _dt, json as _json
-        cached = cache_get('eph_tlemcen', 300) or {}
-        export = {
-            "metadata": {
-                "source": "AstroScan-Chohra", "location": "Tlemcen, Algeria",
-                "coordinates": {"lat": 34.8753, "lon": 1.3167, "alt_m": 800},
-                "generated_at": _dt.datetime.utcnow().isoformat() + "Z",
-                "license": "CC BY 4.0 — Scientific use",
-                "url": "https://astroscan.space/api/export/ephemerides.json",
-                "computation": "astropy 7.2 + SGP4"
-            }
-        }
-        export.update(cached)
-        return Response(_json.dumps(export, ensure_ascii=False, indent=2),
-                        mimetype='application/json',
-                        headers={'Access-Control-Allow-Origin': '*'})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/export/observations.json")
-def export_observations_json():
-    """Export JSON observations stellaires archivées (1500+ entrées avec analyse IA)."""
-    try:
-        import datetime as _dt, json as _json
-        conn = sqlite3.connect(DB_PATH)
-        rows = conn.execute("""
-            SELECT id, timestamp, source, objets_detectes, anomalie,
-                   score_confiance, analyse_gemini
-            FROM observations ORDER BY timestamp DESC LIMIT 500
-        """).fetchall()
-        conn.close()
-        data = {
-            "metadata": {
-                "source": "AstroScan-Chohra — Stellar Archive", "url": "https://astroscan.space",
-                "count": len(rows), "generated_at": _dt.datetime.utcnow().isoformat() + "Z",
-                "license": "CC BY 4.0",
-                "description": "Astronomical observations with AI analysis (Claude/Gemini)"
-            },
-            "data": [{"id": r[0], "timestamp": r[1], "source": r[2], "objects_detected": r[3],
-                      "anomaly": r[4], "confidence_score": r[5], "ai_analysis": r[6]} for r in rows]
-        }
-        return Response(_json.dumps(data, ensure_ascii=False, indent=2),
-                        mimetype='application/json',
-                        headers={'Access-Control-Allow-Origin': '*'})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/export/apod-history.json")
-def export_apod_history_json():
-    """Export JSON historique APOD depuis le cache local."""
-    try:
-        import datetime as _dt, json as _json
-        cache_path = f"{STATION}/data/apod_cache.json"
-        with open(cache_path) as f:
-            apod_cache = _json.load(f)
-        data = {
-            "metadata": {
-                "source": "AstroScan-Chohra — NASA APOD cache", "url": "https://astroscan.space",
-                "count": len(apod_cache), "generated_at": _dt.datetime.utcnow().isoformat() + "Z",
-                "license": "NASA Open Data + AstroScan FR translations CC BY 4.0"
-            },
-            "data": apod_cache
-        }
-        return Response(_json.dumps(data, ensure_ascii=False, indent=2),
-                        mimetype='application/json',
-                        headers={'Access-Control-Allow-Origin': '*'})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+# MIGRATED TO export_bp PASS 4 — see app/blueprints/export/__init__.py
+# @app.route("/api/export/visitors.csv")
+# @app.route("/api/export/visitors.json")
+# @app.route("/api/export/ephemerides.json")
+# @app.route("/api/export/observations.json")
+# @app.route("/api/export/apod-history.json")
 
 # MIGRATED TO main_bp 2026-05-02 (B-RECYCLE R3) — see app/blueprints/main/__init__.py
 # @app.route("/data")
@@ -2532,137 +2403,10 @@ API_SPEC = {
 
 
 
-@app.route('/health', methods=['GET'])
-def health_check():
-    """
-    Liveness enrichi : uptime, mémoire, disque, circuit-breakers, APIs actives.
-    Pas d'appel externe (include_external=False) pour réponse rapide.
-    """
-    import psutil, shutil
-    now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    try:
-        d = _build_status_payload_dict(now_iso, include_external=False)
-        uptime_seconds = int(d.get("uptime_seconds") or 0)
-        production_mode = d.get("production_mode")
-        tle_backend = d.get("tle_backend_status")
-        data_freshness = d.get("data_freshness")
-        tle_count = d.get("tle_count")
-        overall_status = d.get("status") or "ok"
-    except Exception as ex:
-        log.warning("health_check: %s", ex)
-        uptime_seconds = int(time.time() - START_TIME)
-        production_mode = "OFFLINE"
-        tle_backend = None
-        data_freshness = "unknown"
-        tle_count = 0
-        overall_status = "degraded"
-
-    # Mémoire process
-    try:
-        proc = psutil.Process()
-        mem_mb = round(proc.memory_info().rss / 1024 / 1024, 1)
-        mem_pct = round(psutil.virtual_memory().percent, 1)
-        memory_usage = {"process_mb": mem_mb, "system_pct": mem_pct}
-    except Exception:
-        memory_usage = {}
-
-    # Disque
-    try:
-        disk = shutil.disk_usage("/")
-        disk_usage = {
-            "total_gb": round(disk.total / 1e9, 1),
-            "used_gb":  round(disk.used  / 1e9, 1),
-            "free_gb":  round(disk.free  / 1e9, 1),
-            "pct":      round(disk.used / disk.total * 100, 1),
-        }
-    except Exception:
-        disk_usage = {}
-
-    # Circuit-breakers : état des APIs externes
-    try:
-        cb_statuses = _cb_all_status()
-        active_apis = {
-            s["name"]: s["state"]
-            for s in cb_statuses
-        }
-        open_count = sum(1 for s in cb_statuses if s["state"] == "OPEN")
-        if open_count > 0 and overall_status == "ok":
-            overall_status = "degraded"
-    except Exception:
-        active_apis = {}
-
-    return jsonify({
-        "status":        overall_status,
-        "service":       "astroscan",
-        "uptime":        uptime_seconds,
-        "uptime_sec":    uptime_seconds,
-        "mode":          production_mode,
-        "tle_status":    tle_backend,
-        "data_freshness": data_freshness,
-        "tle_count":     tle_count,
-        "memory_usage":  memory_usage,
-        "disk_usage":    disk_usage,
-        "active_apis":   active_apis,
-        "timestamp":     now_iso,
-    })
-
-
-@app.route("/selftest", methods=["GET"])
-def selftest():
-    """Auto-contrôle structurel (clés fusion) — JSON toujours valide."""
-    try:
-        status = get_status_data()
-        validation = validate_system_state(status)
-        return jsonify(
-            {
-                "selftest": "ok" if validation["valid"] else "fail",
-                "details": validation,
-            }
-        )
-    except Exception as e:
-        log.warning("selftest: %s", e)
-        try:
-            struct_log(
-                logging.ERROR,
-                category="validation",
-                event="selftest_exception",
-                error=str(e)[:400],
-            )
-        except Exception:
-            pass
-        return jsonify(
-            {
-                "selftest": "fail",
-                "error": str(e),
-                "details": {"valid": False, "errors": ["selftest_exception"]},
-            }
-        )
-
-
-
-
-
-
-
-
-@app.route('/api/tle/refresh', methods=['POST'])
-def api_tle_refresh():
-    """
-    Déclenche un rafraîchissement manuel des TLE.
-    Usage prévu : debug / appel local (aucun secret exposé).
-    """
-    try:
-        ok = fetch_tle_from_celestrak()
-        return jsonify({
-            "ok": bool(ok),
-            "status": TLE_CACHE.get("status"),
-            "count": TLE_CACHE.get("count"),
-            "last_refresh_iso": TLE_CACHE.get("last_refresh_iso"),
-            "error": TLE_CACHE.get("error"),
-        })
-    except Exception as e:
-        log.warning(f"/api/tle/refresh: {e}")
-        return jsonify({"ok": False, "error": str(e)})
+# MIGRATED TO system_bp PASS 4 — see app/blueprints/system/__init__.py
+# @app.route('/health', methods=['GET'])          → health_check()
+# @app.route('/selftest', methods=['GET'])         → selftest()
+# @app.route('/api/tle/refresh', methods=['POST']) → api_tle_refresh()
 
 
 # ══════════════════════════════════════════════════════════════
@@ -3627,67 +3371,67 @@ def api_sondes_live():
 # API — DONNÉES PRINCIPALES
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/api/latest')
-def api_latest():
-    lang = request.args.get('lang', 'fr').lower()
-    try:
-        conn = get_db()
-        cur  = conn.cursor()
-        total     = cur.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
-        anomalies = cur.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
-        sources   = cur.execute("SELECT COUNT(DISTINCT source) FROM observations").fetchone()[0]
-        try:
-            req_j = cur.execute(
-                "SELECT COUNT(*) FROM observations WHERE date(timestamp)=date('now')"
-            ).fetchone()[0]
-        except:
-            req_j = 0
-
-        try:
-            limit_arg = request.args.get('limit', '20')
-            limit = min(200, max(1, int(limit_arg))) if str(limit_arg).isdigit() else 20
-        except Exception:
-            limit = 20
-
-        try:
-            rows = cur.execute(
-                "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
-                "COALESCE(rapport_fr,'') as rapport_fr, objets_detectes, anomalie, "
-                "COALESCE(title,'') as title, COALESCE(objets_detectes,'') as type_objet, "
-                "COALESCE(score_confiance,0.0) as confidence "
-                "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
-            ).fetchall()
-        except Exception:
-            rows = cur.execute(
-                "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
-                "'' as rapport_fr, objets_detectes, anomalie, "
-                "'' as title, '' as type_objet, 0.0 as confidence "
-                "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
-            ).fetchall()
-        conn.close()
-
-        obs_list = []
-        for row in rows:
-            r = dict(row)
-            raw = r.get('rapport_gemini') or r.get('analyse_gemini') or ''
-            if lang == 'fr':
-                fr = (r.get('rapport_fr') or '').strip()
-                r['rapport_gemini'] = fr if fr else raw
-            else:
-                r['rapport_gemini'] = raw
-            r['rapport_display'] = r['rapport_gemini']
-            obs_list.append(r)
-
-        return jsonify({
-            'ok': True, 'total': total, 'anomalies': anomalies,
-            'sources': sources, 'telescopes': 9, 'req_jour': req_j,
-            'observations': obs_list,
-            'notice': 'Analyses AEGIS',
-        })
-    except Exception as e:
-        log.error(f"api_latest: {e}")
-        return jsonify({'ok': False, 'error': str(e), 'total': 0, 'observations': []})
-
+# @app.route('/api/latest')
+# def api_latest():
+#     lang = request.args.get('lang', 'fr').lower()
+#     try:
+#         conn = get_db()
+#         cur  = conn.cursor()
+#         total     = cur.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+#         anomalies = cur.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
+#         sources   = cur.execute("SELECT COUNT(DISTINCT source) FROM observations").fetchone()[0]
+#         try:
+#             req_j = cur.execute(
+#                 "SELECT COUNT(*) FROM observations WHERE date(timestamp)=date('now')"
+#             ).fetchone()[0]
+#         except:
+#             req_j = 0
+# 
+#         try:
+#             limit_arg = request.args.get('limit', '20')
+#             limit = min(200, max(1, int(limit_arg))) if str(limit_arg).isdigit() else 20
+#         except Exception:
+#             limit = 20
+# 
+#         try:
+#             rows = cur.execute(
+#                 "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
+#                 "COALESCE(rapport_fr,'') as rapport_fr, objets_detectes, anomalie, "
+#                 "COALESCE(title,'') as title, COALESCE(objets_detectes,'') as type_objet, "
+#                 "COALESCE(score_confiance,0.0) as confidence "
+#                 "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
+#             ).fetchall()
+#         except Exception:
+#             rows = cur.execute(
+#                 "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
+#                 "'' as rapport_fr, objets_detectes, anomalie, "
+#                 "'' as title, '' as type_objet, 0.0 as confidence "
+#                 "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
+#             ).fetchall()
+#         conn.close()
+# 
+#         obs_list = []
+#         for row in rows:
+#             r = dict(row)
+#             raw = r.get('rapport_gemini') or r.get('analyse_gemini') or ''
+#             if lang == 'fr':
+#                 fr = (r.get('rapport_fr') or '').strip()
+#                 r['rapport_gemini'] = fr if fr else raw
+#             else:
+#                 r['rapport_gemini'] = raw
+#             r['rapport_display'] = r['rapport_gemini']
+#             obs_list.append(r)
+# 
+#         return jsonify({
+#             'ok': True, 'total': total, 'anomalies': anomalies,
+#             'sources': sources, 'telescopes': 9, 'req_jour': req_j,
+#             'observations': obs_list,
+#             'notice': 'Analyses AEGIS',
+#         })
+#     except Exception as e:
+#         log.error(f"api_latest: {e}")
+#         return jsonify({'ok': False, 'error': str(e), 'total': 0, 'observations': []})
+# 
 # Cache images par source — FICHIERS séparés (évite que tout affiche la même image)
 _IMAGE_CACHE_TTL = 300  # 5 min — APOD/Hubble/archive changent peu
 def _source_path(s):
@@ -3789,35 +3533,35 @@ def _sync_state_write(source):
         log.warning(f"sync_state write: {e}")
     return s
 
-@app.route('/api/sync/state', methods=['GET'])
-def api_sync_state_get():
-    """État canonique partagé (PC + Android) : source télescope affichée."""
-    return jsonify({'ok': True, 'source': _sync_state_read()})
-
+# @app.route('/api/sync/state', methods=['GET'])
+# def api_sync_state_get():
+#     """État canonique partagé (PC + Android) : source télescope affichée."""
+#     return jsonify({'ok': True, 'source': _sync_state_read()})
+# 
 @app.route('/api/sync/state', methods=['POST'])
-def api_sync_state_post():
-    """Met à jour l'état partagé (quand un client change la source)."""
-    try:
-        data = request.get_json(force=True, silent=True) or {}
-        source = data.get('source') or request.form.get('source') or 'live'
-    except Exception:
-        source = 'live'
-    s = _sync_state_write(source)
-    return jsonify({'ok': True, 'source': s})
-
+# def api_sync_state_post():
+#     """Met à jour l'état partagé (quand un client change la source)."""
+#     try:
+#         data = request.get_json(force=True, silent=True) or {}
+#         source = data.get('source') or request.form.get('source') or 'live'
+#     except Exception:
+#         source = 'live'
+#     s = _sync_state_write(source)
+#     return jsonify({'ok': True, 'source': s})
+# 
 @app.route('/api/telescope/sources')
-def api_telescope_sources():
-    """Liste des sources live sélectionnables."""
-    return jsonify({
-        'ok': True,
-        'sources': [
-            {'id': 'live', 'name': 'Flux principal', 'desc': 'Dernière image du pipeline (feeder)', 'icon': '📡'},
-            {'id': 'apod', 'name': 'NASA APOD', 'desc': 'Image du jour — temps 0', 'icon': '🔭'},
-            {'id': 'hubble', 'name': 'ESA Hubble', 'desc': 'Archives Hubble — temps 0', 'icon': '🌌'},
-            {'id': 'apod_archive', 'name': 'NASA APOD (archive)', 'desc': 'Image aléatoire 2015–2024', 'icon': '📁'},
-        ]
-    })
-
+# def api_telescope_sources():
+#     """Liste des sources live sélectionnables."""
+#     return jsonify({
+#         'ok': True,
+#         'sources': [
+#             {'id': 'live', 'name': 'Flux principal', 'desc': 'Dernière image du pipeline (feeder)', 'icon': '📡'},
+#             {'id': 'apod', 'name': 'NASA APOD', 'desc': 'Image du jour — temps 0', 'icon': '🔭'},
+#             {'id': 'hubble', 'name': 'ESA Hubble', 'desc': 'Archives Hubble — temps 0', 'icon': '🌌'},
+#             {'id': 'apod_archive', 'name': 'NASA APOD (archive)', 'desc': 'Image aléatoire 2015–2024', 'icon': '📁'},
+#         ]
+#     })
+# 
 
 @app.route('/api/observatory/status')
 def api_observatory_status():
@@ -4168,23 +3912,23 @@ def api_iss():
 
 
 
-@app.route('/api/accuracy/export.csv')
-def api_accuracy_export_csv():
-    rows = get_accuracy_history()
-    lines = ["ts,distance_km"]
-    for row in rows:
-        ts = row.get("ts", "")
-        distance = row.get("distance_km", "")
-        lines.append(f"{ts},{distance}")
-    csv_payload = "\n".join(lines) + "\n"
-    return Response(
-        csv_payload,
-        mimetype="text/csv",
-        headers={
-            "Content-Disposition": 'attachment; filename="accuracy_history.csv"'
-        },
-    )
-
+# @app.route('/api/accuracy/export.csv')
+# def api_accuracy_export_csv():
+#     rows = get_accuracy_history()
+#     lines = ["ts,distance_km"]
+#     for row in rows:
+#         ts = row.get("ts", "")
+#         distance = row.get("distance_km", "")
+#         lines.append(f"{ts},{distance}")
+#     csv_payload = "\n".join(lines) + "\n"
+#     return Response(
+#         csv_payload,
+#         mimetype="text/csv",
+#         headers={
+#             "Content-Disposition": 'attachment; filename="accuracy_history.csv"'
+#         },
+#     )
+# 
 
 def _get_satellite_tle_by_name(target_name):
     target_upper = str(target_name or "").upper()
@@ -7183,61 +6927,61 @@ def api_feeds_all():
     })
 
 # ── Health check ──
-@app.route('/api/health')
-def api_health():
-    total, anom, sources = 0, 0, []
-    uptime_str = '—'
-    try:
-        conn = sqlite3.connect('/root/astro_scan/data/archive_stellaire.db', timeout=10.0)
-        total = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
-        anom  = conn.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
-        rows  = conn.execute("SELECT DISTINCT source FROM observations WHERE timestamp > datetime('now','-7 days')").fetchall()
-        sources = [r[0] for r in rows]
-        last  = conn.execute("SELECT COALESCE(title,objets_detectes,'') as t, timestamp FROM observations ORDER BY id DESC LIMIT 1").fetchone()
-        conn.close()
-    except: pass
-    try:
-        uptime_str = open('/proc/uptime').read().split()[0]
-        s = int(float(uptime_str))
-        uptime_str = f"{s//3600}h {(s%3600)//60}m"
-    except: pass
-    import os
-    payload = {
-        'ok': True, 'station': 'ORBITAL-CHOHRA',
-        'ip': '5.78.153.17', 'location': 'Tlemcen, Algérie',
-        'director': 'Zakaria Chohra — Tlemcen, Algérie',
-        'time_utc': datetime.now(timezone.utc).isoformat(),
-        'uptime': uptime_str,
-        'db': {'total': total, 'anomalies': anom, 'sources': sources},
-        'services': {
-            'gemini': 'active' if os.environ.get('GEMINI_API_KEY') else 'missing',
-            'grok':   'inactive',
-            'groq':   'active' if os.environ.get('GROQ_API_KEY')   else 'missing',
-            'nasa':   'active' if os.environ.get('NASA_API_KEY')    else 'missing',
-            'aegis': 'active', 'sdr': 'active', 'iss': 'active'
-        },
-        'coordinates': {'lat': 34.87, 'lon': 1.32, 'alt_m': 800, 'timezone': 'Africa/Algiers'}
-    }
-    # Champs opérationnels additifs (monitoring / V2) — ne modifient pas les clés historiques ci-dessus
-    try:
-        if _core_status_engine is not None:
-            payload['operational'] = _core_status_engine.build_operational_health(
-                STATION,
-                DB_PATH,
-                TLE_CACHE,
-                TLE_CACHE_FILE,
-                ws_present=True,
-                sse_present=True,
-            )
-            payload['data_credibility'] = _core_status_engine.data_credibility_stub(TLE_CACHE, TLE_CACHE_FILE)
-    except Exception as ex:
-        log.debug("api_health operational: %s", ex)
-        try:
-            payload['operational'] = {'status': 'unknown', 'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'), 'error': 'probe_partial'}
-        except Exception:
-            pass
-    return jsonify(payload)
-
+# @app.route('/api/health')
+# def api_health():
+#     total, anom, sources = 0, 0, []
+#     uptime_str = '—'
+#     try:
+#         conn = sqlite3.connect('/root/astro_scan/data/archive_stellaire.db', timeout=10.0)
+#         total = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+#         anom  = conn.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
+#         rows  = conn.execute("SELECT DISTINCT source FROM observations WHERE timestamp > datetime('now','-7 days')").fetchall()
+#         sources = [r[0] for r in rows]
+#         last  = conn.execute("SELECT COALESCE(title,objets_detectes,'') as t, timestamp FROM observations ORDER BY id DESC LIMIT 1").fetchone()
+#         conn.close()
+#     except: pass
+#     try:
+#         uptime_str = open('/proc/uptime').read().split()[0]
+#         s = int(float(uptime_str))
+#         uptime_str = f"{s//3600}h {(s%3600)//60}m"
+#     except: pass
+#     import os
+#     payload = {
+#         'ok': True, 'station': 'ORBITAL-CHOHRA',
+#         'ip': '5.78.153.17', 'location': 'Tlemcen, Algérie',
+#         'director': 'Zakaria Chohra — Tlemcen, Algérie',
+#         'time_utc': datetime.now(timezone.utc).isoformat(),
+#         'uptime': uptime_str,
+#         'db': {'total': total, 'anomalies': anom, 'sources': sources},
+#         'services': {
+#             'gemini': 'active' if os.environ.get('GEMINI_API_KEY') else 'missing',
+#             'grok':   'inactive',
+#             'groq':   'active' if os.environ.get('GROQ_API_KEY')   else 'missing',
+#             'nasa':   'active' if os.environ.get('NASA_API_KEY')    else 'missing',
+#             'aegis': 'active', 'sdr': 'active', 'iss': 'active'
+#         },
+#         'coordinates': {'lat': 34.87, 'lon': 1.32, 'alt_m': 800, 'timezone': 'Africa/Algiers'}
+#     }
+#     # Champs opérationnels additifs (monitoring / V2) — ne modifient pas les clés historiques ci-dessus
+#     try:
+#         if _core_status_engine is not None:
+#             payload['operational'] = _core_status_engine.build_operational_health(
+#                 STATION,
+#                 DB_PATH,
+#                 TLE_CACHE,
+#                 TLE_CACHE_FILE,
+#                 ws_present=True,
+#                 sse_present=True,
+#             )
+#             payload['data_credibility'] = _core_status_engine.data_credibility_stub(TLE_CACHE, TLE_CACHE_FILE)
+#     except Exception as ex:
+#         log.debug("api_health operational: %s", ex)
+#         try:
+#             payload['operational'] = {'status': 'unknown', 'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'), 'error': 'probe_partial'}
+#         except Exception:
+#             pass
+#     return jsonify(payload)
+# 
 
 
 
@@ -7555,43 +7299,43 @@ def build_status_snapshot_dict():
         return payload
 
 
-@app.route('/status')
-def api_status():
-    """
-    GET /status
-    Snapshot JSON stable pour badges UI / monitoring (pas d'appels réseau bloquants).
-    """
-    return jsonify(build_status_snapshot_dict())
+# @app.route('/status')
+# def api_status():
+#     """
+#     GET /status
+#     Snapshot JSON stable pour badges UI / monitoring (pas d'appels réseau bloquants).
+#     """
+#     return jsonify(build_status_snapshot_dict())
+# 
 
-
-@app.route("/stream/status")
-def stream_status_sse():
-    """
-    Flux SSE additif : même snapshot que /status, toutes les ~3 s.
-    Alternative stable au WebSocket pour Gunicorn multi-workers (pas de retrait de /ws/status).
-    """
-    def _gen():
-        while True:
-            try:
-                snap = build_status_snapshot_dict()
-                yield "data: " + json.dumps(snap, default=str) + "\n\n"
-            except Exception as ex:
-                try:
-                    yield "data: " + json.dumps({"error": str(ex)[:200], "stream": "status"}) + "\n\n"
-                except Exception:
-                    pass
-            time.sleep(3)
-
-    return Response(
-        stream_with_context(_gen()),
-        mimetype="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
+# @app.route("/stream/status")
+# def stream_status_sse():
+#     """
+#     Flux SSE additif : même snapshot que /status, toutes les ~3 s.
+#     Alternative stable au WebSocket pour Gunicorn multi-workers (pas de retrait de /ws/status).
+#     """
+#     def _gen():
+#         while True:
+#             try:
+#                 snap = build_status_snapshot_dict()
+#                 yield "data: " + json.dumps(snap, default=str) + "\n\n"
+#             except Exception as ex:
+#                 try:
+#                     yield "data: " + json.dumps({"error": str(ex)[:200], "stream": "status"}) + "\n\n"
+#                 except Exception:
+#                     pass
+#             time.sleep(3)
+# 
+#     return Response(
+#         stream_with_context(_gen()),
+#         mimetype="text/event-stream",
+#         headers={
+#             "Cache-Control": "no-cache",
+#             "Connection": "keep-alive",
+#             "X-Accel-Buffering": "no",
+#         },
+#     )
+# 
 
 try:
     from flask_sock import Sock

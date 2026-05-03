@@ -9,12 +9,12 @@
 ### Monolithe station_web.py
 | Métrique | Valeur |
 |----------|--------|
-| Lignes totales | 11 918 |
-| `@app.route` actifs | **213** |
-| `# @app.route` commentés (migrés) | 23 |
+| Lignes totales | 11 657 (après PASS 4) |
+| `@app.route` actifs | **198** |
+| `# @app.route` commentés (migrés) | 38 |
 | Total occurrences `@app.route` | 236 |
 
-### Blueprints actifs en production (via station_web lignes 468–497)
+### Blueprints actifs en production (via station_web)
 | Blueprint | Module | Routes |
 |-----------|--------|--------|
 | seo_bp | app/blueprints/seo/routes.py | 3 |
@@ -25,17 +25,17 @@
 | api_bp | app/blueprints/api/__init__.py | 13 |
 | pages_bp | app/blueprints/pages/__init__.py | 3 |
 | main_bp | app/blueprints/main/__init__.py | 6 |
-| system_bp | app/blueprints/system/__init__.py | 8 |
+| system_bp | app/blueprints/system/__init__.py | 19 (+11 PASS 4) |
 | analytics_bp | app/blueprints/analytics/__init__.py | 6 |
-| export_bp | app/blueprints/export/__init__.py | 3 |
-| **TOTAL MIGRÉ** | | **56 routes** |
+| export_bp | app/blueprints/export/__init__.py | 5 (+2 PASS 4) |
+| **TOTAL MIGRÉ** | | **69 routes** |
 
-> **Note critique :** station_web.py enregistre les 10 BPs (L468–497) → 56 routes BP actives en prod.  
-> **Note critique :** app/__init__.py (create_app) n'enregistre que 6 BPs et n'est PAS utilisé en prod.
+> **Note PASS 4 :** export_bp enregistré (était créé mais non enregistré). system_bp +11 routes (health, selftest, tle/refresh, latest, sync/state, telescope/sources, accuracy/export.csv, api/health, status, stream/status).  
+> **⚠️ RESTART REQUIS** : `sudo systemctl restart astroscan` — modifications en attente de reload Gunicorn.
 
 ### Progression
-- Routes migrées : **56 / 269** ≈ **21%**
-- Routes restantes dans monolithe : **213 actives**
+- Routes migrées : **69 / 269** ≈ **26%**
+- Routes restantes dans monolithe : **198 actives** (−15 vs PASS 3)
 
 ---
 
@@ -553,4 +553,6 @@ systemctl restart astroscan && sleep 15 && curl -I https://astroscan.space/
 
 ---
 
-*PASS 0 — 2026-05-03 — Audit complet terminé*
+*PASS 0 — 2026-05-03 — Audit complet terminé*  
+*PASS 1-3 — 2026-05-03 — Infra cache/db/config + 56 routes BP*  
+*PASS 4 — 2026-05-03 — Export+Health : +13 routes (export_bp +2, system_bp +11), enregistrement export_bp, station_web −127 lignes — RESTART ROOT REQUIS*

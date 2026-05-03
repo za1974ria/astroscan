@@ -9,8 +9,13 @@ Migration depuis station_web.py (CTO Critique 3 - Monolith reduction).
 """
 
 import logging
+import json
+import os
+import sqlite3
+import time
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, Response, jsonify, request
+from flask import stream_with_context
 
 log = logging.getLogger(__name__)
 
@@ -148,3 +153,341 @@ def api_system_heal():
     except Exception as e:
         log.warning("api/system-heal: %s", e)
         return jsonify({"actions": [], "count": 0, "error": str(e)}), 500
+
+
+# ─── PASS 4 : Health / System simple ────────────────────────────────────────
+
+@bp.route('/health', methods=['GET'])
+def health_check():
+    """Liveness enrichi : uptime, mémoire, disque, circuit-breakers, APIs actives."""
+    import psutil
+    import shutil
+    from datetime import datetime, timezone
+    import station_web as _sw
+
+    now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    try:
+        d = _sw._build_status_payload_dict(now_iso, include_external=False)
+        uptime_seconds = int(d.get("uptime_seconds") or 0)
+        production_mode = d.get("production_mode")
+        tle_backend = d.get("tle_backend_status")
+        data_freshness = d.get("data_freshness")
+        tle_count = d.get("tle_count")
+        overall_status = d.get("status") or "ok"
+    except Exception as ex:
+        log.warning("health_check: %s", ex)
+        uptime_seconds = int(time.time() - _sw.START_TIME)
+        production_mode = "OFFLINE"
+        tle_backend = None
+        data_freshness = "unknown"
+        tle_count = 0
+        overall_status = "degraded"
+
+    try:
+        proc = psutil.Process()
+        mem_mb = round(proc.memory_info().rss / 1024 / 1024, 1)
+        mem_pct = round(psutil.virtual_memory().percent, 1)
+        memory_usage = {"process_mb": mem_mb, "system_pct": mem_pct}
+    except Exception:
+        memory_usage = {}
+
+    try:
+        disk = shutil.disk_usage("/")
+        disk_usage = {
+            "total_gb": round(disk.total / 1e9, 1),
+            "used_gb":  round(disk.used  / 1e9, 1),
+            "free_gb":  round(disk.free  / 1e9, 1),
+            "pct":      round(disk.used / disk.total * 100, 1),
+        }
+    except Exception:
+        disk_usage = {}
+
+    try:
+        from services.circuit_breaker import all_status as _cb_all_status
+        cb_statuses = _cb_all_status()
+        active_apis = {s["name"]: s["state"] for s in cb_statuses}
+        open_count = sum(1 for s in cb_statuses if s["state"] == "OPEN")
+        if open_count > 0 and overall_status == "ok":
+            overall_status = "degraded"
+    except Exception:
+        active_apis = {}
+
+    return jsonify({
+        "status":         overall_status,
+        "service":        "astroscan",
+        "uptime":         uptime_seconds,
+        "uptime_sec":     uptime_seconds,
+        "mode":           production_mode,
+        "tle_status":     tle_backend,
+        "data_freshness": data_freshness,
+        "tle_count":      tle_count,
+        "memory_usage":   memory_usage,
+        "disk_usage":     disk_usage,
+        "active_apis":    active_apis,
+        "timestamp":      now_iso,
+    })
+
+
+@bp.route('/selftest', methods=['GET'])
+def selftest():
+    """Auto-contrôle structurel (clés fusion) — JSON toujours valide."""
+    try:
+        import station_web as _sw
+        status = _sw.get_status_data()
+        validation = _sw.validate_system_state(status)
+        return jsonify({
+            "selftest": "ok" if validation["valid"] else "fail",
+            "details": validation,
+        })
+    except Exception as e:
+        log.warning("selftest: %s", e)
+        try:
+            import station_web as _sw
+            _sw.struct_log(
+                logging.ERROR,
+                category="validation",
+                event="selftest_exception",
+                error=str(e)[:400],
+            )
+        except Exception:
+            pass
+        return jsonify({
+            "selftest": "fail",
+            "error": str(e),
+            "details": {"valid": False, "errors": ["selftest_exception"]},
+        })
+
+
+@bp.route('/api/tle/refresh', methods=['POST'])
+def api_tle_refresh():
+    """Déclenche un rafraîchissement manuel des TLE."""
+    try:
+        import station_web as _sw
+        ok = _sw.fetch_tle_from_celestrak()
+        return jsonify({
+            "ok": bool(ok),
+            "status": _sw.TLE_CACHE.get("status"),
+            "count": _sw.TLE_CACHE.get("count"),
+            "last_refresh_iso": _sw.TLE_CACHE.get("last_refresh_iso"),
+            "error": _sw.TLE_CACHE.get("error"),
+        })
+    except Exception as e:
+        log.warning("/api/tle/refresh: %s", e)
+        return jsonify({"ok": False, "error": str(e)})
+
+
+# ─── PASS 4 : API System (G) ─────────────────────────────────────────────────
+
+@bp.route('/api/latest')
+def api_latest():
+    """Dernières observations — liste paginable avec support i18n."""
+    lang = request.args.get('lang', 'fr').lower()
+    try:
+        import station_web as _sw
+        conn = _sw.get_db()
+        cur = conn.cursor()
+        total     = cur.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        anomalies = cur.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
+        sources   = cur.execute("SELECT COUNT(DISTINCT source) FROM observations").fetchone()[0]
+        try:
+            req_j = cur.execute(
+                "SELECT COUNT(*) FROM observations WHERE date(timestamp)=date('now')"
+            ).fetchone()[0]
+        except Exception:
+            req_j = 0
+        try:
+            limit_arg = request.args.get('limit', '20')
+            limit = min(200, max(1, int(limit_arg))) if str(limit_arg).isdigit() else 20
+        except Exception:
+            limit = 20
+        try:
+            rows = cur.execute(
+                "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
+                "COALESCE(rapport_fr,'') as rapport_fr, objets_detectes, anomalie, "
+                "COALESCE(title,'') as title, COALESCE(objets_detectes,'') as type_objet, "
+                "COALESCE(score_confiance,0.0) as confidence "
+                "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
+        except Exception:
+            rows = cur.execute(
+                "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
+                "'' as rapport_fr, objets_detectes, anomalie, "
+                "'' as title, '' as type_objet, 0.0 as confidence "
+                "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
+        conn.close()
+        obs_list = []
+        for row in rows:
+            r = dict(row)
+            raw = r.get('rapport_gemini') or r.get('analyse_gemini') or ''
+            if lang == 'fr':
+                fr = (r.get('rapport_fr') or '').strip()
+                r['rapport_gemini'] = fr if fr else raw
+            else:
+                r['rapport_gemini'] = raw
+            r['rapport_display'] = r['rapport_gemini']
+            obs_list.append(r)
+        return jsonify({
+            'ok': True, 'total': total, 'anomalies': anomalies,
+            'sources': sources, 'telescopes': 9, 'req_jour': req_j,
+            'observations': obs_list,
+            'notice': 'Analyses AEGIS',
+        })
+    except Exception as e:
+        log.error("api_latest: %s", e)
+        return jsonify({'ok': False, 'error': str(e), 'total': 0, 'observations': []})
+
+
+@bp.route('/api/sync/state', methods=['GET'])
+def api_sync_state_get():
+    """État canonique partagé (PC + Android) : source télescope affichée."""
+    import station_web as _sw
+    return jsonify({'ok': True, 'source': _sw._sync_state_read()})
+
+
+@bp.route('/api/sync/state', methods=['POST'])
+def api_sync_state_post():
+    """Met à jour l'état partagé (quand un client change la source)."""
+    import station_web as _sw
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        source = data.get('source') or request.form.get('source') or 'live'
+    except Exception:
+        source = 'live'
+    s = _sw._sync_state_write(source)
+    return jsonify({'ok': True, 'source': s})
+
+
+@bp.route('/api/telescope/sources')
+def api_telescope_sources():
+    """Liste des sources live sélectionnables."""
+    return jsonify({
+        'ok': True,
+        'sources': [
+            {'id': 'live',         'name': 'Flux principal',      'desc': 'Dernière image du pipeline (feeder)',     'icon': '📡'},
+            {'id': 'apod',         'name': 'NASA APOD',            'desc': 'Image du jour — temps 0',                 'icon': '🔭'},
+            {'id': 'hubble',       'name': 'ESA Hubble',           'desc': 'Archives Hubble — temps 0',               'icon': '🌌'},
+            {'id': 'apod_archive', 'name': 'NASA APOD (archive)',  'desc': 'Image aléatoire 2015–2024',               'icon': '📁'},
+        ]
+    })
+
+
+# ─── PASS 4 : Accuracy export (J) ────────────────────────────────────────────
+
+@bp.route('/api/accuracy/export.csv')
+def api_accuracy_export_csv():
+    """Export CSV historique de précision ISS."""
+    from app.services.accuracy_history import get_accuracy_history
+    rows = get_accuracy_history()
+    lines = ["ts,distance_km"]
+    for row in rows:
+        ts = row.get("ts", "")
+        distance = row.get("distance_km", "")
+        lines.append(f"{ts},{distance}")
+    csv_payload = "\n".join(lines) + "\n"
+    return Response(
+        csv_payload,
+        mimetype="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="accuracy_history.csv"'},
+    )
+
+
+# ─── PASS 4 : Status/Health étendu (AC) ──────────────────────────────────────
+
+@bp.route('/api/health')
+def api_health():
+    """Health check enrichi : DB, services, uptime, opérationnel."""
+    from datetime import datetime, timezone
+    total, anom, sources = 0, 0, []
+    uptime_str = '—'
+    try:
+        import station_web as _sw
+        conn = sqlite3.connect(_sw.DB_PATH, timeout=10.0)
+        total = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        anom  = conn.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
+        rows  = conn.execute(
+            "SELECT DISTINCT source FROM observations WHERE timestamp > datetime('now','-7 days')"
+        ).fetchall()
+        sources = [r[0] for r in rows]
+        conn.close()
+    except Exception:
+        pass
+    try:
+        uptime_str = open('/proc/uptime').read().split()[0]
+        s = int(float(uptime_str))
+        uptime_str = f"{s//3600}h {(s%3600)//60}m"
+    except Exception:
+        pass
+    payload = {
+        'ok': True, 'station': 'ORBITAL-CHOHRA',
+        'ip': '5.78.153.17', 'location': 'Tlemcen, Algérie',
+        'director': 'Zakaria Chohra — Tlemcen, Algérie',
+        'time_utc': datetime.now(timezone.utc).isoformat(),
+        'uptime': uptime_str,
+        'db': {'total': total, 'anomalies': anom, 'sources': sources},
+        'services': {
+            'gemini': 'active' if os.environ.get('GEMINI_API_KEY') else 'missing',
+            'grok':   'inactive',
+            'groq':   'active' if os.environ.get('GROQ_API_KEY')   else 'missing',
+            'nasa':   'active' if os.environ.get('NASA_API_KEY')    else 'missing',
+            'aegis': 'active', 'sdr': 'active', 'iss': 'active',
+        },
+        'coordinates': {'lat': 34.87, 'lon': 1.32, 'alt_m': 800, 'timezone': 'Africa/Algiers'},
+    }
+    try:
+        import station_web as _sw
+        if _sw._core_status_engine is not None:
+            payload['operational'] = _sw._core_status_engine.build_operational_health(
+                _sw.STATION, _sw.DB_PATH, _sw.TLE_CACHE, _sw.TLE_CACHE_FILE,
+                ws_present=True, sse_present=True,
+            )
+            payload['data_credibility'] = _sw._core_status_engine.data_credibility_stub(
+                _sw.TLE_CACHE, _sw.TLE_CACHE_FILE
+            )
+    except Exception as ex:
+        log.debug("api_health operational: %s", ex)
+        try:
+            from datetime import datetime, timezone
+            payload['operational'] = {
+                'status': 'unknown',
+                'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                'error': 'probe_partial',
+            }
+        except Exception:
+            pass
+    return jsonify(payload)
+
+
+@bp.route('/status')
+def api_status():
+    """Snapshot JSON stable pour badges UI / monitoring."""
+    import station_web as _sw
+    return jsonify(_sw.build_status_snapshot_dict())
+
+
+@bp.route('/stream/status')
+def stream_status_sse():
+    """Flux SSE : même snapshot que /status, toutes les ~3 s."""
+    import station_web as _sw
+
+    def _gen():
+        while True:
+            try:
+                snap = _sw.build_status_snapshot_dict()
+                yield "data: " + json.dumps(snap, default=str) + "\n\n"
+            except Exception as ex:
+                try:
+                    yield "data: " + json.dumps({"error": str(ex)[:200], "stream": "status"}) + "\n\n"
+                except Exception:
+                    pass
+            time.sleep(3)
+
+    return Response(
+        stream_with_context(_gen()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

@@ -134,3 +134,54 @@ def observations_json():
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/ephemerides.json")
+def ephemerides_json():
+    """Export JSON éphémérides Tlemcen avec métadonnées scientifiques."""
+    try:
+        from services.cache_service import cache_get
+        cached = cache_get('eph_tlemcen', 300) or {}
+        export = {
+            "metadata": {
+                "source": "AstroScan-Chohra",
+                "location": "Tlemcen, Algeria",
+                "coordinates": {"lat": 34.8753, "lon": 1.3167, "alt_m": 800},
+                "generated_at": datetime.utcnow().isoformat() + "Z",
+                "license": "CC BY 4.0 — Scientific use",
+                "url": "https://astroscan.space/api/export/ephemerides.json",
+                "computation": "astropy 7.2 + SGP4",
+            }
+        }
+        export.update(cached)
+        return Response(
+            json.dumps(export, ensure_ascii=False, indent=2),
+            mimetype="application/json",
+            headers={"Access-Control-Allow-Origin": "*"},
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/apod-history.json")
+def apod_history_json():
+    """Export JSON historique APOD depuis le cache local."""
+    try:
+        from station_web import STATION
+        cache_path = f"{STATION}/data/apod_cache.json"
+        with open(cache_path) as f:
+            apod_cache = json.load(f)
+        data = {
+            "metadata": _meta(
+                "NASA APOD local cache — AstroScan FR translations CC BY 4.0",
+                count=len(apod_cache),
+            ),
+            "data": apod_cache,
+        }
+        return Response(
+            json.dumps(data, ensure_ascii=False, indent=2),
+            mimetype="application/json",
+            headers={"Access-Control-Allow-Origin": "*"},
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
