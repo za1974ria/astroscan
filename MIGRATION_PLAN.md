@@ -9,9 +9,9 @@
 ### Monolithe station_web.py
 | Métrique | Valeur |
 |----------|--------|
-| Lignes totales | 10 601 (après PASS 7) |
-| `@app.route` actifs | **129** |
-| `# MIGRATED TO` markers (migrés) | 107 |
+| Lignes totales | 10 386 (après PASS 8) |
+| `@app.route` actifs | **105** |
+| `# MIGRATED TO` markers (migrés) | 131 |
 | Total occurrences `@app.route` | 236 |
 
 ### Blueprints actifs en production (via station_web)
@@ -32,17 +32,19 @@
 | archive_bp | app/blueprints/archive/__init__.py | 7 (NEW PASS 6) |
 | weather_bp | app/blueprints/weather/__init__.py | 18 (NEW PASS 7) |
 | astro_bp | app/blueprints/astro/__init__.py | 6 (NEW PASS 7) |
-| **TOTAL MIGRÉ** | | **136 routes** |
+| feeds_bp | app/blueprints/feeds/__init__.py | 24 (NEW PASS 8) |
+| **TOTAL MIGRÉ** | | **160 routes** |
 
 > **Note PASS 4 :** export_bp enregistré (était créé mais non enregistré). system_bp +11 routes (health, selftest, tle/refresh, latest, sync/state, telescope/sources, accuracy/export.csv, api/health, status, stream/status).  
 > **Note PASS 5 :** pages_bp +21 routes (/, /portail, /technical, /dashboard, /overlord_live, /galerie, /observatoire, /vision-2026, /sondes, /telemetrie-sondes, /ce_soir, /research, /space, /space-intelligence, /module/<name>, /demo, /space-intelligence-page, /aladin, /carte-du-ciel, /europe-live, /flight-radar). main_bp +4 routes (/sw.js, /manifest.json, /api/push/subscribe, /favicon.ico). 2 doublons supprimés du monolithe (/sitemap.xml, /robots.txt — déjà dans seo_bp).  
 > **Note PASS 6 :** 2 nouveaux BPs créés et enregistrés. cameras_bp +11 routes (/sky-camera, /api/sky-camera/analyze, /observatory/status, /api/observatory/status, /api/skyview/{targets,fetch,multiwave/<id>,list}, /telescope_live/<path:filename>, /visiteurs-live, /api/audio-proxy). archive_bp +7 routes (/api/archive/{reports,objects,discoveries}, /api/microobservatory, /api/classification/stats, /api/mast/targets, /api/shield).  
 > **Note PASS 7 :** 2 nouveaux BPs créés. weather_bp +18 routes (météo terrestre, spatiale, aurores, bulletins, history, space-weather, solar-weather, meteo-réel, control). astro_bp +6 routes (tonight, moon, ephemerides, astro/object). Helpers DB extraits dans app/services/weather_archive.py (init_weather_db, save_weather_bulletin, save_weather_history_json, save_weather_archive_json + cleanup).  
+> **Note PASS 8 :** 1 nouveau BP créé (feeds_bp +24 routes). 2 services extraits : app/services/http_client.py (97 lignes — _curl_get, _curl_post, _curl_post_json, _safe_json_loads) et app/services/external_feeds.py (305 lignes — fetch_voyager, fetch_neo, fetch_solar_wind, fetch_solar_alerts, fetch_mars_rover, fetch_apod_hd, fetch_swpc_alerts). Sources couvertes : NASA (APOD/NEO/Mars/Solar/JPL Horizons), NOAA SWPC (alerts/solar/flares), modules.live_feeds (SpaceX/news/ISS-passes), modules.space_alerts.  
 > **⚠️ RESTART REQUIS** : `sudo systemctl restart astroscan` — modifications en attente de reload Gunicorn.
 
 ### Progression
-- Routes migrées : **136 / 269** ≈ **51%**
-- Routes restantes dans monolithe : **129 actives** (−24 vs PASS 6)
+- Routes migrées : **160 / 269** ≈ **59%**
+- Routes restantes dans monolithe : **105 actives** (−24 vs PASS 7)
 
 ---
 
@@ -565,4 +567,5 @@ systemctl restart astroscan && sleep 15 && curl -I https://astroscan.space/
 *PASS 4 — 2026-05-03 — Export+Health : +13 routes (export_bp +2, system_bp +11), enregistrement export_bp, station_web −127 lignes — RESTART ROOT REQUIS*  
 *PASS 5 — 2026-05-03 — Pages+PWA : +25 routes (pages_bp +21, main_bp +4) + 2 doublons supprimés (/sitemap.xml, /robots.txt déjà couverts par seo_bp). station_web −227 lignes (11657 → 11430). Domaines couverts : C, D, Q, S, AG, AL (partiel). Différé : /analytics (deps lourdes), /ephemerides (astropy), /proxy-cam (helpers cam), /static/<path:filename> (override Flask) — voir PASS 12/14.*  
 *PASS 6 — 2026-05-03 — Cameras+Archive : 2 nouveaux BPs créés et enregistrés (cameras_bp 11 routes, archive_bp 7 routes), +18 routes total. station_web −304 lignes (11430 → 11126). Domaines couverts : E (Cameras live), F (Galerie images partielle), H (Observations CRUD), I (Anomalies), K (Camera control). Différé : /api/sky-camera/simulate (deps _curl_get → PASS 13), /api/microobservatory/{images,preview} (helpers FITS+JPG ~150 lignes → PASS 13), /api/telescope/live (deps _gemini_translate+_call_claude → PASS 9 telescope_bp).*  
-*PASS 7 — 2026-05-03 — Weather+Astro : 2 nouveaux BPs (weather_bp 18 routes, astro_bp 6 routes), +24 routes total. Helpers DB extraits → app/services/weather_archive.py (5 fonctions, 238 lignes). station_web −525 lignes (11126 → 10601). Domaines couverts : L (Space Weather), V (Weather), AK (Météo réelle/Control), AP partiel (Astro/object), partiel X (tonight/moon). Différé : /api/space-weather/alerts (deps _curl_get → PASS 13), /api/feeds/solar* (PASS 13 — feeds_bp), /api/nasa/solar et /api/mars/weather (PASS 13), /api/astro/explain (deps _translate_to_french/_call_claude → PASS 11), /api/hilal et /api/hilal/calendar (helpers astropy >400 lignes — module dédié futur PASS 14).*
+*PASS 7 — 2026-05-03 — Weather+Astro : 2 nouveaux BPs (weather_bp 18 routes, astro_bp 6 routes), +24 routes total. Helpers DB extraits → app/services/weather_archive.py (5 fonctions, 238 lignes). station_web −525 lignes (11126 → 10601). Domaines couverts : L (Space Weather), V (Weather), AK (Météo réelle/Control), AP partiel (Astro/object), partiel X (tonight/moon). Différé : /api/space-weather/alerts (deps _curl_get → PASS 13), /api/feeds/solar* (PASS 13 — feeds_bp), /api/nasa/solar et /api/mars/weather (PASS 13), /api/astro/explain (deps _translate_to_french/_call_claude → PASS 11), /api/hilal et /api/hilal/calendar (helpers astropy >400 lignes — module dédié futur PASS 14).*  
+*PASS 8 — 2026-05-03 — Feeds NASA/NOAA/JPL : feeds_bp NEW (+24 routes). 2 services extraits : http_client.py (97 lignes) et external_feeds.py (305 lignes). station_web −215 lignes (10601 → 10386). Sources : NASA (5 routes), NOAA SWPC (3), JPL Horizons (1), modules.live_feeds (5), modules.space_alerts (3), agrégateurs (3), module sondes (1), module news (1), file-based voyager-live (1), nasa_service direct (1). Différé : /api/jwst/{images,refresh} (helper _fetch_jwst_live_images ~80 lignes + _JWST_STATIC ~50 lignes → futur PASS 13/15), /api/hubble/images (helper _fetch_hubble + cascade NASA APOD → futur PASS 13/15), /api/bepi/telemetry (petit mais touche JPL Horizons text parsing → futur).*

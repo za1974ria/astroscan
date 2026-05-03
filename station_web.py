@@ -516,6 +516,10 @@ app.register_blueprint(weather_bp)
 from app.blueprints.astro import bp as astro_bp
 app.register_blueprint(astro_bp)
 
+# Blueprint feeds — added PASS 8 (NASA, NOAA SWPC, JPL, live feeds, alerts)
+from app.blueprints.feeds import bp as feeds_bp
+app.register_blueprint(feeds_bp)
+
 
 @app.context_processor
 def _inject_seo_site_description():
@@ -3938,27 +3942,7 @@ def api_passages_iss():
         )
 
 
-@app.route('/api/voyager-live')
-def api_voyager_live():
-    """
-    Télémétrie Voyager — distances calculées par intégration physique.
-    Base JPL (Epoch 2024-01-01) + vitesse mesurée DSN × temps écoulé.
-    Mis à jour toutes les heures par voyager_tracker.py via cron.
-    """
-    try:
-        path = f"{STATION}/static/voyager_live.json"
-        if not os.path.exists(path):
-            return jsonify({"statut": "Indisponible"})
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if not isinstance(data, dict):
-            return jsonify({"statut": "Indisponible"})
-        data.setdefault('methode', 'Calcul physique — vitesse JPL × temps écoulé depuis epoch 2024-01-01')
-        data.setdefault('precision', '±0.01% — données JPL DSN vérifiées')
-        return jsonify(data)
-    except Exception as e:
-        log.warning("voyager-live: %s", e)
-        return jsonify({"statut": "Indisponible"})
+# MIGRATED TO feeds_bp PASS 8 — /api/voyager-live → see app/blueprints/feeds/__init__.py (api_voyager_live)
 
 
 def _fetch_iss_crew():
@@ -5142,13 +5126,14 @@ def api_guide_stellaire():
 
 @app.route("/api/apod")
 def api_apod_alias():
+    """Alias /api/apod → /api/nasa/apod (feeds_bp PASS 8)."""
     try:
-        return api_nasa_apod()
+        from services.nasa_service import _fetch_nasa_apod
+        payload = get_cached('nasa_apod_v1', 1800, _fetch_nasa_apod)
+        code = 200 if payload.get("ok") else 502
+        return jsonify(payload), code
     except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e)
-        }), 500
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/oracle", methods=["POST"])
@@ -5872,15 +5857,7 @@ def api_mission_control():
 
 # MIGRATED TO astro_bp PASS 7 — /api/astro/object → see app/blueprints/astro/__init__.py (api_astro_object)
 
-@app.route('/api/news')
-def api_news():
-    try:
-        from modules.news_module import get_live_news
-        articles = get_live_news()
-        data = {'articles': articles, 'count': len(articles), 'source': 'live'}
-    except Exception as e:
-        data = {'ok': False, 'error': str(e)}
-    return jsonify(data)
+# MIGRATED TO feeds_bp PASS 8 — /api/news → see app/blueprints/feeds/__init__.py (api_news)
 
 # ── API SDR Passes (prédictions NOAA, TLE CelesTrak, cache 2h, Tlemcen) ──
 # MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
@@ -6116,81 +6093,14 @@ def _fetch_apod_hd():
         log.warning(f"apod_hd: {e}")
         return None
 
-@app.route('/api/feeds/voyager')
-def api_feeds_voyager():
-    data = get_cached('voyager', 3600, _fetch_voyager)
-    if not data:
-        now = _dt_utc.utcnow()
-        days_v1 = (now - _dt_utc(1977, 9, 5)).days
-        days_v2 = (now - _dt_utc(1977, 8, 20)).days
-        v1_au = 17.0 + days_v1 * 0.000985
-        v2_au = 14.5 + days_v2 * 0.000898
-        data = {
-            'VOYAGER_1': {'dist_au': round(v1_au, 2), 'dist_km': round(v1_au * 149597870.7), 'speed_km_s': 17.0, 'source': 'Calcul approx.'},
-            'VOYAGER_2': {'dist_au': round(v2_au, 2), 'dist_km': round(v2_au * 149597870.7), 'speed_km_s': 15.4, 'source': 'Calcul approx.'},
-        }
-    return jsonify({'ok': True, 'data': data})
-
-@app.route('/api/feeds/neo')
-def api_feeds_neo():
-    data = get_cached('neo', 3600, _fetch_neo)
-    return jsonify({'ok': True, 'neos': data or [], 'count': len(data) if data else 0})
-
-@app.route('/api/feeds/solar')
-def api_feeds_solar():
-    data = get_cached('solar', 900, _fetch_solar_wind)
-    return jsonify({'ok': True, 'solar_wind': data})
-
-@app.route('/api/feeds/solar_alerts')
-def api_feeds_solar_alerts():
-    """Alertes éruptions solaires et flares X-ray — NOAA SWPC."""
-    data = get_cached('solar_alerts', 600, _fetch_solar_alerts)
-    return jsonify({'ok': True, 'alerts': data.get('alerts', []) if data else [], 'flares': data.get('flares', []) if data else []})
-
-@app.route('/api/feeds/mars')
-def api_feeds_mars():
-    data = get_cached('mars', 7200, _fetch_mars_rover)
-    return jsonify({'ok': True, 'photos': data or []})
-
-@app.route('/api/sondes')
-def api_sondes():
-    """Agrégation SONDES SPATIALES — logique dans sondes_module.py."""
-    try:
-        import sys
-        if STATION not in sys.path:
-            sys.path.insert(0, STATION)
-        from modules.sondes_module import get_sondes_payload
-        return jsonify(get_sondes_payload())
-    except Exception as e:
-        log.warning('api_sondes: %s', e)
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/feeds/apod_hd')
-def api_feeds_apod_hd():
-    """NASA APOD. Cache 3600 s pour limiter les appels externes."""
-    cache_cleanup()
-    cached = cache_get("apod_hd", 3600)
-    if cached is not None:
-        return jsonify(cached)
-    data = get_cached('apod_hd', 3600, _fetch_apod_hd)
-    payload = {'ok': True, 'apod': data}
-    cache_set("apod_hd", payload)
-    return jsonify(payload)
-
-@app.route('/api/feeds/all')
-def api_feeds_all():
-    """Tous les feeds en un appel (Voyager JPL, NEO, vent solaire, alertes solaires, Mars, APOD)."""
-    return jsonify({
-        'ok': True,
-        'voyager': get_cached('voyager', 3600, _fetch_voyager),
-        'neo': get_cached('neo', 3600, _fetch_neo),
-        'solar_wind': get_cached('solar', 900, _fetch_solar_wind),
-        'solar_alerts': get_cached('solar_alerts', 600, _fetch_solar_alerts),
-        'mars': get_cached('mars', 7200, _fetch_mars_rover),
-        'apod_hd': get_cached('apod_hd', 3600, _fetch_apod_hd),
-        'station': 'ORBITAL-CHOHRA · Tlemcen, Algérie',
-        'timestamp': _dt_utc.utcnow().isoformat(),
-    })
+# MIGRATED TO feeds_bp PASS 8 — /api/feeds/voyager → see app/blueprints/feeds/__init__.py (api_feeds_voyager)
+# MIGRATED TO feeds_bp PASS 8 — /api/feeds/neo → see app/blueprints/feeds/__init__.py (api_feeds_neo)
+# MIGRATED TO feeds_bp PASS 8 — /api/feeds/solar → see app/blueprints/feeds/__init__.py (api_feeds_solar)
+# MIGRATED TO feeds_bp PASS 8 — /api/feeds/solar_alerts → see app/blueprints/feeds/__init__.py (api_feeds_solar_alerts)
+# MIGRATED TO feeds_bp PASS 8 — /api/feeds/mars → see app/blueprints/feeds/__init__.py (api_feeds_mars)
+# MIGRATED TO feeds_bp PASS 8 — /api/sondes → see app/blueprints/feeds/__init__.py (api_sondes)
+# MIGRATED TO feeds_bp PASS 8 — /api/feeds/apod_hd → see app/blueprints/feeds/__init__.py (api_feeds_apod_hd)
+# MIGRATED TO feeds_bp PASS 8 — /api/feeds/all → see app/blueprints/feeds/__init__.py (api_feeds_all)
 
 # ── Health check ──
 # @app.route('/api/health')
@@ -6874,17 +6784,7 @@ def api_hubble_images():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/mars/weather')
-def api_mars_weather():
-    """InSight météo Mars — proxy JSON (mission terminée, peut être vide)."""
-    try:
-        url = 'https://api.nasa.gov/insight_weather/?api_key={}&feedtype=json&ver=1.0'.format(os.environ.get('NASA_API_KEY','DEMO_KEY'))
-        raw = _curl_get(url, timeout=10)
-        if not raw:
-            return jsonify({'error': 'no data'}), 502
-        return app.response_class(raw, mimetype='application/json')
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+# MIGRATED TO feeds_bp PASS 8 — /api/mars/weather → see app/blueprints/feeds/__init__.py (api_mars_weather)
 
 
 @app.route('/api/bepi/telemetry')
@@ -6934,46 +6834,8 @@ def api_jwst_refresh():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/neo')
-def api_neo():
-    import urllib.request, json
-    from datetime import datetime, timedelta
-    try:
-        nasa_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-        today = datetime.utcnow().strftime('%Y-%m-%d')
-        tomorrow = (datetime.utcnow() + timedelta(days=7)).strftime('%Y-%m-%d')
-        url = f'https://api.nasa.gov/neo/rest/v1/feed?start_date={today}&end_date={tomorrow}&api_key={nasa_key}'
-        req = urllib.request.Request(url, headers={'User-Agent':'AstroScan/1.0'})
-        with urllib.request.urlopen(req, timeout=10) as r:
-            data = json.loads(r.read())
-        neos = []
-        for date, asteroids in data.get('near_earth_objects', {}).items():
-            for a in asteroids:
-                neos.append({
-                    'nom': a['name'],
-                    'date': date,
-                    'diametre_min': round(a['estimated_diameter']['kilometers']['estimated_diameter_min'], 3),
-                    'diametre_max': round(a['estimated_diameter']['kilometers']['estimated_diameter_max'], 3),
-                    'vitesse_kms': round(float(a['close_approach_data'][0]['relative_velocity']['kilometers_per_second']), 2),
-                    'distance_km': round(float(a['close_approach_data'][0]['miss_distance']['kilometers'])),
-                    'dangereux': a['is_potentially_hazardous_asteroid'],
-                    'url': a['nasa_jpl_url']
-                })
-        neos.sort(key=lambda x: x['distance_km'])
-        return jsonify({'count': len(neos), 'asteroids': neos[:20], 'generated_at': today})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/nasa/apod')
-def api_nasa_apod():
-    """Image du jour NASA (APOD)."""
-    try:
-        payload = get_cached('nasa_apod_v1', 1800, _fetch_nasa_apod)
-        code = 200 if payload.get("ok") else 502
-        return jsonify(payload), code
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+# MIGRATED TO feeds_bp PASS 8 — /api/neo → see app/blueprints/feeds/__init__.py (api_neo)
+# MIGRATED TO feeds_bp PASS 8 — /api/nasa/apod → see app/blueprints/feeds/__init__.py (api_nasa_apod)
 
 
 # MIGRATED TO apod_bp 2026-05-02 — see app/blueprints/apod/routes.py
@@ -6994,54 +6856,12 @@ def api_nasa_apod():
 #     return render_template("nasa_apod.html")
 
 
-@app.route('/api/nasa/neo')
-def api_nasa_neo():
-    """Objets proches de la Terre (NASA NEO)."""
-    try:
-        payload = get_cached('nasa_neo_v1', 900, _fetch_nasa_neo)
-        code = 200 if payload.get("ok") else 502
-        return jsonify(payload), code
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e), "asteroids": []}), 500
-
-
-@app.route('/api/nasa/solar')
-def api_nasa_solar():
-    """Météo solaire NASA DONKI."""
-    try:
-        payload = get_cached('nasa_solar_v1', 600, _fetch_nasa_solar)
-        code = 200 if payload.get("ok") else 502
-        return jsonify(payload), code
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e), "events": []}), 500
-
-
-@app.route('/api/alerts/asteroids')
-def api_asteroids():
-    from modules.space_alerts import get_asteroid_alerts
-    return jsonify(get_cached('asteroids', 3600, get_asteroid_alerts))
-
-
-@app.route('/api/alerts/solar')
-def api_solar():
-    from modules.space_alerts import get_solar_weather
-    return jsonify(get_cached('solar_weather', 300, get_solar_weather))
-
-
-@app.route('/api/alerts/all')
-def api_alerts_all():
-    from modules.space_alerts import get_asteroid_alerts, get_solar_weather
-    return jsonify({
-        'asteroids': get_cached('asteroids', 3600, get_asteroid_alerts),
-        'solar': get_cached('solar_weather', 300, get_solar_weather),
-        'timestamp': __import__('datetime').datetime.utcnow().isoformat()
-    })
-
-
-@app.route('/api/live/spacex')
-def api_spacex():
-    from modules.live_feeds import get_spacex_launches
-    return jsonify(get_cached('spacex', 3600, get_spacex_launches))
+# MIGRATED TO feeds_bp PASS 8 — /api/nasa/neo → see app/blueprints/feeds/__init__.py (api_nasa_neo)
+# MIGRATED TO feeds_bp PASS 8 — /api/nasa/solar → see app/blueprints/feeds/__init__.py (api_nasa_solar)
+# MIGRATED TO feeds_bp PASS 8 — /api/alerts/asteroids → see app/blueprints/feeds/__init__.py (api_asteroids)
+# MIGRATED TO feeds_bp PASS 8 — /api/alerts/solar → see app/blueprints/feeds/__init__.py (api_solar)
+# MIGRATED TO feeds_bp PASS 8 — /api/alerts/all → see app/blueprints/feeds/__init__.py (api_alerts_all)
+# MIGRATED TO feeds_bp PASS 8 — /api/live/spacex → see app/blueprints/feeds/__init__.py (api_spacex)
 
 
 _NEWS_TRADUCTIONS = {
@@ -7073,27 +6893,9 @@ def _apply_news_translations(items):
     return out
 
 
-@app.route('/api/live/news')
-def api_space_news():
-    """News spatiales — titres/résumés avec remplacement manuel de termes fréquents."""
-    from modules.live_feeds import get_space_news
-    def _get():
-        items = get_space_news()
-        return _apply_news_translations(items)
-    return jsonify(get_cached('space_news', 1800, _get))
-
-
-@app.route('/api/live/mars-weather')
-def api_live_mars_weather():
-    from modules.live_feeds import get_mars_weather
-    return jsonify(get_cached('mars_weather', 3600, get_mars_weather))
-
-
-@app.route('/api/live/iss-passes')
-def api_live_iss_passes():
-    from modules.live_feeds import get_iss_passes_tlemcen
-    # Fenêtre plus courte que 1 h : les fenêtres de passage ISS évoluent vite.
-    return jsonify(get_cached('iss_passes', 600, get_iss_passes_tlemcen))
+# MIGRATED TO feeds_bp PASS 8 — /api/live/news → see app/blueprints/feeds/__init__.py (api_space_news)
+# MIGRATED TO feeds_bp PASS 8 — /api/live/mars-weather → see app/blueprints/feeds/__init__.py (api_live_mars_weather)
+# MIGRATED TO feeds_bp PASS 8 — /api/live/iss-passes → see app/blueprints/feeds/__init__.py (api_live_iss_passes)
 
 
 def _az_to_direction(az_deg):
@@ -7460,25 +7262,8 @@ def _fetch_swpc_alerts():
         return []
 
 
-@app.route('/api/space-weather/alerts')
-def api_space_weather_alerts():
-    """Alertes NOAA SWPC dernières 24h — cache 30 min."""
-    try:
-        data = get_cached('swpc_alerts_24h', 1800, _fetch_swpc_alerts)
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/live/all')
-def api_live_all():
-    from modules.live_feeds import get_spacex_launches, get_space_news, get_mars_weather
-    return jsonify({
-        'spacex': get_cached('spacex', 3600, get_spacex_launches),
-        'news': get_cached('space_news', 1800, get_space_news),
-        'mars_weather': get_cached('mars_weather', 3600, get_mars_weather),
-        'timestamp': __import__('datetime').datetime.utcnow().isoformat()
-    })
+# MIGRATED TO feeds_bp PASS 8 — /api/space-weather/alerts → see app/blueprints/feeds/__init__.py (api_space_weather_alerts)
+# MIGRATED TO feeds_bp PASS 8 — /api/live/all → see app/blueprints/feeds/__init__.py (api_live_all)
 
 
 @app.route('/api/iss-passes')
