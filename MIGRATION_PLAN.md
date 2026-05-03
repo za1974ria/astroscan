@@ -9,9 +9,9 @@
 ### Monolithe station_web.py
 | Métrique | Valeur |
 |----------|--------|
-| Lignes totales | 7 397 (après PASS 16) |
-| `@app.route` actifs | **3** |
-| `# MIGRATED TO` markers (migrés) | 233 |
+| Lignes totales | 7 247 (après PASS 17) |
+| `@app.route` actifs | **1** (/static/<path:filename> — Flask override intentionnel) |
+| `# MIGRATED TO` markers (migrés) | 235 |
 | Total occurrences `@app.route` | 236 |
 
 ### Blueprints actifs en production (via station_web)
@@ -34,11 +34,11 @@
 | astro_bp | app/blueprints/astro/__init__.py | 8 (NEW PASS 7, +2 PASS 15 hilal x2) |
 | feeds_bp | app/blueprints/feeds/__init__.py | 31 (NEW PASS 8, +3 PASS 11, +3 PASS 14, +1 PASS 15 bepi) |
 | telescope_bp | app/blueprints/telescope/__init__.py | 16 (NEW PASS 9, +1 PASS 16 trigger-nightly) |
-| ai_bp | app/blueprints/ai/__init__.py | 14 (NEW PASS 10, +1 PASS 15 oracle alias) |
+| ai_bp | app/blueprints/ai/__init__.py | 16 (NEW PASS 10, +1 PASS 15 oracle alias, +2 PASS 17 oracle-cosmique POST + guide-stellaire POST) |
 | lab_bp | app/blueprints/lab/__init__.py | 16 (NEW PASS 13) |
 | research_bp | app/blueprints/research/__init__.py | 6 (NEW PASS 13) |
 | satellites_bp | app/blueprints/satellites/__init__.py | 4 (NEW PASS 14) |
-| **TOTAL MIGRÉ** | | **260 routes** |
+| **TOTAL MIGRÉ** | | **262 routes** |
 
 > **Note PASS 4 :** export_bp enregistré (était créé mais non enregistré). system_bp +11 routes (health, selftest, tle/refresh, latest, sync/state, telescope/sources, accuracy/export.csv, api/health, status, stream/status).  
 > **Note PASS 5 :** pages_bp +21 routes (/, /portail, /technical, /dashboard, /overlord_live, /galerie, /observatoire, /vision-2026, /sondes, /telemetrie-sondes, /ce_soir, /research, /space, /space-intelligence, /module/<name>, /demo, /space-intelligence-page, /aladin, /carte-du-ciel, /europe-live, /flight-radar). main_bp +4 routes (/sw.js, /manifest.json, /api/push/subscribe, /favicon.ico). 2 doublons supprimés du monolithe (/sitemap.xml, /robots.txt — déjà dans seo_bp).  
@@ -53,12 +53,13 @@
 > **Note PASS 14 :** 1 nouveau BP créé (satellites_bp +4 routes : `/api/satellite/<name>`, `/api/satellites/tle`, `/api/satellites/tle/debug`, `/api/satellite/passes`). 4 BPs étendus : iss_bp +3 (ground-track, passes, passes/<lat>/<lon>), feeds_bp +3 (apod alias, survol, flights), sdr_bp +1 (captures — différé PASS 2B levé), main_bp +1 (contact form). 1 service extrait : app/services/iss_compute.py (~190 lignes — `compute_iss_ground_track`, `compute_iss_passes_for_observer`, `compute_iss_passes_tlemcen`, `_az_to_direction`). Total +12 routes. station_web.py −379 lignes (8419 → 8040).  
 > **Note PASS 15 :** 8 routes migrées (+8). 2 services extraits : app/services/hilal_compute.py (~395 L — `hilal_compute`, `hilal_compute_calendar`, `_HIJRI_MONTHS`, critères ODEH/UIOF/Oum Al Qura/Istanbul) et app/services/microobservatory.py (~165 L — `fetch_microobservatory_images` scrape Harvard CfA). 4 BPs étendus : cameras_bp +4 (sky-camera/simulate, microobservatory x2, proxy-cam — incluant copies inline `_CAM_*`/`_get_latest_epic_url`/threading locks), feeds_bp +1 (bepi/telemetry), astro_bp +2 (hilal x2), ai_bp +1 (oracle alias via lazy import). station_web.py −219 lignes (8040 → 7821).  
 > **Note PASS 16 :** 4 routes migrées (analytics_bp +2 : /analytics + /api/visitors/connection_time, iss_bp +1 : /api/iss avec DI 16 args via lazy import depuis app/routes/iss.api_iss_impl, telescope_bp +1 : /api/telescope/trigger-nightly). 1 service extrait : app/services/analytics_dashboard.py (~315 L — `load_analytics_readonly`, `analytics_empty_payload`). **Factory `app/__init__.py` mise à jour** : enregistre maintenant les 21 BPs (vs 6 avant) — **prête pour bascule wsgi PASS 17**. station_web.py −424 lignes (7821 → 7397).  
-> **🎯 Caps : 75% PASS 11. 79% PASS 12. 87% PASS 13. 92% PASS 14. 95% PASS 15. 96% PASS 16.**  
+> **Note PASS 17 :** 2 routes AI lourdes migrées vers ai_bp (/api/oracle-cosmique POST + /api/guide-stellaire POST). 2 services extraits : app/services/oracle_engine.py (~205 L — `oracle_cosmique_live_strings`, `oracle_build_messages`, `call_claude_oracle_messages`, `oracle_claude_stream` SSE) et app/services/guide_engine.py (~110 L — `build_orbital_guide` orchestre weather_safe/sunrise/planets/Opus). station_web.py −150 lignes (7397 → 7247). 1 seule route restante : /static/<path:filename> (override Flask intentionnel).  
+> **🎯 Caps : 75% PASS 11. 79% PASS 12. 87% PASS 13. 92% PASS 14. 95% PASS 15. 96% PASS 16. 97% PASS 17.**  
 > **⚠️ RESTART REQUIS** : `sudo systemctl restart astroscan` — modifications en attente de reload Gunicorn.
 
 ### Progression
-- Routes migrées : **260 / 269** ≈ **97%**
-- Routes restantes dans monolithe : **3 actives** (−4 vs PASS 15)
+- Routes migrées : **262 / 269** ≈ **97%**
+- Routes restantes dans monolithe : **1 active** (/static/<path:filename> — Flask override intentionnel)
 
 ---
 
@@ -597,4 +598,6 @@ systemctl restart astroscan && sleep 15 && curl -I https://astroscan.space/
 *PASS 15 — 2026-05-03 — Nettoyage final : 8 routes migrées vers BPs existants. 2 nouveaux services extraits (hilal_compute.py ~395L, microobservatory.py ~165L). cameras_bp +4 (sky-camera/simulate, microobs x2, proxy-cam world live), feeds_bp +1 (bepi), astro_bp +2 (hilal x2), ai_bp +1 (oracle alias). station_web −219 lignes (8040 → 7821). Différé final (7 routes — refactor non-trivial ou inopportun) : /analytics page (helpers `_load_analytics_readonly`+`_analytics_empty_payload` ~290L), /api/iss (DI 16 args, impl déjà extrait dans app/routes/iss.py mais shim couplé), /static/<path:filename> (override Flask intentionnel), /api/oracle-cosmique POST (helpers oracle stream+claude_messages ~280L), /api/guide-stellaire POST (helpers weather/sunrise/planets ~80L), /api/telescope/trigger-nightly POST (helper `_telescope_nightly_tlemcen` ~100L + `_mo_*` helpers FITS+JPG), /api/visitors/connection_time (~280L logique sessions/dédoublonnage IP).*  
 **🎯 Cap des 95% atteint à PASS 15. 21 BPs prod · 10 services extraits · −3 836 lignes monolithe depuis PASS 4.**  
 *PASS 16 — 2026-05-03 — Factory create_app + résiduels : 4 routes migrées (analytics_bp +2 : /analytics + /api/visitors/connection_time, iss_bp +1 : /api/iss avec DI 16 args lazy-import, telescope_bp +1 : /api/telescope/trigger-nightly). 1 service extrait : analytics_dashboard.py (~315L — `load_analytics_readonly`, `analytics_empty_payload`). **Factory `app/__init__.py` actualisée : 21 BPs enregistrés (sync station_web.py L501+) — prête pour bascule wsgi PASS 17**. station_web −424 lignes (7821 → 7397). Routes restantes : /static/<path:filename> (override Flask intentionnel), /api/oracle-cosmique POST (~280L oracle stream), /api/guide-stellaire POST (~80L weather/sunrise/planets+Claude Opus).*  
-**🎯 Cap des 96% atteint à PASS 16. 21 BPs prod · 11 services extraits · create_app prête.**
+**🎯 Cap des 96% atteint à PASS 16. 21 BPs prod · 11 services extraits · create_app prête.**  
+*PASS 17 — 2026-05-03 — Oracle + Guide AI : 2 routes migrées (ai_bp +2 : /api/oracle-cosmique POST avec stream SSE + /api/guide-stellaire POST). 2 services extraits : oracle_engine.py (~205L — ORACLE_COSMIQUE_SYSTEM, oracle_cosmique_live_strings, oracle_build_messages, call_claude_oracle_messages, oracle_claude_stream) et guide_engine.py (~110L — build_orbital_guide orchestre weather_safe/sunrise/planets/Opus depuis modules.guide_stellaire+observation_planner+core.weather_engine_safe). station_web −150 lignes (7397 → 7247). 1 seule route restante : /static/<path:filename> (override Flask intentionnel — laissé en monolithe).*  
+**🎯 Cap des 97% atteint à PASS 17. 21 BPs prod · 13 services extraits · 1 seule route monolithe (Flask override intentionnel).**

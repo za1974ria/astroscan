@@ -484,12 +484,113 @@ def api_jwst_refresh():
         return jsonify({"error": str(e)}), 500
 
 
-# ── PASS 15 — Oracle alias (POST → délègue vers /api/oracle-cosmique monolith) ──
+# ── PASS 17 — Oracle Cosmique POST (différé PASS 10 levé) ────────────
+@bp.route("/api/oracle-cosmique", methods=["POST"])
+def api_oracle_cosmique():
+    """Chat Oracle Cosmique : contexte live (lune, météo spatiale, ce soir) + Claude."""
+    from flask import Response, stream_with_context
+    from app.services.oracle_engine import (
+        ORACLE_COSMIQUE_SYSTEM,
+        oracle_cosmique_live_strings,
+        oracle_build_messages,
+        call_claude_oracle_messages,
+        oracle_claude_stream,
+    )
+    if not request.is_json:
+        return jsonify({"ok": False, "error": "Corps JSON requis"}), 400
+    body = request.get_json(silent=True) or {}
+    message = (body.get("message") or "").strip()
+    if not message:
+        return jsonify({"ok": False, "error": "Message vide"}), 400
+    ville = (body.get("ville") or "").strip()
+    historique = body.get("historique")
+    if not isinstance(historique, list):
+        historique = []
+    want_stream = body.get("stream", True)
+
+    moon_s, meteo_s, tonight_s = oracle_cosmique_live_strings()
+    system = (
+        ORACLE_COSMIQUE_SYSTEM
+        .replace("<<<MOON>>>", moon_s)
+        .replace("<<<METEO>>>", meteo_s)
+        .replace("<<<TONIGHT>>>", tonight_s)
+    )
+    msgs = oracle_build_messages(historique, message, ville)
+
+    if not os.environ.get("ANTHROPIC_API_KEY", "").strip():
+        return jsonify({
+            "ok": False,
+            "error": "Oracle momentanément muet (ANTHROPIC_API_KEY non configurée).",
+        }), 503
+
+    if want_stream:
+        def sse_gen():
+            try:
+                for chunk, err in oracle_claude_stream(system, msgs):
+                    if err:
+                        yield f"data: {json.dumps({'error': err}, ensure_ascii=False)}\n\n"
+                        return
+                    if chunk:
+                        yield f"data: {json.dumps({'t': chunk}, ensure_ascii=False)}\n\n"
+                yield "data: [DONE]\n\n"
+            except Exception as e:
+                log.warning("oracle-cosmique stream: %s", e)
+                yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+
+        return Response(
+            stream_with_context(sse_gen()),
+            mimetype="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    reply, err = call_claude_oracle_messages(system, msgs)
+    if err:
+        log.warning("oracle-cosmique: %s", err)
+        return jsonify({"ok": False, "error": err}), 502
+    return jsonify({"ok": True, "response": reply})
+
+
 @bp.route("/api/oracle", methods=["POST"])
 def api_oracle_alias():
-    """Alias /api/oracle → /api/oracle-cosmique (POST). Délégation lazy-import."""
+    """Alias /api/oracle → /api/oracle-cosmique (POST). Délégation interne."""
     try:
-        from station_web import api_oracle_cosmique
         return api_oracle_cosmique()
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── PASS 17 — Guide Stellaire POST (différé PASS 10 levé) ────────────
+@bp.route("/api/guide-stellaire", methods=["POST"])
+def api_guide_stellaire():
+    """Génère un guide d'observation orbital pour ville/lat/lon/date."""
+    from app.services.guide_engine import build_orbital_guide
+
+    data = request.get_json(silent=True) or {}
+    ville = (data.get("ville") or data.get("city") or "").strip() or "Lieu inconnu"
+    try:
+        lat = float(data.get("latitude", data.get("lat")))
+        lon = float(data.get("longitude", data.get("lon")))
+    except (TypeError, ValueError):
+        return jsonify({
+            "ok": False,
+            "error": "latitude et longitude numériques requises",
+        }), 400
+    if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+        return jsonify({"ok": False, "error": "coordonnées hors limites"}), 400
+    date_iso = (data.get("date") or "").strip()
+    if not date_iso:
+        date_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    try:
+        datetime.strptime(date_iso, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"ok": False, "error": "date invalide (YYYY-MM-DD)"}), 400
+
+    result = build_orbital_guide(ville, lat, lon, date_iso)
+    if not result.get("ok"):
+        # Status 502 if context present (Claude error), else 500
+        status = 502 if "context" in result else 500
+        return jsonify(result), status
+    return jsonify(result)
