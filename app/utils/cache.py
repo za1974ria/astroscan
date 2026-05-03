@@ -195,3 +195,27 @@ def memoize_ttl(ttl: float = 300, max_size: int = 256) -> Callable:
         return wrapper
 
     return decorator
+
+
+# ---------------------------------------------------------------------------
+# Aliases pour compatibilité avec le nouveau spec Blueprint
+# ---------------------------------------------------------------------------
+
+def set_cached(key: str, value: Any, ttl: int = 300) -> None:
+    """Alias de cache_set avec signature (key, value, ttl)."""
+    cache_set(key, value, ttl)
+
+
+def invalidate(key: str) -> None:
+    """Alias de invalidate_cache."""
+    invalidate_cache(key)
+
+
+def memoize(ttl: float = 300, max_size: int = 256) -> Callable:
+    """Alias de memoize_ttl — décorateur @memoize(ttl=N)."""
+    return memoize_ttl(ttl=ttl, max_size=max_size)
+
+
+def cached_with_ttl(seconds: float = 300, max_size: int = 256) -> Callable:
+    """Alias de memoize_ttl — décorateur @cached_with_ttl(seconds=N)."""
+    return memoize_ttl(ttl=seconds, max_size=max_size)
