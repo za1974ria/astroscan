@@ -2413,36 +2413,11 @@ API_SPEC = {
 # PAGES
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/')
-def index():
-    return render_template(
-        'landing.html',
-        seo_title=SEO_HOME_TITLE,
-        seo_description=SEO_HOME_DESCRIPTION,
-    )
-
-@app.route('/portail')
-def portail():
-    response = make_response(render_template('portail.html', lang=get_user_lang()))
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
-
-
-# MIGRÉ → app/blueprints/pages/__init__.py (PASS 3)
-# @app.route('/landing')
-# def landing_page(): ...
-
-
-@app.route('/technical')
-def technical_page():
-    return render_template('technical.html')
-
-
-@app.route('/dashboard')
-def dashboard():
-    return render_template('research_dashboard.html')
+# MIGRATED TO pages_bp PASS 5 — / → see app/blueprints/pages/__init__.py (index)
+# MIGRATED TO pages_bp PASS 5 — /portail → see app/blueprints/pages/__init__.py (portail)
+# MIGRÉ → app/blueprints/pages/__init__.py (PASS 3) — /landing
+# MIGRATED TO pages_bp PASS 5 — /technical → see app/blueprints/pages/__init__.py (technical_page)
+# MIGRATED TO pages_bp PASS 5 — /dashboard → see app/blueprints/pages/__init__.py (dashboard)
 
 
 def _analytics_tz_for_country_code(code):
@@ -3028,44 +3003,9 @@ def analytics_dashboard():
     )
 
 
-@app.route('/overlord_live')
-def overlord_live():
-    return render_template('overlord_live.html')
-
-@app.route('/galerie')
-def galerie():
-    try:
-        conn = get_db()
-        total = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
-        anomalies = conn.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
-        rows = conn.execute(
-            "SELECT id, timestamp, source, objets_detectes, analyse_gemini as rapport_gemini, "
-            "COALESCE(title,'') as title, anomalie "
-            "FROM observations ORDER BY id DESC LIMIT 200"
-        ).fetchall()
-        class_rows = conn.execute(
-            "SELECT COALESCE(objets_detectes,'inconnu') as type, COUNT(*) as n "
-            "FROM observations GROUP BY objets_detectes ORDER BY n DESC"
-        ).fetchall()
-        conn.close()
-        observations = [dict(r) for r in rows]
-        stats = {'total': total, 'anomalies': anomalies}
-        classification_stats = [dict(r) for r in class_rows]
-    except Exception as e:
-        log.warning(f"galerie: {e}")
-        observations = []
-        stats = {'total': 0, 'anomalies': 0}
-        classification_stats = []
-    return render_template('galerie.html', stats=stats, observations=observations, classification_stats=classification_stats)
-
-@app.route('/observatoire')
-def observatoire():
-    nasa_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY') or 'DEMO_KEY'
-    response = make_response(render_template('observatoire.html', nasa_key=nasa_key))
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
+# MIGRATED TO pages_bp PASS 5 — /overlord_live → see app/blueprints/pages/__init__.py (overlord_live)
+# MIGRATED TO pages_bp PASS 5 — /galerie → see app/blueprints/pages/__init__.py (galerie)
+# MIGRATED TO pages_bp PASS 5 — /observatoire → see app/blueprints/pages/__init__.py (observatoire)
 
 # MIGRATED TO pages_bp 2026-05-02 (B-RECYCLE R2) — see app/blueprints/pages/__init__.py
 # @app.route('/vision')
@@ -3073,21 +3013,9 @@ def observatoire():
 #     return render_template('vision.html')
 
 
-@app.route('/vision-2026')
-def vision_2026():
-    return render_template('vision_2026.html')
-
-
-@app.route('/sondes')
-def sondes():
-    """Page SONDES SPATIALES — télémetrie Voyager, Mars, ISS, JWST, Hubble, Parker."""
-    return render_template('sondes.html')
-
-
-@app.route('/telemetrie-sondes')
-def telemetrie_sondes():
-    """Télémétrie live Voyager 1&2, James Webb, New Horizons."""
-    return render_template('telemetrie_sondes.html')
+# MIGRATED TO pages_bp PASS 5 — /vision-2026 → see app/blueprints/pages/__init__.py (vision_2026)
+# MIGRATED TO pages_bp PASS 5 — /sondes → see app/blueprints/pages/__init__.py (sondes)
+# MIGRATED TO pages_bp PASS 5 — /telemetrie-sondes → see app/blueprints/pages/__init__.py (telemetrie_sondes)
 
 
 @app.route('/sky-camera')
@@ -4960,38 +4888,9 @@ def skyview_list():
 # PWA — Service Worker & Manifest
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/sw.js')
-def sw_js():
-    sw_path = f'{STATION}/static/sw.js'
-    if Path(sw_path).exists():
-        resp = Response(open(sw_path).read(), mimetype='application/javascript')
-        resp.headers['Service-Worker-Allowed'] = '/'
-        resp.headers['Cache-Control'] = 'no-cache'
-        return resp
-    return Response('// SW not found', mimetype='application/javascript')
-
-@app.route('/manifest.json')
-def manifest_json():
-    m_path = f'{STATION}/static/manifest.json'
-    if Path(m_path).exists():
-        return send_file(m_path, mimetype='application/json')
-    return jsonify({
-        'name': 'AstroScan-Chohra',
-        'short_name': 'AstroScan',
-        'description': SEO_HOME_DESCRIPTION,
-        'start_url': '/observatoire',
-        'display': 'standalone',
-        'background_color': '#010408',
-        'theme_color': '#00d4ff',
-        'icons': [
-            {'src': '/static/img/pwa-icon-192.png', 'sizes': '192x192', 'type': 'image/png'},
-            {'src': '/static/img/pwa-icon-512.png', 'sizes': '512x512', 'type': 'image/png'},
-        ]
-    })
-
-@app.route('/api/push/subscribe', methods=['POST'])
-def api_push_subscribe():
-    return jsonify({'ok': True, 'message': 'Subscription enregistrée'})
+# MIGRATED TO main_bp PASS 5 — /sw.js → see app/blueprints/main/__init__.py (sw_js)
+# MIGRATED TO main_bp PASS 5 — /manifest.json → see app/blueprints/main/__init__.py (manifest_json)
+# MIGRATED TO main_bp PASS 5 — /api/push/subscribe → see app/blueprints/main/__init__.py (api_push_subscribe)
 
 # ══════════════════════════════════════════════════════════════
 # STATIC
@@ -5031,9 +4930,7 @@ FETES_ISLAMIQUES = [
 ]
 
 
-@app.route('/ce_soir')
-def ce_soir_page():
-    return render_template("ce_soir.html", fetes_islamiques=FETES_ISLAMIQUES)
+# MIGRATED TO pages_bp PASS 5 — /ce_soir → see app/blueprints/pages/__init__.py (ce_soir_page)
 
 
 ORACLE_COSMIQUE_SYSTEM = """Tu es l'ORACLE COSMIQUE d'AstroScan-Chohra,
@@ -9334,74 +9231,10 @@ def api_satellite_passes():
     return jsonify({"passes": passes_out})
 
 
-@app.route('/research')
-def research():
-    """Scientific research dashboard — Digital Lab, anomaly detector, solar, NEO, discoveries."""
-    return render_template('research.html')
-
-
-@app.route('/space')
-def space():
-    return render_template('space.html')
-
-
-@app.route('/space-intelligence')
-def space_intelligence():
-    return redirect('/space')
-
-
-@app.route("/module/<name>")
-def module(name):
-    # Compatibilité route legacy : certains modules nécessitent un contexte (ex: /galerie).
-    # Rediriger vers la route officielle évite les 500 sans toucher au rendu public.
-    module_routes = {
-        "galerie": "/galerie",
-        "observatoire": "/observatoire",
-        "portail": "/portail",
-        "dashboard": "/dashboard",
-        "ce_soir": "/ce_soir",
-    }
-    target = module_routes.get((name or "").strip().lower())
-    if target:
-        return redirect(target)
-
-    template = f"{name}.html"
-    template_path = f"/root/astro_scan/templates/{template}"
-    if os.path.exists(template_path):
-        try:
-            return render_template(template)
-        except Exception as e:
-            log.warning("module/%s render failed: %s", name, e)
-            return redirect("/portail")
-
-    return f"""
-<html>
-<head>
-<title>Orbital-Chohra</title>
-<style>
-body {{
-    background:#020b14;
-    color:#00eaff;
-    font-family:monospace;
-    text-align:center;
-    padding-top:120px;
-}}
-a {{
-    color:#00ffaa;
-    text-decoration:none;
-    font-size:18px;
-}}
-</style>
-</head>
-
-<body>
-    <h1>MODULE {name.upper()}</h1>
-    <p>Module actif – contenu en cours de chargement</p>
-    <br>
-    <a href="/portail">⬅ Retour portail</a>
-</body>
-</html>
-"""
+# MIGRATED TO pages_bp PASS 5 — /research → see app/blueprints/pages/__init__.py (research)
+# MIGRATED TO pages_bp PASS 5 — /space → see app/blueprints/pages/__init__.py (space)
+# MIGRATED TO pages_bp PASS 5 — /space-intelligence → see app/blueprints/pages/__init__.py (space_intelligence)
+# MIGRATED TO pages_bp PASS 5 — /module/<name> → see app/blueprints/pages/__init__.py (module)
 
 
 @app.route('/api/lab/upload', methods=['POST'])
@@ -9661,10 +9494,7 @@ def api_archive_discoveries():
 #     return render_template('orbital_map.html', cesium_token=CESIUM_TOKEN)
 
 
-@app.route('/demo')
-def astroscan_demo_page():
-    """Page produit : liens MASTER / VIEWER et test WS pour démo client."""
-    return render_template('demo.html')
+# MIGRATED TO pages_bp PASS 5 — /demo → see app/blueprints/pages/__init__.py (astroscan_demo_page)
 
 
 @app.route('/api/orbits/live')
@@ -9832,20 +9662,14 @@ def api_space_intelligence():
         return jsonify({'alerts': [], 'events': [], 'risk_level': 'medium', 'error': str(e)})
 
 
-@app.route('/space-intelligence-page')
-def space_intelligence_page():
-    """Page Intelligence spatiale (éviter conflit avec /space)."""
-    return render_template('space_intelligence.html')
+# MIGRATED TO pages_bp PASS 5 — /space-intelligence-page → see app/blueprints/pages/__init__.py (space_intelligence_page)
 
 
 
 
 
 
-@app.route('/favicon.ico')
-def favicon():
-    from flask import send_from_directory
-    return send_from_directory('static', 'favicon.ico')
+# MIGRATED TO main_bp PASS 5 — /favicon.ico → see app/blueprints/main/__init__.py (favicon)
 
 
 # MIGRATED TO main_bp 2026-05-02 (B-RECYCLE R3) — see app/blueprints/main/__init__.py
@@ -9918,10 +9742,7 @@ def api_telescope_proxy_image():
         return Response(status=502)
 
 
-@app.route('/aladin')
-@app.route('/carte-du-ciel')
-def aladin_page():
-    return render_template('aladin.html')
+# MIGRATED TO pages_bp PASS 5 — /aladin + /carte-du-ciel → see app/blueprints/pages/__init__.py (aladin_page)
 
 
 # Prêt à recevoir du trafic : import Gunicorn/worker terminé (TLE + routes chargés).
@@ -11264,58 +11085,10 @@ def page_ephemerides():
     return render_template('ephemerides.html', ephemerides_tlemcen=eph_payload)
 
 
-@app.route('/sitemap.xml')
-def sitemap_xml():
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    base = "https://astroscan.space"
-    urls = [
-        ("/", "0.6", "monthly"),
-        ("/portail", "1.0", "daily"),
-        ("/ephemerides", "0.8", "daily"),
-        ("/galerie", "0.8", "monthly"),
-        ("/observatoire", "0.8", "daily"),
-        ("/telescope", "0.8", "daily"),
-        ("/ce-soir", "0.8", "daily"),
-        ("/space-weather", "0.8", "daily"),
-        ("/orbital-map", "0.8", "daily"),
-        ("/a-propos", "0.6", "monthly"),
-        ("/orbital-radio", "0.8", "daily"),
-        ("/vision", "0.8", "daily"),
-        ("/sondes", "0.8", "daily"),
-    ]
-    xml_items = [
-        (
-            "  <url>\n"
-            f"    <loc>{base}{path}</loc>\n"
-            f"    <lastmod>{today}</lastmod>\n"
-            f"    <changefreq>{freq}</changefreq>\n"
-            f"    <priority>{prio}</priority>\n"
-            "  </url>"
-        )
-        for path, prio, freq in urls
-    ]
-    xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "\n".join(xml_items)
-        + "\n</urlset>\n"
-    )
-    return Response(xml, mimetype='application/xml')
-
-
-@app.route('/robots.txt')
-def robots_txt():
-    return send_from_directory(os.path.join(app.root_path, 'static'), 'robots.txt', mimetype='text/plain')
-
-
-@app.route('/europe-live')
-def europe_live():
-    return render_template('europe_live.html')
-
-
-@app.route('/flight-radar')
-def flight_radar():
-    return render_template('flight_radar.html', lang=get_user_lang())
+# MIGRATED TO seo_bp PASS 5 — /sitemap.xml DOUBLON (déjà dans seo_bp/routes.py — version BP plus complète conservée)
+# MIGRATED TO seo_bp PASS 5 — /robots.txt DOUBLON (déjà dans seo_bp/routes.py — version BP plus complète conservée)
+# MIGRATED TO pages_bp PASS 5 — /europe-live → see app/blueprints/pages/__init__.py (europe_live)
+# MIGRATED TO pages_bp PASS 5 — /flight-radar → see app/blueprints/pages/__init__.py (flight_radar)
 
 
 # ── PROXY CAMÉRAS — World Live ────────────────────────────────────────────────

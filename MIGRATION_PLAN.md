@@ -9,9 +9,9 @@
 ### Monolithe station_web.py
 | Métrique | Valeur |
 |----------|--------|
-| Lignes totales | 11 657 (après PASS 4) |
-| `@app.route` actifs | **198** |
-| `# @app.route` commentés (migrés) | 38 |
+| Lignes totales | 11 430 (après PASS 5) |
+| `@app.route` actifs | **171** |
+| `# MIGRATED TO` markers (migrés) | 65 |
 | Total occurrences `@app.route` | 236 |
 
 ### Blueprints actifs en production (via station_web)
@@ -23,19 +23,20 @@
 | iss_bp | app/blueprints/iss/routes.py | 5 |
 | i18n_bp | app/blueprints/i18n/__init__.py | 1 |
 | api_bp | app/blueprints/api/__init__.py | 13 |
-| pages_bp | app/blueprints/pages/__init__.py | 3 |
-| main_bp | app/blueprints/main/__init__.py | 6 |
+| pages_bp | app/blueprints/pages/__init__.py | 24 (+21 PASS 5) |
+| main_bp | app/blueprints/main/__init__.py | 10 (+4 PASS 5) |
 | system_bp | app/blueprints/system/__init__.py | 19 (+11 PASS 4) |
 | analytics_bp | app/blueprints/analytics/__init__.py | 6 |
 | export_bp | app/blueprints/export/__init__.py | 5 (+2 PASS 4) |
-| **TOTAL MIGRÉ** | | **69 routes** |
+| **TOTAL MIGRÉ** | | **94 routes** |
 
 > **Note PASS 4 :** export_bp enregistré (était créé mais non enregistré). system_bp +11 routes (health, selftest, tle/refresh, latest, sync/state, telescope/sources, accuracy/export.csv, api/health, status, stream/status).  
+> **Note PASS 5 :** pages_bp +21 routes (/, /portail, /technical, /dashboard, /overlord_live, /galerie, /observatoire, /vision-2026, /sondes, /telemetrie-sondes, /ce_soir, /research, /space, /space-intelligence, /module/<name>, /demo, /space-intelligence-page, /aladin, /carte-du-ciel, /europe-live, /flight-radar). main_bp +4 routes (/sw.js, /manifest.json, /api/push/subscribe, /favicon.ico). 2 doublons supprimés du monolithe (/sitemap.xml, /robots.txt — déjà dans seo_bp).  
 > **⚠️ RESTART REQUIS** : `sudo systemctl restart astroscan` — modifications en attente de reload Gunicorn.
 
 ### Progression
-- Routes migrées : **69 / 269** ≈ **26%**
-- Routes restantes dans monolithe : **198 actives** (−15 vs PASS 3)
+- Routes migrées : **94 / 269** ≈ **35%**
+- Routes restantes dans monolithe : **171 actives** (−27 vs PASS 4)
 
 ---
 
@@ -555,4 +556,5 @@ systemctl restart astroscan && sleep 15 && curl -I https://astroscan.space/
 
 *PASS 0 — 2026-05-03 — Audit complet terminé*  
 *PASS 1-3 — 2026-05-03 — Infra cache/db/config + 56 routes BP*  
-*PASS 4 — 2026-05-03 — Export+Health : +13 routes (export_bp +2, system_bp +11), enregistrement export_bp, station_web −127 lignes — RESTART ROOT REQUIS*
+*PASS 4 — 2026-05-03 — Export+Health : +13 routes (export_bp +2, system_bp +11), enregistrement export_bp, station_web −127 lignes — RESTART ROOT REQUIS*  
+*PASS 5 — 2026-05-03 — Pages+PWA : +25 routes (pages_bp +21, main_bp +4) + 2 doublons supprimés (/sitemap.xml, /robots.txt déjà couverts par seo_bp). station_web −227 lignes (11657 → 11430). Domaines couverts : C, D, Q, S, AG, AL (partiel). Différé : /analytics (deps lourdes), /ephemerides (astropy), /proxy-cam (helpers cam), /static/<path:filename> (override Flask) — voir PASS 12/14.*
