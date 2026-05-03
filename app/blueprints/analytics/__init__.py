@@ -1,18 +1,22 @@
-"""Blueprint Analytics — endpoints de tracking visiteurs.
+"""Blueprint Analytics — endpoints de tracking visiteurs + dashboard.
 
 Endpoints :
   - /api/visits             (GET)  : compteur actuel
   - /api/visits/increment   (POST) : incremente et retourne nouvelle valeur
   - /api/visits/reset       (POST) : reset compteur (admin)
   - /api/visits/count       (GET)  : compteur direct via SQLite
+  - /analytics              (GET)  : dashboard HTML (PASS 16)
+  - /api/visitors/connection_time (PASS 16)
+  + 10 routes PASS 12 (owner-ips, score-update, summary, globe, stream, ...)
 
 Migration depuis station_web.py (CTO Critique 3 - Monolith reduction).
 """
 
 import logging
+import os
 import sqlite3
 
-from flask import Blueprint, jsonify, redirect, request
+from flask import Blueprint, jsonify, redirect, render_template, request
 
 log = logging.getLogger(__name__)
 
@@ -483,3 +487,413 @@ def track_time_endpoint():
         return jsonify({"ok": True})
     except Exception:
         return jsonify({"ok": False}), 500
+
+
+# ── PASS 16 — /api/visitors/connection_time (différé PASS 12 levé) ────
+@bp.route("/api/visitors/connection_time")
+def api_visitors_connection_time():
+    """Temps de connexion par IP (visiteurs externes), dédupliqué et plafonné."""
+    import os
+    from datetime import datetime
+    from station_web import _get_db_visitors
+    try:
+        def _parse_visitor_at(ts):
+            s = (ts or "").strip()
+            if not s:
+                return None
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"
+            if "T" in s:
+                try:
+                    return datetime.fromisoformat(s.replace("Z", "+00:00"))
+                except Exception:
+                    pass
+            try:
+                return datetime.strptime(s[:19], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                pass
+            try:
+                return datetime.fromisoformat(s)
+            except Exception:
+                return None
+
+        fallback_my_ip = "105.235.139.99"
+        env_owner_ips = (os.environ.get("ASTROSCAN_OWNER_IPS") or "").strip()
+        if env_owner_ips:
+            owner_ips = {x.strip() for x in env_owner_ips.split(",") if x.strip()}
+        else:
+            owner_ips = set()
+        single_owner = (os.environ.get("ASTROSCAN_MY_IP") or "").strip()
+        if single_owner:
+            owner_ips.add(single_owner)
+        if not owner_ips:
+            owner_ips.add(fallback_my_ip)
+
+        related_owner_ips = set()
+        try:
+            conn_owner = _get_db_visitors()
+            conn_owner.row_factory = sqlite3.Row
+            owner_list = sorted(owner_ips)
+            owner_ph = ",".join(["?"] * len(owner_list))
+            sid_rows = conn_owner.execute(
+                "SELECT DISTINCT session_id FROM visitor_log "
+                f"WHERE ip IN ({owner_ph}) AND COALESCE(session_id,'')<>''",
+                tuple(owner_list),
+            ).fetchall()
+            sids = [str(r["session_id"]).strip() for r in sid_rows if r["session_id"]]
+            if sids:
+                sid_ph = ",".join(["?"] * len(sids))
+                ip_rows = conn_owner.execute(
+                    "SELECT DISTINCT ip FROM visitor_log "
+                    f"WHERE session_id IN ({sid_ph}) AND COALESCE(ip,'')<>''",
+                    tuple(sids),
+                ).fetchall()
+                for r in ip_rows:
+                    ip = str(r["ip"]).strip()
+                    if ip:
+                        related_owner_ips.add(ip)
+            conn_owner.close()
+        except Exception:
+            related_owner_ips = set()
+        effective_owner_ips = set(owner_ips) | set(related_owner_ips)
+        exclude_my_ip = (request.args.get("exclude_my_ip", "0") or "0").strip().lower() in (
+            "1", "true", "yes", "on",
+        )
+        excluded = {"127.0.0.1", "::1"}
+        if exclude_my_ip:
+            excluded.update(effective_owner_ips)
+        placeholders = ",".join(["?"] * len(excluded))
+        base_params = tuple(excluded)
+
+        conn = _get_db_visitors()
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT ip, "
+            "COALESCE(country,'Unknown') AS country, "
+            "COALESCE(city,'Unknown') AS city, "
+            "COALESCE(country_code,'XX') AS country_code, "
+            "COALESCE(session_id,'') AS session_id, "
+            "COALESCE(visited_at,'') AS visited_at "
+            "FROM visitor_log "
+            f"WHERE ip NOT IN ({placeholders}) "
+            "ORDER BY id DESC",
+            base_params,
+        ).fetchall()
+
+        by_ip = {}
+        session_ip_hits = {}
+        for r in rows:
+            ip = (r["ip"] or "").strip()
+            if not ip:
+                continue
+            entry = by_ip.get(ip)
+            vis_at = (r["visited_at"] or "").strip()
+            if not entry:
+                entry = {
+                    "ip": ip,
+                    "country": r["country"] or "Unknown",
+                    "city": r["city"] or "Unknown",
+                    "country_code": r["country_code"] or "XX",
+                    "sessions": set(),
+                    "session_count": 0,
+                    "total_sec": 0,
+                    "last_visit": vis_at,
+                    "first_visit": vis_at,
+                    "visit_count": 0,
+                }
+                by_ip[ip] = entry
+            else:
+                if vis_at and (not entry["last_visit"] or vis_at > entry["last_visit"]):
+                    entry["last_visit"] = vis_at
+                if vis_at and (not entry.get("first_visit") or vis_at < entry["first_visit"]):
+                    entry["first_visit"] = vis_at
+            entry["visit_count"] = int(entry.get("visit_count") or 0) + 1
+            sid = (r["session_id"] or "").strip()
+            if sid:
+                entry["sessions"].add(sid)
+                hit_map = session_ip_hits.get(sid)
+                if not hit_map:
+                    hit_map = {}
+                    session_ip_hits[sid] = hit_map
+                hit_map[ip] = int(hit_map.get(ip, 0)) + 1
+
+        all_sids = list(session_ip_hits.keys())
+        sid_totals = {}
+        if all_sids:
+            chunk = 500
+            for i in range(0, len(all_sids), chunk):
+                batch = all_sids[i: i + chunk]
+                sid_ph = ",".join(["?"] * len(batch))
+                t_rows = conn.execute(
+                    "SELECT session_id, "
+                    "COALESCE(SUM(duration),0) AS total_duration, "
+                    "MIN(created_at) AS first_at, "
+                    "MAX(created_at) AS last_at "
+                    "FROM session_time "
+                    f"WHERE session_id IN ({sid_ph}) "
+                    "GROUP BY session_id",
+                    tuple(batch),
+                ).fetchall()
+                for tr in t_rows:
+                    sid = (tr["session_id"] or "").strip()
+                    if not sid:
+                        continue
+                    total_sec = int(tr["total_duration"] or 0)
+                    span_sec = 0
+                    if tr["first_at"] and tr["last_at"]:
+                        try:
+                            dt0 = datetime.fromisoformat(str(tr["first_at"]).replace("Z", "+00:00"))
+                            dt1 = datetime.fromisoformat(str(tr["last_at"]).replace("Z", "+00:00"))
+                            span_sec = max(0, int((dt1 - dt0).total_seconds()))
+                        except Exception:
+                            span_sec = 0
+                    if span_sec > 0:
+                        total_sec = min(total_sec, span_sec)
+                    sid_totals[sid] = max(0, min(total_sec, 86400 * 7))
+
+        for entry in by_ip.values():
+            sc = len(entry["sessions"])
+            if sc <= 0 and int(entry.get("visit_count") or 0) > 0:
+                sc = 1
+            entry["session_count"] = sc
+            entry["total_sec"] = 0
+
+        for sid, hit_map in session_ip_hits.items():
+            total = int(sid_totals.get(sid, 0))
+            if total <= 0:
+                continue
+            denom = sum(int(v or 0) for v in hit_map.values())
+            if denom <= 0:
+                continue
+            allocated = 0
+            keys = list(hit_map.keys())
+            for idx, ip in enumerate(keys):
+                share = int(round(total * (int(hit_map[ip]) / float(denom))))
+                if idx == len(keys) - 1:
+                    share = max(0, total - allocated)
+                allocated += share
+                if ip in by_ip:
+                    by_ip[ip]["total_sec"] += max(0, share)
+
+        for entry in by_ip.values():
+            if int(entry.get("total_sec") or 0) > 0:
+                continue
+            fv = entry.get("first_visit") or ""
+            lv = entry.get("last_visit") or ""
+            dt0 = _parse_visitor_at(fv)
+            dt1 = _parse_visitor_at(lv)
+            if dt0 and dt1:
+                est = max(0, int((dt1 - dt0).total_seconds()))
+                if est <= 0 and int(entry.get("visit_count") or 0) > 0:
+                    est = 1
+                entry["total_sec"] = min(est, 86400 * 7)
+
+        conn.close()
+
+        def _fmt_duration(sec):
+            sec = int(sec or 0)
+            h, rem = divmod(sec, 3600)
+            m, s = divmod(rem, 60)
+            if h > 0:
+                return f"{h}h{m:02d}m{s:02d}"
+            if m > 0:
+                return f"{m} min {s} s"
+            return f"{s} s"
+
+        def _level(sec):
+            if sec >= 180:
+                return "FORT"
+            if sec >= 30:
+                return "MOYEN"
+            return "FAIBLE"
+
+        items = []
+        for v in by_ip.values():
+            is_my_ip = False if exclude_my_ip else (v["ip"] in effective_owner_ips)
+            items.append({
+                "ip": v["ip"],
+                "country": v["country"],
+                "city": v["city"],
+                "country_code": v["country_code"],
+                "sessions": v["session_count"],
+                "total_sec": v["total_sec"],
+                "total_time": _fmt_duration(v["total_sec"]),
+                "level": _level(v["total_sec"]),
+                "last_visit": v["last_visit"],
+                "is_my_ip": is_my_ip,
+                "traffic_segment": "owner_test" if is_my_ip else "external_visitor",
+            })
+
+        items.sort(
+            key=lambda x: (x.get("last_visit") or "", x["total_sec"], x["sessions"]),
+            reverse=True,
+        )
+        my_items = [x for x in items if x.get("is_my_ip")]
+        ext_items = [x for x in items if not x.get("is_my_ip")]
+        my_total_sec = sum(int(x.get("total_sec") or 0) for x in my_items)
+        ext_total_sec = sum(int(x.get("total_sec") or 0) for x in ext_items)
+        resp = jsonify({
+            "ok": True,
+            "exclude_my_ip": exclude_my_ip,
+            "my_ip": sorted(owner_ips)[0] if owner_ips else fallback_my_ip,
+            "owner_ips": sorted(owner_ips),
+            "effective_owner_ips": sorted(effective_owner_ips),
+            "total_ips": len(items),
+            "my_ip_count": len(my_items),
+            "external_ip_count": len(ext_items),
+            "my_total_sec": my_total_sec,
+            "external_total_sec": ext_total_sec,
+            "items": items[:100],
+        })
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        return resp
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "items": []}), 500
+
+
+# ── PASS 16 — /analytics dashboard page (différé PASS 12 levé) ────────
+@bp.route("/analytics")
+def analytics_dashboard():
+    """Dashboard analytics complet : sessions, page_views, human_score, owner IPs."""
+    from station_web import _get_db_visitors
+    from app.services.analytics_dashboard import (
+        load_analytics_readonly, analytics_empty_payload,
+    )
+    try:
+        data = load_analytics_readonly()
+    except Exception:
+        data = analytics_empty_payload()
+
+    total_page_views = 0
+    human_count = 0
+    suspect_count = 0
+    top_pages = []
+    owner_visits = []
+    db_ips = []
+    env_ips = [
+        x.strip()
+        for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(",")
+        if x.strip()
+    ]
+    avg_human_score = 0.0
+    try:
+        conn = _get_db_visitors()
+        conn.row_factory = sqlite3.Row
+
+        total_page_views = (
+            conn.execute("SELECT COUNT(*) FROM page_views").fetchone()[0] or 0
+        )
+
+        human_count = (conn.execute(
+            "SELECT COUNT(*) FROM visitor_log "
+            "WHERE is_bot=0 AND is_owner=0 AND human_score >= 60"
+        ).fetchone()[0] or 0)
+        suspect_count = (conn.execute(
+            "SELECT COUNT(*) FROM visitor_log "
+            "WHERE is_bot=0 AND is_owner=0 AND human_score >= 20 AND human_score < 60"
+        ).fetchone()[0] or 0)
+        avg_row = conn.execute(
+            "SELECT ROUND(AVG(human_score),1) FROM visitor_log "
+            "WHERE is_bot=0 AND is_owner=0 AND human_score >= 0"
+        ).fetchone()
+        avg_human_score = float(avg_row[0] or 0)
+
+        top_page_rows = conn.execute(
+            "SELECT path, COUNT(*) as cnt FROM page_views "
+            "WHERE path NOT LIKE '/static%' "
+            "GROUP BY path ORDER BY cnt DESC LIMIT 10"
+        ).fetchall()
+        top_pages = [{"path": r["path"], "count": r["cnt"]} for r in top_page_rows]
+
+        ov_rows = conn.execute(
+            "SELECT ip, COALESCE(country,'?') as country, COALESCE(city,'?') as city, "
+            "COALESCE(isp,'') as isp, MAX(visited_at) as last_visit, COUNT(*) as sessions "
+            "FROM visitor_log WHERE is_owner=1 GROUP BY ip "
+            "ORDER BY last_visit DESC LIMIT 20"
+        ).fetchall()
+        owner_visits = [dict(r) for r in ov_rows]
+
+        city_rows = conn.execute(
+            "SELECT country, city, COALESCE(region,'') as region, "
+            "COALESCE(isp,'') as isp, COUNT(*) as cnt "
+            "FROM visitor_log WHERE is_bot=0 AND is_owner=0 "
+            "AND city != 'Unknown' AND city != '' "
+            "GROUP BY city ORDER BY cnt DESC LIMIT 15"
+        ).fetchall()
+        data["top_cities"] = [
+            {"country": r["country"], "city": r["city"], "region": r["region"],
+             "isp": r["isp"], "count": r["cnt"]}
+            for r in city_rows
+        ]
+
+        last_rows = conn.execute(
+            "SELECT ip, country, city, path, visited_at, isp, "
+            "human_score, is_bot, is_owner "
+            "FROM visitor_log ORDER BY id DESC LIMIT 30"
+        ).fetchall()
+        data["latest_visits"] = [dict(r) for r in last_rows]
+
+        for block in data.get("sessions_timeline", []):
+            try:
+                ip = block.get("ip", "")
+                if ip:
+                    vrow = conn.execute(
+                        "SELECT isp, human_score FROM visitor_log WHERE ip=? LIMIT 1",
+                        (ip,),
+                    ).fetchone()
+                    block["isp"] = vrow["isp"] if vrow else ""
+                    block["human_score"] = int(vrow["human_score"] or -1) if vrow else -1
+                else:
+                    block["isp"] = ""
+                    block["human_score"] = -1
+            except Exception:
+                block["isp"] = ""
+                block["human_score"] = -1
+
+        db_ip_rows = conn.execute(
+            "SELECT id, ip, label, added_at FROM owner_ips ORDER BY added_at DESC"
+        ).fetchall()
+        db_ips = [dict(r) for r in db_ip_rows]
+
+        conn.close()
+    except Exception as ex:
+        log.warning("analytics_dashboard extra: %s", ex)
+
+    bot_count = data.get("bot_count", 0)
+    if not bot_count:
+        try:
+            conn2 = _get_db_visitors()
+            bot_count = (conn2.execute(
+                "SELECT COUNT(*) FROM visitor_log WHERE is_bot=1"
+            ).fetchone()[0] or 0)
+            conn2.close()
+        except Exception:
+            bot_count = 0
+
+    return render_template(
+        "analytics.html",
+        total_visits=data.get("total_visits", 0),
+        unique_ips=data.get("unique_ips", 0),
+        total_tracked_events=data.get("total_tracked_events", 0),
+        last_activity=data.get("last_activity", "—"),
+        total_sessions=data.get("total_visits", 0),
+        total_page_views=int(total_page_views),
+        human_count=int(human_count),
+        suspect_count=int(suspect_count),
+        bot_count=int(bot_count),
+        human_pct=round(100 * human_count / max(1, data.get("total_visits", 1)), 1),
+        avg_human_score=round(avg_human_score, 1),
+        owner_count=len(owner_visits),
+        top_pages=top_pages,
+        top_countries=data.get("top_countries", []),
+        top_cities=data.get("top_cities", []),
+        top_pages_by_time=data.get("top_pages_by_time", []),
+        avg_duration_by_page=data.get("avg_duration_by_page", []),
+        latest_visits=data.get("latest_visits", []),
+        sessions_timeline=data.get("sessions_timeline", []),
+        session_visitors_detail=data.get("session_visitors_detail", []),
+        owner_visits=owner_visits,
+        db_ips=db_ips,
+        env_ips=env_ips,
+    )

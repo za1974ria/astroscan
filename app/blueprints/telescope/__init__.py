@@ -353,3 +353,14 @@ def api_hubble_images():
         return jsonify(fetch_hubble_images())
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── PASS 16 — /api/telescope/trigger-nightly POST (différé PASS 9 levé) ──
+@bp.route("/api/telescope/trigger-nightly", methods=["POST"])
+def api_telescope_trigger_nightly():
+    """Déclenche manuellement le pipeline nocturne Harvard MO (thread daemon)."""
+    import threading
+    from station_web import _telescope_nightly_tlemcen
+    t = threading.Thread(target=_telescope_nightly_tlemcen, daemon=True)
+    t.start()
+    return jsonify({"ok": True, "message": "Pipeline nocturne démarré en arrière-plan"})

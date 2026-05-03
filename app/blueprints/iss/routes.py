@@ -317,3 +317,47 @@ def api_iss_passes_observer(lat, lon):
     except Exception as e:
         log.warning("api/iss/passes/observer: %s", e)
         return _jsonify({"ok": False, "passes": [], "error": str(e)}), 500
+
+
+# ── PASS 16 — /api/iss canonique (DI 16 args via lazy-import) ──────────
+@iss_bp.route("/api/iss")
+def api_iss():
+    """Endpoint canonique ISS — délègue à app/routes/iss.api_iss_impl avec DI."""
+    import os as _os
+    import time as _time
+    from datetime import datetime as _datetime, timezone as _timezone
+    from flask import jsonify as _jsonify
+    from app.routes.iss import api_iss_impl
+    from app.utils.cache import (
+        cache_cleanup as _cache_cleanup,
+        cache_get as _cache_get,
+        cache_set as _cache_set,
+        get_cached as _get_cached,
+    )
+    # Helpers + globals encore en monolithe — lazy import depuis station_web
+    from station_web import (
+        system_log,
+        _fetch_iss_live, _get_iss_crew,
+        propagate_tle_debug,
+        TLE_CACHE, TLE_ACTIVE_PATH,
+        _parse_tle_file, _emit_diag_json,
+    )
+    return api_iss_impl(
+        cache_cleanup=_cache_cleanup,
+        system_log=system_log,
+        cache_get=_cache_get,
+        jsonify=_jsonify,
+        _cached=_get_cached,
+        _fetch_iss_live=_fetch_iss_live,
+        _get_iss_crew=_get_iss_crew,
+        cache_set=_cache_set,
+        time_module=_time,
+        propagate_tle_debug=propagate_tle_debug,
+        datetime_cls=_datetime,
+        timezone_cls=_timezone,
+        TLE_CACHE=TLE_CACHE,
+        TLE_ACTIVE_PATH=TLE_ACTIVE_PATH,
+        _parse_tle_file=_parse_tle_file,
+        _emit_diag_json=_emit_diag_json,
+        os_module=_os,
+    )
