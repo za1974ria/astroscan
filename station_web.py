@@ -2686,14 +2686,9 @@ def portail():
     return response
 
 
-@app.route('/landing')
-def landing_page():
-    """Landing marketing AstroScan-Chohra (template existant) — liens et redirection vers /portail."""
-    return render_template(
-        'landing.html',
-        seo_title=SEO_HOME_TITLE,
-        seo_description=SEO_HOME_DESCRIPTION,
-    )
+# MIGRÉ → app/blueprints/pages/__init__.py (PASS 3)
+# @app.route('/landing')
+# def landing_page(): ...
 
 
 @app.route('/technical')
@@ -4171,12 +4166,6 @@ def api_iss():
 
 
 
-@app.route('/api/accuracy/history')
-def api_accuracy_history():
-    return jsonify({
-        "items": get_accuracy_history(),
-        "stats": get_accuracy_stats(),
-    })
 
 
 @app.route('/api/accuracy/export.csv')

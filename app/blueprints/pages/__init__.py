@@ -1,14 +1,18 @@
 """Blueprint Pages — pages HTML simples sans logique complexe."""
 from flask import Blueprint, render_template
+from app.config import SEO_HOME_TITLE, SEO_HOME_DESCRIPTION
 
 bp = Blueprint("pages", __name__)
 
-# DEFERRED B-RECYCLE — /landing reste dans station_web.py jusqu'à correction SEO
-# Manque : seo_title=SEO_HOME_TITLE, seo_description=SEO_HOME_DESCRIPTION
-# À activer lors de B-recycle-pages-fix — voir /tmp/pages_init_patched_TODO.md
-# @bp.route("/landing")
-# def landing():
-#     return render_template("landing.html")
+
+@bp.route("/landing")
+def landing():
+    """Landing marketing AstroScan-Chohra."""
+    return render_template(
+        "landing.html",
+        seo_title=SEO_HOME_TITLE,
+        seo_description=SEO_HOME_DESCRIPTION,
+    )
 
 @bp.route("/vision")
 def vision():
