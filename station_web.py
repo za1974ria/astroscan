@@ -520,6 +520,10 @@ app.register_blueprint(astro_bp)
 from app.blueprints.feeds import bp as feeds_bp
 app.register_blueprint(feeds_bp)
 
+# Blueprint telescope — added PASS 9 (Skyview, mission control, telescope hub, image/title, hubble)
+from app.blueprints.telescope import bp as telescope_bp
+app.register_blueprint(telescope_bp)
+
 
 @app.context_processor
 def _inject_seo_site_description():
@@ -3383,35 +3387,10 @@ def _sync_state_write(source):
         log.warning(f"sync_state write: {e}")
     return s
 
-# @app.route('/api/sync/state', methods=['GET'])
-# def api_sync_state_get():
-#     """État canonique partagé (PC + Android) : source télescope affichée."""
-#     return jsonify({'ok': True, 'source': _sync_state_read()})
-# 
-@app.route('/api/sync/state', methods=['POST'])
-# def api_sync_state_post():
-#     """Met à jour l'état partagé (quand un client change la source)."""
-#     try:
-#         data = request.get_json(force=True, silent=True) or {}
-#         source = data.get('source') or request.form.get('source') or 'live'
-#     except Exception:
-#         source = 'live'
-#     s = _sync_state_write(source)
-#     return jsonify({'ok': True, 'source': s})
-# 
-@app.route('/api/telescope/sources')
-# def api_telescope_sources():
-#     """Liste des sources live sélectionnables."""
-#     return jsonify({
-#         'ok': True,
-#         'sources': [
-#             {'id': 'live', 'name': 'Flux principal', 'desc': 'Dernière image du pipeline (feeder)', 'icon': '📡'},
-#             {'id': 'apod', 'name': 'NASA APOD', 'desc': 'Image du jour — temps 0', 'icon': '🔭'},
-#             {'id': 'hubble', 'name': 'ESA Hubble', 'desc': 'Archives Hubble — temps 0', 'icon': '🌌'},
-#             {'id': 'apod_archive', 'name': 'NASA APOD (archive)', 'desc': 'Image aléatoire 2015–2024', 'icon': '📁'},
-#         ]
-#     })
-# 
+# MIGRATED TO system_bp PASS 4 — /api/sync/state GET → see app/blueprints/system/__init__.py
+# MIGRATED TO system_bp PASS 4 — /api/sync/state POST → see app/blueprints/system/__init__.py
+# MIGRATED TO system_bp PASS 4 — /api/telescope/sources → see app/blueprints/system/__init__.py
+# FIX PASS 9: décorateurs orphelins commentés (étaient suspendus sur api_telescope_live)
 
 # MIGRATED TO cameras_bp PASS 6 — /api/observatory/status → see app/blueprints/cameras/__init__.py (api_observatory_status)
 # MIGRATED TO cameras_bp PASS 6 — /observatory/status → see app/blueprints/cameras/__init__.py (observatory_status_page)
@@ -3510,86 +3489,10 @@ def api_telescope_live():
         log.warning('api/telescope/live: %s', e)
         return jsonify({'error': 'Indisponible'}), 503
 
-# Titre/cache en mémoire pour /api/title?source=
-_image_meta = {}  # { source: (title, label) }
-
-@app.route('/api/image')
-def api_image():
-    source = (request.args.get('source') or 'live').strip().lower()
-    fresh = request.args.get('fresh', '').strip().lower() in ('1', 'true', 'yes')
-    if source not in ('apod', 'hubble', 'apod_archive'):
-        source = 'live'
-
-    if source == 'live':
-        if Path(IMG_PATH).exists():
-            return send_file(IMG_PATH, mimetype='image/jpeg')  #
-    # removed
-    else:
-        path = _source_path(source)
-        now = time.time()
-        if not fresh and path.exists():
-            age = now - path.stat().st_mtime
-            if age < _IMAGE_CACHE_TTL:
-                return send_file(path, mimetype='image/jpeg')  #
-# removed
-        if source == 'apod':
-            data, title, label = _fetch_apod_live()
-        elif source == 'hubble':
-            data, title, label = _fetch_hubble_live()
-        elif source == 'apod_archive':
-            data, title, label = _fetch_apod_archive_live()
-        else:
-            data, title, label = None, None, None
-        if data:
-            try:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_bytes(data)
-                _image_meta[source] = (title, label)
-            except Exception as e:
-                log.warning(f"write source image: {e}")
-            return Response(data, mimetype='image/jpeg',
-                           headers={'Cache-Control': 'no-cache, max-age=0'})
-        if path.exists():
-            return send_file(str(path), mimetype='image/jpeg')  #
-# removed
-
-    # Image placeholder noir
-    import struct, zlib
-    def png1x1():
-        sig = b'\x89PNG\r\n\x1a\n'
-        ihdr = struct.pack('>IIBBBBB', 1, 1, 8, 2, 0, 0, 0)
-        ihdr_crc = zlib.crc32(b'IHDR' + ihdr)
-        ihdr_chunk = struct.pack('>I', 13) + b'IHDR' + ihdr + struct.pack('>I', ihdr_crc)
-        idat_data = zlib.compress(b'\x00\x00\x00\x00')
-        idat_crc = zlib.crc32(b'IDAT' + idat_data)
-        idat_chunk = struct.pack('>I', len(idat_data)) + b'IDAT' + idat_data + struct.pack('>I', idat_crc)
-        iend_crc = zlib.crc32(b'IEND')
-        iend_chunk = struct.pack('>I', 0) + b'IEND' + struct.pack('>I', iend_crc)
-        return sig + ihdr_chunk + idat_chunk + iend_chunk
-    return Response(png1x1(), mimetype='image/png',
-                   headers={'Cache-Control': 'no-cache'})
-
-@app.route('/api/title')
-def api_title():
-    src_param = (request.args.get('source') or 'live').strip().lower()
-    if src_param in _image_meta:
-        title, source = _image_meta[src_param]
-        if title and source:
-            return jsonify({'title': title, 'source': source})
-    title  = open(TITLE_F).read().strip()  if Path(TITLE_F).exists()  else 'ORBITAL-CHOHRA Observatory'
-    source = 'NASA APOD'
-    try:
-        conn = get_db()
-        row = conn.execute(
-            "SELECT COALESCE(title, objets_detectes, 'Observation') as t, source "
-            "FROM observations ORDER BY id DESC LIMIT 1"
-        ).fetchone()
-        conn.close()
-        if row:
-            title  = row['t'] or title
-            source = row['source'] or source
-    except: pass
-    return jsonify({'title': title, 'source': source})
+# MIGRATED TO telescope_bp PASS 9 — /api/image → see app/blueprints/telescope/__init__.py (api_image)
+# MIGRATED TO telescope_bp PASS 9 — /api/title → see app/blueprints/telescope/__init__.py (api_title)
+# Helpers _source_path, _fetch_apod_live, _fetch_hubble_live, _fetch_apod_archive_live,
+# _IMAGE_CACHE_TTL extraits → app/services/telescope_sources.py
 
 # ══════════════════════════════════════════════════════════════
 # API — ISS
@@ -4600,27 +4503,7 @@ def api_astro_explain():
 # API — TELESCOPE HUB
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/api/telescope-hub')
-def api_telescope_hub():
-    if Path(HUB_F).exists():
-        try:
-            age = time.time() - Path(HUB_F).stat().st_mtime
-            if age < 3600:
-                return jsonify(json.load(open(HUB_F)))
-        except: pass
-    # Fallback statique
-    return jsonify({
-        'ok': True,
-        'telescopes': [
-            {'name':'NASA SkyView',   'status':'online', 'latency':210, 'url':'https://skyview.gsfc.nasa.gov'},
-            {'name':'SIMBAD/CDS',     'status':'online', 'latency':380, 'url':'http://simbad.u-strasbg.fr'},
-            {'name':'ESA Hubble',     'status':'online', 'latency':290, 'url':'https://esahubble.org'},
-            {'name':'Chandra X-Ray', 'status':'online', 'latency':340, 'url':'https://cxc.harvard.edu'},
-            {'name':'IRSA/WISE',      'status':'online', 'latency':260, 'url':'https://irsa.ipac.caltech.edu'},
-            {'name':'Minor Planet Center','status':'online','latency':180,'url':'https://minorplanetcenter.net'},
-        ],
-        'online': 6, 'total': 6
-    })
+# MIGRATED TO telescope_bp PASS 9 — /api/telescope-hub → see app/blueprints/telescope/__init__.py (api_telescope_hub)
 
 # ══════════════════════════════════════════════════════════════
 # API — SHIELD
@@ -5813,19 +5696,7 @@ def _telescope_nightly_tlemcen():
     return meta
 
 
-@app.route('/api/telescope/nightly')
-def api_telescope_nightly():
-    """Images nocturnes Harvard MicroObservatory — sélection Tlemcen."""
-    meta_path = os.path.join(STATION, 'telescope_live', 'nightly_meta.json')
-    if os.path.isfile(meta_path):
-        try:
-            with open(meta_path, encoding='utf-8') as f:
-                data = json.load(f)
-            data['ok'] = True
-            return jsonify(data)
-        except Exception:
-            pass
-    return jsonify({'ok': False, 'images': [], 'message': 'Aucune collecte nocturne disponible'})
+# MIGRATED TO telescope_bp PASS 9 — /api/telescope/nightly → see app/blueprints/telescope/__init__.py (api_telescope_nightly)
 
 
 @app.route('/api/telescope/trigger-nightly', methods=['POST'])
@@ -5840,19 +5711,8 @@ def api_telescope_trigger_nightly():
 # MIGRATED TO cameras_bp PASS 6 — /telescope_live/<path:filename> → see app/blueprints/cameras/__init__.py (serve_telescope_live_img)
 
 
-@app.route('/mission-control')
-def mission_control():
-    return render_template('mission_control.html', cesium_token=CESIUM_TOKEN)
-
-
-@app.route('/api/mission-control')
-def api_mission_control():
-    try:
-        from modules.mission_control import get_global_mission_status
-        return jsonify(get_global_mission_status())
-    except Exception as e:
-        log.warning('api/mission-control: %s', e)
-        return jsonify({'error': str(e), 'iss': {}, 'mars': {}, 'neo': {}, 'voyager': {}}), 500
+# MIGRATED TO telescope_bp PASS 9 — /mission-control → see app/blueprints/telescope/__init__.py (mission_control)
+# MIGRATED TO telescope_bp PASS 9 — /api/mission-control → see app/blueprints/telescope/__init__.py (api_mission_control)
 
 
 # MIGRATED TO astro_bp PASS 7 — /api/astro/object → see app/blueprints/astro/__init__.py (api_astro_object)
@@ -6603,9 +6463,7 @@ except ImportError:
 # MAIN
 # ══════════════════════════════════════════════════════════════
 
-@app.route("/telescopes")
-def telescopes():
-    return render_template("telescopes.html")
+# MIGRATED TO telescope_bp PASS 9 — /telescopes → see app/blueprints/telescope/__init__.py (telescopes_page)
 
 
 def _fetch_hubble():
@@ -6775,13 +6633,7 @@ def _fetch_jwst():
     return _fetch_jwst_live_images()
 
 
-@app.route('/api/hubble/images')
-def api_hubble_images():
-    """Proxy Hubble images — ESA API ou fallback statique."""
-    try:
-        return jsonify(_fetch_hubble())
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+# MIGRATED TO telescope_bp PASS 9 — /api/hubble/images → see app/blueprints/telescope/__init__.py (api_hubble_images)
 
 
 # MIGRATED TO feeds_bp PASS 8 — /api/mars/weather → see app/blueprints/feeds/__init__.py (api_mars_weather)
@@ -8758,64 +8610,10 @@ def api_space_intelligence():
 # ═══ TÉLESCOPE NASA SKYVIEW ═══════════════════════════════════
 from skyview import OBJETS_TLEMCEN, SURVEYS, get_object_image, get_image_url as skyview_get_image_url
 
-@app.route('/telescope')
-def telescope():
-    return render_template('telescope.html',
-                           objets=OBJETS_TLEMCEN,
-                           surveys=SURVEYS)
-
-@app.route('/api/telescope/image')
-def api_telescope_image():
-    """GET /api/telescope/image?objet=M42&survey=DSS2+Red — URL image NASA SkyView."""
-    objet  = request.args.get('objet', 'M42')
-    survey = request.args.get('survey', 'DSS2 Red')
-    data   = get_object_image(objet, survey)
-    return jsonify(data)
-
-@app.route('/api/telescope/catalogue')
-def api_telescope_catalogue():
-    """Liste tous les objets du catalogue Tlemcen."""
-    return jsonify({
-        "objets":       OBJETS_TLEMCEN,
-        "surveys":      SURVEYS,
-        "source":       "NASA SkyView",
-        "observatoire": "Tlemcen 34.87°N 1.32°E 816m",
-    })
-
-@app.route('/api/telescope/proxy-image')
-def api_telescope_proxy_image():
-    """Proxy NASA SkyView — télécharge l'image côté serveur, évite CORS."""
-    import urllib.request as _ureq
-    import urllib.parse   as _uparse
-    objet  = request.args.get('objet',  'M42')
-    survey = request.args.get('survey', 'DSS2 Red')
-    pixels = request.args.get('pixels', '600')
-    size   = request.args.get('size',   '0.5')
-    params = _uparse.urlencode({
-        "Position":    objet,
-        "Survey":      survey,
-        "Coordinates": "J2000",
-        "Return":      "GIF",
-        "Size":        size,
-        "Pixels":      pixels,
-        "Scaling":     "Log",
-        "resolver":    "SIMBAD-NED",
-        "Sampler":     "LI",
-        "imscale":     "",
-        "skyview":     "query",
-    })
-    url = f"https://skyview.gsfc.nasa.gov/current/cgi/runquery.pl?{params}"
-    try:
-        req = _ureq.Request(url, headers={"User-Agent": "AstroScan/2.0 astroscan.space"})
-        with _ureq.urlopen(req, timeout=20) as resp:
-            data         = resp.read()
-            content_type = resp.headers.get_content_type()
-        return Response(data,
-                        mimetype=content_type or 'image/gif',
-                        headers={"Cache-Control": "public, max-age=3600"})
-    except Exception as e:
-        log.warning("SkyView proxy error: %s", e)
-        return Response(status=502)
+# MIGRATED TO telescope_bp PASS 9 — /telescope → see app/blueprints/telescope/__init__.py (telescope)
+# MIGRATED TO telescope_bp PASS 9 — /api/telescope/image → see app/blueprints/telescope/__init__.py (api_telescope_image)
+# MIGRATED TO telescope_bp PASS 9 — /api/telescope/catalogue → see app/blueprints/telescope/__init__.py (api_telescope_catalogue)
+# MIGRATED TO telescope_bp PASS 9 — /api/telescope/proxy-image → see app/blueprints/telescope/__init__.py (api_telescope_proxy_image)
 
 
 # MIGRATED TO pages_bp PASS 5 — /aladin + /carte-du-ciel → see app/blueprints/pages/__init__.py (aladin_page)
@@ -8852,61 +8650,9 @@ def iss_stream():
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
-# ── Telescope MJPEG Stream ───────────────────────────────
-@app.route('/api/telescope/stream')
-def telescope_stream():
-    """Stream MJPEG depuis fichier live ou APOD fallback."""
-    import time, requests, os
-    from flask import Response, stream_with_context
-
-    LIVE_PATH = "/root/astro_scan/telescope_live/current_live.jpg"
-
-    def frames():
-        while True:
-            try:
-                if os.path.exists(LIVE_PATH):
-                    mtime = os.path.getmtime(LIVE_PATH)
-                    age = time.time() - mtime
-                    if age < 300:  # fichier < 5 min = considéré live
-                        with open(LIVE_PATH, "rb") as f:
-                            img = f.read()
-                        yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + img + b"\r\n")
-                        time.sleep(2)
-                        continue
-                # Fallback APOD NASA
-                key = os.environ.get("NASA_API_KEY", "DEMO_KEY")
-                r = requests.get(f"https://api.nasa.gov/planetary/apod?api_key={key}", timeout=6)
-                d = r.json()
-                img_url = d.get("url", "")
-                if img_url and img_url.endswith((".jpg", ".png", ".jpeg")):
-                    img_data = requests.get(img_url, timeout=8).content
-                    yield (b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + img_data + b"\r\n")
-            except Exception:
-                pass
-            time.sleep(30)
-
-    return Response(stream_with_context(frames()),
-                    mimetype="multipart/x-mixed-replace; boundary=frame")
-
-@app.route('/api/telescope/status')
-def telescope_status():
-    """Statut réel du feed télescope."""
-    import time, os
-    from flask import jsonify
-    LIVE_PATH = "/root/astro_scan/telescope_live/current_live.jpg"
-    if os.path.exists(LIVE_PATH):
-        age = time.time() - os.path.getmtime(LIVE_PATH)
-        mode = "LIVE" if age < 300 else "STALE"
-        return jsonify({"mode": mode, "age_sec": int(age), "source": "telescope_live"})
-    return jsonify({"mode": "APOD_FALLBACK", "source": "NASA APOD", "note": "Aucune image locale détectée"})
-
-@app.route('/api/stellarium')
-def api_stellarium():
-    from modules.stellarium_fusion import get_stellarium_data, get_priority_object
-    data = get_stellarium_data()
-    data["priority_object"] = get_priority_object(data)
-    from flask import jsonify
-    return jsonify(data)
+# MIGRATED TO telescope_bp PASS 9 — /api/telescope/stream → see app/blueprints/telescope/__init__.py (telescope_stream)
+# MIGRATED TO telescope_bp PASS 9 — /api/telescope/status → see app/blueprints/telescope/__init__.py (telescope_status)
+# MIGRATED TO telescope_bp PASS 9 — /api/stellarium → see app/blueprints/telescope/__init__.py (api_stellarium)
 
 
 
