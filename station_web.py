@@ -500,6 +500,14 @@ app.register_blueprint(analytics_bp)
 from app.blueprints.export import bp as export_bp
 app.register_blueprint(export_bp)
 
+# Blueprint cameras — added PASS 6 (sky-camera, observatory status, skyview, telescope_live img, audio-proxy)
+from app.blueprints.cameras import bp as cameras_bp
+app.register_blueprint(cameras_bp)
+
+# Blueprint archive — added PASS 6 (archive CRUD, classification, MAST, shield, microobservatory static)
+from app.blueprints.archive import bp as archive_bp
+app.register_blueprint(archive_bp)
+
 
 @app.context_processor
 def _inject_seo_site_description():
@@ -3018,106 +3026,8 @@ def analytics_dashboard():
 # MIGRATED TO pages_bp PASS 5 — /telemetrie-sondes → see app/blueprints/pages/__init__.py (telemetrie_sondes)
 
 
-@app.route('/sky-camera')
-def sky_camera():
-    """Live Sky Camera — webcam + détection étoiles + Claude Vision."""
-    return render_template('sky_camera.html')
-
-
-@app.route('/api/sky-camera/analyze', methods=['POST'])
-def api_sky_camera_analyze():
-    """Analyse d'image ciel nocturne via Claude Vision (claude-opus-4-5)."""
-    try:
-        data = request.get_json(force=True) or {}
-        image_b64 = data.get('image_base64', '')
-        datetime_str = data.get('datetime', datetime.now(timezone.utc).strftime('%d/%m/%Y à %Hh%M'))
-        stars_detected = int(data.get('stars_detected', 0))
-        sim_mode = bool(data.get('sim_mode', False))
-
-        api_key = os.environ.get('ANTHROPIC_API_KEY', '').strip()
-        if not api_key:
-            return jsonify({'ok': False, 'error': 'Clé API Anthropic non configurée', 'analyse': 'Clé API manquante.'}), 500
-
-        mode_note = " (image de simulation)" if sim_mode else ""
-        system_prompt = (
-            "Tu es ORBITAL-CHOHRA, expert en astronomie et astrophysique. "
-            "Tu analyses des images du ciel nocturne avec précision et poésie. "
-            "Réponds toujours en français."
-        )
-        user_content = [
-            {
-                "type": "text",
-                "text": (
-                    f"Analyse cette image du ciel nocturne{mode_note} capturée le {datetime_str}. "
-                    f"Mon algorithme de détection a identifié environ {stars_detected} points lumineux.\n\n"
-                    "Identifie et liste :\n"
-                    "1. Les étoiles visibles et leurs noms probables\n"
-                    "2. Les constellations présentes ou suggérées\n"
-                    "3. Les planètes si visibles\n"
-                    "4. La magnitude approximative des objets les plus brillants\n"
-                    "5. Un fait cosmique poétique sur l'objet le plus remarquable\n\n"
-                    "Réponds de façon structurée mais avec un ton poétique et précis. "
-                    "À la fin, fournis sur une ligne séparée au format JSON compact : "
-                    '{\"stars\":N,\"magnitude\":\"X.X\",\"constellation\":\"Nom\",\"planets\":\"Nom ou Aucune\"}'
-                )
-            }
-        ]
-        if image_b64:
-            user_content.insert(0, {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/jpeg",
-                    "data": image_b64
-                }
-            })
-
-        headers = {
-            'x-api-key': api_key,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-        }
-        body = {
-            'model': 'claude-opus-4-5',
-            'max_tokens': 1024,
-            'system': system_prompt,
-            'messages': [{'role': 'user', 'content': user_content}],
-        }
-        r = requests.post('https://api.anthropic.com/v1/messages', headers=headers, json=body, timeout=60)
-        rdata = r.json()
-        if r.status_code != 200:
-            err = (rdata.get('error') or {}).get('message', r.text)[:300]
-            return jsonify({'ok': False, 'error': err, 'analyse': f'Erreur API : {err}'}), 502
-
-        text = rdata['content'][0]['text'].strip()
-
-        # Extraire le JSON de stats en fin de réponse
-        stars_n, magnitude, constellation, planets = stars_detected, '—', '—', '—'
-        import re as _re
-        m = _re.search(r'\{[^{}]*"stars"[^{}]*\}', text)
-        if m:
-            try:
-                meta = json.loads(m.group())
-                stars_n = meta.get('stars', stars_n)
-                magnitude = str(meta.get('magnitude', '—'))
-                constellation = str(meta.get('constellation', '—'))
-                planets = str(meta.get('planets', '—'))
-                # Retire le JSON brut du texte affiché
-                text = text[:m.start()].strip()
-            except Exception:
-                pass
-
-        return jsonify({
-            'ok': True,
-            'analyse': text,
-            'stars_count': stars_n,
-            'magnitude': magnitude,
-            'constellation': constellation,
-            'planets': planets,
-        })
-    except Exception as e:
-        log.warning('api_sky_camera_analyze: %s', e)
-        return jsonify({'ok': False, 'error': str(e), 'analyse': f'Erreur serveur : {e}'}), 500
+# MIGRATED TO cameras_bp PASS 6 — /sky-camera → see app/blueprints/cameras/__init__.py (sky_camera)
+# MIGRATED TO cameras_bp PASS 6 — /api/sky-camera/analyze → see app/blueprints/cameras/__init__.py (api_sky_camera_analyze)
 
 
 @app.route('/api/sky-camera/simulate')
@@ -3491,27 +3401,8 @@ def _sync_state_write(source):
 #     })
 # 
 
-@app.route('/api/observatory/status')
-def api_observatory_status():
-    """Read-only observatory connector status (JSON). Honesty-safe provider capabilities."""
-    try:
-        from modules.observatory.real_telescope_connector import get_observatory_status
-        return jsonify(get_observatory_status())
-    except Exception as e:
-        log.warning('api/observatory/status: %s', e)
-        return jsonify({'providers': [], 'summary': 'Observatory status unavailable.'})
-
-
-@app.route('/observatory/status')
-def observatory_status_page():
-    """Read-only HTML view of observatory connector status."""
-    try:
-        from modules.observatory.real_telescope_connector import get_observatory_status
-        data = get_observatory_status()
-        return render_template('observatory_status.html', **data)
-    except Exception as e:
-        log.warning('observatory/status: %s', e)
-        return render_template('observatory_status.html', providers=[], summary='Observatory status unavailable.')
+# MIGRATED TO cameras_bp PASS 6 — /api/observatory/status → see app/blueprints/cameras/__init__.py (api_observatory_status)
+# MIGRATED TO cameras_bp PASS 6 — /observatory/status → see app/blueprints/cameras/__init__.py (observatory_status_page)
 
 
 @app.route('/api/telescope/live')
@@ -4764,49 +4655,9 @@ def api_telescope_hub():
 # API — SHIELD
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/api/shield')
-def api_shield():
-    if Path(SHIELD_F).exists():
-        try:
-            return jsonify(json.load(open(SHIELD_F)))
-        except: pass
-    return jsonify({'ok': True, 'status': 'active', 'uptime': '—'})
-
-# ══════════════════════════════════════════════════════════════
-# API — CLASSIFICATION STATS
-# ══════════════════════════════════════════════════════════════
-
-@app.route('/api/classification/stats')
-def api_classification_stats():
-    try:
-        conn = get_db()
-        rows = conn.execute(
-            "SELECT COALESCE(objets_detectes,'inconnu') as type, COUNT(*) as n "
-            "FROM observations GROUP BY objets_detectes ORDER BY n DESC"
-        ).fetchall()
-        conn.close()
-        return jsonify({'ok': True, 'stats': [dict(r) for r in rows]})
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)})
-
-# ══════════════════════════════════════════════════════════════
-# API — MAST TARGETS
-# ══════════════════════════════════════════════════════════════
-
-@app.route('/api/mast/targets')
-def api_mast_targets():
-    try:
-        conn = get_db()
-        rows = conn.execute(
-            "SELECT id, COALESCE(title, objets_detectes, 'Unknown') as name, "
-            "source, timestamp FROM observations "
-            "WHERE source LIKE '%MAST%' OR source LIKE '%Hubble%' OR source LIKE '%JWST%' "
-            "ORDER BY id DESC LIMIT 20"
-        ).fetchall()
-        conn.close()
-        return jsonify({'ok': True, 'targets': [dict(r) for r in rows]})
-    except Exception as e:
-        return jsonify({'ok': False, 'targets': [], 'error': str(e)})
+# MIGRATED TO archive_bp PASS 6 — /api/shield → see app/blueprints/archive/__init__.py (api_shield)
+# MIGRATED TO archive_bp PASS 6 — /api/classification/stats → see app/blueprints/archive/__init__.py (api_classification_stats)
+# MIGRATED TO archive_bp PASS 6 — /api/mast/targets → see app/blueprints/archive/__init__.py (api_mast_targets)
 
 # ══════════════════════════════════════════════════════════════
 # API — SDR
@@ -4858,31 +4709,10 @@ except ImportError:
     def fetch_multiple_surveys(*a, **k):
         return []
 
-@app.route('/api/skyview/targets')
-def skyview_targets():
-    return jsonify({'targets': SKYVIEW_TARGETS, 'surveys': SKYVIEW_SURVEYS, 'total': len(SKYVIEW_TARGETS)})
-
-@app.route('/api/skyview/fetch', methods=['POST'])
-def skyview_fetch():
-    data = request.json or {}
-    result = fetch_skyview_image(
-        target_id=data.get('target', 'M42'),
-        survey=data.get('survey', 'DSS2 Red'),
-        size_deg=float(data.get('size', 0.5)),
-        pixels=int(data.get('pixels', 512)),
-    )
-    return jsonify(result)
-
-@app.route('/api/skyview/multiwave/<target_id>')
-def skyview_multiwave(target_id):
-    results = fetch_multiple_surveys(target_id)
-    return jsonify({'target': target_id, 'images': results})
-
-@app.route('/api/skyview/list')
-def skyview_list():
-    files = glob.glob(f'{STATION}/static/img/skyview/*.gif')
-    files.sort(key=os.path.getmtime, reverse=True)
-    return jsonify({'images': [os.path.basename(f) for f in files[:20]]})
+# MIGRATED TO cameras_bp PASS 6 — /api/skyview/targets → see app/blueprints/cameras/__init__.py (skyview_targets)
+# MIGRATED TO cameras_bp PASS 6 — /api/skyview/fetch → see app/blueprints/cameras/__init__.py (skyview_fetch)
+# MIGRATED TO cameras_bp PASS 6 — /api/skyview/multiwave/<target_id> → see app/blueprints/cameras/__init__.py (skyview_multiwave)
+# MIGRATED TO cameras_bp PASS 6 — /api/skyview/list → see app/blueprints/cameras/__init__.py (skyview_list)
 
 # ══════════════════════════════════════════════════════════════
 # PWA — Service Worker & Manifest
@@ -5121,67 +4951,8 @@ def _oracle_claude_stream(system, messages):
 #     return render_template('iss_tracker.html')
 
 
-@app.route('/visiteurs-live')
-def visiteurs_live_page():
-    return render_template('visiteurs_live.html')
-
-
-# ── Proxy audio ORBITAL-RADIO (évite hotlink / 404 NASA, CORS iframe) ──
-_ORBITAL_AUDIO_HOSTS = frozenset({'space.physics.uiowa.edu'})
-_ORBITAL_AUDIO_EXT = frozenset({'.mp3', '.mp4', '.webm', '.ogg', '.wav'})
-
-
-@app.route('/api/audio-proxy')
-def api_audio_proxy():
-    """Stream audio depuis une URL en liste blanche (actuellement Iowa / plasma Voyager)."""
-    from urllib.parse import urlparse, unquote
-
-    raw = (request.args.get('url') or '').strip()
-    if not raw:
-        abort(400)
-    try:
-        url = unquote(raw)
-    except Exception:
-        abort(400)
-    parsed = urlparse(url)
-    if parsed.scheme not in ('http', 'https') or not parsed.hostname:
-        abort(400)
-    if parsed.hostname.lower() not in _ORBITAL_AUDIO_HOSTS:
-        abort(403)
-    path_lower = (parsed.path or '').lower()
-    if '..' in parsed.path or not any(path_lower.endswith(ext) for ext in _ORBITAL_AUDIO_EXT):
-        abort(400)
-
-    ua = 'ASTRO-SCAN/1.0 ORBITAL-CHOHRA (orbital-chohra@gmail.com)'
-    try:
-        up_headers = {'User-Agent': ua}
-        rng = request.headers.get('Range')
-        if rng:
-            up_headers['Range'] = rng
-        up = requests.get(url, headers=up_headers, stream=True, timeout=120)
-        if up.status_code not in (200, 206):
-            log.warning('audio-proxy upstream %s -> HTTP %s', url[:80], up.status_code)
-            abort(502)
-        skip = {'connection', 'transfer-encoding', 'content-encoding', 'server'}
-        out_headers = {
-            k: v for k, v in up.headers.items()
-            if k.lower() not in skip
-        }
-        out_headers.setdefault('Accept-Ranges', 'bytes')
-        out_headers.setdefault('Cache-Control', 'public, max-age=86400')
-
-        def gen():
-            try:
-                for chunk in up.iter_content(chunk_size=65536):
-                    if chunk:
-                        yield chunk
-            finally:
-                up.close()
-
-        return Response(stream_with_context(gen()), status=up.status_code, headers=out_headers)
-    except Exception as e:
-        log.warning('audio-proxy: %s', e)
-        abort(502)
+# MIGRATED TO cameras_bp PASS 6 — /visiteurs-live → see app/blueprints/cameras/__init__.py (visiteurs_live_page)
+# MIGRATED TO cameras_bp PASS 6 — /api/audio-proxy → see app/blueprints/cameras/__init__.py (api_audio_proxy)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -5888,21 +5659,7 @@ def api_v1_catalog():
     })
 
 
-@app.route('/api/microobservatory')
-def api_microobservatory():
-    targets = [
-        {'name': 'M42 — Nébuleuse d\'Orion', 'ra': '05:35:17', 'dec': '-05:23:28', 'exposure': '60s'},
-        {'name': 'M31 — Andromède', 'ra': '00:42:44', 'dec': '+41:16:09', 'exposure': '120s'},
-        {'name': 'M13 — Amas Hercule', 'ra': '16:41:41', 'dec': '+36:27:41', 'exposure': '30s'},
-        {'name': 'M57 — Nébuleuse Lyre', 'ra': '18:53:35', 'dec': '+33:01:45', 'exposure': '90s'},
-    ]
-    return jsonify({
-        'service': 'MicroObservatory NASA — Harvard CfA',
-        'url': 'https://mo-www.cfa.harvard.edu/OWN/',
-        'targets': targets,
-        'instructions': 'Connectez-vous sur MicroObservatory pour soumettre vos observations',
-        'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA'
-    })
+# MIGRATED TO archive_bp PASS 6 — /api/microobservatory → see app/blueprints/archive/__init__.py (api_microobservatory)
 
 
 def _fetch_microobservatory_images():
@@ -6448,14 +6205,7 @@ def api_telescope_trigger_nightly():
     return jsonify({'ok': True, 'message': 'Pipeline nocturne démarré en arrière-plan'})
 
 
-@app.route('/telescope_live/<path:filename>')
-def serve_telescope_live_img(filename):
-    """Sert les JPG nightly convertis depuis FITS Harvard."""
-    safe = secure_filename(filename)
-    path = os.path.join(STATION, 'telescope_live', safe)
-    if not os.path.isfile(path):
-        abort(404)
-    return send_file(path, mimetype='image/jpeg')
+# MIGRATED TO cameras_bp PASS 6 — /telescope_live/<path:filename> → see app/blueprints/cameras/__init__.py (serve_telescope_live_img)
 
 
 @app.route('/mission-control')
@@ -9425,63 +9175,9 @@ def api_research_logs():
 # SCIENCE ARCHIVE — Automatic archive for scientific outputs (new)
 # Receives results from Digital Lab / Space Analysis via API; does not modify existing modules
 # ══════════════════════════════════════════════════════════════
-@app.route('/api/archive/reports', methods=['GET', 'POST'])
-def api_archive_reports():
-    try:
-        from modules.science_archive_engine import save_report, list_reports, get_archive_index
-        if request.method == 'POST':
-            data = request.get_json(silent=True) or {}
-            report_data = data.get('report', data)
-            source = data.get('source', 'digital_lab')
-            result = save_report(report_data, source=source)
-            return jsonify({'ok': True, 'saved': result})
-        limit = request.args.get('limit', 50, type=int)
-        reports = list_reports(limit=min(limit, 200))
-        index = get_archive_index()
-        return jsonify({'reports': reports, 'index': index})
-    except Exception as e:
-        log.warning("api/archive/reports: %s", e)
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/archive/objects', methods=['GET', 'POST'])
-def api_archive_objects():
-    try:
-        from modules.science_archive_engine import save_objects, list_objects, get_archive_index
-        if request.method == 'POST':
-            data = request.get_json(silent=True) or {}
-            objects = data.get('objects', data.get('objects_list', []))
-            if isinstance(objects, dict):
-                objects = [objects]
-            source = data.get('source', 'archive_api')
-            result = save_objects(objects, source=source)
-            return jsonify({'ok': True, 'saved': result})
-        limit = request.args.get('limit', 100, type=int)
-        objects = list_objects(limit=min(limit, 500))
-        index = get_archive_index()
-        return jsonify({'objects': objects, 'index': index})
-    except Exception as e:
-        log.warning("api/archive/objects: %s", e)
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/archive/discoveries', methods=['GET', 'POST'])
-def api_archive_discoveries():
-    try:
-        from modules.science_archive_engine import save_discovery, list_discoveries, get_archive_index
-        if request.method == 'POST':
-            data = request.get_json(silent=True) or {}
-            source = data.get('source', 'archive_api')
-            entry = {k: v for k, v in data.items() if k != 'source'}
-            result = save_discovery(entry, source=source)
-            return jsonify({'ok': True, 'saved': result})
-        limit = request.args.get('limit', 50, type=int)
-        discoveries = list_discoveries(limit=min(limit, 200))
-        index = get_archive_index()
-        return jsonify({'discoveries': discoveries, 'index': index})
-    except Exception as e:
-        log.warning("api/archive/discoveries: %s", e)
-        return jsonify({'error': str(e)}), 500
+# MIGRATED TO archive_bp PASS 6 — /api/archive/reports → see app/blueprints/archive/__init__.py (api_archive_reports)
+# MIGRATED TO archive_bp PASS 6 — /api/archive/objects → see app/blueprints/archive/__init__.py (api_archive_objects)
+# MIGRATED TO archive_bp PASS 6 — /api/archive/discoveries → see app/blueprints/archive/__init__.py (api_archive_discoveries)
 
 
 # ══════════════════════════════════════════════════════════════
