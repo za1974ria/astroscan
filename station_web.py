@@ -508,6 +508,14 @@ app.register_blueprint(cameras_bp)
 from app.blueprints.archive import bp as archive_bp
 app.register_blueprint(archive_bp)
 
+# Blueprint weather — added PASS 7 (météo terrestre + spatiale + aurores + space-weather)
+from app.blueprints.weather import bp as weather_bp
+app.register_blueprint(weather_bp)
+
+# Blueprint astro — added PASS 7 (éphémérides, lune, tonight, astro/object)
+from app.blueprints.astro import bp as astro_bp
+app.register_blueprint(astro_bp)
+
 
 @app.context_processor
 def _inject_seo_site_description():
@@ -3848,29 +3856,8 @@ def api_satellite(name):
 #     return jsonify({"satellites": satellites})
 
 
-@app.route('/api/meteo-spatiale')
-def api_meteo_spatiale():
-    """
-    Météo spatiale — lecture directe du fichier JSON généré
-    dans static/space_weather.json. Ne touche à aucune autre logique.
-    """
-    try:
-        path = f"{STATION}/static/space_weather.json"
-        if not os.path.exists(path):
-            return jsonify({"statut_magnetosphere": "Indisponible"})
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        if not isinstance(data, dict):
-            return jsonify({"statut_magnetosphere": "Indisponible"})
-        return jsonify(data)
-    except Exception as e:
-        log.warning("meteo-spatiale: %s", e)
-        return jsonify({"statut_magnetosphere": "Indisponible"})
-
-
-@app.route('/meteo-spatiale')
-def meteo_spatiale_page():
-    return render_template('meteo_spatiale.html')
+# MIGRATED TO weather_bp PASS 7 — /api/meteo-spatiale → see app/blueprints/weather/__init__.py (api_meteo_spatiale)
+# MIGRATED TO weather_bp PASS 7 — /meteo-spatiale → see app/blueprints/weather/__init__.py (meteo_spatiale_page)
 
 
 @app.route('/api/passages-iss')
@@ -5139,328 +5126,18 @@ def api_guide_stellaire():
     })
 
 
-@app.route('/aurores')
-def aurores_page():
-    return render_template('aurores.html')
+# MIGRATED TO weather_bp PASS 7 — /aurores → see app/blueprints/weather/__init__.py (aurores_page)
+# MIGRATED TO weather_bp PASS 7 — /api/aurore → see app/blueprints/weather/__init__.py (api_aurore)
 
 
-@app.route('/api/aurore')
-def api_aurore():
-    noaa_url = 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json'
-    log.info('aurore: appel route /api/aurore')
-    try:
-        log.info('aurore: appel API externe NOAA %s', noaa_url)
-        response = requests.get(noaa_url, timeout=12)
-        response.raise_for_status()
-        raw_data = response.json()
-        log.info('aurore: réponse brute NOAA reçue (type=%s, len=%s)',
-                 type(raw_data).__name__, len(raw_data) if isinstance(raw_data, list) else 'n/a')
-
-        raw_kp = None
-        if isinstance(raw_data, list) and len(raw_data) > 1:
-            latest = raw_data[-1]
-            if isinstance(latest, list) and len(latest) > 1:
-                raw_kp = latest[1]
-
-        kp, status, _ = _safe_kp_value(raw_kp)
-        log.info('aurore: kp extrait raw=%r -> kp=%s status=%s', raw_kp, kp, status)
-
-        is_fallback = status == "fallback"
-        if is_fallback:
-            log.warning('aurore: valeur Kp manquante/invalid, fallback appliqué')
-        profile = _kp_premium_profile(kp, fallback=is_fallback)
-
-        return jsonify({
-            "ok": True,
-            "kp": kp,
-            "status": status,
-            "source": "NOAA_or_fallback",
-            "level": profile["level"],
-            "risk_score": profile["risk_score"],
-            "visibility_from_tlemcen": profile["visibility_from_tlemcen"],
-            "color": profile["color"],
-            "message": profile["message"],
-            "professional_summary": profile["professional_summary"],
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        })
-    except Exception as e:
-        log.error('aurore: erreur récupération Kp, fallback appliqué: %s', e)
-        profile = _kp_premium_profile(0.0, fallback=True)
-        return jsonify({
-            "ok": True,
-            "kp": 0.0,
-            "status": "fallback",
-            "source": "NOAA_or_fallback",
-            "level": profile["level"],
-            "risk_score": profile["risk_score"],
-            "visibility_from_tlemcen": profile["visibility_from_tlemcen"],
-            "color": profile["color"],
-            "message": profile["message"],
-            "professional_summary": profile["professional_summary"],
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        })
+# MIGRATED TO weather_bp PASS 7 — /api/weather → see app/blueprints/weather/__init__.py (api_weather_alias)
+# MIGRATED TO weather_bp PASS 7 — /api/weather/local → see app/blueprints/weather/__init__.py (api_weather_local)
 
 
-@app.route("/api/weather")
-def api_weather_alias():
-    try:
-        timestamp = datetime.utcnow().isoformat()
-
-        # Source principale : Open-Meteo (format current_weather + hourly humidity)
-        url = (
-            "https://api.open-meteo.com/v1/forecast"
-            "?latitude=35&longitude=-0.6"
-            "&current_weather=true"
-            "&hourly=relativehumidity_2m,surface_pressure"
-        )
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        payload = response.json() if response.content else {}
-
-        current_weather = payload.get("current_weather") or {}
-        hourly = payload.get("hourly") or {}
-
-        def _extract_hourly_latest(values, default_value):
-            if isinstance(values, list) and values:
-                return values[0]
-            return default_value
-
-        raw_data = {
-            "temperature": current_weather.get("temperature"),
-            "windspeed": current_weather.get("windspeed"),
-            "humidity": _extract_hourly_latest(hourly.get("relativehumidity_2m"), 0),
-            "pressure": _extract_hourly_latest(hourly.get("surface_pressure"), 1013),
-        }
-        normalized = normalize_weather(raw_data)
-        temp = normalized["temp"]
-        wind = normalized["wind"]
-        humidity = normalized["humidity"]
-        pressure = normalized["pressure"]
-
-        condition = _derive_weather_condition(temp, humidity, wind)
-        normalized["condition"] = condition
-        save_weather_archive_json(normalized)
-
-        return jsonify({
-            "ok": True,
-            "temp": temp,
-            "wind": wind,
-            "humidity": humidity,
-            "pressure": pressure,
-            "condition": condition,
-            "fiabilite": compute_reliability(normalized),
-            "niveau_fiabilite": "élevé",
-            "risque_pro": compute_risk(normalized),
-            "source": "Open-Meteo + ECMWF",
-            "mode": "multi-source validated",
-            "timestamp": timestamp,
-            "valid": validate_data(normalized),
-        })
-    except Exception as e:
-        log.warning("api/weather fallback interne: %s", e)
-        fallback = _internal_weather_fallback()
-        condition = _derive_weather_condition(
-            fallback["temp"],
-            fallback["humidity"],
-            fallback["wind"],
-        )
-        fallback["condition"] = condition
-        save_weather_archive_json(fallback)
-        return jsonify({
-            "ok": True,
-            "temp": fallback["temp"],
-            "wind": fallback["wind"],
-            "humidity": fallback["humidity"],
-            "pressure": fallback["pressure"],
-            "condition": condition,
-            "fiabilite": compute_reliability(fallback),
-            "niveau_fiabilite": "élevé",
-            "risque_pro": compute_risk(fallback),
-            "source": "Open-Meteo + ECMWF",
-            "mode": "multi-source validated",
-            "timestamp": datetime.utcnow().isoformat(),
-            "valid": validate_data(fallback),
-            "fallback": True,
-        })
-
-
-@app.route("/api/weather/local")
-def api_weather_local():
-    """Météo terrestre locale (contrat strict pour le module météo frontend)."""
-    try:
-        weather_data = _build_local_weather_payload()
-        archive_result = save_weather_bulletin(weather_data)
-        weather_data["archive"] = archive_result
-        save_weather_history_json(
-            weather_data,
-            archive_result.get("score") if isinstance(archive_result, dict) else 0,
-            archive_result.get("status") if isinstance(archive_result, dict) else "STABLE",
-        )
-        return jsonify(weather_data)
-    except Exception as e:
-        log.warning("api/weather/local: %s", e)
-        return jsonify({
-            "ok": False,
-            "error": str(e),
-            "source": "Open-Meteo",
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }), 502
-
-
-@app.route("/api/weather/bulletins", methods=["GET"])
-def api_weather_bulletins():
-    try:
-        day = (request.args.get("date") or "").strip()
-        conn = sqlite3.connect(WEATHER_DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-
-        if day:
-            cur.execute(
-                """
-                SELECT id, date, hour, temp, wind, humidity, pressure, wind_direction, condition, risk, score, status, bulletin, source, created_at, reliability_score, temp_variation, wind_variation
-                FROM weather_bulletins
-                WHERE date = ?
-                ORDER BY hour DESC
-                """,
-                (day,),
-            )
-        else:
-            cur.execute(
-                """
-                SELECT id, date, hour, temp, wind, humidity, pressure, wind_direction, condition, risk, score, status, bulletin, source, created_at, reliability_score, temp_variation, wind_variation
-                FROM weather_bulletins
-                ORDER BY date DESC, hour DESC
-                LIMIT 24
-                """
-            )
-        rows = [dict(r) for r in cur.fetchall()]
-        conn.close()
-        return jsonify({"ok": True, "count": len(rows), "bulletins": rows})
-    except Exception as e:
-        log.warning("api/weather/bulletins: %s", e)
-        return jsonify({"ok": False, "error": str(e), "count": 0, "bulletins": []}), 500
-
-
-@app.route("/api/weather/bulletins/latest", methods=["GET"])
-def api_weather_bulletins_latest():
-    try:
-        conn = sqlite3.connect(WEATHER_DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT id, date, hour, temp, wind, humidity, pressure, wind_direction, condition, risk, score, status, bulletin, source, created_at, reliability_score, temp_variation, wind_variation
-            FROM weather_bulletins
-            ORDER BY date DESC, hour DESC
-            LIMIT 1
-            """
-        )
-        row = cur.fetchone()
-        conn.close()
-        if not row:
-            return jsonify({"ok": True, "bulletin": None})
-        return jsonify({"ok": True, "bulletin": dict(row)})
-    except Exception as e:
-        log.warning("api/weather/bulletins/latest: %s", e)
-        return jsonify({"ok": False, "error": str(e), "bulletin": None}), 500
-
-
-@app.route("/api/weather/history", methods=["GET"])
-def api_weather_history():
-    try:
-        day = (request.args.get("date") or "").strip()
-        if not day:
-            day = datetime.now().strftime("%Y-%m-%d")
-
-        _cleanup_weather_history_files()
-        history_path = os.path.join(WEATHER_HISTORY_DIR, f"{day}.json")
-        if os.path.isfile(history_path):
-            with open(history_path, "r", encoding="utf-8") as fh:
-                payload = json.load(fh)
-            return jsonify({
-                "ok": True,
-                "date": payload.get("date", day),
-                "temp": float(payload.get("temp", 0.0)),
-                "wind": float(payload.get("wind", 0.0)),
-                "humidity": int(payload.get("humidity", 0)),
-                "pressure": float(payload.get("pressure", 1015)),
-                "risk": payload.get("risk", "FAIBLE"),
-                "source": "weather_history_json",
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-                "archive": {
-                    "saved": False,
-                    "score": int(payload.get("score", 0)),
-                    "status": payload.get("status", "STABLE"),
-                    "bulletin": "",
-                }
-            })
-
-        conn = sqlite3.connect(WEATHER_DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT date, hour, temp, wind, humidity, pressure, wind_direction, condition, risk, score, status, bulletin,
-                   reliability_score, temp_variation, wind_variation, source, created_at
-            FROM weather_bulletins
-            WHERE date = ?
-            ORDER BY hour DESC
-            LIMIT 1
-            """,
-            (day,),
-        )
-        row = cur.fetchone()
-        conn.close()
-
-        if row:
-            item = dict(row)
-            return jsonify({
-                "ok": True,
-                "temp": float(item.get("temp")),
-                "wind": float(item.get("wind")),
-                "humidity": int(item.get("humidity")),
-                "pressure": float(item.get("pressure")),
-                "wind_direction": float(item.get("wind_direction", 0.0)),
-                "condition": item.get("condition") or "Unknown",
-                "risk": item.get("risk") or "FAIBLE",
-                "source": item.get("source") or "weather_bulletins",
-                "updated_at": item.get("created_at") or datetime.now(timezone.utc).isoformat(),
-                "archive": {
-                    "saved": False,
-                    "score": int(item.get("score")) if item.get("score") is not None else None,
-                    "status": item.get("status"),
-                    "bulletin": item.get("bulletin"),
-                    "reliability_score": item.get("reliability_score"),
-                    "temp_variation": item.get("temp_variation"),
-                    "wind_variation": item.get("wind_variation"),
-                }
-            })
-
-        # Fallback live si historique absent
-        weather_data = _build_local_weather_payload()
-        archive_result = save_weather_bulletin(weather_data)
-        weather_data["archive"] = archive_result
-        return jsonify(weather_data)
-    except Exception as e:
-        log.warning("api/weather/history: %s", e)
-        return jsonify({"ok": False, "error": str(e)}), 500
-
-
-@app.route("/api/weather/bulletins/save", methods=["POST"])
-def api_weather_bulletins_save():
-    try:
-        payload = request.get_json(silent=True) or {}
-        data = payload.get("data") or {}
-        if not isinstance(data, dict):
-            return jsonify({"ok": False, "error": "payload invalide"}), 400
-        if not all(k in data for k in ("temp", "wind", "humidity", "pressure", "wind_direction", "condition", "risk")):
-            return jsonify({"ok": False, "error": "champs météo manquants"}), 400
-        result = save_weather_bulletin(data)
-        return jsonify({"ok": True, **result})
-    except Exception as e:
-        log.warning("api/weather/bulletins/save: %s", e)
-        return jsonify({"ok": False, "error": str(e)}), 500
+# MIGRATED TO weather_bp PASS 7 — /api/weather/bulletins → see app/blueprints/weather/__init__.py (api_weather_bulletins)
+# MIGRATED TO weather_bp PASS 7 — /api/weather/bulletins/latest → see app/blueprints/weather/__init__.py (api_weather_bulletins_latest)
+# MIGRATED TO weather_bp PASS 7 — /api/weather/history → see app/blueprints/weather/__init__.py (api_weather_history)
+# MIGRATED TO weather_bp PASS 7 — /api/weather/bulletins/save → see app/blueprints/weather/__init__.py (api_weather_bulletins_save)
 
 
 @app.route("/api/apod")
@@ -5485,15 +5162,7 @@ def api_oracle_alias():
         }), 500
 
 
-@app.route("/api/aurores")
-def api_aurores_alias():
-    try:
-        return api_aurore()
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e)
-        }), 500
+# MIGRATED TO weather_bp PASS 7 — /api/aurores → see app/blueprints/weather/__init__.py (api_aurores_alias)
 
 
 @app.route('/api/catalog')
@@ -5513,31 +5182,9 @@ def api_catalog_object(obj_id):
     return jsonify({'error': 'Objet non trouvé'}), 404
 
 
-@app.route('/api/tonight')
-def api_tonight():
-    from modules.observation_planner import get_tonight_objects
-    return jsonify(get_cached('tonight', 3600, get_tonight_objects))
-
-
-@app.route('/api/moon')
-def api_moon():
-    from modules.observation_planner import get_moon_phase
-    return jsonify(get_moon_phase())
-
-
-@app.route('/api/ephemerides/tlemcen')
-def api_ephemerides_tlemcen():
-    """Éphémérides du jour pour Tlemcen (34.88°N / 1.32°E / 800m) — cache 5 min."""
-    cached = cache_get('eph_tlemcen', 300)
-    if cached:
-        return jsonify(cached)
-    try:
-        result = get_full_ephemeris()
-        cache_set('eph_tlemcen', result)
-        return jsonify(result)
-    except Exception as e:
-        log.warning("ephemerides/tlemcen error: %s", e)
-        return jsonify({"error": str(e)}), 500
+# MIGRATED TO astro_bp PASS 7 — /api/tonight → see app/blueprints/astro/__init__.py (api_tonight)
+# MIGRATED TO astro_bp PASS 7 — /api/moon → see app/blueprints/astro/__init__.py (api_moon)
+# MIGRATED TO astro_bp PASS 7 — /api/ephemerides/tlemcen → see app/blueprints/astro/__init__.py (api_ephemerides_tlemcen)
 
 
 @app.route('/api/v1/iss')
@@ -6223,16 +5870,7 @@ def api_mission_control():
         return jsonify({'error': str(e), 'iss': {}, 'mars': {}, 'neo': {}, 'voyager': {}}), 500
 
 
-@app.route('/api/astro/object', methods=['GET', 'POST'])
-def api_astro_object():
-    """Explication d'un objet céleste par nom (modules.astro_ai.explain_object)."""
-    name = request.args.get('name') or (request.get_json(silent=True) or {}).get('name') or ''
-    try:
-        from modules.astro_ai import explain_object
-        return jsonify(explain_object(name))
-    except Exception as e:
-        log.warning('api/astro/object: %s', e)
-        return jsonify({'ok': False, 'error': str(e)})
+# MIGRATED TO astro_bp PASS 7 — /api/astro/object → see app/blueprints/astro/__init__.py (api_astro_object)
 
 @app.route('/api/news')
 def api_news():
@@ -6288,27 +5926,8 @@ def api_v1_asteroids():
     })
 
 
-@app.route('/api/v1/solar-weather')
-def api_v1_solar():
-    from modules.space_alerts import get_solar_weather
-    data = get_cached('solar_weather', 300, get_solar_weather)
-    return jsonify({
-        'timestamp': __import__('datetime').datetime.utcnow().isoformat(),
-        'solar_wind': data or {},
-        'source': 'NOAA SWPC',
-        'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA'
-    })
-
-
-@app.route('/api/v1/tonight')
-def api_v1_tonight():
-    from modules.observation_planner import get_tonight_objects
-    return jsonify({
-        'timestamp': __import__('datetime').datetime.utcnow().isoformat(),
-        'location': 'Tlemcen, Algérie (~34,9°N, 1,3°E)',
-        'data': get_cached('tonight', 3600, get_tonight_objects),
-        'credit': 'AstroScan-Chohra · ORBITAL-CHOHRA'
-    })
+# MIGRATED TO weather_bp PASS 7 — /api/v1/solar-weather → see app/blueprints/weather/__init__.py (api_v1_solar)
+# MIGRATED TO astro_bp PASS 7 — /api/v1/tonight → see app/blueprints/astro/__init__.py (api_v1_tonight)
 
 
 def _fetch_voyager():
@@ -9224,32 +8843,8 @@ def api_orbits_live():
 # Météo spatiale
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/api/space-weather')
-def api_space_weather():
-    """Données météo spatiale depuis static/space_weather.json. Cache 60 s."""
-    cache_cleanup()
-    cached = cache_get("space_weather", 60)
-    if cached is not None:
-        return jsonify(cached)
-    try:
-        path = f"{STATION}/static/space_weather.json"
-        if not os.path.exists(path):
-            data = {'statut_magnetosphere': 'Indisponible', 'kp_index': None}
-        else:
-            with open(path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            if not isinstance(data, dict):
-                data = {'statut_magnetosphere': 'Indisponible'}
-        cache_set("space_weather", data)
-        return jsonify(data)
-    except Exception as e:
-        log.warning("api/space-weather: %s", e)
-        return jsonify({'statut_magnetosphere': 'Indisponible'})
-
-
-@app.route('/space-weather')
-def space_weather_page():
-    return render_template('space_weather.html')
+# MIGRATED TO weather_bp PASS 7 — /api/space-weather → see app/blueprints/weather/__init__.py (api_space_weather)
+# MIGRATED TO weather_bp PASS 7 — /space-weather → see app/blueprints/weather/__init__.py (space_weather_page)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -10653,132 +10248,12 @@ def api_hilal():
 #     return render_template('orbital_dashboard.html')
 
 
-import requests
-from datetime import datetime
-
-@app.route('/api/meteo/reel')
-def meteo_reel():
-    try:
-        # Ville par défaut (modifiable)
-        city = request.args.get('city', 'Tlemcen')
-
-        url = f"https://wttr.in/{city}?format=j1"
-        r = requests.get(url, timeout=5)
-        data = r.json()
-
-        current = data['current_condition'][0]
-
-        return jsonify({
-            "city": city,
-            "temp": current['temp_C'],
-            "humidity": current['humidity'],
-            "wind": current['windspeedKmph'],
-            "desc": current['weatherDesc'][0]['value'],
-            "time": datetime.utcnow().isoformat(),
-            "ok": True
-        })
-
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+# MIGRATED TO weather_bp PASS 7 — /api/meteo/reel → see app/blueprints/weather/__init__.py (meteo_reel)
+# MIGRATED TO weather_bp PASS 7 — /meteo-reel → see app/blueprints/weather/__init__.py (meteo_page)
+# MIGRATED TO weather_bp PASS 7 — /control + /meteo → see app/blueprints/weather/__init__.py (control)
 
 
-@app.route('/meteo-reel')
-def meteo_page():
-    return render_template('meteo_reel.html')
-
-
-
-
-@app.route('/control')
-@app.route('/meteo')
-def control():
-    return render_template('orbital_control_center.html')
-
-
-def _compute_ephemerides_tlemcen_astropy():
-    """
-    Éphémérides journalières pour Tlemcen (UTC) via astropy.
-    Corps: Soleil, Lune, Jupiter, Mars, Saturne, Vénus.
-    """
-    from astropy.coordinates import EarthLocation, AltAz, get_body
-    from astropy.time import Time
-    import astropy.units as u
-
-    location = EarthLocation(lat=34.8731 * u.deg, lon=1.3154 * u.deg, height=800 * u.m)
-    start_dt = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    step_min = 5
-    timeline = [start_dt + timedelta(minutes=m) for m in range(0, 24 * 60 + step_min, step_min)]
-    times = Time(timeline, scale='utc')
-    altaz = AltAz(obstime=times, location=location)
-
-    def _iso_or_none(dt_obj):
-        return dt_obj.strftime("%Y-%m-%dT%H:%M:%SZ") if dt_obj else None
-
-    def _crossing_time(vals, mode='rise'):
-        # Interpolation linéaire simple autour de l'horizon (0°).
-        for i in range(len(vals) - 1):
-            a0, a1 = vals[i], vals[i + 1]
-            if mode == 'rise' and a0 < 0 <= a1:
-                frac = 0.0 if a1 == a0 else (0.0 - a0) / (a1 - a0)
-                return timeline[i] + timedelta(seconds=frac * step_min * 60)
-            if mode == 'set' and a0 > 0 >= a1:
-                frac = 0.0 if a1 == a0 else (0.0 - a0) / (a1 - a0)
-                return timeline[i] + timedelta(seconds=frac * step_min * 60)
-        return None
-
-    bodies = [
-        ("Soleil", "sun", -26.74),
-        ("Lune", "moon", -12.60),
-        ("Jupiter", "jupiter", -2.70),
-        ("Mars", "mars", 1.00),
-        ("Saturne", "saturn", 0.70),
-        ("Vénus", "venus", -4.20),
-    ]
-
-    results = []
-    for label, body_name, mag in bodies:
-        body_alt = get_body(body_name, times, location).transform_to(altaz).alt.deg.tolist()
-        max_alt = max(body_alt)
-        max_idx = body_alt.index(max_alt)
-        rise_dt = _crossing_time(body_alt, mode='rise')
-        set_dt = _crossing_time(body_alt, mode='set')
-        transit_dt = timeline[max_idx]
-        results.append(
-            {
-                "nom": label,
-                "rise": _iso_or_none(rise_dt),
-                "transit": _iso_or_none(transit_dt),
-                "set": _iso_or_none(set_dt),
-                "altitude_max": round(float(max_alt), 2),
-                "magnitude": mag,
-            }
-        )
-
-    return {
-        "site": {
-            "name": "Tlemcen",
-            "lat": 34.8731,
-            "lon": 1.3154,
-            "altitude_m": 800,
-        },
-        "date_utc": start_dt.strftime("%Y-%m-%d"),
-        "source": "astropy",
-        "ephemerides": results,
-    }
-
-
-@app.route('/ephemerides')
-def page_ephemerides():
-    try:
-        eph_payload = _compute_ephemerides_tlemcen_astropy()
-    except Exception as e:
-        log.warning("ephemerides astropy error: %s", e)
-        eph_payload = {"error": str(e), "site": {"name": "Tlemcen"}}
-
-    wants_json = request.args.get("format") == "json" or "application/json" in (request.headers.get("Accept") or "")
-    if wants_json:
-        return jsonify(eph_payload)
-    return render_template('ephemerides.html', ephemerides_tlemcen=eph_payload)
+# MIGRATED TO astro_bp PASS 7 — /ephemerides + helper _compute_ephemerides_tlemcen_astropy → see app/blueprints/astro/__init__.py (page_ephemerides)
 
 
 # MIGRATED TO seo_bp PASS 5 — /sitemap.xml DOUBLON (déjà dans seo_bp/routes.py — version BP plus complète conservée)
