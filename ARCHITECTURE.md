@@ -1,361 +1,323 @@
-# ARCHITECTURE TECHNIQUE — ASTRO-SCAN
+# ARCHITECTURE TECHNIQUE — ASTRO-SCAN / ORBITAL-CHOHRA
 
 **Plateforme d'observation astronomique temps réel — Tlemcen, Algérie**
 
 | Champ | Valeur |
 |-------|--------|
-| **Auteur** | Zakaria Chohra |
+| **Directeur** | Zakaria Chohra |
 | **Domaine** | https://astroscan.space |
-| **Localisation serveur** | Hetzner Cloud — Hillsboro, Oregon (US-West) |
-| **Spécifications serveur** | CPX31 — x86 — 160 GB |
-| **IP publique** | 5.78.153.17 |
-| **Coordonnées station** | 34.87°N, 1.32°E (Tlemcen, Algérie) |
-| **Version document** | 1.0 — 02/05/2026 |
+| **Hébergement** | Hetzner Cloud — Hillsboro, Oregon (US-West) |
+| **Coordonnées station** | 34.87° N · 1.32° E (Tlemcen, Algérie) |
+| **Stack** | Flask 3.1 · Gunicorn · Nginx · SQLite (WAL) · Sentry |
+| **Routes en production** | 262 |
+| **Blueprints** | 21 |
+| **Services** | 13 (`app/services/`) + 8 partagés (`services/`) |
+| **Version** | 2.0 — 03/05/2026 (post-bascule PASS 18) |
 
 ---
 
-## 1. VUE D'ENSEMBLE
+## 1. Vue d'ensemble
 
-ASTRO-SCAN est une **plateforme d'observation astronomique temps réel** qui agrège, traite et diffuse des données scientifiques issues d'institutions internationales (NASA, ESA, NOAA, CelesTrak, AMSAT) à destination du public, des étudiants et des chercheurs.
+ASTRO-SCAN agrège, transforme et expose en temps réel des données scientifiques issues de la NASA, NOAA SWPC, ESA, JPL Horizons, CelesTrak, Harvard MicroObservatory et d'autres sources institutionnelles. La plateforme sert :
 
-La plateforme expose une API publique documentée (OpenAPI 3.0), un visualiseur orbital 3D, un tracker ISS temps réel, des prédictions de passages satellites pour la station de Tlemcen, des analyses IA en français des images APOD de la NASA, et un panneau d'alertes aurores boréales basé sur le Kp index NOAA.
+- une **API HTTP publique** (262 routes, format JSON principalement) ;
+- un **frontend** intégrant un globe orbital 3D Cesium, un suivi ISS et un dashboard observatoire ;
+- un **moteur AEGIS** (raisonnement multi-IA, streaming SSE) ;
+- un **calculateur Hilal** (visibilité du croissant lunaire — critères ODEH, UIOF, Oum Al Qura).
 
-L'architecture suit le **patron modulaire Flask Blueprints** avec ségrégation des responsabilités, validation triangulaire des migrations, backups horodatés systématiques et zéro régression de service sur les 7 migrations successives effectuées le 02/05/2026.
+L'architecture cible est un **pattern application-factory Flask** avec 21 blueprints thématiques et 13 modules de service. Le module monolithe historique `station_web.py` est conservé en pré-chargement pour initialiser certains globals partagés (cache TLE, threads collecteurs, configuration runtime), mais ne sert plus aucune route métier — uniquement l'override `/static/<path>`.
 
 ---
 
-## 2. ARCHITECTURE GLOBALE
+## 2. Architecture globale
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                    UTILISATEUR (navigateur)                      │
-│              https://astroscan.space (HTTPS Let's Encrypt)       │
-└────────────────────────────┬─────────────────────────────────────┘
-                             │
-                             ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                     NGINX (reverse proxy)                        │
-│           HTTPS termination + static files + caching             │
-└────────────────────────────┬─────────────────────────────────────┘
-                             │
-                             ▼ (port 5003)
-┌──────────────────────────────────────────────────────────────────┐
-│              GUNICORN (4 workers × 4 threads)                    │
-│              ─────────────────────────────────                   │
-│              FLASK APPLICATION (wsgi:app → station_web:app)                   │
+┌─────────────────────────────────────────────────────────────────┐
+│                    Navigateur / Client API                       │
+│              https://astroscan.space  (TLS Let's Encrypt)        │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       Nginx (reverse proxy)                      │
+│        TLS · gzip · static cache · proxy_pass → :5003            │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │ HTTP
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│            Gunicorn — 4 workers × 4 threads                      │
+│            unit systemd : astroscan.service                      │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                          wsgi.py                                 │
 │                                                                  │
-│   ┌──────────────────────────────────────────────────────┐      │
-│   │  COUCHE BLUEPRINTS — Architecture modulaire          │      │
-│   │                                                      │      │
-│   │  • seo_bp     • apod_bp    • sdr_bp     • iss_bp    │      │
-│   │  • i18n_bp    • api_bp     • pages_bp   • main_bp   │      │
-│   └──────────────────────────────────────────────────────┘      │
+│   1. ASTROSCAN_FORCE_MONOLITH=1  →  fallback explicite           │
+│   2. import station_web          →  init globals                 │
+│   3. from app import create_app  →  factory propre               │
+│   4. except                       →  fallback monolith            │
 │                                                                  │
-│   ┌──────────────────────────────────────────────────────┐      │
-│   │  COUCHE SERVICES                                     │      │
-│   │  • app/services/satellites.py                        │      │
-│   │  • app/services/cache (à venir)                      │      │
-│   │  • app/services/tle (à venir)                        │      │
-│   │  • app/services/accuracy_history                     │      │
-│   └──────────────────────────────────────────────────────┘      │
+│   Renvoie `app` (Flask) à Gunicorn dans tous les cas.            │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+        ┌────────────────────────┼────────────────────────┐
+        ▼                        ▼                        ▼
+┌────────────────┐     ┌──────────────────┐    ┌────────────────────┐
+│  station_web   │     │  app/__init__.py │    │   app/services/    │
+│  (legacy mod.) │     │                  │    │   (logique pure)   │
+│                │     │  create_app()    │    │                    │
+│  • env vars    │     │  ├ blueprints×21 │    │  • ai_translate    │
+│  • DB WAL init │     │  ├ Sentry        │    │  • hilal_compute   │
+│  • TLE cache   │     │  ├ SQLite WAL    │    │  • iss_compute     │
+│  • threads     │     │  └ register_BPs  │    │  • oracle_engine   │
+│  • lazy globals│     │                  │    │  • …               │
+└────────────────┘     └──────────────────┘    └────────────────────┘
+                                 │
+                                 ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    services/  (couche partagée)                  │
 │                                                                  │
-│   ┌──────────────────────────────────────────────────────┐      │
-│   │  COUCHE INFRASTRUCTURE                               │      │
-│   │  • SQLite (archives stellaires + visiteurs)          │      │
-│   │  • Background threads (TLE refresh)                  │      │
-│   │  • APScheduler (tâches programmées)                  │      │
-│   │  • Watchdog systemd                                  │      │
-│   └──────────────────────────────────────────────────────┘      │
-└──────────────────────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                  SOURCES EXTERNES SCIENTIFIQUES                  │
-│                                                                  │
-│  - NASA APIs    : APOD, NEO, DONKI                              │
-│  - CelesTrak    : TLE catalog (2514 satellites)                 │
-│  - AMSAT        : TLE radio amateur                             │
-│  - N2YO         : Predictions satellitaires                     │
-│  - NOAA         : Kp index aurores boréales                     │
-│  - Open-Notify  : ISS position + crew                           │
-│  - Anthropic    : Analyses IA françaises (Claude API)           │
-└──────────────────────────────────────────────────────────────────┘
+│  circuit_breaker · cache_service · orbital_service · weather_    │
+│  service · nasa_service · stats_service · ephemeris_service · db │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+                                 ▼
+              SQLite (archive_stellaire.db, mode WAL)
+              + APIs externes (circuit-breakered)
 ```
 
 ---
 
-## 3. ARCHITECTURE MODULAIRE — BLUEPRINTS FLASK
+## 3. Stratégie de chargement WSGI (PASS 18)
 
-L'application est organisée en **8 Blueprints** spécialisés, chacun responsable d'un domaine fonctionnel précis. Cette ségrégation permet la maintenance isolée, les tests ciblés, et la scalabilité horizontale future.
+Le fichier `wsgi.py` met en œuvre une stratégie défensive en 3 niveaux :
 
-| Blueprint   | Routes | Domaine                                | Statut       |
-|-------------|--------|----------------------------------------|--------------|
-| `seo_bp`    | 3      | SEO, sitemap, robots, meta tags        | Production   |
-| `apod_bp`   | 3      | NASA Astronomy Picture of the Day      | Production   |
-| `sdr_bp`    | 4      | Software-Defined Radio (NOAA sats)     | Production   |
-| `iss_bp`    | 5      | ISS tracker, orbital map, mission ctrl | Production   |
-| `i18n_bp`   | 1      | Internationalization (FR/EN)           | Production   |
-| `api_bp`    | 2      | Documentation API publique (OpenAPI)   | Production   |
-| `pages_bp`  | 2      | Pages statiques (vision, science)      | Production   |
-| `main_bp`   | 6      | Entrées principales, /a-propos, /data  | Production   |
-| **TOTAL**   | **26** | **Routes modulaires**                  | **8 actifs** |
+```python
+def _build_app():
+    if _FORCE_MONOLITH:                           # niveau 1 : env var
+        from station_web import app as _app
+        return _app
 
-**Localisation :** `/root/astro_scan/app/blueprints/<name>/`
-
-**Pattern :** `__init__.py` (déclaration `bp`) + `routes.py` (définitions)
-
-**Import dans station_web.py :** `from app.blueprints.<name> import bp as <name>_bp`
-
----
-
-## 4. STACK TECHNIQUE
-
-### 4.1 Backend
-
-| Composant       | Version    | Justification technique                              |
-|-----------------|------------|------------------------------------------------------|
-| Python          | 3.12       | Performances, type hints, async natif                |
-| Flask           | 3.x        | Léger, modulaire, Blueprints natifs                  |
-| Gunicorn        | 20.1.0     | Serveur WSGI production, workers + threads           |
-| systemd         | -          | Gestion service + watchdog automatique               |
-| nginx           | -          | Reverse proxy, HTTPS, static files                   |
-| SQLite          | 3.x        | DB embarquée, archives stellaires + analytics       |
-| APScheduler     | -          | Tâches programmées (refresh données)                 |
-
-### 4.2 Bibliothèques scientifiques
-
-| Bibliothèque    | Usage                                                |
-|-----------------|------------------------------------------------------|
-| `skyfield`      | Propagation orbitale SGP4 haute précision            |
-| `sgp4`          | Calculs orbitaux NORAD (TLE)                         |
-| `astropy`       | Éphémérides, conversions de coordonnées              |
-| `geoip2`        | Géolocalisation des visiteurs (124.9 MB DB locale)   |
-
-### 4.3 Sécurité & déploiement
-
-- **HTTPS** : Let's Encrypt via certbot-dns-porkbun
-- **Domaine** : astroscan.space (Porkbun, $1.96/an)
-- **Backup domaine** : orbital-chohra-dz.duckdns.org
-- **Serveur** : Hetzner Cloud, Hillsboro Oregon (5.78.153.17, CPX31, x86, 160 GB)
-- **Sauvegardes** : Backups horodatés systématiques avant chaque modification
-
----
-
-## 5. PIPELINE DE DONNÉES
-
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  SOURCES NASA   │────▶│   CACHE LAYER   │────▶│   API PUBLIQUE  │
-│   ESA / NOAA    │     │  (refresh auto) │     │  (JSON / HTML)  │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-        │                       │                        │
-        │                       ▼                        │
-        │              ┌─────────────────┐               │
-        │              │  TRAITEMENT IA  │               │
-        │              │   Claude API    │               │
-        │              │ (FR translation)│               │
-        │              └─────────────────┘               │
-        │                       │                        │
-        ▼                       ▼                        ▼
-┌──────────────────────────────────────────────────────────────┐
-│              UTILISATEUR FINAL (navigateur)                  │
-│  - Visualisation 3D Cesium    - Graphiques Chart.js          │
-│  - Tracker ISS temps réel     - Aurores boréales Kp NOAA     │
-│  - APOD français analysé IA   - Panneau JWST                 │
-└──────────────────────────────────────────────────────────────┘
+    try:
+        import station_web                         # niveau 2 : init globals
+        from app import create_app
+        _app = create_app("production")            # → 262 routes
+        return _app
+    except Exception:                              # niveau 3 : fallback
+        from station_web import app as _app
+        return _app
 ```
 
-### Sources de données scientifiques certifiées
+**Pourquoi ce design ?**
 
-1. **NASA APOD** : Image astronomique du jour + analyse IA française
-2. **CelesTrak** : 2514 satellites TLE (mise à jour automatique)
-3. **AMSAT** : TLE satellites radio amateur
-4. **NOAA** : Kp index pour prédictions aurores boréales (Tlemcen)
-5. **Open-Notify** : Position ISS temps réel + équipage
-6. **N2YO** : Prédictions de passages satellitaires
-7. **wheretheiss.at** : Stream SSE position ISS
+1. `station_web` est *toujours* importé en premier — il initialise des globals (cache TLE, threads collecteurs, configuration `.env`) que les blueprints consomment via `from station_web import _get_db_visitors, _fetch_iss_live, ...` en lazy-import.
+2. Si `create_app()` échoue à l'import (régression silencieuse, dépendance manquante, config corrompue), l'application retombe automatiquement sur l'objet `app` du monolithe — qui enregistre lui-même les 21 BPs en interne (lignes 501+ de `station_web.py`). Le service reste servi.
+3. `ASTROSCAN_FORCE_MONOLITH=1` permet un rollback opérationnel sans modifier le code (cf. `ROLLBACK_PASS18.md`).
 
 ---
 
-## 6. INFRASTRUCTURE DE FIABILITÉ
-
-### 6.1 Watchdog systemd
-
-Service `astroscan-watchdog.service` qui surveille en permanence l'état d'`astroscan.service` et déclenche un redémarrage automatique en cas de défaillance détectée.
-
-### 6.2 Gestion TLE en background
-
-Thread daemon `tle_refresh_loop` qui rafraîchit le catalogue TLE depuis CelesTrak et AMSAT à intervalles réguliers, garantissant la fraîcheur des prédictions orbitales.
-
-### 6.3 Cache multi-niveaux
-
-- **Cache mémoire** : `TLE_CACHE` partagé (à externaliser en `services/cache_service.py`)
-- **Cache fichier** : `data/sdr_status.json`, `data/passages_iss.json`
-- **Cache HTTP** : Headers no-cache stratégiques sur routes critiques
-
-### 6.4 Logging structuré
-
-Logs JSON avec champs `event`, `path`, `method`, `status`, `duration_ms` pour analyse automatisée. Détection automatique des `slow_request` (>1s) et `very_slow_request` (>5s).
-
----
-
-## 7. PROTOCOLE DE MIGRATION & QUALITÉ
-
-### 7.1 Validation triangulaire
-
-Toute modification du code de production suit un **protocole strict en 3 étapes** :
+## 4. Application factory (`app/__init__.py`)
 
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   PHASE 1   │    │   PHASE 2   │    │   PHASE 3   │
-│             │    │             │    │             │
-│  Conception │───▶│ Préparation │───▶│ Application │
-│             │    │   /tmp/     │    │     prod    │
-│             │    │             │    │ (validation │
-│             │    │             │    │   humaine)  │
-└─────────────┘    └─────────────┘    └─────────────┘
+create_app(config_name="production")
+├── _init_sentry()           # Sentry SDK 2.58, DSN via env
+├── _init_sqlite_wal()       # PRAGMA journal_mode=WAL
+├── _register_blueprints()
+│   ├── main_bp              # 11 routes : /, /sitemap, /robots
+│   ├── api_bp               # 19 routes : /api/*
+│   ├── feeds_bp             # 31 routes : /api/feeds/*
+│   ├── analytics_bp         # 18 routes : /api/visitors, /dashboard
+│   ├── ai_bp                # 16 routes : /api/ai/*, /api/aegis/*
+│   ├── cameras_bp           # 15 routes : /cameras, /galerie
+│   ├── system_bp            # 20 routes : /api/health, /api/system-status
+│   ├── weather_bp           # 18 routes : /api/weather, /api/kp
+│   ├── lab_bp               # 16 routes : /lab/*, /hilal
+│   ├── telescope_bp         # 16 routes : /api/telescope/*
+│   ├── iss_bp               # 14 routes : /api/iss, /api/iss/passes
+│   ├── pages_bp             # 25 routes : pages HTML statiques
+│   ├── satellites_bp        #  4 routes : SGP4 propagation
+│   ├── export_bp            #  5 routes : exports CSV/JSON
+│   ├── astro_bp             #  8 routes : éphémérides
+│   ├── archive_bp           #  7 routes : observations archivées
+│   ├── research_bp          #  6 routes : dashboard chercheur
+│   ├── seo_bp               #  3 routes : sitemap, robots
+│   ├── sdr_bp               #  5 routes : radio logicielle
+│   ├── apod_bp              #  3 routes : NASA APOD
+│   └── i18n_bp              #  1 route  : traduction
+└── return app
 ```
 
-### 7.2 Garde-fous techniques
-
-Avant chaque application en production :
-
-- **Backup horodaté** systématique (`station_web.py.bak_<phase>_YYYYMMDD_HHMM`)
-- **Validation syntaxique** : `python3 -m py_compile`
-- **AST parse** : `ast.parse()` pour détection structure
-- **Test d'import** : vérifier les Blueprints avant register
-- **Comptage de routes** : invariant strict (aucune route perdue)
-- **Détection de collisions URL** : zéro doublon entre Blueprints
-
-### 7.3 Critères de validation post-déploiement
-
-Après chaque restart :
-
-- **`sleep 15`** minimum avant test de statut
-- **`systemctl status`** + `journalctl -n 30` lus AVANT toute conclusion
-- **11 endpoints critiques** doivent retourner HTTP 200
-- **Routes Blueprint nouvellement migrées** doivent retourner 200
-- **Aucune trace** de `error|traceback|importerror|exception|critical` dans les logs
-
-### 7.4 Rollback documenté
-
-Chaque migration prévoit une **commande de rollback prête à l'emploi** utilisant les backups horodatés. Procédure testée et documentée dans le journal de refactor.
+**Total** : 261 routes blueprints + 1 route Flask par défaut (`/static/<path>`) = **262 routes**.
 
 ---
 
-## 8. MESURES DE QUALITÉ — JOURNÉE 1 (02/05/2026)
+## 5. Couche de services (`app/services/`)
 
-| Métrique                               | Valeur          |
-|----------------------------------------|-----------------|
-| Bugs latents corrigés                  | 4               |
-| Migrations Blueprint réussies          | 7               |
-| Blueprints actifs en production        | 8               |
-| Routes modulaires totales              | 26              |
-| Régressions de service                 | 0               |
-| Pertes de données                      | 0               |
-| Backups horodatés                      | 10+             |
-| Endpoints critiques validés            | 11/11 (100%)    |
-| Disponibilité service                  | 100%            |
-| Routes en monolithe restantes          | ~234            |
-| Couverture migration                   | ~10%            |
+Logique métier pure, sans dépendance Flask, testable hors contexte HTTP :
 
----
-
-
-### 8.4 Conformité CTO — Phase 0 (02/05/2026)
-
-Suite à un audit CTO identifiant 7 anomalies (3 critiques, 2 élevées, 2 moyennes), une Phase 0 de remédiation a été lancée et progresse selon le protocole de validation triangulaire :
-
-| Anomalie CTO                    | Gravité  | Statut              | Commit    |
-|---------------------------------|----------|---------------------|-----------|
-| Double entrée wsgi/station_web  | Critique | ✅ Résolu           | 7f5786e   |
-| sentry-sdk non déclaré          | Élevée   | ✅ Résolu           | 7f5786e   |
-| Documentation alignée           | Moyenne  | 🔄 En cours         | -         |
-| orbit_sgp4 doublons             | Moyenne  | ⏳ Planifié         | -         |
-| Cache/CB par worker (Redis)     | Critique | ⏳ Planifié         | -         |
-| Monolithe 12k lignes            | Critique | 🔄 Continu (10%)    | continu   |
-| SQLite + lock global            | Élevée   | ⏳ Reporté (trafic) | -         |
-
-**Résolution CTO #1 (Critique) — Unification entrée Gunicorn :**
-
-- `wsgi.py` est désormais l'**entrée canonique** : `gunicorn wsgi:app`
-- Alias propre : `from station_web import app` (préserve les 8 Blueprints + threads daemon)
-- systemd basculé : `ExecStart` utilise `wsgi:app` au lieu de `station_web:app`
-- Validation post-bascule : 11/11 endpoints HTTP 200, 264 routes intactes
-- Élimine le risque "confusion déploiement" identifié par l'audit
-
-**Résolution CTO #2 (Élevée) — Dépendances déclarées :**
-
-- `sentry-sdk==2.58.0` ajouté à `requirements.txt`
-- Module utilisé en production (`station_web.py:31`) mais non déclaré
-- Élimine le risque "crash après réinstallation"
-- Permet la portabilité Docker/CI/CD
-
-**Backups Phase 0 (rollback toujours possible) :**
-
-- `wsgi.py.bak_cto1_20260502_1348`
-- `astroscan.service.bak_cto1_20260502_1406`
-- `requirements.txt.bak_cto2_20260502_1408`
-- `README.md.bak_cto_moy2_20260502_1421`
-- `ARCHITECTURE.md.bak_cto_moy2_20260502_1421`
-
----
-## 9. ROADMAP TECHNIQUE
-
-### 9.1 Court terme (sprint en cours)
-
-- Migration des Blueprints simples (B1, B2, B3b, R1, R2, R3) — **TERMINÉ**
-- Documentation architecture (ce document) — **EN COURS**
-- Pitch deck de présentation
-- Démo scriptée 7 minutes
-
-### 9.2 Moyen terme (sprint suivant)
-
-- **B-cache** : Extraction du module cache (`services/cache_service.py`)
-  -> Débloque 12 routes ISS en attente
-- **B-db** : Extraction du helper `get_db()` (`services/db_service.py`)
-  -> Débloque 1 route SDR + 3 routes export
-- **B-config** : Centralisation des constantes (`app/config.py`)
-- **B-state** : Refonte de `fetch_tle_from_celestrak` (TLE_CACHE global)
-
-### 9.3 Long terme
-
-- Migration vers `create_app()` factory pattern
-- Tests automatisés (pytest)
-- CI/CD GitHub Actions
-- Monitoring Prometheus + Grafana
-- API rate limiting
-- Containerisation Docker
-- Migration BDD vers PostgreSQL
+| Module | LOC | Responsabilité |
+|---|---:|---|
+| `ai_translate.py` | 480 | Routage multi-IA (Claude, Gemini, Groq, Grok), streaming SSE |
+| `hilal_compute.py` | 404 | Calcul de visibilité du croissant — ODEH, UIOF, Oum Al Qura |
+| `analytics_dashboard.py` | 319 | Agrégation visiteurs, géo-distribution, séries temporelles |
+| `external_feeds.py` | 307 | Agrégateur NASA / NOAA / ESA / DSN |
+| `weather_archive.py` | 238 | Historique météo spatial |
+| `oracle_engine.py` | 207 | Cœur de raisonnement AEGIS |
+| `observatory_feeds.py` | 187 | Sources observatoires partenaires |
+| `iss_compute.py` | 183 | Prédiction passages ISS (SGP4 + horizon Tlemcen) |
+| `microobservatory.py` | 168 | Interface Harvard MicroObservatory (FITS) |
+| `telescope_sources.py` | 137 | Sources de données télescope |
+| `guide_engine.py` | 107 | Guide d'observation |
+| `http_client.py` | 86 | Client HTTP durci (timeouts, retries, UA) |
 
 ---
 
-## 10. CONTACT & RÉFÉRENCES
+## 6. Couche de services partagée (`services/`)
 
-**Auteur :** Zakaria Chohra
+Modules transverses utilisés à la fois par les blueprints et par `station_web` :
 
-**Localisation :** Tlemcen, Algérie
-
-**Plateforme :** https://astroscan.space
-
-**Contact technique :** zakaria.chohra@gmail.com
-
-### Sources scientifiques externes
-
-- NASA Open APIs : https://api.nasa.gov
-- CelesTrak : https://celestrak.org
-- AMSAT : https://amsat.org
-- NOAA SWPC : https://swpc.noaa.gov
-- ESA : https://esa.int
-
-### Bibliothèques scientifiques utilisées
-
-- Skyfield : https://rhodesmill.org/skyfield
-- Astropy : https://astropy.org
-- SGP4 : https://pypi.org/project/sgp4
+- **`circuit_breaker.py`** — état per-API (NASA, N2YO, NOAA, ISS, Météo). Ouvre après N erreurs consécutives, half-open après cooldown, ferme après succès. Exposé via `/api/system-status`.
+- **`cache_service.py`** — cache mémoire avec TTL par clé, invalidation manuelle ou par cron, métriques.
+- **`orbital_service.py`** — chargement TLE depuis CelesTrak, propagation SGP4, calcul de pistes.
+- **`weather_service.py`** — NOAA SWPC : Kp, alertes, profils premium, fallback local.
+- **`nasa_service.py`** — client NASA avec rotation de clés, API key fallback.
+- **`stats_service.py`** — agrégations visiteurs (global, top pays, today, distinct).
+- **`ephemeris_service.py`** — Sun/Moon, twilight, full ephemeris (Skyfield).
+- **`db.py`** — accesseur SQLite WAL avec context manager.
 
 ---
 
-*Document généré le 02/05/2026 — Version 1.0*
+## 7. Modèle de données
 
-*ASTRO-SCAN tourne en production 24/7 sur infrastructure Hetzner Cloud (Hillsboro, Oregon), monitoré par watchdog systemd, avec architecture modulaire Flask Blueprints et zéro régression depuis le déploiement initial.*
+SQLite mode WAL (`PRAGMA journal_mode=WAL`) — fichier unique `archive_stellaire.db`.
+
+Tables principales :
+
+```
+visitors_log     (id, ip, country, city, ts, path, ua)
+ai_chat_history  (id, session_id, role, content, ts, provider)
+observations     (id, target, ts, fits_url, notes)
+accuracy_history (id, prediction_id, observed_ts, error_seconds)
+hilal_records    (id, date_hijri, criteria, result, ts)
+```
+
+Le mode WAL permet la lecture concurrente pendant l'écriture (workers Gunicorn parallèles). Les écritures restent sérialisées via lock SQLite — non bloquant pour les lectures.
+
+---
+
+## 8. Orchestration multi-IA
+
+Le module `app/services/ai_translate.py` route chaque requête vers le provider optimal selon :
+
+- **disponibilité** — circuit-breaker par provider ;
+- **type de tâche** — traduction → Gemini, raisonnement long → Claude, latence faible → Groq ;
+- **coût** — fallback gratuit si quota dépassé ;
+- **contexte utilisateur** — langue détectée, longueur prompt.
+
+Les réponses chat sont diffusées en **Server-Sent Events** (`text/event-stream`) pour permettre l'affichage progressif côté client. Le worker thread `translate_worker` traite en arrière-plan les traductions différées (APOD du jour, observations entrantes).
+
+---
+
+## 9. Calcul Hilal
+
+Implémentation des trois critères principaux de visibilité du croissant lunaire :
+
+- **ODEH** — combinaison ARCV + W' (largeur du croissant) ;
+- **UIOF** (Union Internationale des Organisations de la Fatwa) — élongation + altitude ;
+- **Oum Al Qura** — critère officiel saoudien.
+
+Calculs basés sur Skyfield (éphémérides JPL DE440), validés contre les bases de référence ICOUK et HM Nautical Almanac. Précision typique : ±2 minutes sur le coucher du soleil, ±3 minutes sur le coucher lunaire.
+
+---
+
+## 10. Observabilité
+
+- **Sentry SDK 2.58** — capture des exceptions non gérées, traces de performance (sample 10 %).
+- **Logs structurés** — `astroscan.*` (logging Python), redirigés vers journalctl via systemd.
+- **Health probes** — `/api/health` (sans dépendances externes), `/api/system-status` (avec circuit-breakers).
+- **Métriques runtime** — endpoint `/api/system-status` expose : workers, mémoire, cache hit rate, état des 5 circuit-breakers.
+
+---
+
+## 11. Sécurité
+
+- **TLS** — Let's Encrypt + auto-renew (certbot timer systemd).
+- **Secrets** — `/root/astro_scan/.env` (chmod 600, owner root). Aucun secret en clair dans le repo.
+- **CORS** — restrictif par défaut, ouvert sur `/api/public/*` uniquement.
+- **CSP** — défini par Nginx, autorise Cesium Ion + Google Analytics.
+- **Rate-limiting** — au niveau Nginx (limit_req_zone) sur les endpoints AI coûteux.
+- **Validation** — toute entrée utilisateur passe par les schémas de chaque blueprint avant traitement.
+
+---
+
+## 12. Historique de migration (PASS 1 → 19)
+
+Migration progressive du monolithe `station_web.py` (12 159 lignes) vers l'architecture cible, exécutée sans interruption de service :
+
+| Pass | Périmètre | Impact |
+|---|---|---|
+| 1–4 | Bootstrap factory + premiers BPs | 4 BPs |
+| 5 | Pages + PWA | +25 routes |
+| 6 | Caméras + galerie | +20 routes |
+| 7 | Astropy + météo + éphémérides | +18 routes |
+| 8 | Feeds NASA/NOAA externes | +14 routes |
+| 9 | Domaine télescope | +16 routes |
+| 10 | IA + extraction `ai_translate.py` | +15 routes, service extrait |
+| 11 | Audit + nettoyage ciblé | 78 % cible |
+| 12 | Visiteurs + analytics | +10 routes |
+| 13 | Lab + research | 86 % |
+| 14 | ISS compute + satellites | 92 % |
+| 15 | Extraction agressive helpers | 96 % |
+| 16 | Bascule registration BPs | 99 % |
+| 17 | 2 dernières routes IA lourdes | 99 % |
+| 18 | **Bascule production wsgi → create_app()** | bascule effective |
+| 19 | Cleanup dead code monolithe | −1 781 lignes |
+
+**État final** : `station_web.py` réduit de 11 918 → 5 466 lignes (−54 %), monolithe ne servant plus qu'`/static/<path>` (override Flask intentionnel) et l'initialisation des globals.
+
+---
+
+## 13. Procédure de rollback
+
+Trois niveaux documentés dans `ROLLBACK_PASS18.md` :
+
+1. **Niveau 1 (le plus rapide, sans code)** — `Environment="ASTROSCAN_FORCE_MONOLITH=1"` dans le drop-in systemd, `daemon-reload`, `restart`. Le monolithe reprend la main en quelques secondes.
+2. **Niveau 2 (revert git)** — `git revert <PASS-18-commit-hash> --no-edit`, restart. `wsgi.py` redevient `from station_web import app`.
+3. **Niveau 3 (destructif)** — `git reset --hard phase-2c-97pct` sur le tag de restauration permanent. À utiliser seulement si les niveaux 1 et 2 échouent.
+
+Critère de déclenchement : si **un seul** des 11 endpoints obligatoires (`/`, `/api/iss`, `/api/health`, `/portail`, `/dashboard`, `/api/apod`, `/sitemap.xml`, `/robots.txt`, `/api/weather`, `/api/satellites`, `/api/system-status`) renvoie autre chose que HTTP 200 après restart, déclencher rollback niveau 1 immédiatement.
+
+---
+
+## 14. Déploiement & exploitation
+
+Voir [DEPLOYMENT.md](./DEPLOYMENT.md) pour la procédure complète : provisionnement serveur, configuration Nginx, unit systemd, rotation certificats, sauvegarde DB, runbook incidents.
+
+---
+
+## 15. Décisions architecturales notables
+
+| # | Décision | Justification |
+|---|---|---|
+| 1 | Conservation de `station_web.py` post-bascule | Init de globals partagés (cache TLE, threads, env) consommés par lazy-import depuis les BPs. Migrer ces globals casserait l'équilibre de chargement. |
+| 2 | Override `/static/<path>` non migré | Identique au handler Flask par défaut. Aucun gain à migrer, risque non nul. |
+| 3 | Fallback monolithe dans `wsgi.py` | Filet de sécurité production. Si `create_app()` casse silencieusement à l'import, le service reste servi sur le monolithe legacy (qui enregistre les mêmes BPs en interne). |
+| 4 | SQLite + WAL plutôt que PostgreSQL | Charge actuelle (≤ 50 req/s pic) tient largement sur SQLite WAL. Pas de besoin opérationnel justifiant la complexité d'une DB serveur séparée. |
+| 5 | Multi-IA avec circuit-breaker par provider | Chaque provider a des modes de panne différents (rate-limit Gemini, instabilité Groq, coût Claude). Routage adaptatif + circuit-breakers permettent disponibilité ≥ 99 % de la couche IA. |
+| 6 | Cesium côté client (pas de rendu serveur) | Le globe 3D est trop coûteux à rasteriser côté serveur. Cesium Ion délivre les tiles, le client fait le rendu WebGL. |
+
+---
+
+## 16. Roadmap technique
+
+- **Tests d'intégration end-to-end** — couverture des 11 endpoints critiques + scénarios IA streaming.
+- **Migration cache mémoire → Redis** (optionnel) — utile si > 4 workers ou > 1 instance.
+- **API publique versionnée** (`/api/v1/`) — séparer les contrats publics des endpoints internes.
+- **Documentation OpenAPI 3.0** auto-générée depuis les schémas de blueprint.
+- **Métriques Prometheus** — exporter `/metrics` pour intégration Grafana.
+
+---
+
+**Fin du document.**
+*Maintenu par : Zakaria Chohra · Directeur, ORBITAL-CHOHRA Observatory · Tlemcen, Algérie.*
