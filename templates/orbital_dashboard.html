@@ -1,10 +1,13 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ lang | default('fr') }}">
 <head>
 <meta charset="UTF-8">
 <script>(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Orbital Dashboard — AstroScan</title>
+<link rel="alternate" hreflang="fr" href="https://astroscan.space{{ request.path }}">
+<link rel="alternate" hreflang="en" href="https://astroscan.space{{ request.path }}?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://astroscan.space{{ request.path }}">
 <link rel="stylesheet" href="/static/lib/leaflet/leaflet.css"/>
 <style>
 html.embed-portail #topbar,html.embed-portail .topbar{display:none!important}
@@ -270,34 +273,35 @@ a{text-decoration:none;color:inherit}
     </div>
     <div class="tb-right">
       <div class="live-dot"></div>
-      <span>&#9679; CONNEXION EN DIRECT</span>
+      <span>&#9679; {% if lang == 'en' %}LIVE CONNECTION{% else %}CONNEXION EN DIRECT{% endif %}</span>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(0,234,255,.55)" stroke-width="1.4">
         <path d="M12 2L2 12l10 10 10-10L12 2z"/><circle cx="12" cy="12" r="3"/>
         <path d="M6 6l3 3M15 15l3 3M18 6l-3 3M9 15l-3 3"/>
       </svg>
       <div class="header-actions">
-        <a href="/portail" class="astro-btn">⟵ PORTAIL</a>
-        <button onclick="location.reload()" class="astro-btn">↻ ACTUALISER</button>
+        <a href="/portail" class="astro-btn">⟵ {% if lang == 'en' %}PORTAL{% else %}PORTAIL{% endif %}</a>
+        <button onclick="location.reload()" class="astro-btn">↻ {% if lang == 'en' %}REFRESH{% else %}ACTUALISER{% endif %}</button>
+        <a href="?lang={{ 'fr' if lang == 'en' else 'en' }}" class="astro-btn" style="font-weight:700">{{ 'FR' if lang == 'en' else 'EN' }}</a>
       </div>
     </div>
   </div>
   <div class="tb-r2">
     <div class="tb-s">
-      <span class="tb-sl">Statut Syst&egrave;me</span>
-      <span class="tb-sv ok">&#x1F7E2; OP&Eacute;RATIONNEL</span>
+      <span class="tb-sl">{% if lang == 'en' %}System Status{% else %}Statut Syst&egrave;me{% endif %}</span>
+      <span class="tb-sv ok">&#x1F7E2; {% if lang == 'en' %}OPERATIONAL{% else %}OP&Eacute;RATIONNEL{% endif %}</span>
     </div>
     <div class="tb-s">
-      <span class="tb-sl">Visiteurs Aujourd'hui</span>
+      <span class="tb-sl">{% if lang == 'en' %}Visitors Today{% else %}Visiteurs Aujourd'hui{% endif %}</span>
       <span class="tb-sv" id="orb-visit-tb">—</span>
-      <span class="tb-sd up">&#9650; +23.5% vs hier</span>
+      <span class="tb-sd up">&#9650; +23.5% {% if lang == 'en' %}vs yesterday{% else %}vs hier{% endif %}</span>
     </div>
     <div class="tb-s">
-      <span class="tb-sl">Pays Distincts</span>
+      <span class="tb-sl">{% if lang == 'en' %}Distinct Countries{% else %}Pays Distincts{% endif %}</span>
       <span class="tb-sv" id="orb-pays-tb">&mdash;</span>
-      <span class="tb-sd up">&#9650; +5 vs hier</span>
+      <span class="tb-sd up">&#9650; +5 {% if lang == 'en' %}vs yesterday{% else %}vs hier{% endif %}</span>
     </div>
     <div class="tb-s">
-      <span class="tb-sl">Requ&ecirc;tes / 24h</span>
+      <span class="tb-sl">{% if lang == 'en' %}Requests / 24h{% else %}Requ&ecirc;tes / 24h{% endif %}</span>
       <span class="tb-sv">24&thinsp;532</span>
       <span class="tb-sd up">&#9650; +18.7%</span>
     </div>
@@ -306,12 +310,12 @@ a{text-decoration:none;color:inherit}
       <span class="tb-sv ok">99.82%</span>
     </div>
     <div class="tb-s">
-      <span class="tb-sl">Erreurs</span>
+      <span class="tb-sl">{% if lang == 'en' %}Errors{% else %}Erreurs{% endif %}</span>
       <span class="tb-sv">12</span>
       <span class="tb-sd dn">&#9660; &minus;8.3%</span>
     </div>
     <div class="tb-s">
-      <span class="tb-sl">Latence Moy.</span>
+      <span class="tb-sl">{% if lang == 'en' %}Avg. Latency{% else %}Latence Moy.{% endif %}</span>
       <span class="tb-sv">128 ms</span>
       <span class="tb-sd dn">&#9660; &minus;10.2%</span>
     </div>
@@ -328,20 +332,20 @@ a{text-decoration:none;color:inherit}
 
         <!-- CARTE LEAFLET -->
         <div class="card">
-          <div class="ctitle">&#127757; VISITEURS EN TEMPS R&Eacute;EL <span class="badge-live">LIVE</span></div>
+          <div class="ctitle">&#127757; {% if lang == 'en' %}LIVE VISITORS{% else %}VISITEURS EN TEMPS R&Eacute;EL{% endif %} <span class="badge-live">LIVE</span></div>
           <div class="map-wrap">
             <div id="world-map"></div>
             <div class="map-right">
-              <div class="pays-head">TOP PAYS</div>
+              <div class="pays-head">{% if lang == 'en' %}TOP COUNTRIES{% else %}TOP PAYS{% endif %}</div>
               <div id="orb-top-pays-list"></div>
-              <button class="btn-sm" type="button" onclick="openAllCountriesModal()">VOIR TOUS LES PAYS</button>
+              <button class="btn-sm" type="button" onclick="openAllCountriesModal()">{% if lang == 'en' %}SEE ALL COUNTRIES{% else %}VOIR TOUS LES PAYS{% endif %}</button>
             </div>
           </div>
           <div class="map-counters">
-            <div class="mc"><div class="mc-v" id="orb-visit-mc">—</div><div class="mc-l">Visiteurs Aujourd'hui</div></div>
-            <div class="mc"><div class="mc-v" id="orb-pays-mc">&mdash;</div><div class="mc-l">Pays Distincts</div></div>
-            <div class="mc"><div class="mc-v">1&thinsp;247</div><div class="mc-l">Sessions Aujourd'hui</div></div>
-            <div class="mc"><div class="mc-v">03:42</div><div class="mc-l">Dur&eacute;e Moy. Session</div></div>
+            <div class="mc"><div class="mc-v" id="orb-visit-mc">—</div><div class="mc-l">{% if lang == 'en' %}Visitors Today{% else %}Visiteurs Aujourd'hui{% endif %}</div></div>
+            <div class="mc"><div class="mc-v" id="orb-pays-mc">&mdash;</div><div class="mc-l">{% if lang == 'en' %}Distinct Countries{% else %}Pays Distincts{% endif %}</div></div>
+            <div class="mc"><div class="mc-v">1&thinsp;247</div><div class="mc-l">{% if lang == 'en' %}Sessions Today{% else %}Sessions Aujourd'hui{% endif %}</div></div>
+            <div class="mc"><div class="mc-v">03:42</div><div class="mc-l">{% if lang == 'en' %}Avg. Session Duration{% else %}Dur&eacute;e Moy. Session{% endif %}</div></div>
           </div>
         </div>
 
@@ -349,16 +353,16 @@ a{text-decoration:none;color:inherit}
         <div class="g3">
           <!-- Services -->
           <div class="card" style="margin-bottom:0">
-            <div class="ctitle">&#9881; &Eacute;TAT DES SERVICES</div>
+            <div class="ctitle">&#9881; {% if lang == 'en' %}SERVICES STATUS{% else %}&Eacute;TAT DES SERVICES{% endif %}</div>
             <div class="svc-row"><span class="svc-n">NASA API</span><span class="badge-ok">OK</span></div>
             <div class="svc-row"><span class="svc-n">ISS API</span><span class="badge-ok">OK</span></div>
-            <div class="svc-row"><span class="svc-n">M&Eacute;T&Eacute;O SPATIALE</span><span class="badge-ok">OK</span></div>
+            <div class="svc-row"><span class="svc-n">{% if lang == 'en' %}SPACE WEATHER{% else %}M&Eacute;T&Eacute;O SPATIALE{% endif %}</span><span class="badge-ok">OK</span></div>
             <div class="svc-row"><span class="svc-n">ORBITAL DATA</span><span class="badge-ok">OK</span></div>
             <div class="svc-row"><span class="svc-n">FALLBACK SYSTEM</span><span class="badge-ok">OK</span></div>
           </div>
           <!-- Logs -->
           <div class="card" style="margin-bottom:0">
-            <div class="ctitle">&#128203; DERNIERS LOGS</div>
+            <div class="ctitle">&#128203; {% if lang == 'en' %}LATEST LOGS{% else %}DERNIERS LOGS{% endif %}</div>
             <div class="log-row"><span class="log-t">14:32:08</span><span class="tag ti">INFO</span><span class="log-m">ISS position updated</span></div>
             <div class="log-row"><span class="log-t">14:31:52</span><span class="tag ti">INFO</span><span class="log-m">TLE cache refreshed</span></div>
             <div class="log-row"><span class="log-t">14:30:44</span><span class="tag tw">WARN</span><span class="log-m">NASA API slow response</span></div>
@@ -368,7 +372,7 @@ a{text-decoration:none;color:inherit}
           </div>
           <!-- Visiteurs -->
           <div class="card" style="margin-bottom:0">
-            <div class="ctitle">&#128101; DERNIERS VISITEURS</div>
+            <div class="ctitle">&#128101; {% if lang == 'en' %}LATEST VISITORS{% else %}DERNIERS VISITEURS{% endif %}</div>
             <div class="vis-row"><span class="vis-fl">&#127482;&#127480;</span><span class="vis-c">New York, USA</span><span class="vis-t">14:32</span></div>
             <div class="vis-row"><span class="vis-fl">&#127465;&#127487;</span><span class="vis-c">Alger, Alg&eacute;rie</span><span class="vis-t">14:31</span></div>
             <div class="vis-row"><span class="vis-fl">&#127480;&#127468;</span><span class="vis-c">Singapore</span><span class="vis-t">14:30</span></div>
@@ -380,8 +384,8 @@ a{text-decoration:none;color:inherit}
 
         <div class="panel" id="solar-system-panel">
           <div class="panel-hdr">
-            <span>☀️ SYSTÈME SOLAIRE</span>
-            <span class="badge live">TEMPS RÉEL</span>
+            <span>☀️ {% if lang == 'en' %}SOLAR SYSTEM{% else %}SYSTÈME SOLAIRE{% endif %}</span>
+            <span class="badge live">{% if lang == 'en' %}REAL-TIME{% else %}TEMPS RÉEL{% endif %}</span>
           </div>
           <div style="position:relative;width:100%;aspect-ratio:1/1;max-height:340px">
             <canvas id="solarCanvas" style="width:100%;height:100%;display:block"></canvas>
@@ -397,7 +401,7 @@ a{text-decoration:none;color:inherit}
 
         <!-- ISS CARD -->
         <div class="card">
-          <div class="ctitle">&#128752; ISS &mdash; POSITION EN TEMPS R&Eacute;EL <span class="badge-live">LIVE</span></div>
+          <div class="ctitle">&#128752; {% if lang == 'en' %}ISS &mdash; LIVE POSITION{% else %}ISS &mdash; POSITION EN TEMPS R&Eacute;EL{% endif %} <span class="badge-live">LIVE</span></div>
           <div style="position:relative;margin-bottom:12px">
             <div class="iss-photo" style="width:100%;height:300px;cursor:pointer" onclick="toggleISSInfo()">
               <div class="iss-s" style="width:2px;height:2px;left:8%;top:15%;animation-delay:.4s"></div>
@@ -465,28 +469,28 @@ a{text-decoration:none;color:inherit}
               <circle cx="30" cy="30" r="13" fill="none" stroke="#ffcc44" stroke-width="2" opacity=".25"/>
             </svg>
             <div>
-              <div style="font-size:.58rem;letter-spacing:.1em;color:rgba(0,234,255,.42);text-transform:uppercase;margin-bottom:4px">Activit&eacute; Solaire &mdash; Kp Index</div>
+              <div style="font-size:.58rem;letter-spacing:.1em;color:rgba(0,234,255,.42);text-transform:uppercase;margin-bottom:4px">{% if lang == 'en' %}Solar Activity &mdash; Kp Index{% else %}Activit&eacute; Solaire &mdash; Kp Index{% endif %}</div>
               <div class="sw-kp">3</div>
-              <div class="sw-calm">&#x2713; Calme</div>
+              <div class="sw-calm">&#x2713; {% if lang == 'en' %}Calm{% else %}Calme{% endif %}</div>
             </div>
           </div>
           <div class="sw-g">
-            <div class="sw-i"><div class="sw-l">Vent Solaire</div><div class="sw-v">450 km/s</div><div class="sw-sub">Normal</div></div>
-            <div class="sw-i"><div class="sw-l">Champ Magn&eacute;tique</div><div class="sw-v">Bz &minus;2.1 nT</div><div class="sw-sub">Stable</div></div>
+            <div class="sw-i"><div class="sw-l">{% if lang == 'en' %}Solar Wind{% else %}Vent Solaire{% endif %}</div><div class="sw-v">450 km/s</div><div class="sw-sub">Normal</div></div>
+            <div class="sw-i"><div class="sw-l">{% if lang == 'en' %}Magnetic Field{% else %}Champ Magn&eacute;tique{% endif %}</div><div class="sw-v">Bz &minus;2.1 nT</div><div class="sw-sub">Stable</div></div>
           </div>
-          <div class="aur-hd"><span>RISQUE D'AURORES</span><span style="color:var(--green)">FAIBLE</span></div>
+          <div class="aur-hd"><span>{% if lang == 'en' %}AURORA RISK{% else %}RISQUE D'AURORES{% endif %}</span><span style="color:var(--green)">{% if lang == 'en' %}LOW{% else %}FAIBLE{% endif %}</span></div>
           <div class="aur-bar"><div class="aur-cur"></div></div>
-          <div class="aur-sc"><span>NUL</span><span>FAIBLE</span><span>MOYEN</span><span>FORT</span></div>
+          <div class="aur-sc"><span>{% if lang == 'en' %}NONE{% else %}NUL{% endif %}</span><span>{% if lang == 'en' %}LOW{% else %}FAIBLE{% endif %}</span><span>{% if lang == 'en' %}MEDIUM{% else %}MOYEN{% endif %}</span><span>{% if lang == 'en' %}HIGH{% else %}FORT{% endif %}</span></div>
         </div>
 
         <!-- GEO-IP -->
         <div class="card">
           <div class="ctitle">&#128205; GEO-IP TRACKER <span class="badge-live">LIVE</span></div>
-          <div class="geo-row"><span class="geo-ip">134.209.252.42</span><span class="geo-loc">Germany &mdash; Frankfurt</span><span class="bh">HUMAIN</span></div>
-          <div class="geo-row"><span class="geo-ip">43.130.139.136</span><span class="geo-loc">USA &mdash; Ashburn</span><span class="bh">HUMAIN</span></div>
-          <div class="geo-row"><span class="geo-ip">105.235.139.236</span><span class="geo-loc">Algeria &mdash; Bit el Djir</span><span class="bh">HUMAIN</span></div>
-          <div class="geo-row"><span class="geo-ip">88.151.34.35</span><span class="geo-loc">Inconnu</span><span class="bb">BOT</span></div>
-          <div class="geo-row"><span class="geo-ip">95.214.53.42</span><span class="geo-loc">Inconnu</span><span class="bb">BOT</span></div>
+          <div class="geo-row"><span class="geo-ip">134.209.252.42</span><span class="geo-loc">Germany &mdash; Frankfurt</span><span class="bh">{% if lang == 'en' %}HUMAN{% else %}HUMAIN{% endif %}</span></div>
+          <div class="geo-row"><span class="geo-ip">43.130.139.136</span><span class="geo-loc">USA &mdash; Ashburn</span><span class="bh">{% if lang == 'en' %}HUMAN{% else %}HUMAIN{% endif %}</span></div>
+          <div class="geo-row"><span class="geo-ip">105.235.139.236</span><span class="geo-loc">Algeria &mdash; Bit el Djir</span><span class="bh">{% if lang == 'en' %}HUMAN{% else %}HUMAIN{% endif %}</span></div>
+          <div class="geo-row"><span class="geo-ip">88.151.34.35</span><span class="geo-loc">{% if lang == 'en' %}Unknown{% else %}Inconnu{% endif %}</span><span class="bb">BOT</span></div>
+          <div class="geo-row"><span class="geo-ip">95.214.53.42</span><span class="geo-loc">{% if lang == 'en' %}Unknown{% else %}Inconnu{% endif %}</span><span class="bb">BOT</span></div>
         </div>
 
       </div><!-- /droite -->
@@ -499,13 +503,13 @@ a{text-decoration:none;color:inherit}
 
       <!-- Architecture -->
       <div class="f-card">
-        <div class="f-title">&#9679; ARCHITECTURE DU SYST&Egrave;ME</div>
+        <div class="f-title">&#9679; {% if lang == 'en' %}SYSTEM ARCHITECTURE{% else %}ARCHITECTURE DU SYST&Egrave;ME{% endif %}</div>
         <div class="arch-flow">
           <div class="arch-n"><span class="arch-icon">&#128452;</span><span class="arch-lbl">SOURCES</span>NASA, APIs</div>
           <span class="arch-arr">&#8594;</span>
-          <div class="arch-n"><span class="arch-icon">&#9881;</span><span class="arch-lbl">TRAITEMENT</span>Flask Backend</div>
+          <div class="arch-n"><span class="arch-icon">&#9881;</span><span class="arch-lbl">{% if lang == 'en' %}PROCESSING{% else %}TRAITEMENT{% endif %}</span>Flask Backend</div>
           <span class="arch-arr">&#8594;</span>
-          <div class="arch-n"><span class="arch-icon">&#128190;</span><span class="arch-lbl">CACHE</span>R&eacute;silience</div>
+          <div class="arch-n"><span class="arch-icon">&#128190;</span><span class="arch-lbl">CACHE</span>{% if lang == 'en' %}Resilience{% else %}R&eacute;silience{% endif %}</div>
           <span class="arch-arr">&#8594;</span>
           <div class="arch-n"><span class="arch-icon">&#128421;</span><span class="arch-lbl">INTERFACE</span>Dashboard</div>
         </div>
@@ -513,7 +517,7 @@ a{text-decoration:none;color:inherit}
 
       <!-- Performances -->
       <div class="f-card">
-        <div class="f-title">&#9889; PERFORMANCES SYST&Egrave;ME</div>
+        <div class="f-title">&#9889; {% if lang == 'en' %}SYSTEM PERFORMANCE{% else %}PERFORMANCES SYST&Egrave;ME{% endif %}</div>
         <div class="pg">
           <!-- CPU 23% → offset = 157*(1-0.23) = 120.9 -->
           <div class="pc">
@@ -522,7 +526,7 @@ a{text-decoration:none;color:inherit}
               <svg width="58" height="58" viewBox="0 0 58 58"><circle class="rbg" cx="29" cy="29" r="25"/><circle class="rfg rc" cx="29" cy="29" r="25" style="stroke-dashoffset:121"/></svg>
               <div class="rlbl">23%</div>
             </div>
-            <div class="psub">23% utilis&eacute;</div>
+            <div class="psub">23% {% if lang == 'en' %}used{% else %}utilis&eacute;{% endif %}</div>
           </div>
           <!-- RAM 47% → offset = 157*(1-0.47) = 83.2 -->
           <div class="pc">
@@ -531,20 +535,20 @@ a{text-decoration:none;color:inherit}
               <svg width="58" height="58" viewBox="0 0 58 58"><circle class="rbg" cx="29" cy="29" r="25"/><circle class="rfg rr" cx="29" cy="29" r="25" style="stroke-dashoffset:83"/></svg>
               <div class="rlbl" style="color:var(--green)">47%</div>
             </div>
-            <div class="psub">47% utilis&eacute;e</div>
+            <div class="psub">47% {% if lang == 'en' %}used{% else %}utilis&eacute;e{% endif %}</div>
           </div>
           <!-- Disque 32% → offset = 157*(1-0.32) = 106.8 -->
           <div class="pc">
-            <div class="pl">DISQUE</div>
+            <div class="pl">{% if lang == 'en' %}DISK{% else %}DISQUE{% endif %}</div>
             <div class="ring">
               <svg width="58" height="58" viewBox="0 0 58 58"><circle class="rbg" cx="29" cy="29" r="25"/><circle class="rfg rd" cx="29" cy="29" r="25" style="stroke-dashoffset:107"/></svg>
               <div class="rlbl" style="color:var(--warn)">32%</div>
             </div>
-            <div class="psub">32% utilis&eacute;</div>
+            <div class="psub">32% {% if lang == 'en' %}used{% else %}utilis&eacute;{% endif %}</div>
           </div>
           <!-- Réseau 128Mbps → visuel 68% → offset = 157*(1-0.68) = 50.2 -->
           <div class="pc">
-            <div class="pl">R&Eacute;SEAU</div>
+            <div class="pl">{% if lang == 'en' %}NETWORK{% else %}R&Eacute;SEAU{% endif %}</div>
             <div class="ring">
               <svg width="58" height="58" viewBox="0 0 58 58"><circle class="rbg" cx="29" cy="29" r="25"/><circle class="rfg rn" cx="29" cy="29" r="25" style="stroke-dashoffset:50"/></svg>
               <div class="rlbl" style="color:var(--cyan2);font-size:.65rem">128</div>
@@ -556,10 +560,10 @@ a{text-decoration:none;color:inherit}
 
       <!-- À propos -->
       <div class="f-card">
-        <div class="f-title">&#8505; &Agrave; PROPOS D'ASTROSCAN</div>
-        <div class="abt-desc">Plateforme d'observation spatiale temps r&eacute;el avec architecture r&eacute;siliente multi-sources. Con&ccedil;u pour la surveillance, l'analyse et la visualisation de donn&eacute;es spatiales.</div>
+        <div class="f-title">&#8505; {% if lang == 'en' %}ABOUT ASTROSCAN{% else %}&Agrave; PROPOS D'ASTROSCAN{% endif %}</div>
+        <div class="abt-desc">{% if lang == 'en' %}Real-time space observation platform with resilient multi-source architecture. Designed for the monitoring, analysis and visualization of space data.{% else %}Plateforme d'observation spatiale temps r&eacute;el avec architecture r&eacute;siliente multi-sources. Con&ccedil;u pour la surveillance, l'analyse et la visualisation de donn&eacute;es spatiales.{% endif %}</div>
         <div class="abt-logo">ASTROSCAN</div>
-        <div class="abt-meta">Version v2.1.0 &mdash; Production<br>Node : 5.78.153.17 &mdash; Hetzner DE<br>Domaines : astroscan.space</div>
+        <div class="abt-meta">{% if lang == 'en' %}Version v2.1.0 &mdash; Production<br>Node: 5.78.153.17 &mdash; Hetzner DE<br>Domains: astroscan.space{% else %}Version v2.1.0 &mdash; Production<br>Node : 5.78.153.17 &mdash; Hetzner DE<br>Domaines : astroscan.space{% endif %}</div>
       </div>
 
     </div>

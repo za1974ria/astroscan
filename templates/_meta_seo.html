@@ -1,4 +1,4 @@
-{# PASS 29 — Reusable SEO meta fragment.
+{# PASS 29 + PASS 30 — Reusable SEO meta fragment, locale-aware (FR/EN).
 
    Opt-in include. NOT auto-loaded by any existing template — a template
    that wants the Open Graph / Twitter Card / Schema.org block must
@@ -6,19 +6,36 @@
 
        {% include "_meta_seo.html" %}
 
-   Variables (all optional):
-     seo_title       — page title (default: AstroScan)
+   Variables (all optional; locale-aware defaults applied):
+     seo_title       — page title (default: locale-specific AstroScan tagline)
      seo_description — short paragraph used by OG/Twitter/meta description
      seo_url         — canonical URL of the page (default: https://astroscan.space/)
      seo_image       — preview image URL (default: /static/preview.png)
+
+   `lang` is exposed by the i18n context_processor and falls back to 'fr'.
 #}
-{% set _seo_title = seo_title|default('AstroScan — Plateforme d\'observation astronomique') %}
-{% set _seo_description = seo_description|default('Observatoire numérique temps réel ORBITAL-CHOHRA — données NASA, NOAA SWPC, ESA, JPL et CelesTrak. Tlemcen, Algérie.') %}
+{% set _is_en = (lang | default('fr')) == 'en' %}
+{% set _seo_title = seo_title|default(
+  'ASTRO-SCAN — Real-time Space Observatory' if _is_en
+  else 'ASTRO-SCAN — Observatoire spatial en temps réel'
+) %}
+{% set _seo_description = seo_description|default(
+  ('Astronomical observatory platform: real-time ISS tracking, NOAA space weather, APOD, NASA radio scanning. Open scientific data.'
+    if _is_en else
+   'Plateforme observatoire astronomique : ISS en temps réel, météo spatiale NOAA, APOD, scanning radio NASA. Open data scientifique.')
+) %}
 {% set _seo_url = seo_url|default('https://astroscan.space/') %}
 {% set _seo_image = seo_image|default('https://astroscan.space/static/preview.png') %}
+{% set _seo_locale = 'en_US' if _is_en else 'fr_FR' %}
+{% set _seo_locale_alt = 'fr_FR' if _is_en else 'en_US' %}
 
 <meta name="description" content="{{ _seo_description }}">
 <link rel="canonical" href="{{ _seo_url }}">
+
+<!-- hreflang alternates (PASS 30) -->
+<link rel="alternate" hreflang="fr" href="https://astroscan.space{{ request.path }}">
+<link rel="alternate" hreflang="en" href="https://astroscan.space{{ request.path }}?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://astroscan.space{{ request.path }}">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
@@ -27,7 +44,8 @@
 <meta property="og:description" content="{{ _seo_description }}">
 <meta property="og:url" content="{{ _seo_url }}">
 <meta property="og:image" content="{{ _seo_image }}">
-<meta property="og:locale" content="fr_FR">
+<meta property="og:locale" content="{{ _seo_locale }}">
+<meta property="og:locale:alternate" content="{{ _seo_locale_alt }}">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
@@ -45,6 +63,7 @@
   "url": "{{ _seo_url }}",
   "image": "{{ _seo_image }}",
   "description": "{{ _seo_description }}",
+  "inLanguage": "{{ 'en' if _is_en else 'fr' }}",
   "address": {
     "@type": "PostalAddress",
     "addressLocality": "Tlemcen",

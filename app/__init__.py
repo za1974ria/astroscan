@@ -48,6 +48,7 @@ def create_app(config_name: str = "production") -> Flask:
     _init_sqlite_wal(app.config["DB_PATH"])
     _register_blueprints(app)
     _register_hooks(app)
+    _register_i18n(app)
     _register_bootstrap(app)
 
     log.info("[AstroScan] Application factory initialisée — %s", config_name)
@@ -58,6 +59,12 @@ def _register_hooks(app: Flask) -> None:
     """Attache les 8 hooks app-level (PASS 24)."""
     from app.hooks import register_hooks
     register_hooks(app)
+
+
+def _register_i18n(app: Flask) -> None:
+    """PASS 30 — i18n app-level hooks (cookie renewal + template context)."""
+    from app.blueprints.i18n import register_i18n_hooks
+    register_i18n_hooks(app)
 
 
 def _register_bootstrap(app: Flask) -> None:

@@ -1,24 +1,40 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ lang | default('fr') }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+{% if lang == 'en' %}
+<title>Observatory — AstroScan-Chohra | Live Space Station</title>
+<meta name="description" content="Live space observatory: NASA APOD, ISS tracker, Hubble/JWST stellar archives, Tlemcen ephemerides. Real-time astronomical data from Algeria.">
+<meta name="keywords" content="space observatory, NASA APOD, ISS tracker, JWST, Hubble, stellar archives, Tlemcen ephemerides, live astronomy, Algeria">
+<meta property="og:title" content="Observatory — AstroScan-Chohra | Live Space Station">
+<meta property="og:description" content="Live space observatory: NASA APOD, ISS tracker, Hubble/JWST archives, Tlemcen ephemerides. Open scientific platform from Algeria.">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="fr_FR">
+<meta name="twitter:title" content="Observatory — AstroScan-Chohra | Live Space Station">
+<meta name="twitter:description" content="Live space observatory: NASA APOD, ISS tracker, Hubble/JWST stellar archives, Tlemcen ephemerides.">
+{% else %}
 <title>Observatoire — AstroScan-Chohra | Station Spatiale Live</title>
 <meta name="description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives stellaires Hubble/JWST, éphémérides Tlemcen. Données astronomiques en temps réel depuis l'Algérie.">
 <meta name="keywords" content="observatoire spatial, APOD NASA, ISS tracker, JWST, Hubble, archives stellaires, éphémérides Tlemcen, astronomie live, Algérie">
+<meta property="og:title" content="Observatoire — AstroScan-Chohra | Station Spatiale Live">
+<meta property="og:description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives Hubble/JWST, éphémérides Tlemcen. Plateforme scientifique ouverte depuis l'Algérie.">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:title" content="Observatoire — AstroScan-Chohra | Station Spatiale Live">
+<meta name="twitter:description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives stellaires Hubble/JWST, éphémérides Tlemcen.">
+{% endif %}
 <meta name="author" content="Zakaria Chohra — AstroScan">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://astroscan.space/observatoire">
+<link rel="alternate" hreflang="fr" href="https://astroscan.space/observatoire">
+<link rel="alternate" hreflang="en" href="https://astroscan.space/observatoire?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://astroscan.space/observatoire">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Observatoire — AstroScan-Chohra | Station Spatiale Live">
-<meta property="og:description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives Hubble/JWST, éphémérides Tlemcen. Plateforme scientifique ouverte depuis l'Algérie.">
 <meta property="og:url" content="https://astroscan.space/observatoire">
 <meta property="og:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
 <meta property="og:site_name" content="AstroScan-Chohra">
-<meta property="og:locale" content="fr_FR">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Observatoire — AstroScan-Chohra | Station Spatiale Live">
-<meta name="twitter:description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives stellaires Hubble/JWST, éphémérides Tlemcen.">
 <meta name="twitter:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
@@ -389,17 +405,18 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
 <div class="nebula"></div>
 <header>
   <div>
-    <div class="logo-tag">🔭 STATION D'OBSERVATION COSMIQUE</div>
+    <div class="logo-tag">🔭 {% if lang == 'en' %}COSMIC OBSERVATION STATION{% else %}STATION D'OBSERVATION COSMIQUE{% endif %}</div>
     <div class="logo">AstroScan-Chohra OBSERVATORY</div>
-    <div class="logo-sub">DIRECTEUR : ZAKARIA CHOHRA — TLEMCEN, ALGÉRIE | TLEMCEN STATION 5.78.153.17</div>
+    <div class="logo-sub">{% if lang == 'en' %}DIRECTOR{% else %}DIRECTEUR{% endif %} : ZAKARIA CHOHRA — TLEMCEN, {% if lang == 'en' %}ALGERIA{% else %}ALGÉRIE{% endif %} | TLEMCEN STATION 5.78.153.17</div>
   </div>
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
     <div class="header-btns">
-      <button type="button" class="refresh-btn" onclick="location.reload()" title="Actualiser la page (PC / Android)">🔄 Actualiser</button>
-      <button type="button" class="disconnect-btn" onclick="disconnectObservatory()" title="Retour au portail">Déconnexion</button>
+      <button type="button" class="refresh-btn" onclick="location.reload()" title="{% if lang == 'en' %}Refresh page{% else %}Actualiser la page (PC / Android){% endif %}">🔄 {% if lang == 'en' %}Refresh{% else %}Actualiser{% endif %}</button>
+      <button type="button" class="disconnect-btn" onclick="disconnectObservatory()" title="{% if lang == 'en' %}Back to portal{% else %}Retour au portail{% endif %}">{% if lang == 'en' %}Disconnect{% else %}Déconnexion{% endif %}</button>
+      <a href="?lang={{ 'fr' if lang == 'en' else 'en' }}" class="refresh-btn" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;font-weight:700">{{ 'FR' if lang == 'en' else 'EN' }}</a>
     </div>
     <div>
-      <div style="font-size:8px;color:#556677;letter-spacing:2px;text-align:right">TEMPS LOCAL</div>
+      <div style="font-size:8px;color:#556677;letter-spacing:2px;text-align:right">{% if lang == 'en' %}LOCAL TIME{% else %}TEMPS LOCAL{% endif %}</div>
       <div id="clock">--:--:--</div>
       <div id="clock-utc">UTC --:--:--</div>
     </div>
@@ -408,7 +425,7 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
 
 
 <div id="asc-sync-strip" class="asc-sync-strip" role="status" aria-live="polite">
-  <span class="asc-sync-label">SYNCHRO SERVEUR</span>
+  <span class="asc-sync-label">{% if lang == 'en' %}SERVER SYNC{% else %}SYNCHRO SERVEUR{% endif %}</span>
   <span class="asc-sync-badge asc-sync-demo" id="asc-sync-mode">…</span>
   <span class="asc-sync-meta" id="asc-sync-meta"></span>
   <div class="status-panel asc-obs-status-panel">
@@ -418,43 +435,43 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
     <div>Score: <span id="priority-score">-</span></div>
     <div>Response: <span id="response-time">-</span></div>
   </div>
-  <span class="asc-view-mini" style="margin-left:14px;font-size:9px;color:#556677;letter-spacing:1px;white-space:nowrap;flex-wrap:wrap;display:inline-flex;align-items:center;gap:6px;max-width:100%;" title="Synchro vue">
-    VUE <span id="asc-view-sync-role" data-role="master">—</span> · <span id="asc-view-sync-session">—</span> · <span id="asc-view-sync-ws" data-state="open"><span style="color:#00ff9c; font-weight:bold;">ONLINE</span></span>
-    <button type="button" id="asc-view-takeover" title="Prendre le contrôle (master inactif)" onclick="if(window.AstroScanViewSync)AstroScanViewSync.requestMaster();">Prendre le contrôle</button>
+  <span class="asc-view-mini" style="margin-left:14px;font-size:9px;color:#556677;letter-spacing:1px;white-space:nowrap;flex-wrap:wrap;display:inline-flex;align-items:center;gap:6px;max-width:100%;" title="{% if lang == 'en' %}View sync{% else %}Synchro vue{% endif %}">
+    {% if lang == 'en' %}VIEW{% else %}VUE{% endif %} <span id="asc-view-sync-role" data-role="master">—</span> · <span id="asc-view-sync-session">—</span> · <span id="asc-view-sync-ws" data-state="open"><span style="color:#00ff9c; font-weight:bold;">ONLINE</span></span>
+    <button type="button" id="asc-view-takeover" title="{% if lang == 'en' %}Take control (master inactive){% else %}Prendre le contrôle (master inactif){% endif %}" onclick="if(window.AstroScanViewSync)AstroScanViewSync.requestMaster();">{% if lang == 'en' %}Take control{% else %}Prendre le contrôle{% endif %}</button>
   </span>
 </div>
 <nav>
-  <div class="visits-counter nav-visits" title="Nombre de visites">
+  <div class="visits-counter nav-visits" title="{% if lang == 'en' %}Visits count{% else %}Nombre de visites{% endif %}">
     <span class="visits-icon">👁️</span>
     <span class="visits-val" id="visits-val">000 000</span>
   </div>
-  <button class="tab active" data-tab="telescope" onclick="switchTab('telescope',this)">🔭 Image NASA du jour (APOD)</button>
+  <button class="tab active" data-tab="telescope" onclick="switchTab('telescope',this)">🔭 {% if lang == 'en' %}NASA Image of the Day (APOD){% else %}Image NASA du jour (APOD){% endif %}</button>
   <button class="tab" data-tab="accueil" onclick="switchTab('accueil',this)">🌌 COSMOS</button>
-  <button class="tab" data-tab="archive" onclick="switchTab('archive',this)">📂 ARCHIVE</button>
-  <button class="tab" data-tab="iss" onclick="switchTab('iss',this)">🛸 ISS EN DIRECT</button>
-  <button class="tab" data-tab="sondes" onclick="switchTab('sondes',this)">📡 SONDES & DSN</button>
-  <button class="tab" data-tab="catalogue" onclick="switchTab('catalogue',this)">⭐ CATALOGUE DSO</button>
-  <button class="tab" data-tab="ephemerides" onclick="switchTab('ephemerides',this);loadEphemerides()">🌅 ÉPHÉMÉRIDES</button>
-  <button class="tab" data-tab="systeme" onclick="switchTab('systeme',this)">🪐 SYSTÈME SOLAIRE</button>
-  <button class="tab" data-tab="quiz" onclick="switchTab('quiz',this)">🎓 FORMATION</button>
-  <button class="tab" data-tab="ia" onclick="switchTab('ia',this)">🤖 CERVEAU IA</button>
-  <button class="tab" data-tab="radio" onclick="switchTab('radio',this)">📻 RADIO SDR</button>
-  <button class="tab" data-tab="deep" onclick="switchTab('deep',this)">🚀 COSMOS PROFOND</button>
+  <button class="tab" data-tab="archive" onclick="switchTab('archive',this)">📂 {% if lang == 'en' %}ARCHIVE{% else %}ARCHIVE{% endif %}</button>
+  <button class="tab" data-tab="iss" onclick="switchTab('iss',this)">🛸 {% if lang == 'en' %}ISS LIVE{% else %}ISS EN DIRECT{% endif %}</button>
+  <button class="tab" data-tab="sondes" onclick="switchTab('sondes',this)">📡 {% if lang == 'en' %}PROBES & DSN{% else %}SONDES & DSN{% endif %}</button>
+  <button class="tab" data-tab="catalogue" onclick="switchTab('catalogue',this)">⭐ {% if lang == 'en' %}DSO CATALOG{% else %}CATALOGUE DSO{% endif %}</button>
+  <button class="tab" data-tab="ephemerides" onclick="switchTab('ephemerides',this);loadEphemerides()">🌅 {% if lang == 'en' %}EPHEMERIDES{% else %}ÉPHÉMÉRIDES{% endif %}</button>
+  <button class="tab" data-tab="systeme" onclick="switchTab('systeme',this)">🪐 {% if lang == 'en' %}SOLAR SYSTEM{% else %}SYSTÈME SOLAIRE{% endif %}</button>
+  <button class="tab" data-tab="quiz" onclick="switchTab('quiz',this)">🎓 {% if lang == 'en' %}TRAINING{% else %}FORMATION{% endif %}</button>
+  <button class="tab" data-tab="ia" onclick="switchTab('ia',this)">🤖 {% if lang == 'en' %}AI BRAIN{% else %}CERVEAU IA{% endif %}</button>
+  <button class="tab" data-tab="radio" onclick="switchTab('radio',this)">📻 {% if lang == 'en' %}SDR RADIO{% else %}RADIO SDR{% endif %}</button>
+  <button class="tab" data-tab="deep" onclick="switchTab('deep',this)">🚀 {% if lang == 'en' %}DEEP COSMOS{% else %}COSMOS PROFOND{% endif %}</button>
   <button class="tab" data-tab="jwst" onclick="switchTab('jwst',this);if(!window.__jwstLoaded)loadJWSTPanel()">🔭 JWST</button>
 <button class="tab" data-tab="skyview" onclick="if(typeof svInit==='function')svInit();switchTab('skyview',this)">🌌 SkyView</button>
-  <button class="tab" onclick="window.open('/scientific','_blank')" style="background:rgba(0,255,136,0.1);border-color:#00ff88">⚗️ MODE SCIENTIFIQUE</button>
+  <button class="tab" onclick="window.open('/scientific','_blank')" style="background:rgba(0,255,136,0.1);border-color:#00ff88">⚗️ {% if lang == 'en' %}SCIENTIFIC MODE{% else %}MODE SCIENTIFIQUE{% endif %}</button>
   <button class="tab" onclick="window.open('/overlord_live','_blank')" style="background:rgba(0,170,255,0.08);border-color:#00aaff">🛡️ OVERLORD LIVE</button>
-  <button class="tab" data-tab="lab" onclick="switchTab('lab',this)">🔬 LABORATOIRE</button>
-  <button class="tab" onclick="window.location.href='/a-propos'" style="background:rgba(0,212,255,0.05);border-color:rgba(0,212,255,0.25);margin-left:auto">ℹ À PROPOS</button>
+  <button class="tab" data-tab="lab" onclick="switchTab('lab',this)">🔬 {% if lang == 'en' %}LABORATORY{% else %}LABORATOIRE{% endif %}</button>
+  <button class="tab" onclick="window.location.href='/a-propos'" style="background:rgba(0,212,255,0.05);border-color:rgba(0,212,255,0.25);margin-left:auto">ℹ {% if lang == 'en' %}ABOUT{% else %}À PROPOS{% endif %}</button>
   </nav>
 <main>
 <div class="content">
 <div id="panel-telescope" class="panel active">
 <div style="margin-bottom:16px; border:1px solid rgba(0,212,255,0.25); border-radius:8px; overflow:hidden;">
-  <div style="padding:5px 10px; font-size:11px; color:#00d4ff; letter-spacing:2px; border-bottom:1px solid rgba(0,212,255,0.15);">🛸 ISS — POSITION EN TEMPS RÉEL</div>
+  <div style="padding:5px 10px; font-size:11px; color:#00d4ff; letter-spacing:2px; border-bottom:1px solid rgba(0,212,255,0.15);">🛸 {% if lang == 'en' %}ISS — LIVE POSITION{% else %}ISS — POSITION EN TEMPS RÉEL{% endif %}</div>
   <iframe
       src="/iss-tracker"
-      title="ISS Position Temps Réel — N2YO"
+      title="{% if lang == 'en' %}ISS Live Position — N2YO{% else %}ISS Position Temps Réel — N2YO{% endif %}"
       frameborder="0"
       scrolling="no"
       loading="lazy"
@@ -470,41 +487,41 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
         <div class="tele-corner tl"></div><div class="tele-corner tr"></div>
         <div class="tele-corner bl"></div><div class="tele-corner br"></div>
         <div class="tele-scanline"></div>
-        <div class="tele-badge"><span class="live-dot"></span>Image NASA du jour (APOD)</div>
+        <div class="tele-badge"><span class="live-dot"></span>{% if lang == 'en' %}NASA Image of the Day (APOD){% else %}Image NASA du jour (APOD){% endif %}</div>
         <div class="tele-title">
           <div class="tele-source" id="tele-source">NASA / ESA</div>
-          <div id="tele-name">Chargement...</div>
+          <div id="tele-name">{% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
         </div>
       </div>
     </div>
     <div class="tele-panel">
-      <div style="font-family:Orbitron;font-size:11px;color:var(--acid);letter-spacing:3px;padding-bottom:10px;border-bottom:1px solid rgba(0,255,136,.1)">📡 DONNÉES STATION</div>
-      <div class="tele-stat"><div class="tele-stat-key">OBSERVATIONS TOTALES</div><div class="tele-stat-val" id="tp-total">--</div></div>
-      <div class="tele-stat"><div class="tele-stat-key">ANOMALIES DÉTECTÉES</div><div class="tele-stat-val" style="color:var(--red)" id="tp-anomalies">--</div></div>
-      <div class="tele-stat"><div class="tele-stat-key">DERNIÈRE ANALYSE</div><div class="tele-stat-val" style="font-size:10px" id="tp-last">--</div></div>
-      <div class="tele-stat"><div class="tele-stat-key">CERVEAU IA</div><div class="tele-stat-val" style="color:var(--amber)">Gemini · Claude · Groq</div></div>
+      <div style="font-family:Orbitron;font-size:11px;color:var(--acid);letter-spacing:3px;padding-bottom:10px;border-bottom:1px solid rgba(0,255,136,.1)">📡 {% if lang == 'en' %}STATION DATA{% else %}DONNÉES STATION{% endif %}</div>
+      <div class="tele-stat"><div class="tele-stat-key">{% if lang == 'en' %}TOTAL OBSERVATIONS{% else %}OBSERVATIONS TOTALES{% endif %}</div><div class="tele-stat-val" id="tp-total">--</div></div>
+      <div class="tele-stat"><div class="tele-stat-key">{% if lang == 'en' %}ANOMALIES DETECTED{% else %}ANOMALIES DÉTECTÉES{% endif %}</div><div class="tele-stat-val" style="color:var(--red)" id="tp-anomalies">--</div></div>
+      <div class="tele-stat"><div class="tele-stat-key">{% if lang == 'en' %}LAST ANALYSIS{% else %}DERNIÈRE ANALYSE{% endif %}</div><div class="tele-stat-val" style="font-size:10px" id="tp-last">--</div></div>
+      <div class="tele-stat"><div class="tele-stat-key">{% if lang == 'en' %}AI BRAIN{% else %}CERVEAU IA{% endif %}</div><div class="tele-stat-val" style="color:var(--amber)">Gemini · Claude · Groq</div></div>
       <div class="analyse-box">
-        <div class="analyse-tag">🤖 DERNIÈRE ANALYSE GEMINI</div>
-        <div class="analyse-text" id="tp-analyse">En attente de l'IA...</div>
-        <button type="button" class="refresh-btn" id="btn-translate-analyse" style="margin-top:8px;font-size:10px;padding:6px 12px" onclick="translateGeminiAnalysis()" title="Traduire en français">🌐 Traduire</button>
+        <div class="analyse-tag">🤖 {% if lang == 'en' %}LATEST GEMINI ANALYSIS{% else %}DERNIÈRE ANALYSE GEMINI{% endif %}</div>
+        <div class="analyse-text" id="tp-analyse">{% if lang == 'en' %}Waiting for AI...{% else %}En attente de l'IA...{% endif %}</div>
+        <button type="button" class="refresh-btn" id="btn-translate-analyse" style="margin-top:8px;font-size:10px;padding:6px 12px" onclick="translateGeminiAnalysis()" title="{% if lang == 'en' %}Translate to French{% else %}Traduire en français{% endif %}">🌐 {% if lang == 'en' %}Translate{% else %}Traduire{% endif %}</button>
       </div>
       <div class="analyse-box" id="apod-live-box" style="margin-top:8px">
-        <div class="analyse-tag">🔭 APOD DU JOUR</div>
-        <div class="analyse-text" id="tele-desc" style="font-size:10px;line-height:1.4">Chargement...</div>
+        <div class="analyse-tag">🔭 {% if lang == 'en' %}TODAY'S APOD{% else %}APOD DU JOUR{% endif %}</div>
+        <div class="analyse-text" id="tele-desc" style="font-size:10px;line-height:1.4">{% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
       </div>
       <div class="analyse-box" id="claude-analyse-box" style="margin-top:8px;display:none;border-left-color:#d4a0ff">
-        <div class="analyse-tag" style="color:#d4a0ff">🧠 ANALYSE CLAUDE AI</div>
+        <div class="analyse-tag" style="color:#d4a0ff">🧠 {% if lang == 'en' %}CLAUDE AI ANALYSIS{% else %}ANALYSE CLAUDE AI{% endif %}</div>
         <div class="analyse-text" id="claude-analyse-text" style="font-size:10px;line-height:1.6;color:#c8b8e8"></div>
-        <div style="margin-top:6px;font-size:9px;color:#9a80cc;letter-spacing:1px">● Analysé par Claude AI (Anthropic)</div>
+        <div style="margin-top:6px;font-size:9px;color:#9a80cc;letter-spacing:1px">● {% if lang == 'en' %}Analyzed by Claude AI (Anthropic){% else %}Analysé par Claude AI (Anthropic){% endif %}</div>
       </div>
       <div class="analyse-box" id="microobs-live-box" style="margin-top:8px">
         <div class="analyse-tag">🔬 HARVARD MICROOBSERVATORY</div>
-        <div class="analyse-text" id="microobs-desc" style="font-size:10px;line-height:1.4">Chargement...</div>
+        <div class="analyse-text" id="microobs-desc" style="font-size:10px;line-height:1.4">{% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
       </div>
-      <button class="refresh-btn" onclick="refreshTelescope()">🔄 ACTUALISER</button>
+      <button class="refresh-btn" onclick="refreshTelescope()">🔄 {% if lang == 'en' %}REFRESH{% else %}ACTUALISER{% endif %}</button>
     </div>
   </div>
-  <div style="font-family:Orbitron;font-size:11px;color:var(--acid);letter-spacing:3px;margin-bottom:12px">📋 DERNIÈRES OBSERVATIONS</div>
+  <div style="font-family:Orbitron;font-size:11px;color:var(--acid);letter-spacing:3px;margin-bottom:12px">📋 {% if lang == 'en' %}LATEST OBSERVATIONS{% else %}DERNIÈRES OBSERVATIONS{% endif %}</div>
   <div class="obs-grid" id="latest-obs"></div>
 </div>
 
@@ -518,36 +535,36 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
     </div>
     <div>
       <div style="font-family:Orbitron,monospace;font-size:0.9rem;color:#00ff88;letter-spacing:2px">ZAKARIA CHOHRA</div>
-      <div style="font-size:0.75rem;color:#00d4ff;letter-spacing:3px;margin:4px 0">DIRECTEUR — ORBITAL-CHOHRA</div>
-      <div style="font-size:0.7rem;color:#556677">📍 Tlemcen, Algérie · 34.87°N · Station 5.78.153.17</div>
-      <div style="font-size:0.7rem;color:#556677;margin-top:2px">🔭 Observatoire spatial · AEGIS IA · PWA Android</div>
+      <div style="font-size:0.75rem;color:#00d4ff;letter-spacing:3px;margin:4px 0">{% if lang == 'en' %}DIRECTOR{% else %}DIRECTEUR{% endif %} — ORBITAL-CHOHRA</div>
+      <div style="font-size:0.7rem;color:#556677">📍 Tlemcen, {% if lang == 'en' %}Algeria{% else %}Algérie{% endif %} · 34.87°N · {% if lang == 'en' %}Station{% else %}Station{% endif %} 5.78.153.17</div>
+      <div style="font-size:0.7rem;color:#556677;margin-top:2px">🔭 {% if lang == 'en' %}Space observatory{% else %}Observatoire spatial{% endif %} · AEGIS {% if lang == 'en' %}AI{% else %}IA{% endif %} · PWA Android</div>
     </div>
     <div style="margin-left:auto;text-align:right">
-      <div style="font-size:0.65rem;color:#445566;letter-spacing:2px">STATUT</div>
-      <div style="color:#00ff88;font-size:0.8rem;margin-top:4px">● EN LIGNE</div>
+      <div style="font-size:0.65rem;color:#445566;letter-spacing:2px">{% if lang == 'en' %}STATUS{% else %}STATUT{% endif %}</div>
+      <div style="color:#00ff88;font-size:0.8rem;margin-top:4px">● {% if lang == 'en' %}ONLINE{% else %}EN LIGNE{% endif %}</div>
     </div>
   </div>
   <div class="grid4">
-    <div class="stat-box"><div class="stat-val" style="color:var(--acid)">2 000 Mrd</div><div class="stat-label">GALAXIES OBSERVABLES</div></div>
-    <div class="stat-box"><div class="stat-val" style="color:var(--blue)">100 Mrd</div><div class="stat-label">ÉTOILES VOIE LACTÉE</div></div>
-    <div class="stat-box"><div class="stat-val" style="color:var(--purple)">13.8 Mrd</div><div class="stat-label">ÂGE UNIVERS (ANS)</div></div>
-    <div class="stat-box"><div class="stat-val" style="color:var(--amber)">299 792</div><div class="stat-label">VITESSE LUMIÈRE km/s</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--acid)">{% if lang == 'en' %}2,000 B{% else %}2 000 Mrd{% endif %}</div><div class="stat-label">{% if lang == 'en' %}OBSERVABLE GALAXIES{% else %}GALAXIES OBSERVABLES{% endif %}</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--blue)">{% if lang == 'en' %}100 B{% else %}100 Mrd{% endif %}</div><div class="stat-label">{% if lang == 'en' %}MILKY WAY STARS{% else %}ÉTOILES VOIE LACTÉE{% endif %}</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--purple)">{% if lang == 'en' %}13.8 B{% else %}13.8 Mrd{% endif %}</div><div class="stat-label">{% if lang == 'en' %}UNIVERSE AGE (YRS){% else %}ÂGE UNIVERS (ANS){% endif %}</div></div>
+    <div class="stat-box"><div class="stat-val" style="color:var(--amber)">299 792</div><div class="stat-label">{% if lang == 'en' %}LIGHT SPEED km/s{% else %}VITESSE LUMIÈRE km/s{% endif %}</div></div>
   </div>
   <div class="grid2">
     <div class="card">
-      <div class="card-tag" style="color:var(--acid)">🌠 IMAGE DU JOUR NASA</div>
+      <div class="card-tag" style="color:var(--acid)">🌠 {% if lang == 'en' %}NASA IMAGE OF THE DAY{% else %}IMAGE DU JOUR NASA{% endif %}</div>
       <div id="apod-img-wrap"></div>
-      <div id="apod-title" class="card-title">Chargement...</div>
+      <div id="apod-title" class="card-title">{% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
       <div id="apod-desc" style="font-size:11px;color:#8899aa;line-height:1.6"></div>
     </div>
     <div class="card">
-      <div class="card-tag" style="color:var(--acid)">📡 SPECTRE ÉLECTROMAGNÉTIQUE</div>
-      <div class="freq-row"><span style="color:var(--red);font-size:11px">Rayons gamma</span><span style="color:#8899aa;font-size:10px">10⁻¹² m</span></div>
-      <div class="freq-row"><span style="color:#ff8844;font-size:11px">Rayons X</span><span style="color:#8899aa;font-size:10px">10⁻¹⁰ m</span></div>
-      <div class="freq-row"><span style="color:var(--purple);font-size:11px">Ultraviolets</span><span style="color:#8899aa;font-size:10px">10⁻⁸ m</span></div>
-      <div class="freq-row"><span style="color:var(--acid);font-size:11px">Visible</span><span style="color:#8899aa;font-size:10px">400–700 nm</span></div>
-      <div class="freq-row"><span style="color:var(--amber);font-size:11px">Infrarouge</span><span style="color:#8899aa;font-size:10px">10⁻⁵ m</span></div>
-      <div class="freq-row"><span style="color:var(--blue);font-size:11px">Ondes radio</span><span style="color:#8899aa;font-size:10px">1 m+</span></div>
+      <div class="card-tag" style="color:var(--acid)">📡 {% if lang == 'en' %}ELECTROMAGNETIC SPECTRUM{% else %}SPECTRE ÉLECTROMAGNÉTIQUE{% endif %}</div>
+      <div class="freq-row"><span style="color:var(--red);font-size:11px">{% if lang == 'en' %}Gamma rays{% else %}Rayons gamma{% endif %}</span><span style="color:#8899aa;font-size:10px">10⁻¹² m</span></div>
+      <div class="freq-row"><span style="color:#ff8844;font-size:11px">{% if lang == 'en' %}X rays{% else %}Rayons X{% endif %}</span><span style="color:#8899aa;font-size:10px">10⁻¹⁰ m</span></div>
+      <div class="freq-row"><span style="color:var(--purple);font-size:11px">{% if lang == 'en' %}Ultraviolet{% else %}Ultraviolets{% endif %}</span><span style="color:#8899aa;font-size:10px">10⁻⁸ m</span></div>
+      <div class="freq-row"><span style="color:var(--acid);font-size:11px">{% if lang == 'en' %}Visible{% else %}Visible{% endif %}</span><span style="color:#8899aa;font-size:10px">400–700 nm</span></div>
+      <div class="freq-row"><span style="color:var(--amber);font-size:11px">{% if lang == 'en' %}Infrared{% else %}Infrarouge{% endif %}</span><span style="color:#8899aa;font-size:10px">10⁻⁵ m</span></div>
+      <div class="freq-row"><span style="color:var(--blue);font-size:11px">{% if lang == 'en' %}Radio waves{% else %}Ondes radio{% endif %}</span><span style="color:#8899aa;font-size:10px">1 m+</span></div>
     </div>
   </div>
   <div class="bottom-facts">

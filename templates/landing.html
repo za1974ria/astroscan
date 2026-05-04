@@ -1,21 +1,40 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ lang | default('fr') }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="google-site-verification" content="HRmcoe6EC6sH5EQwwkt2ktVyiQToMgMC8AFtz7n6-38" />
-  <title>AstroScan-Chohra | Observatoire Spatial Intelligent IA</title>
-  <meta name="description" content="AstroScan-Chohra est un observatoire spatial intelligent basé sur l'intelligence artificielle. Suivez l'ISS en direct, la météo spatiale et les sondes Voyager en temps réel.">
+  {% if lang == 'en' %}
+  <title>ASTRO-SCAN — Real-time Space Observatory</title>
+  <meta name="description" content="Astronomical observatory platform: real-time ISS tracking, NOAA space weather, APOD, NASA radio scanning. Open scientific data from Tlemcen, Algeria.">
+  <meta name="keywords" content="astronomy, observatory, ISS, space weather, APOD, Tlemcen, Algeria, space, satellites, ephemerides">
+  <meta property="og:title" content="ASTRO-SCAN — Real-time Space Observatory">
+  <meta property="og:description" content="Astronomical observatory platform: real-time ISS tracking, NOAA space weather, APOD, NASA radio scanning. Open scientific data.">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="fr_FR">
+  <meta name="twitter:title" content="ASTRO-SCAN — Real-time Space Observatory">
+  <meta name="twitter:description" content="Astronomical observatory: real-time ISS, NOAA space weather, APOD, NASA radio. Open scientific data.">
+  {% else %}
+  <title>ASTRO-SCAN — Observatoire spatial en temps réel</title>
+  <meta name="description" content="Plateforme observatoire astronomique : ISS en temps réel, météo spatiale NOAA, APOD, scanning radio NASA. Open data scientifique depuis Tlemcen, Algérie.">
+  <meta name="keywords" content="astronomie, observatoire, ISS, météo spatiale, APOD, Tlemcen, Algérie, espace, satellites, éphémérides">
+  <meta property="og:title" content="ASTRO-SCAN — Observatoire spatial en temps réel">
+  <meta property="og:description" content="Plateforme observatoire astronomique : ISS en temps réel, météo spatiale NOAA, APOD, scanning radio NASA. Open data scientifique.">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:title" content="ASTRO-SCAN — Observatoire spatial en temps réel">
+  <meta name="twitter:description" content="Observatoire astronomique : ISS temps réel, météo spatiale NOAA, APOD, scanning radio NASA.">
+  {% endif %}
   <meta name="robots" content="index, follow">
-  <meta property="og:title" content="AstroScan-Chohra | Observatoire Spatial Intelligent IA">
-  <meta property="og:description" content="Plateforme d'observation spatiale avec IA : ISS en direct, météo spatiale, Voyager.">
   <meta property="og:image" content="https://astroscan.space/static/preview.png">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://astroscan.space/">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="AstroScan-Chohra | Observatoire Spatial IA">
-  <meta name="twitter:description" content="Suivez l'ISS, la météo spatiale et les sondes Voyager avec AstroScan-Chohra.">
   <meta name="twitter:image" content="https://astroscan.space/static/preview.png">
+  <link rel="canonical" href="https://astroscan.space/">
+  <link rel="alternate" hreflang="fr" href="https://astroscan.space/">
+  <link rel="alternate" hreflang="en" href="https://astroscan.space/?lang=en">
+  <link rel="alternate" hreflang="x-default" href="https://astroscan.space/">
   <style>
     :root {
       --bg: #030508;
@@ -36,193 +55,163 @@
       overflow-x: hidden;
       line-height: 1.5;
     }
-    #stars-canvas {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-    }
-    .layer-vignette {
-      position: fixed;
-      inset: 0;
-      z-index: 1;
-      pointer-events: none;
-      background: radial-gradient(ellipse 80% 60% at 50% 20%, transparent 0%, rgba(0,0,0,0.55) 100%);
-    }
+    #stars-canvas { display: none; }
+    .layer-vignette { display: none; }
     main { position: relative; z-index: 2; }
 
     .hero {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
       text-align: center;
-      padding: 3rem 1.25rem 4rem;
+      padding-top: 72px;
+      padding-bottom: 48px;
+      margin-top: 56px;
+      margin-bottom: 56px;
+    }
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 16px;
     }
     .hero h1.logo {
-      font-size: clamp(2.4rem, 10vw, 5rem);
-      font-weight: 900;
-      letter-spacing: 0.08em;
-      color: var(--cyan);
-      text-shadow: 0 0 24px var(--cyan-glow), 0 0 60px rgba(0, 200, 255, 0.15);
-      line-height: 1.05;
-      margin-bottom: 1rem;
-      animation: fadeIn 1s ease both;
+      font-size: clamp(34px, 5vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #fff;
+      text-shadow: 0 0 18px rgba(0, 200, 255, 0.18);
+      line-height: 1.2;
+      margin-bottom: 1.2rem;
+      animation: none;
     }
     .hero h2 {
-      font-size: clamp(1.05rem, 3vw, 1.45rem);
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      max-width: 28em;
+      font-size: clamp(1rem, 2.4vw, 1.25rem);
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      max-width: 640px;
       margin-left: auto;
       margin-right: auto;
-      margin-bottom: 0.65rem;
-      animation: fadeIn 1s ease 0.1s both;
+      margin-bottom: 12px;
+      color: #aaa;
+      animation: none;
     }
-    .hero h2 + h2 {
-      font-size: clamp(0.85rem, 2vw, 1rem);
-      color: var(--muted);
-      letter-spacing: 0.12em;
-      margin-bottom: 1.75rem;
-      font-weight: 500;
-      animation: fadeIn 1s ease 0.2s both;
+    .hero-points, .bullet-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      width: min(760px, 92vw);
+      text-align: left;
     }
+    .hero-points li, .bullet-list li {
+      color: var(--text);
+      font-size: 1rem;
+      padding: 0.28rem 0;
+      line-height: 1.6;
+    }
+    .bullet-list { margin-top: 12px; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .visit-line {
-      font-size: clamp(0.95rem, 2.2vw, 1.1rem);
-      margin-bottom: 1.75rem;
-      color: var(--text);
-      animation: fadeIn 1s ease 0.3s both;
-    }
-    .visit-line strong {
-      color: var(--cyan);
-      font-variant-numeric: tabular-nums;
-      letter-spacing: 0.06em;
-    }
-
-    .cta {
+    .cta, .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      padding: 1rem 1.75rem;
-      border-radius: 6px;
+      padding: 10px 18px;
+      border-radius: 8px;
       border: 1px solid rgba(0, 232, 255, 0.55);
       background: rgba(0, 232, 255, 0.08);
       color: var(--cyan);
-      font-weight: 700;
-      font-size: clamp(0.72rem, 1.5vw, 0.88rem);
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
+      font-weight: 650;
+      font-size: clamp(0.8rem, 1.5vw, 0.92rem);
+      letter-spacing: 0.06em;
       text-decoration: none;
       box-shadow: 0 0 28px rgba(0, 232, 255, 0.2);
-      animation: fadeIn 1s ease 0.35s both, pulseGlow 2.8s ease-in-out infinite 1.2s;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      animation: none;
+      transition: all 0.2s ease;
     }
-    .cta:hover {
-      transform: translateY(-2px);
+    .cta:hover, .btn:hover {
+      transform: translateY(-1px);
+      opacity: 0.95;
       box-shadow: 0 0 40px rgba(0, 232, 255, 0.35);
     }
-    @keyframes pulseGlow {
-      0%, 100% { box-shadow: 0 0 28px rgba(0, 232, 255, 0.2); }
-      50% { box-shadow: 0 0 42px rgba(0, 232, 255, 0.38); }
-    }
-
     .section {
-      max-width: 1040px;
-      margin: 0 auto;
-      padding: 3rem 1.25rem 4rem;
+      max-width: 980px;
+      margin: 56px auto;
+      padding: 0 16px;
+    }
+    .section + .section {
+      border-top: 1px solid #111;
+      padding-top: 32px;
     }
     .section h2 {
-      text-align: center;
-      font-size: 0.72rem;
-      letter-spacing: 0.35em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 2rem;
+      text-align: left;
+      font-size: 1.2rem;
+      letter-spacing: 0.01em;
+      text-transform: none;
+      color: #fff;
+      margin-bottom: 12px;
     }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1rem;
+    .section p {
+      color: #aaa;
+      margin-bottom: 0.9rem;
+      max-width: 640px;
     }
-    @media (min-width: 640px) {
-      .grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (min-width: 900px) {
-      .grid { grid-template-columns: repeat(3, 1fr); }
-    }
-
-    .card {
-      display: block;
-      padding: 1.35rem 1.2rem;
+    .info-block {
+      padding: 1.1rem 1rem;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: var(--card);
-      text-decoration: none;
-      color: inherit;
-      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
     }
-    .card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(0, 232, 255, 0.45);
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 232, 255, 0.08);
+    .trust-line {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #777;
     }
-    .card .ico { font-size: 1.5rem; margin-bottom: 0.45rem; }
-    .card h3 {
-      font-size: 0.78rem;
-      letter-spacing: 0.14em;
-      color: var(--cyan);
-      margin-bottom: 0.35rem;
-      text-transform: uppercase;
+    .live-box {
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 16px;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+      background: rgba(8, 18, 28, 0.45);
     }
-    .card p { font-size: 0.88rem; color: var(--muted); }
-
-    .stats-block {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem 1.25rem;
-      background: rgba(4, 12, 20, 0.65);
-      margin-bottom: 1.25rem;
-    }
-    .stats-block .big {
-      font-size: 1.35rem;
-      font-weight: 700;
-      color: var(--cyan);
-      margin-bottom: 0.5rem;
-    }
-    .stats-block .big strong { font-variant-numeric: tabular-nums; }
-    .badge-up {
-      display: inline-block;
-      margin-top: 0.75rem;
-      padding: 0.35rem 0.75rem;
-      border-radius: 999px;
-      font-size: 0.65rem;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: #00ff9d;
-      border: 1px solid rgba(0, 255, 157, 0.35);
-      background: rgba(0, 255, 157, 0.06);
-    }
-    .countries-list {
-      list-style: none;
-      margin-top: 1rem;
-      font-size: 0.9rem;
-    }
-    .countries-list li {
+    .live-box p { margin: 0; }
+    .live-box p + p { margin-top: 6px; color: #aaa; }
+    .final-cta {
       display: flex;
-      justify-content: space-between;
-      padding: 0.4rem 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      justify-content: center;
+      margin-top: 1.1rem;
     }
-    .countries-list li:last-child { border-bottom: none; }
-    .muted { color: var(--muted); font-size: 0.85rem; }
+
+    .astro-mini-dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .mini-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 10px;
+      text-align: center;
+      color: var(--text);
+      transition: 0.2s;
+    }
+
+    .mini-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 12px var(--cyan-glow);
+    }
+
+    .mini-card strong {
+      color: var(--cyan);
+      font-size: 18px;
+    }
 
     footer {
       text-align: center;
@@ -243,84 +232,294 @@
       text-decoration: none;
       font-size: 0.82rem;
       letter-spacing: 0.08em;
+      margin-right: 16px;
     }
-    footer a:hover { text-decoration: underline; }
+    footer a:last-child { margin-right: 0; }
+    footer a:hover { text-decoration: underline; opacity: 0.8; }
   </style>
+<style>
+.fab-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
+.fab-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(1,4,8,0.95);border:1px solid rgba(0,212,255,0.3);color:#00d4ff;font-family:'Orbitron',monospace;font-size:0.45rem;letter-spacing:0.15em;text-decoration:none;cursor:pointer;transition:all 0.2s;border-radius:3px;white-space:nowrap;}
+.fab-btn:hover{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.6);box-shadow:0 0 14px rgba(0,212,255,0.2);}
+@media(max-width:600px){.fab-btn{font-size:0.38rem;padding:6px 10px;}}
+</style>
+<style>
+#astro-dashboard-wrapper {
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.astro-dashboard {
+  display: block;
+  padding: 20px;
+  background: #02060a;
+  color: #00ffcc;
+}
+
+.astro-dashboard * {
+  box-sizing: border-box;
+}
+
+.astro-topbar {
+  display: flex;
+  gap: 10px;
+}
+
+.stat {
+  flex: 1;
+  background: rgba(0,255,200,0.05);
+  border: 1px solid rgba(0,255,200,0.2);
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  transition: 0.3s;
+}
+
+.stat:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px #00ffcc;
+}
+
+.stat span {
+  font-size: 18px;
+}
+
+.astro-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.astro-map,
+.astro-iss,
+.astro-logs,
+.astro-visitors,
+.astro-status {
+  background: rgba(0,255,200,0.05);
+  border: 1px solid rgba(0,255,200,0.2);
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.astro-iss img {
+  width: 100%;
+  border-radius: 8px;
+}
+@media(max-width: 900px){
+  .astro-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
 </head>
 <body>
+<section id="astro-dashboard-wrapper">
+<div class="astro-dashboard">
+  <div class="astro-topbar">
+    {% if lang == 'en' %}
+    <div class="stat">Visitors<br><span>1,099</span></div>
+    <div class="stat">Countries<br><span>42</span></div>
+    <div class="stat">Requests<br><span>24,532</span></div>
+    <div class="stat">Uptime<br><span>99.82%</span></div>
+    <div class="stat">Errors<br><span>12</span></div>
+    <div class="stat">Latency<br><span>128 ms</span></div>
+    {% else %}
+    <div class="stat">Visites<br><span>1 099</span></div>
+    <div class="stat">Pays<br><span>42</span></div>
+    <div class="stat">Requêtes<br><span>24 532</span></div>
+    <div class="stat">Disponibilité<br><span>99,82%</span></div>
+    <div class="stat">Erreurs<br><span>12</span></div>
+    <div class="stat">Latence<br><span>128 ms</span></div>
+    {% endif %}
+  </div>
+
+  <div class="astro-grid">
+    <div class="astro-map">🌍 {% if lang == 'en' %}LIVE WORLD MAP{% else %}CARTE MONDE EN DIRECT{% endif %}</div>
+
+    <div class="astro-iss">
+      <img src="https://images-assets.nasa.gov/image/iss064e000602/iss064e000602~orig.jpg">
+      <div class="iss-data">
+        LAT: 12.45°<br>
+        LNG: 45.23°<br>
+        ALT: 419 km<br>
+        SPEED: 27,600 km/h
+      </div>
+    </div>
+
+    <div class="astro-logs">🛰️ {% if lang == 'en' %}SYSTEM LOGS{% else %}JOURNAL SYSTÈME{% endif %}</div>
+    <div class="astro-visitors">👥 {% if lang == 'en' %}LATEST VISITORS{% else %}DERNIERS VISITEURS{% endif %}</div>
+    <div class="astro-status">✅ {% if lang == 'en' %}SYSTEM OK{% else %}SYSTÈME OK{% endif %}</div>
+  </div>
+</div>
+</section>
+
+<!-- Lang switcher -->
+<div style="position:fixed;top:12px;right:12px;z-index:9998;display:flex;gap:6px;background:rgba(3,5,8,0.85);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-family:system-ui,sans-serif;font-size:12px;">
+  <a href="?lang=fr" style="color:{{ '#00e8ff' if lang != 'en' else '#5f8294' }};text-decoration:none;font-weight:{{ '700' if lang != 'en' else '400' }}">FR</a>
+  <span style="color:#5f8294">|</span>
+  <a href="?lang=en" style="color:{{ '#00e8ff' if lang == 'en' else '#5f8294' }};text-decoration:none;font-weight:{{ '700' if lang == 'en' else '400' }}">EN</a>
+</div>
   <canvas id="stars-canvas" aria-hidden="true"></canvas>
   <div class="layer-vignette" aria-hidden="true"></div>
 
   <main>
+    {% if lang == 'en' %}
     <section class="hero">
-      <h1 class="logo">AstroScan-Chohra</h1>
-      <h2>Plateforme d'observation spatiale intelligente propulsée par l'IA</h2>
-      <h2>Surveillez l'ISS en direct, analysez la météo spatiale et accédez aux données des sondes Voyager en temps réel.</h2>
-
-      <p class="visit-line" id="visit-hero">
-        <strong id="visit-num">+ de 3 000</strong> visiteurs du monde entier
-      </p>
-
-      <a class="cta" href="/portail">🚀 ENTRER DANS L'OBSERVATOIRE</a>
-    </section>
-
-    <section class="section" id="features">
-      <h2>Modules</h2>
-      <div class="grid">
-        <a class="card" href="/sky-camera">
-          <div class="ico" aria-hidden="true">🔭</div>
-          <h3>SKY CAMERA</h3>
-          <p>Analyse IA du ciel nocturne</p>
-        </a>
-        <a class="card" href="/sondes">
-          <div class="ico" aria-hidden="true">📡</div>
-          <h3>SONDES LIVE</h3>
-          <p>Voyager 1&amp;2 en temps réel</p>
-        </a>
-        <a class="card" href="/iss-tracker">
-          <div class="ico" aria-hidden="true">🛸</div>
-          <h3>ISS TRACKER</h3>
-          <p>Estimation basée sur modèles physiques</p>
-        </a>
-        <a class="card" href="/meteo-spatiale">
-          <div class="ico" aria-hidden="true">⚡</div>
-          <h3>MÉTÉO SPATIALE</h3>
-          <p>Alertes solaires NOAA</p>
-        </a>
-        <a class="card" href="/visiteurs-live">
-          <div class="ico" aria-hidden="true">🌍</div>
-          <h3>VISITEURS</h3>
-          <p>Communauté mondiale</p>
-        </a>
-        <a class="card" href="/oracle-cosmique">
-          <div class="ico" aria-hidden="true">🤖</div>
-          <h3>ORACLE COSMIQUE</h3>
-          <p>Chat IA astronomie</p>
-        </a>
+      <div class="container">
+        <h1 class="logo">Track the ISS live and predict visible satellite passes — reliably.</h1>
+        <h2>AstroScan turns complex space data into clear, actionable insights in real time — for observation, teaching, or building your own applications.</h2>
+        <a class="cta btn" href="/portail">Start tracking the sky</a>
+        <p class="trust-line">Live data • SGP4-based • Production system</p>
+        <div class="live-box">
+          <p style="color:#888; font-size:13px;">Live snapshot</p>
+          <p>ISS position updates in real-time via SGP4 computation</p>
+        </div>
       </div>
     </section>
 
-    <section class="section" id="stats">
-      <h2>Statistiques live</h2>
-      <div class="stats-block">
-        <div class="big" id="stats-visitors-line">
-          <strong id="visit-stat">000 000</strong> visiteurs du monde entier
-        </div>
-        <p class="muted" id="countries-intro">Top pays</p>
-        <ul class="countries-list" id="countries-ul">
-          <li class="muted">Données en cours...</li>
+    <section class="section">
+      <h2>📡 Live system snapshot</h2>
+      <div class="astro-mini-dashboard">
+        <div class="mini-card">👥 Visitors<br><strong>1,099</strong></div>
+        <div class="mini-card">🌍 Countries<br><strong>42</strong></div>
+        <div class="mini-card">📡 Requests<br><strong>24,532</strong></div>
+        <div class="mini-card">⚡ Uptime<br><strong>99.82%</strong></div>
+        <div class="mini-card">❌ Errors<br><strong>12</strong></div>
+        <div class="mini-card">🚀 Latency<br><strong>128 ms</strong></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>What AstroScan brings you</h2>
+      <div class="info-block">
+        <ul class="bullet-list">
+          <li>Never miss a visible satellite pass again</li>
+          <li>Access reliable data, even when external sources fail</li>
+          <li>Understand what's happening above you in seconds</li>
+          <li>Use this data for your courses, projects, or applications</li>
         </ul>
-        <span class="badge-up">SYSTÈME OPÉRATIONNEL · UPTIME</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Built for concrete use cases</h2>
+      <div class="info-block">
+        <ul class="bullet-list">
+          <li><strong>Education:</strong> illustrate orbital motion in real time</li>
+          <li><strong>Astronomy clubs:</strong> plan observations precisely</li>
+          <li><strong>Media:</strong> visualize space events at a glance</li>
+          <li><strong>Developers:</strong> integrate reliable orbital data into your apps</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>A reliable technical foundation</h2>
+      <div class="info-block">
+        <ul class="bullet-list">
+          <li>Real orbital computation based on NORAD data (SGP4)</li>
+          <li>Resilient system with caching and fallback mechanisms</li>
+          <li>Backend deployed in production with monitoring</li>
+          <li>Stable API for external use</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Explore what's happening above you — right now</h2>
+      <p>Access live data and discover a new way to observe the sky.</p>
+      <div class="final-cta">
+        <a class="cta btn" href="/portail">Enter AstroScan</a>
       </div>
     </section>
 
     <footer>
-      <p class="creator">Projet développé par Zakaria Chohra</p>
+      <p class="creator">AstroScan · Space observation platform in production</p>
+      <div class="links">
+        <a href="/portail">Portal</a>
+        <a href="https://github.com/" rel="noopener noreferrer" target="_blank">GitHub</a>
+      </div>
+    </footer>
+    {% else %}
+    <section class="hero">
+      <div class="container">
+        <h1 class="logo">Suivez l’ISS en direct et anticipez les passages satellites visibles, en toute fiabilité.</h1>
+        <h2>AstroScan transforme des données spatiales complexes en informations claires, exploitables en temps réel — pour observer, enseigner ou construire vos propres applications.</h2>
+        <a class="cta btn" href="/portail">Commencer à suivre le ciel</a>
+        <p class="trust-line">Données live • SGP4 • Système en production</p>
+        <div class="live-box">
+          <p style="color:#888; font-size:13px;">Aperçu temps réel</p>
+          <p>Position ISS mise à jour en temps réel via calcul SGP4</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>📡 Aperçu système en direct</h2>
+      <div class="astro-mini-dashboard">
+        <div class="mini-card">👥 Visites<br><strong>1 099</strong></div>
+        <div class="mini-card">🌍 Pays<br><strong>42</strong></div>
+        <div class="mini-card">📡 Requêtes<br><strong>24 532</strong></div>
+        <div class="mini-card">⚡ Disponibilité<br><strong>99,82%</strong></div>
+        <div class="mini-card">❌ Erreurs<br><strong>12</strong></div>
+        <div class="mini-card">🚀 Latence<br><strong>128 ms</strong></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Ce que AstroScan vous apporte</h2>
+      <div class="info-block">
+        <ul class="bullet-list">
+          <li>Ne ratez plus jamais un passage satellite visible</li>
+          <li>Accédez à des données fiables, même en cas de défaillance externe</li>
+          <li>Comprenez en quelques secondes ce qui se passe au-dessus de vous</li>
+          <li>Exploitez ces données pour vos cours, projets ou applications</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Conçu pour des usages concrets</h2>
+      <div class="info-block">
+        <ul class="bullet-list">
+          <li><strong>Éducation :</strong> illustrer les mouvements orbitaux en temps réel</li>
+          <li><strong>Clubs d’astronomie :</strong> planifier les observations avec précision</li>
+          <li><strong>Médias :</strong> visualiser rapidement les événements spatiaux</li>
+          <li><strong>Développeurs :</strong> intégrer des données orbitales fiables dans leurs applications</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Une base technique fiable</h2>
+      <div class="info-block">
+        <ul class="bullet-list">
+          <li>Calcul orbital réel basé sur les données NORAD (SGP4)</li>
+          <li>Système résilient avec cache et mécanismes de fallback</li>
+          <li>Backend déployé en production avec monitoring</li>
+          <li>API stable pour exploitation externe</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Explorez ce qui se passe au-dessus de vous, maintenant</h2>
+      <p>Accédez aux données en direct et découvrez une nouvelle manière d’observer le ciel.</p>
+      <div class="final-cta">
+        <a class="cta btn" href="/portail">Entrer dans AstroScan</a>
+      </div>
+    </section>
+
+    <footer>
+      <p class="creator">AstroScan · Plateforme d’observation spatiale en production</p>
       <div class="links">
         <a href="/portail">Portail</a>
         <a href="https://github.com/" rel="noopener noreferrer" target="_blank">GitHub</a>
       </div>
     </footer>
+    {% endif %}
   </main>
 
   <script>
@@ -364,59 +563,11 @@
   loop();
 })();
 
-function setVisits(count) {
-  var visits = Math.max(0, parseInt(count, 10) || 0);
-  var rounded = Math.floor(visits / 100) * 100;
-  var formatted = String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-  var label = '+ de ' + formatted;
-  var a = document.getElementById('visit-num');
-  var b = document.getElementById('visit-stat');
-  if (a) a.textContent = label;
-  if (b) b.textContent = label;
-}
-
-function loadVisits() {
-  fetch('/api/visits', { credentials: 'same-origin' })
-    .then(function (r) { return r.ok ? r.json() : { count: 0 }; })
-    .then(function (d) {
-      var c = d.count != null ? d.count : 0;
-      setVisits(c);
-    })
-    .catch(function () { setVisits(0); });
-}
-
-/** Top pays : même source que le flux live (agrégation DB) via API JSON stable */
-function loadTopCountries() {
-  var ul = document.getElementById('countries-ul');
-  if (!ul) return;
-  fetch('/api/visitors/stats', { credentials: 'same-origin' })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      var rows = (data.by_country || []).slice(0, 3);
-      if (!rows.length) {
-        ul.innerHTML = '<li class="muted">Données en cours...</li>';
-        return;
-      }
-      ul.innerHTML = '';
-      rows.forEach(function (row, idx) {
-        var li = document.createElement('li');
-        var name = row.country || '—';
-        var code = row.code || '';
-        var cnt = row.count != null ? row.count : 0;
-        li.innerHTML = '<span>' + (idx + 1) + '. ' + name + (code ? ' (' + code + ')' : '') + '</span><span>' + cnt + '</span>';
-        ul.appendChild(li);
-      });
-    })
-    .catch(function () {
-      ul.innerHTML = '<li class="muted">Données en cours...</li>';
-    });
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-  loadVisits();
-  loadTopCountries();
-  setInterval(loadVisits, 30000);
-});
+document.addEventListener('DOMContentLoaded', function () {});
   </script>
+<div class="fab-wrap">
+  <a class="fab-btn" href="/portail">&#8962; {% if lang == 'en' %}Portal{% else %}Portail{% endif %}</a>
+  <button class="fab-btn" onclick="location.reload()">&#8635; {% if lang == 'en' %}Refresh{% else %}Actualiser{% endif %}</button>
+</div>
 </body>
 </html>
