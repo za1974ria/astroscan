@@ -865,16 +865,10 @@ TLE_BACKOFF_EXP_CAP_SEC = 120
 TLE_COOLDOWN_AFTER_FAILURES = 3
 TLE_COOLDOWN_MIN_SEC = 60
 TLE_COOLDOWN_MAX_SEC = 120
-TLE_CACHE_FILE = f"{STATION}/data/tle_active_cache.json"
-
-TLE_CACHE = {
-    "status": "cached",
-    "source": "CelesTrak GP active",
-    "last_refresh_iso": None,
-    "count": 0,
-    "items": [],
-    "error": None,
-}
+# PASS 23.5 — moved to app/services/tle_cache.py (identity-stable mutable)
+# Toutes les mises à jour ailleurs dans ce fichier passent par mutation
+# in-place (.clear() + .update()) pour préserver l'identité du dict.
+from app.services.tle_cache import TLE_CACHE, TLE_CACHE_FILE  # noqa: F401 (re-export)
 
 # ── Lightweight in-memory health/status (for /status endpoint) ─────────────
 HEALTH_STATE = {
@@ -1271,14 +1265,17 @@ def fetch_tle_from_celestrak():
         if len(items) > 1000:
             items = items[:1000]
         ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-        TLE_CACHE = {
+        # PASS 23.5 — mutation in-place pour préserver l'identité du dict
+        # (le re-export shim app.services.tle_cache repose sur cette invariant).
+        TLE_CACHE.clear()
+        TLE_CACHE.update({
             "status": "connected",
             "source": "CelesTrak GP active JSON",
             "last_refresh_iso": ts,
             "count": len(items),
             "items": items,
             "error": None,
-        }
+        })
         try:
             safe_ensure_dir(TLE_CACHE_FILE)
             with open(TLE_CACHE_FILE, "w", encoding="utf-8") as f:
@@ -1399,14 +1396,18 @@ def fetch_tle_from_celestrak():
 
                     if parsed_items:
                         ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-                        TLE_CACHE = {
+                        # PASS 23.5 — capture last_refresh_iso AVANT clear()
+                        # (sinon get() retourne None après le clear).
+                        _prev_last_iso = TLE_CACHE.get("last_refresh_iso") or ts
+                        TLE_CACHE.clear()
+                        TLE_CACHE.update({
                             "status": "cached",
                             "source": "Local active.tle fallback",
-                            "last_refresh_iso": TLE_CACHE.get("last_refresh_iso") or ts,
+                            "last_refresh_iso": _prev_last_iso,
                             "count": len(parsed_items),
                             "items": parsed_items,
                             "error": msg,
-                        }
+                        })
                         try:
                             # Do not overwrite LIVE mode if AMSAT refresh already succeeded.
                             if HEALTH_STATE.get("mode") != "LIVE":
