@@ -11,7 +11,7 @@ build info under /api/build instead.
 import os
 import subprocess
 from datetime import datetime, timezone
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, make_response
 
 bp = Blueprint("version", __name__)
 
@@ -53,8 +53,15 @@ def _resolve_build_info():
 
 @bp.route("/api/build")
 def build():
-    """Public build info — useful for monitoring & due diligence."""
-    return jsonify({
+    """Public build info — useful for monitoring & due diligence.
+
+    Cached client-side for 5 minutes (PASS 29) since build info changes
+    only on deploy. The subprocess that resolves git metadata already
+    runs only once per worker via the in-process cache.
+    """
+    resp = make_response(jsonify({
         "ok": True,
         **_resolve_build_info(),
-    })
+    }))
+    resp.headers["Cache-Control"] = "public, max-age=300"
+    return resp

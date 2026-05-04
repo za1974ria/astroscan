@@ -1,5 +1,39 @@
 # ARCHITECTURE TECHNIQUE — ASTRO-SCAN / ORBITAL-CHOHRA
 
+> ## Update — 2026-05-04 — Phase 2C Complete
+>
+> Phase 2C migration is functionally complete on `migration/phase-2c`.
+> The application factory `app/__init__.py:create_app()` is the canonical
+> entry point and `station_web.py` is preserved as a compatibility shim
+> (≈ 5325 lines) re-exporting symbols still imported by hooks and
+> services.
+>
+> | Indicateur | Valeur |
+> |------------|--------|
+> | **Blueprints enregistrés** | **25** (PASS 28: +`version`; PASS 26.B: +`nasa_proxy`) |
+> | **Routes** | **266** |
+> | **Hooks app-level** | **8** centralisés dans `app/hooks.py` (PASS 24) |
+> | **Bootstrap threads** | centralisés dans `app/bootstrap.py` (PASS 25.1) |
+> | **Helpers réponses** | `app/utils/responses.py` — `api_ok` / `api_error` (opt-in, PASS 28) |
+>
+> Récapitulatif des passes récentes :
+>
+> - **PASS 26.A** — `.gitignore` durci, `SECRET_KEY` enforcement en
+>   production, déduplication de `sentry_sdk.init()`.
+> - **PASS 26.B** — Blueprint `nasa_proxy` (`/api/nasa/*`) ; la
+>   `NASA_API_KEY` n'est plus rendue dans le HTML.
+> - **PASS 27** — Normalisation SQL des doublons `Netherlands` /
+>   `The Netherlands` (5 fichiers, 7 SELECT) ; modal in-page « Tous
+>   les pays » alimentée par `/api/export/visitors.json`.
+> - **PASS 28** — `/api/system/server-info` et `/api/health`
+>   sanitisés ; nouvel endpoint `/api/build` (commit, branche, boot
+>   time) ; helpers `api_ok` / `api_error`.
+>
+> Le reste de ce document décrit l'architecture historique. Lire la
+> section ci-dessus pour l'état courant.
+
+---
+
 **Plateforme d'observation astronomique temps réel — Tlemcen, Algérie**
 
 | Champ | Valeur |
