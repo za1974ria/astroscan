@@ -36,6 +36,7 @@ from app.services.observatory_feeds import (
     fetch_jwst_live_images, jwst_cache_file_path,
 )
 from app.services.http_client import _curl_get
+from app.utils.llm_errors import friendly_message, llm_error_response
 
 log = logging.getLogger(__name__)
 
@@ -162,7 +163,9 @@ def api_aegis_chat():
         reply, err = _call_groq(prompt_fallback)
         if reply:
             return jsonify({"ok": True, "response": _enforce_french(reply), "model": "groq"})
-        return jsonify({"ok": False, "error": err or "Service indisponible"})
+        if err:
+            log.warning("aegis/chat groq fallback err: %s", str(err)[:300])
+        return jsonify({"ok": False, "error": friendly_message(err)})
 
     # Contexte live (DB + station)
     live_ctx = ""
@@ -234,11 +237,11 @@ def api_aegis_chat():
         d = r.json()
         if r.status_code != 200:
             err_msg = (d.get("error") or {}).get("message", f"HTTP {r.status_code}")
-            log.warning("aegis/chat Claude error: %s", err_msg)
+            log.warning("aegis/chat Claude error raw=%s", str(err_msg)[:300])
             reply_g, err_g = _call_groq(system_prompt + "\n\nQuestion : " + msg)
             if reply_g:
                 return jsonify({"ok": True, "response": _enforce_french(reply_g), "model": "groq"})
-            return jsonify({"ok": False, "error": err_msg})
+            return jsonify({"ok": False, "error": friendly_message(err_msg)})
         reply_text = d["content"][0]["text"].strip()
         return jsonify({"ok": True, "response": reply_text, "model": "claude"})
     except Exception as e:
@@ -246,7 +249,7 @@ def api_aegis_chat():
         reply_g, _ = _call_groq(system_prompt + "\n\nQuestion : " + msg)
         if reply_g:
             return jsonify({"ok": True, "response": _enforce_french(reply_g), "model": "groq"})
-        return jsonify({"ok": False, "error": str(e)})
+        return jsonify({"ok": False, "error": friendly_message(e)})
 
 
 @bp.route("/api/aegis/status")
@@ -328,10 +331,12 @@ def api_aegis_claude_test():
     """Diagnostic Claude (Anthropic) — n'affecte pas les autres routes."""
     configured = bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
     reply, err = _call_claude("Reply only with OK")
+    if err:
+        log.warning("aegis/claude-test provider err: %s", str(err)[:300])
     return jsonify({
         "claude_configured": configured,
         "claude_ok": reply is not None,
-        "error": err if err else None,
+        "error": friendly_message(err) if err else None,
     })
 
 
@@ -468,7 +473,8 @@ def api_jwst_images():
             return jsonify({"error": "no data"}), 502
         return jsonify(data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.warning("jwst/images: %s", e)
+        return jsonify({"error": friendly_message(e)}), 503
 
 
 @bp.route("/api/jwst/refresh", methods=["POST"])
@@ -481,7 +487,8 @@ def api_jwst_refresh():
         data = fetch_jwst_live_images()
         return jsonify({"ok": True, "count": len(data)})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.warning("jwst/refresh: %s", e)
+        return jsonify({"error": friendly_message(e)}), 503
 
 
 # ── PASS 17 — Oracle Cosmique POST (différé PASS 10 levé) ────────────
@@ -528,14 +535,16 @@ def api_oracle_cosmique():
             try:
                 for chunk, err in oracle_claude_stream(system, msgs):
                     if err:
-                        yield f"data: {json.dumps({'error': err}, ensure_ascii=False)}\n\n"
+                        log.warning("oracle-cosmique stream provider err: %s", str(err)[:300])
+                        safe = friendly_message(err)
+                        yield f"data: {json.dumps({'error': safe}, ensure_ascii=False)}\n\n"
                         return
                     if chunk:
                         yield f"data: {json.dumps({'t': chunk}, ensure_ascii=False)}\n\n"
                 yield "data: [DONE]\n\n"
             except Exception as e:
                 log.warning("oracle-cosmique stream: %s", e)
-                yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'error': friendly_message(e)}, ensure_ascii=False)}\n\n"
 
         return Response(
             stream_with_context(sse_gen()),
@@ -548,8 +557,8 @@ def api_oracle_cosmique():
 
     reply, err = call_claude_oracle_messages(system, msgs)
     if err:
-        log.warning("oracle-cosmique: %s", err)
-        return jsonify({"ok": False, "error": err}), 502
+        log.warning("oracle-cosmique provider err: %s", str(err)[:300])
+        return llm_error_response(err, provider='Anthropic')
     return jsonify({"ok": True, "response": reply})
 
 
@@ -559,7 +568,7 @@ def api_oracle_alias():
     try:
         return api_oracle_cosmique()
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return llm_error_response(e, provider='Anthropic', http_status=500)
 
 
 # ── PASS 17 — Guide Stellaire POST (différé PASS 10 levé) ────────────

@@ -93,10 +93,13 @@ def build_orbital_guide(ville: str, lat: float, lon: float, date_iso: str) -> di
         )
     except Exception as e:
         log.exception("guide-stellaire agrégation")
-        return {"ok": False, "error": f"agrégation données: {e}"}
+        from app.utils.llm_errors import friendly_message
+        return {"ok": False, "error": friendly_message(e)}
 
     if err:
-        return {"ok": False, "error": err, "context": context}
+        from app.utils.llm_errors import friendly_message
+        log.error("[guide-stellaire] provider=Anthropic raw=%s", str(err)[:500])
+        return {"ok": False, "error": friendly_message(err), "context": context}
 
     return {
         "ok": True,

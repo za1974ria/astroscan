@@ -24,6 +24,7 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 from app.config import STATION
+from app.utils.llm_errors import friendly_message
 
 log = logging.getLogger(__name__)
 
@@ -112,12 +113,14 @@ def api_sky_camera_analyze():
         )
         rdata = r.json()
         if r.status_code != 200:
-            err = (rdata.get("error") or {}).get("message", r.text)[:300]
+            raw = (rdata.get("error") or {}).get("message", r.text)[:300]
+            log.warning("sky-camera/analyze provider err: %s", raw)
+            safe = friendly_message(raw)
             return jsonify({
                 "ok": False,
-                "error": err,
-                "analyse": f"Erreur API : {err}",
-            }), 502
+                "error": safe,
+                "analyse": safe,
+            }), 503
 
         text = rdata["content"][0]["text"].strip()
 
@@ -144,11 +147,12 @@ def api_sky_camera_analyze():
         })
     except Exception as e:
         log.warning("api_sky_camera_analyze: %s", e)
+        safe = friendly_message(e)
         return jsonify({
             "ok": False,
-            "error": str(e),
-            "analyse": f"Erreur serveur : {e}",
-        }), 500
+            "error": safe,
+            "analyse": safe,
+        }), 503
 
 
 # ── Observatory status (Domaine K — camera control) ───────────────────
