@@ -85,8 +85,9 @@ def _register_blueprints(app: Flask) -> None:
     from app.blueprints.pages import bp as pages_bp
     from app.blueprints.main import bp as main_bp
     from app.blueprints.system import bp as system_bp
+    from app.blueprints.health import bp as health_bp
     from app.blueprints.analytics import bp as analytics_bp
-    from app.blueprints.export import bp as export_bp
+    from app.blueprints.export import bp as export_bp, bp_global as export_global_bp
     from app.blueprints.cameras import bp as cameras_bp
     from app.blueprints.archive import bp as archive_bp
     from app.blueprints.weather import bp as weather_bp
@@ -107,8 +108,10 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(pages_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(system_bp)
+    app.register_blueprint(health_bp)
     app.register_blueprint(analytics_bp)
     app.register_blueprint(export_bp)
+    app.register_blueprint(export_global_bp)
     app.register_blueprint(cameras_bp)
     app.register_blueprint(archive_bp)
     app.register_blueprint(weather_bp)
@@ -119,4 +122,4 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(lab_bp)
     app.register_blueprint(research_bp)
     app.register_blueprint(satellites_bp)
-    log.info("[Blueprints] 21 blueprints enregistrés (sync station_web.py)")
+    log.info("[Blueprints] 23 blueprints enregistrés (sync station_web.py)")

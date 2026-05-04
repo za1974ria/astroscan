@@ -503,12 +503,19 @@ app.register_blueprint(main_bp)
 from app.blueprints.system import bp as system_bp
 app.register_blueprint(system_bp)
 
+# Blueprint health — added PASS 4 phase 2C (split depuis system_bp)
+from app.blueprints.health import bp as health_bp
+app.register_blueprint(health_bp)
+
 from app.blueprints.analytics import bp as analytics_bp
 app.register_blueprint(analytics_bp)
 
 # Blueprint export — added PASS 4 (ephemerides, apod-history, existing CSV/JSON)
-from app.blueprints.export import bp as export_bp
+# bp_global = routes export hors-préfixe (/api/accuracy/export.csv) déplacées
+# depuis system_bp lors de PASS 4 phase 2C.
+from app.blueprints.export import bp as export_bp, bp_global as export_global_bp
 app.register_blueprint(export_bp)
+app.register_blueprint(export_global_bp)
 
 # Blueprint cameras — added PASS 6 (sky-camera, observatory status, skyview, telescope_live img, audio-proxy)
 from app.blueprints.cameras import bp as cameras_bp

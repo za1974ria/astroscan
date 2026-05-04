@@ -1,4 +1,14 @@
-"""Blueprint Export — CSV/JSON données scientifiques CC BY 4.0."""
+"""Blueprint Export — CSV/JSON données scientifiques CC BY 4.0.
+
+Routes URL-prefixées (/api/export/*) :
+  - visitors.csv / visitors.json
+  - observations.json
+  - ephemerides.json
+  - apod-history.json
+
+Routes globales (sans préfixe) :
+  - /api/accuracy/export.csv  (déplacé depuis system_bp lors de PASS 4 phase 2C)
+"""
 import csv
 import io
 import json
@@ -7,6 +17,8 @@ from datetime import datetime
 from flask import Blueprint, Response, current_app, jsonify
 
 bp = Blueprint("export", __name__, url_prefix="/api/export")
+# Sous-blueprint pour les routes export hors-préfixe (globales).
+bp_global = Blueprint("export_global", __name__)
 
 
 def _db():
@@ -185,3 +197,23 @@ def apod_history_json():
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ─── Routes export hors-préfixe (déplacées depuis system_bp PASS 4 2C) ──────
+
+@bp_global.route('/api/accuracy/export.csv')
+def api_accuracy_export_csv():
+    """Export CSV historique de précision ISS."""
+    from app.services.accuracy_history import get_accuracy_history
+    rows = get_accuracy_history()
+    lines = ["ts,distance_km"]
+    for row in rows:
+        ts = row.get("ts", "")
+        distance = row.get("distance_km", "")
+        lines.append(f"{ts},{distance}")
+    csv_payload = "\n".join(lines) + "\n"
+    return Response(
+        csv_payload,
+        mimetype="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="accuracy_history.csv"'},
+    )
