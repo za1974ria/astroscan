@@ -475,88 +475,10 @@ app.config['DEBUG'] = False
 app.config['TESTING'] = False
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-# ── Blueprints ────────────────────────────────────────────────────────────────
-from app.blueprints.seo.routes import seo_bp
-app.register_blueprint(seo_bp)
-# Blueprint APOD — added 2026-05-02 (PHASE 2B B1)
-from app.blueprints.apod.routes import apod_bp
-app.register_blueprint(apod_bp)
-# Blueprint SDR — added 2026-05-02 (PHASE 2B B2)
-from app.blueprints.sdr.routes import sdr_bp
-app.register_blueprint(sdr_bp)
-# Blueprint ISS — added 2026-05-02 (PHASE 2B B3b)
-from app.blueprints.iss.routes import iss_bp
-app.register_blueprint(iss_bp)
-# Blueprint i18n — added 2026-05-02 (PHASE 2B B-RECYCLE R1)
-from app.blueprints.i18n import bp as i18n_bp
-app.register_blueprint(i18n_bp)
-# Blueprint api — added 2026-05-02 (PHASE 2B B-RECYCLE R2)
-from app.blueprints.api import bp as api_bp
-app.register_blueprint(api_bp)
-# Blueprint pages — added 2026-05-02 (PHASE 2B B-RECYCLE R2, partial)
-# /landing deferred — see /tmp/pages_init_patched_TODO.md
-from app.blueprints.pages import bp as pages_bp
-app.register_blueprint(pages_bp)
-# Blueprint main — added 2026-05-02 (PHASE 2B B-RECYCLE R3)
-from app.blueprints.main import bp as main_bp
-app.register_blueprint(main_bp)
-
-from app.blueprints.system import bp as system_bp
-app.register_blueprint(system_bp)
-
-# Blueprint health — added PASS 4 phase 2C (split depuis system_bp)
-from app.blueprints.health import bp as health_bp
-app.register_blueprint(health_bp)
-
-from app.blueprints.analytics import bp as analytics_bp
-app.register_blueprint(analytics_bp)
-
-# Blueprint export — added PASS 4 (ephemerides, apod-history, existing CSV/JSON)
-# bp_global = routes export hors-préfixe (/api/accuracy/export.csv) déplacées
-# depuis system_bp lors de PASS 4 phase 2C.
-from app.blueprints.export import bp as export_bp, bp_global as export_global_bp
-app.register_blueprint(export_bp)
-app.register_blueprint(export_global_bp)
-
-# Blueprint cameras — added PASS 6 (sky-camera, observatory status, skyview, telescope_live img, audio-proxy)
-from app.blueprints.cameras import bp as cameras_bp
-app.register_blueprint(cameras_bp)
-
-# Blueprint archive — added PASS 6 (archive CRUD, classification, MAST, shield, microobservatory static)
-from app.blueprints.archive import bp as archive_bp
-app.register_blueprint(archive_bp)
-
-# Blueprint weather — added PASS 7 (météo terrestre + spatiale + aurores + space-weather)
-from app.blueprints.weather import bp as weather_bp
-app.register_blueprint(weather_bp)
-
-# Blueprint astro — added PASS 7 (éphémérides, lune, tonight, astro/object)
-from app.blueprints.astro import bp as astro_bp
-app.register_blueprint(astro_bp)
-
-# Blueprint feeds — added PASS 8 (NASA, NOAA SWPC, JPL, live feeds, alerts)
-from app.blueprints.feeds import bp as feeds_bp
-app.register_blueprint(feeds_bp)
-
-# Blueprint telescope — added PASS 9 (Skyview, mission control, telescope hub, image/title, hubble)
-from app.blueprints.telescope import bp as telescope_bp
-app.register_blueprint(telescope_bp)
-
-# Blueprint ai — added PASS 10 (AEGIS chat, Claude/Gemini/Groq, telescope/live, jwst, translate, explain)
-from app.blueprints.ai import bp as ai_bp
-app.register_blueprint(ai_bp)
-
-# Blueprint lab — added PASS 13 (Digital Lab + Space Analysis Engine)
-from app.blueprints.lab import bp as lab_bp
-app.register_blueprint(lab_bp)
-
-# Blueprint research — added PASS 13 (Research Center + Science + Space Intelligence)
-from app.blueprints.research import bp as research_bp
-app.register_blueprint(research_bp)
-
-# Blueprint satellites — added PASS 14 (TLE catalog + per-satellite SGP4 + passes)
-from app.blueprints.satellites import bp as satellites_bp
-app.register_blueprint(satellites_bp)
+# PASS 25.3 — legacy register_blueprint() block removed.
+# All blueprints are now registered exclusively in app/__init__.py
+# via _register_blueprints(app). station_web.app is a dead Flask
+# instance kept for backward compatibility (PASS 25.4 will remove it).
 
 
 @app.context_processor
@@ -1609,20 +1531,6 @@ def tle_refresh_loop():
             # si sleep échoue, on retente rapidement pour éviter un spin infini
             time.sleep(5)
 
-
-# PASS 25.1 — moved to app/bootstrap.py (factory-launched)
-# Initialiser le cache TLE au démarrage de l'application
-# try:
-#     load_tle_cache_from_disk()
-#     # premier rafraîchissement non bloquant
-#     try:
-#         fetch_tle_from_celestrak()
-#     except Exception:
-#         pass
-#     t = threading.Thread(target=tle_refresh_loop, daemon=True)
-#     t.start()
-# except Exception as e:
-#     _orbital_log.warning(f"[TLE] init failed: {e}")
 
 # ══════════════════════════════════════════════════════════════
 # HELPERS
@@ -3068,12 +2976,6 @@ except ImportError:
 # ══════════════════════════════════════════════════════════════
 # STATIC
 # ══════════════════════════════════════════════════════════════
-
-# PASS 25.2 — removed (Flask default static handler is sufficient,
-# no custom logic in original)
-# @app.route('/static/<path:filename>')
-# def static_files(filename):
-#     return send_from_directory(f'{STATION}/static', filename)
 
 # ══════════════════════════════════════════════════════════════
 # PAGE /ce_soir + APIs associées (Ce soir & news)
@@ -4910,15 +4812,6 @@ def translate_worker():
             time.sleep(60)
 
 
-# PASS 25.1 — moved to app/bootstrap.py (factory-launched)
-# _start_lab_image_collector()
-# _start_skyview_sync()
-# try:
-#     threading.Thread(target=translate_worker, daemon=True).start()
-# except Exception as e:
-#     log.warning("translate_worker start: %s", e)
-
-
 # ══════════════════════════════════════════════════════════════
 # Catalogue TLE complet (Celestrak) — data/tle/, /api/tle/full
 # ══════════════════════════════════════════════════════════════
@@ -5134,8 +5027,6 @@ def _start_tle_collector():
     t.start()
 
 
-# PASS 25.1 — moved to app/bootstrap.py (factory-launched)
-# _start_tle_collector()
 try:
     refresh_tle_from_amsat()
 except Exception:
