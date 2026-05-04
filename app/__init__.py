@@ -6,6 +6,8 @@ import os
 import logging
 from flask import Flask
 
+from app.services.env_guard import MIN_SECRET_KEY_LEN_PRODUCTION, validate_production_env
+
 log = logging.getLogger(__name__)
 
 
@@ -14,11 +16,8 @@ def _resolve_secret_key(config_name: str) -> bytes:
     fall back to ephemeral random in dev/test."""
     key = os.environ.get("SECRET_KEY", "")
     if config_name == "production":
-        if not key or len(key) < 16:
-            raise RuntimeError(
-                "SECRET_KEY must be set in environment "
-                "(min 16 chars) for production. See .env.example."
-            )
+        if not key or len(key) < MIN_SECRET_KEY_LEN_PRODUCTION:
+            raise RuntimeError("SECRET_KEY")
         log.info("[CONFIG] SECRET_KEY loaded from env (len=%d)", len(key))
         return key.encode() if isinstance(key, str) else key
     if not key:
@@ -28,6 +27,23 @@ def _resolve_secret_key(config_name: str) -> bytes:
 
 
 def create_app(config_name: str = "production") -> Flask:
+    # Après chargement .env via import station_web (wsgi) — avant routes / Sentry.
+    if config_name == "production":
+        try:
+            env_report = validate_production_env()
+            log.info(
+                "[ENV_GUARD] production OK; optional_missing=%s",
+                env_report.get("optional_missing") or [],
+            )
+        except RuntimeError as exc:
+            var = str(exc)
+            log.error(
+                "[ENV_GUARD] required variable missing or invalid: %s "
+                "(see .env.example — value never logged)",
+                var,
+            )
+            raise
+
     app = Flask(
         __name__,
         template_folder=os.path.join(os.path.dirname(__file__), '..', 'templates'),

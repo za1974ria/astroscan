@@ -63,6 +63,13 @@ def _build_app():
         )
         return _app
     except Exception as e:
+        err = str(e).strip()
+        if err in ("SECRET_KEY", "NASA_API_KEY"):
+            log.error(
+                "[WSGI] create_app() aborted on env guard variable %s — "
+                "fix .env before relying on monolith fallback (degraded routes).",
+                err,
+            )
         log.exception(
             "[WSGI] create_app() FAILED at import — fallback to monolith: %s", e,
         )
