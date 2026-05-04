@@ -77,13 +77,18 @@ def api_system_notifications():
 
 @bp.route("/api/system/server-info")
 def server_info():
-    """Server infrastructure metadata (Hetzner Hillsboro Oregon US-West)."""
+    """Public server status — minimal info disclosure (PASS 28).
+
+    IP and provider were removed in PASS 28 to avoid info disclosure.
+    Public DNS already exposes the IP via astroscan.space resolution,
+    but we do not amplify it via this endpoint.
+    """
+    from datetime import datetime, timezone
     return jsonify({
-        "ip": "5.78.153.17",
-        "provider": "Hetzner",
-        "status": "ONLINE",
-        "zone": "EU",
         "ok": True,
+        "status": "online",
+        "zone": "EU",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 
 
@@ -292,20 +297,23 @@ def api_health():
         uptime_str = f"{s//3600}h {(s%3600)//60}m"
     except Exception:
         pass
+    # PASS 28 — Replaced individual service enumeration with aggregate count
+    # to prevent fingerprinting of configured integrations. Also removed
+    # 'ip' and 'director' (info disclosure not needed for monitoring).
     payload = {
         'ok': True, 'station': 'ORBITAL-CHOHRA',
-        'ip': '5.78.153.17', 'location': 'Tlemcen, Algérie',
-        'director': 'Zakaria Chohra — Tlemcen, Algérie',
+        'location': 'Tlemcen, Algérie',
         'time_utc': datetime.now(timezone.utc).isoformat(),
         'uptime': uptime_str,
         'db': {'total': total, 'anomalies': anom, 'sources': sources},
-        'services': {
-            'gemini': 'active' if os.environ.get('GEMINI_API_KEY') else 'missing',
-            'grok':   'inactive',
-            'groq':   'active' if os.environ.get('GROQ_API_KEY')   else 'missing',
-            'nasa':   'active' if os.environ.get('NASA_API_KEY')    else 'missing',
-            'aegis': 'active', 'sdr': 'active', 'iss': 'active',
-        },
+        'integrations_ready': sum([
+            bool(os.environ.get('GEMINI_API_KEY')),
+            bool(os.environ.get('GROQ_API_KEY')),
+            bool(os.environ.get('NASA_API_KEY')),
+            bool(os.environ.get('N2YO_API_KEY')),
+            bool(os.environ.get('ANTHROPIC_API_KEY')),
+        ]),
+        'integrations_total': 5,
         'coordinates': {'lat': 34.87, 'lon': 1.32, 'alt_m': 800, 'timezone': 'Africa/Algiers'},
     }
     try:
