@@ -176,7 +176,8 @@ GROQ_CALL_COUNT = 0
 COLLECTOR_LAST_RUN = 0
 
 # ── Config ──────────────────────────────────────────────────
-STATION   = '/root/astro_scan'
+# PASS 23 — moved to app/services/station_state.py
+from app.services.station_state import STATION  # noqa: F401 (re-export)
 DB_PATH   = f'{STATION}/data/archive_stellaire.db'
 # FIXED 2026-05-02 — chemin relatif → absolu via STATION (BUG 2)
 WEATHER_DB_PATH = os.path.join(STATION, "weather_bulletins.db")
@@ -609,10 +610,8 @@ try:
     _core_data_engine.ensure_data_core_dirs(STATION)
 except Exception:
     _core_data_engine = None
-try:
-    from core import status_engine as _core_status_engine
-except Exception:
-    _core_status_engine = None
+# PASS 23 — moved to app/services/status_engine.py
+from app.services.status_engine import _core_status_engine  # noqa: F401 (re-export)
 
 
 def _run_calculateur_passages_iss():
@@ -2764,50 +2763,8 @@ def _sync_state_write(source):
 # API — ISS
 # ══════════════════════════════════════════════════════════════
 
-def _fetch_iss_live():
-    """Récupère une position ISS fiable via whereTheISS / open-notify (sans cache)."""
-    urls = [
-        'https://api.wheretheiss.at/v1/satellites/25544',
-        'http://api.open-notify.org/iss-now.json',
-    ]
-    for url in urls:
-        raw = _curl_get(url, timeout=8)
-        if not raw:
-            continue
-        try:
-            data = _safe_json_loads(raw, "iss_live")
-            if not isinstance(data, dict):
-                continue
-            # whereTheISS.at format
-            if 'latitude' in data:
-                lat = float(data['latitude'])
-                lon = float(data['longitude'])
-                alt = float(data.get('altitude', 408.0))
-                speed = float(data.get('velocity', 27600.0))
-                region = data.get('country_name', _guess_region(lat, lon))
-            # open-notify format
-            elif 'iss_position' in data:
-                pos = data['iss_position']
-                lat = float(pos['latitude'])
-                lon = float(pos['longitude'])
-                alt = 408.0
-                speed = 27600.0
-                region = _guess_region(lat, lon)
-            else:
-                continue
-
-            return {
-                'ok': True,
-                'lat': lat,
-                'lon': lon,
-                'alt': round(alt, 1),
-                'speed': round(speed, 0),
-                'region': region,
-            }
-        except Exception as e:
-            log.warning(f"ISS {url}: {e}")
-            continue
-    return None
+# PASS 23 — moved to app/services/iss_live.py
+from app.services.iss_live import _fetch_iss_live  # noqa: F401 (re-export)
 
 
 def _get_iss_tle_from_cache():
@@ -5337,10 +5294,8 @@ server_ready = True
 
 
 # ── GEO-IP TRACKER ───────────────────────────────────────
-import sqlite3 as _sqlite3
-
-def _get_db_visitors():
-    return _sqlite3.connect("/root/astro_scan/data/archive_stellaire.db")
+# PASS 23 — moved to app/services/db_visitors.py
+from app.services.db_visitors import _get_db_visitors  # noqa: F401 (re-export)
 
 
 # MIGRATED TO analytics_bp PASS 12 — /api/visitors/globe-data → see app/blueprints/analytics/__init__.py (api_visitors_globe_data)
