@@ -1,201 +1,157 @@
-# ORBITAL-CHOHRA — Real-Time Web Observatory
-
 <div align="center">
 
-![Status](https://img.shields.io/badge/status-operational-2ea44f)
-![Python](https://img.shields.io/badge/python-3.11%2B-3776ab)
-![Flask](https://img.shields.io/badge/flask-3.1-000000)
-![Architecture](https://img.shields.io/badge/architecture-blueprints%20%2B%20factory-blue)
-![Routes](https://img.shields.io/badge/routes-262-informational)
-![Coverage](https://img.shields.io/badge/migration-complete-2ea44f)
-![License](https://img.shields.io/badge/license-proprietary-lightgrey)
+# 🛰️ ASTRO-SCAN
 
-**Independent observatory in Tlemcen, Algeria — making real-time orbital intelligence accessible worldwide.**
+### Real-time Space Observatory · Open Scientific Data
+*Observatoire spatial en temps réel · Données scientifiques ouvertes*
 
-🌐 **Production**: [astroscan.space](https://astroscan.space)
+[![Live](https://img.shields.io/badge/🌐_Live-astroscan.space-00ff88?style=for-the-badge)](https://astroscan.space)
+[![Security Policy](https://img.shields.io/badge/🛡️_Security-Policy-blue?style=for-the-badge)](./SECURITY.md)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
+[![Flask](https://img.shields.io/badge/Flask-3.x-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com)
+[![License](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-EF9421?style=for-the-badge)](./LICENSE)
+
+**[🌐 Live Demo](https://astroscan.space)** · **[📊 Dashboard](https://astroscan.space/portail)** · **[📡 Orbital Live](https://astroscan.space/orbital)** · **[🔭 Observatory](https://astroscan.space/observatoire)**
+
+**🇫🇷 [Version française](https://astroscan.space)** · **🇬🇧 [English version](https://astroscan.space/?lang=en)** · **📰 [Press Kit](./press-kit/)**
 
 </div>
 
 ---
 
-## Overview
+## 🌍 What is ASTRO-SCAN?
 
-ORBITAL-CHOHRA (also known as **ASTRO-SCAN**) is an independent web observatory that aggregates and serves live data from major space agencies (NASA, NOAA, ESA, JAXA, JPL) through a unified, low-latency interface. The platform combines satellite tracking (SGP4 propagation, TLE catalog), space weather monitoring, deep-space telemetry, AI-assisted translation of scientific data, and an AEGIS reasoning engine — delivered over HTTPS from a single-tenant production stack.
+**ASTRO-SCAN** is a real-time astronomical observatory platform that aggregates live data from NASA, NOAA, ESA, JPL, CelesTrak, Harvard MicroObservatory, and N2YO into a unified open-access scientific dashboard. Built solo by **Zakaria Chohra** in Tlemcen, Algeria (34.87°N · 1.32°W).
 
-The system is built on Flask 3.1 with an application-factory pattern, 21 thematic blueprints, and 13 service modules. It serves 262 routes in production, with circuit breakers on every external dependency and graceful degradation across all critical paths.
+**EN** · A free, ad-free, open-data observatory that brings space science to anyone with a browser. Live ISS tracking, NOAA space weather, NASA Astronomy Picture of the Day, electromagnetic spectrum monitoring, and AI-powered anomaly detection — all served from a hardened production stack with zero third-party API keys exposed to the frontend.
+
+**FR** · Un observatoire gratuit, sans publicité, en données ouvertes, qui met la science spatiale à portée de tout navigateur. Suivi ISS en direct, météo spatiale NOAA, image astronomique du jour de la NASA, monitoring du spectre électromagnétique, et détection d'anomalies par IA — le tout servi depuis une infrastructure de production durcie, sans aucune clé d'API exposée côté client.
 
 ---
 
-## Capabilities
+## 📊 Live Stats
 
-| Domain | Highlights |
+| Metric | Value |
 |---|---|
-| **Orbital tracking** | ISS live position & passes, SGP4 propagation, 1000+ satellite catalog, Cesium 3D globe |
-| **Space weather** | NOAA SWPC alerts, Kp index, aurora forecasts, geomagnetic storm notifications |
-| **Astronomy archives** | NASA APOD (auto-translated FR), JWST imagery, Hubble, Harvard MicroObservatory FITS, NASA SkyView |
-| **Deep space missions** | Voyager 1/2 (JPL Horizons), Parker Solar Probe, BepiColombo, Mars rovers, DSN status |
-| **Near-Earth objects** | NASA NEO feed, hazard classification (size, velocity, miss-distance) |
-| **Hilal computation** | ODEH, UIOF, Oum Al Qura criteria for moon visibility (Hijri calendar) |
-| **AI orchestration** | Multi-provider routing (Claude / Gemini / Groq / Grok), SSE streaming responses |
-| **Observatory dashboard** | Live visitor analytics, geo-distribution, system health, circuit-breaker status |
+| **Total visitors** (humans, deduplicated) | **2,195+** |
+| **Countries reached** | **49+** |
+| **Top regions** | 🇺🇸 USA · 🇩🇿 Algeria · 🇨🇳 China · 🇳🇱 Netherlands · 🇸🇬 Singapore · 🇩🇪 Germany · 🇬🇧 UK |
+| **External data sources** | 8 (NASA JPL Horizons · NOAA SWPC · NASA APOD · N2YO · CelesTrak · Open-Notify · Harvard MicroObservatory · Skyfield) |
+| **Languages** | 🇫🇷 French · 🇬🇧 English (cookie-persistent + hreflang sitemap) |
+| **Architecture** | 266 routes · 25 blueprints · 13 services · Phase 2C complete |
+
+*Live counter updates daily on [astroscan.space](https://astroscan.space).*
 
 ---
 
-## Production Snapshot
+## ⚡ Features
 
-```
-Stack            Flask 3.1 + Gunicorn (4 workers × 4 threads)
-Entry point      wsgi:app  →  app.create_app("production")
-Routes           262
-Blueprints       21 (registered in app/__init__.py)
-Services         13 (app/services/)
-Database         SQLite + WAL  (archive_stellaire.db)
-Reverse proxy    Nginx + Let's Encrypt (TLS)
-Hosting          Hetzner Cloud (Hillsboro, Oregon, US-West)
-Domain           astroscan.space
-Observability    Sentry SDK 2.58 + structured logging
-```
+### 🛰️ Real-time Orbital Tracking
+- **ISS live position** with SGP4/TLE-based pass predictions
+- **N2YO API** integration for satellite passes (radio + visual)
+- **CelesTrak GP** active satellites database
+- Live globe visualization (Cesium 3D + custom Canvas rendering)
 
----
+### 🌌 Astronomical Data
+- **NASA APOD** (Astronomy Picture of the Day) with AI translation FR/EN
+- **JWST** observation panel
+- **Hubble** + **Harvard MicroObservatory** FITS feed
+- Sky map and ephemerides (Skyfield · Astropy)
+- Anomaly detection archive (1,500+ observations indexed)
 
-## Architecture
+### ⛈️ Space Weather
+- **NOAA SWPC** integration: Kp index, solar wind, geomagnetic storms
+- **Aurora forecast** by region (real-time SWPC alerts)
+- Telegram alert pipeline for storm-class events
 
-```
-                    ┌──────────────────────────────┐
-                    │      gunicorn wsgi:app       │
-                    │   (4 workers × 4 threads)    │
-                    └──────────────┬───────────────┘
-                                   │
-                    ┌──────────────▼───────────────┐
-                    │           wsgi.py            │
-                    │   3-tier loader strategy:    │
-                    │   1. ASTROSCAN_FORCE_MONOLITH│
-                    │   2. create_app("production")│
-                    │   3. fallback to monolith    │
-                    └──────────────┬───────────────┘
-                                   │
-              ┌────────────────────┼────────────────────┐
-              │                    │                    │
-   ┌──────────▼─────────┐ ┌────────▼────────┐ ┌─────────▼──────┐
-   │    station_web     │ │  app/__init__   │ │ app/services/  │
-   │   (init globals,   │ │  create_app()   │ │  13 modules    │
-   │   threads, cache)  │ │  21 blueprints  │ │  (pure logic)  │
-   └────────────────────┘ └─────────────────┘ └────────────────┘
-                                   │
-              ┌────────────────────┼────────────────────┐
-              │                    │                    │
-        external APIs        SQLite (WAL)         circuit breakers
-   (NASA · NOAA · ESA ·     archive_stellaire    (per-API isolation,
-    JPL · CelesTrak ·                            auto-recovery)
-    Harvard · Cesium)
-```
+### 📡 Radio Observatory (ORBITAL-RADIO)
+- 8 NASA audio channels
+- SDR satellite pass countdown
+- Frequency monitoring with capture indicator
+
+### 🤖 AI Integration
+- **AEGIS AI chatbot** (French/English astronomical Q&A, SSE streaming)
+- **Multi-LLM analysis pipeline**: Anthropic Claude · Google Gemini · Groq · xAI Grok
+- Provider failover via per-API circuit breakers
+- Anomaly detection from raw observation feeds
+
+### 🌙 Hilal & Hijri Computation
+- Multi-criteria moon visibility: ODEH · UIOF · Oum Al Qura
+- Hijri calendar synchronization
+
+### 🌐 Production-Grade Infrastructure
+- **25 Flask blueprints**, **266 routes**, **13 service modules**
+- **Server-side proxy** for all external API keys (zero frontend exposure)
+- **Bilingual FR/EN** with cookie persistence + hreflang sitemap
+- **Schema.org Observatory** structured data for SEO
+- **Sentry** error monitoring + structured logging
+- **Build info endpoint** (`/api/build`) for due-diligence and uptime monitoring
 
 ---
 
-## Project Structure
+## 🏗️ Architecture
 
 ```
-astro_scan/
-├── wsgi.py                       # Production entry (Gunicorn)
-├── station_web.py                # Legacy monolith — globals + lazy imports
-├── app/
-│   ├── __init__.py               # create_app() — 21 BPs registered
-│   ├── blueprints/               # 21 thematic blueprints
-│   │   ├── feeds/                # 31 routes  — external feeds aggregator
-│   │   ├── analytics/            # 18 routes  — visitors, geo, dashboard
-│   │   ├── ai/                   # 16 routes  — AI orchestration & SSE
-│   │   ├── cameras/              # 15 routes  — camera/gallery routes
-│   │   ├── system/               # 20 routes  — health, status, debug
-│   │   ├── weather/              # 18 routes  — NOAA, Kp, aurora
-│   │   ├── api/                  # 19 routes  — public API
-│   │   ├── lab/                  # 16 routes  — Hilal lab + experiments
-│   │   ├── telescope/            # 16 routes  — telescope sources
-│   │   ├── iss/                  # 14 routes  — ISS tracking & passes
-│   │   ├── pages/                # 25 routes  — HTML pages
-│   │   ├── satellites/           #  4 routes  — SGP4 propagation
-│   │   ├── export/               #  5 routes  — data export
-│   │   ├── astro/                #  8 routes  — astropy, ephemerides
-│   │   ├── archive/              #  7 routes  — observation archive
-│   │   ├── main/                 # 11 routes  — root, sitemap
-│   │   ├── research/             #  6 routes  — research dashboard
-│   │   ├── seo/                  #  3 routes  — sitemap.xml, robots.txt
-│   │   ├── sdr/                  #  5 routes  — software-defined radio
-│   │   ├── apod/                 #  3 routes  — NASA APOD
-│   │   └── i18n/                 #  1 route   — translation endpoint
-│   └── services/                 # 13 service modules (pure logic)
-│       ├── ai_translate.py       # 480 LOC — multi-provider AI routing
-│       ├── hilal_compute.py      # 404 LOC — Hijri visibility criteria
-│       ├── analytics_dashboard.py# 319 LOC — visitor analytics
-│       ├── external_feeds.py     # 307 LOC — NASA/NOAA/ESA aggregator
-│       ├── weather_archive.py    # 238 LOC — historical weather
-│       ├── oracle_engine.py      # 207 LOC — AEGIS reasoning core
-│       ├── observatory_feeds.py  # 187 LOC — observatory data sources
-│       ├── iss_compute.py        # 183 LOC — ISS pass predictions
-│       ├── microobservatory.py   # 168 LOC — Harvard FITS interface
-│       ├── telescope_sources.py  # 137 LOC — telescope data sources
-│       ├── guide_engine.py       # 107 LOC — observation guide
-│       └── http_client.py        #  86 LOC — hardened HTTP client
-├── services/                     # Shared low-level services
-│   ├── circuit_breaker.py        # Per-API circuit breakers
-│   ├── cache_service.py          # In-memory cache layer
-│   ├── orbital_service.py        # TLE + SGP4 propagation
-│   ├── weather_service.py        # NOAA SWPC integration
-│   ├── nasa_service.py           # NASA API client
-│   ├── stats_service.py          # Visitor statistics
-│   ├── ephemeris_service.py      # Sun/Moon ephemerides
-│   └── db.py                     # SQLite WAL accessor
-├── templates/                    # Jinja2 templates
-├── static/                       # Static assets (JS, CSS, images)
-├── requirements.txt              # Python dependencies
-└── ARCHITECTURE.md               # Engineering deep-dive (FR)
+┌──────────────────────────────────────────────────────┐
+│              astroscan.space (HTTPS)                 │
+│         Let's Encrypt SSL via certbot                │
+└─────────────────────┬────────────────────────────────┘
+                      │ nginx reverse proxy
+         ┌────────────▼────────────┐
+         │  Gunicorn (4 workers)   │
+         │  preloaded · port 5003  │
+         └────────────┬────────────┘
+                      │
+     ┌────────────────▼─────────────────┐
+     │  Flask Factory  create_app()     │
+     │  25 blueprints · 266 routes      │
+     │  app/hooks.py · 8 hooks          │
+     │  app/bootstrap.py · 5 threads    │
+     └─┬───────────────┬────────────────┬┘
+       │               │                │
+   ┌───▼───┐    ┌──────▼──────┐  ┌──────▼──────┐
+   │ APIs  │    │  Templates  │  │  Background │
+   │       │    │   Jinja2    │  │   threads   │
+   │ NASA  │    │  bilingual  │  │             │
+   │ NOAA  │    │   FR/EN     │  │ TLE refresh │
+   │ ESA   │    └─────────────┘  │ APOD cache  │
+   │ JPL   │                     │ Translate   │
+   │ N2YO  │                     │ Skyview     │
+   │ JWST  │                     │ Watchdog    │
+   └───────┘                     └─────────────┘
+       │
+   ┌───▼─────────────────────────────────────────┐
+   │  SQLite (WAL)  ·  archive_stellaire.db      │
+   │  visitor_log · anomalies · observations     │
+   └─────────────────────────────────────────────┘
 ```
+
+Engineering deep-dive: **[ARCHITECTURE.md](./ARCHITECTURE.md)**
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-**Backend**
-- Flask 3.1.3, Werkzeug 3.1.6
-- Gunicorn (sync workers, threaded)
-- SQLite + WAL mode
+**Backend** · Flask 3.1 · Werkzeug 3.1 · Gunicorn (preloaded, 4 workers) · SQLite + WAL · Redis (optional cache)
 
-**Astronomy & orbital mechanics**
-- `sgp4` ≥ 2.21 — TLE propagation
-- `skyfield` ≥ 1.46 — ephemerides, coordinate transforms
-- `astropy` — astronomical computations
-- `numpy` — vectorized math
+**Astronomy & orbital mechanics** · `sgp4` ≥ 2.21 (TLE propagation) · `skyfield` ≥ 1.46 (ephemerides) · `astropy` · `numpy`
 
-**AI orchestration**
-- Multi-provider routing: Anthropic Claude, Google Gemini, Groq, xAI Grok
-- Server-Sent Events (SSE) streaming for chat responses
-- Circuit breakers per provider with automatic failover
+**AI orchestration** · Anthropic Claude · Google Gemini · Groq · xAI Grok · SSE streaming · per-provider circuit breakers
 
-**External integrations**
-- NASA APIs (APOD, NEO, DONKI, SkyView, Mars rovers)
-- NOAA SWPC (space weather, Kp, alerts)
-- JPL Horizons (Voyager, Parker, BepiColombo)
-- CelesTrak (TLE catalog)
-- Harvard MicroObservatory (FITS imagery)
-- Cesium Ion (3D globe assets)
+**External integrations** · NASA APOD/NEO/DONKI/SkyView/Mars rovers · NOAA SWPC · JPL Horizons (Voyager, Parker, BepiColombo) · CelesTrak · Harvard MicroObservatory FITS · Cesium Ion
 
-**Frontend**
-- Cesium.js — 3D orbital globe
-- Vanilla JS + Service Worker (PWA, Android-installable)
+**Frontend** · Cesium.js (3D globe) · Vanilla JS · Service Worker (PWA, Android-installable) · Schema.org structured data
 
-**Infrastructure**
-- Nginx (reverse proxy, TLS termination)
-- Let's Encrypt (certbot, auto-renewal)
-- systemd unit (`astroscan.service`)
-- Sentry SDK 2.58 (error tracking)
-- Redis 5.x (optional cache backend)
+**Infrastructure** · Nginx + Let's Encrypt · systemd (`astroscan.service`) · Sentry SDK 2.58 · structured logging · Hetzner Cloud
 
 ---
 
-## API Highlights
+## 🔌 API Highlights
 
 | Endpoint | Purpose |
 |---|---|
 | `GET /api/health` | Liveness probe (no external dependencies) |
+| `GET /api/build` | Build info (commit SHA, deploy time) |
 | `GET /api/system-status` | Full system health (DB, cache, circuit breakers) |
 | `GET /api/iss` | ISS live position + crew |
 | `GET /api/iss/passes` | Next 5 ISS passes over Tlemcen |
@@ -203,81 +159,80 @@ astro_scan/
 | `GET /api/weather` | NOAA Kp + aurora forecast |
 | `GET /api/apod` | NASA APOD (FR auto-translated) |
 | `GET /api/feeds/<source>` | Aggregated external feed (NASA/NOAA/ESA) |
-| `GET /sitemap.xml` | SEO sitemap |
-| `GET /robots.txt` | Crawler directives |
+| `GET /sitemap.xml` | SEO sitemap (hreflang FR/EN) |
 
-Full route map is generated at runtime: `python3 -c "from wsgi import app; [print(r) for r in app.url_map.iter_rules()]"`.
+Full route map at runtime: `python3 -c "from wsgi import app; [print(r) for r in app.url_map.iter_rules()]"` — see also [docs/API_ENDPOINTS.md](./docs/API_ENDPOINTS.md).
 
 ---
 
-## Testing
+## 🧪 Testing
 
-The codebase ships with a three-tier pytest suite (`tests/smoke/`, `tests/unit/`,
-`tests/integration/`) and a GitHub Actions workflow that runs smoke + unit on
-every push.
+The codebase ships with a three-tier pytest suite (`tests/smoke/`, `tests/unit/`, `tests/integration/`) and a GitHub Actions workflow that runs smoke + unit on every push.
 
 ```bash
 make install-dev    # pytest + pytest-cov + pytest-mock
 make test           # full suite
-make test-smoke     # smoke tier only (factory, critical endpoints, WSGI loader)
+make test-smoke     # smoke tier (factory, critical endpoints, WSGI loader)
 make test-unit      # pure-logic services + blueprint registration
 make test-coverage  # HTML + terminal coverage report (app/ + services/)
 ```
 
-Baseline on a non-root host: **51 passed, 85 skipped, 0 failed**. Skips are
-deliberate and environment-bound (root-only `.env`, Redis-backed circuit
-breakers) — not regressions. See [tests/README.md](./tests/README.md) for
-the full layout, markers, fixtures, and skip rationale.
+Baseline on a non-root host: **51 passed · 85 skipped · 0 failed**. Skips are deliberate and environment-bound (root-only `.env`, Redis-backed circuit breakers) — not regressions. See [tests/README.md](./tests/README.md) for layout, markers, fixtures, and skip rationale.
 
 ---
 
-## Migration History
+## 📜 Migration History
 
-This codebase underwent a 19-pass migration from a 12,159-line monolith to a blueprint+factory architecture, executed without service interruption:
+This codebase underwent a **19-pass migration** from a 12,159-line monolith to a blueprint+factory architecture, executed without service interruption:
 
 | Pass | Scope | Outcome |
 |---|---|---|
-| 1–4   | Bootstrapping factory & first blueprints | 4 BPs registered |
-| 5     | Pages + PWA routes | 25 routes migrated |
-| 6     | Cameras + gallery + observations | 20 routes |
-| 7     | Astropy + weather + ephemerides | 18 routes |
-| 8     | NASA/NOAA external feeds | 14 routes |
-| 9     | Telescope domain | 16 routes |
-| 10    | AI orchestration + `ai_translate.py` extraction | 15 routes |
-| 11    | Targeted audit + cleanup | 78% coverage |
-| 12    | Visitors + analytics | 10 routes |
-| 13    | Lab + research | 86% coverage |
-| 14    | ISS compute + satellites | 92% coverage |
-| 15    | Aggressive helper extraction | 96% coverage |
-| 16    | Final blueprint registration | 99% coverage |
-| 17    | Last 2 heavy AI routes | 99% coverage |
-| 18    | **Production switch** — `wsgi.py → create_app()` | bascule complete |
-| 19    | Monolith dead-code cleanup | −1,781 lines |
+| 1–4 | Factory bootstrapping + first blueprints | 4 BPs registered |
+| 5–10 | Pages, cameras, weather, feeds, telescope, AI | 108 routes migrated |
+| 11–17 | Audit, analytics, lab, ISS, helpers, full registration | 99% coverage |
+| 18 | **Production switch** — `wsgi.py → create_app()` | bascule complete |
+| 19 | Monolith dead-code cleanup | −1,781 lines |
+| 20–30 | Hardening, SEO, i18n, security, observability | production-grade |
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full engineering record.
 
 ---
 
-## Director
+## 👨‍🚀 Founder
 
-**Zakaria Chohra** — *Director, ORBITAL-CHOHRA Observatory*
-Tlemcen, Algeria · 34.87°N · 1.32°E
+**Zakaria Chohra** — *Founder & Director, ASTRO-SCAN Observatory*
+Tlemcen, Algeria · 34.87°N · 1.32°W
 
-The observatory operates as an independent scientific platform serving the Francophone and Arabic-speaking research community.
+Independent scientist and engineer. Built ASTRO-SCAN solo to make real-time orbital intelligence and space science accessible to the Francophone, Arabic-speaking, and global research communities.
 
----
-
-## License
-
-Proprietary — © Zakaria Chohra / ORBITAL-CHOHRA Observatory.
-Educational and scientific use is permitted with attribution. Commercial use, redistribution, or derivative works require explicit written authorization from the director.
+📧 **zakaria.chohra@gmail.com** · 🌍 **[astroscan.space](https://astroscan.space)** · 📰 **[Press Kit](./press-kit/)**
 
 ---
 
-## Acknowledgments
+## 📰 Press & Outreach
 
-This platform builds on open data and APIs provided by:
-NASA · NOAA SWPC · ESA · JAXA · JPL Horizons · CelesTrak · Harvard MicroObservatory · AMSAT · IAU · UNAWE.
+For journalists, institutional partners (NASA, ESA, CNES, IAU, universities), or research collaborations:
+
+- **Press Kit (bilingual FR/EN)**: [`./press-kit/`](./press-kit/)
+- **Media contact**: zakaria.chohra@gmail.com
+- **High-resolution screenshots**: [`./press-kit/screenshots/`](./press-kit/screenshots/)
+
+---
+
+## 📄 License
+
+ASTRO-SCAN is licensed under **[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)](./LICENSE)**.
+
+- ✅ Free for **education, research, citizen science, and public outreach**
+- 📌 Attribution required (Zakaria Chohra · ASTRO-SCAN)
+- 🚫 Commercial use requires written authorization — contact `zakaria.chohra@gmail.com`
+
+---
+
+## 🙏 Acknowledgments
+
+Built on open data and APIs provided by:
+**NASA** · **NOAA SWPC** · **ESA** · **JAXA** · **JPL Horizons** · **CelesTrak** · **Harvard MicroObservatory** · **N2YO** · **Open-Notify** · **AMSAT** · **IAU** · **UNAWE**
 
 Open-source foundations: Flask · Gunicorn · Skyfield · SGP4-Python · Astropy · NumPy · Cesium.js · Sentry.
 
@@ -285,7 +240,9 @@ Open-source foundations: Flask · Gunicorn · Skyfield · SGP4-Python · Astropy
 
 <div align="center">
 
-**ORBITAL-CHOHRA Observatory** — Tlemcen, Algeria
-*Operated independently. Open to collaboration.*
+### 🛰️ ASTRO-SCAN Observatory
+**Tlemcen, Algeria** · *Operated independently · Open to scientific collaboration*
+
+*"The universe belongs to everyone. Knowledge should too."*
 
 </div>
