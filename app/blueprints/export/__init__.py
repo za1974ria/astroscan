@@ -40,17 +40,22 @@ def _meta(description: str, **kwargs) -> dict:
 def visitors_csv():
     try:
         conn = _db()
+        # PASS 27 — Normalize NL duplicate at query time.
         rows = conn.execute("""
-            SELECT country, country_code,
-                   COUNT(*) as visits,
-                   DATE(MIN(visited_at)) as first_visit,
-                   DATE(MAX(visited_at)) as last_visit
+            SELECT
+                CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country,
+                country_code,
+                COUNT(*) as visits,
+                DATE(MIN(visited_at)) as first_visit,
+                DATE(MAX(visited_at)) as last_visit
             FROM visitor_log
             WHERE country IS NOT NULL AND country != ''
               AND country NOT IN ('Unknown','Inconnu')
               AND (country_code IS NULL OR country_code != 'XX')
               AND is_bot = 0
-            GROUP BY country, country_code
+            GROUP BY
+                CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END,
+                country_code
             ORDER BY visits DESC
         """).fetchall()
         conn.close()
@@ -74,17 +79,22 @@ def visitors_csv():
 def visitors_json():
     try:
         conn = _db()
+        # PASS 27 — Normalize NL duplicate at query time.
         rows = conn.execute("""
-            SELECT country, country_code,
-                   COUNT(*) as visits,
-                   DATE(MIN(visited_at)) as first_visit,
-                   DATE(MAX(visited_at)) as last_visit
+            SELECT
+                CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country,
+                country_code,
+                COUNT(*) as visits,
+                DATE(MIN(visited_at)) as first_visit,
+                DATE(MAX(visited_at)) as last_visit
             FROM visitor_log
             WHERE country IS NOT NULL AND country != ''
               AND country NOT IN ('Unknown','Inconnu')
               AND (country_code IS NULL OR country_code != 'XX')
               AND is_bot = 0
-            GROUP BY country, country_code
+            GROUP BY
+                CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END,
+                country_code
             ORDER BY visits DESC
         """).fetchall()
         total = conn.execute(

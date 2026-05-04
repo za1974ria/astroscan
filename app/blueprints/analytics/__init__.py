@@ -222,10 +222,13 @@ def api_analytics_summary():
             "WHERE path NOT LIKE '/static%' "
             "GROUP BY path ORDER BY cnt DESC LIMIT 10"
         ).fetchall()
+        # PASS 27 — Normalize NL duplicate at query time.
         top_countries = conn.execute(
-            "SELECT country, country_code, COUNT(*) as cnt FROM visitor_log "
+            "SELECT CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country, "
+            "country_code, COUNT(*) as cnt FROM visitor_log "
             "WHERE is_bot=0 AND is_owner=0 AND country != 'Unknown' "
-            "GROUP BY country ORDER BY cnt DESC LIMIT 10"
+            "GROUP BY CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END, country_code "
+            "ORDER BY cnt DESC LIMIT 10"
         ).fetchall()
         owner_visits = conn.execute(
             "SELECT ip, country, city, isp, MAX(visited_at) as last_visit, COUNT(*) as sessions "
@@ -424,11 +427,13 @@ def api_visitors_stats():
         placeholders = ",".join(["?"] * len(excluded))
         params = tuple(excluded)
         conn = _get_db_visitors()
+        # PASS 27 — Normalize NL duplicate at query time.
         by_country = conn.execute(
-            "SELECT country, country_code, COUNT(*) as cnt "
+            "SELECT CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country, "
+            "country_code, COUNT(*) as cnt "
             "FROM visitor_log "
             f"WHERE ip NOT IN ({placeholders}) AND country != 'Unknown' "
-            "GROUP BY country, country_code "
+            "GROUP BY CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END, country_code "
             "ORDER BY cnt DESC LIMIT 50",
             params,
         ).fetchall()

@@ -58,20 +58,25 @@ def load_analytics_readonly():
                 "WHERE ip NOT IN ('127.0.0.1', '::1')"
             ).fetchone()
             out["unique_ips"] = int(r["c"] if r else 0)
+            # PASS 27 — Normalize NL duplicate at query time.
             out["top_countries"] = [
                 {"country": row[0], "code": row[1] or "", "count": row[2]}
                 for row in cur.execute(
-                    "SELECT country, country_code, COUNT(*) AS cnt FROM visitor_log "
-                    "WHERE country != 'Unknown' GROUP BY country "
+                    "SELECT CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country, "
+                    "country_code, COUNT(*) AS cnt FROM visitor_log "
+                    "WHERE country != 'Unknown' "
+                    "GROUP BY CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END, country_code "
                     "ORDER BY cnt DESC LIMIT 15"
                 ).fetchall()
             ]
             out["top_cities"] = [
                 {"country": row[0], "city": row[1], "count": row[2]}
                 for row in cur.execute(
-                    "SELECT country, city, COUNT(*) AS cnt FROM visitor_log "
+                    "SELECT CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country, "
+                    "city, COUNT(*) AS cnt FROM visitor_log "
                     "WHERE ip NOT IN ('127.0.0.1', '::1') "
-                    "GROUP BY country, city ORDER BY cnt DESC LIMIT 15"
+                    "GROUP BY CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END, city "
+                    "ORDER BY cnt DESC LIMIT 15"
                 ).fetchall()
             ]
             out["latest_visits"] = [

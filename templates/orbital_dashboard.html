@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<script>(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orbital Dashboard — AstroScan</title>
+<link rel="stylesheet" href="/static/lib/leaflet/leaflet.css"/>
+<style>
+html.embed-portail #topbar,html.embed-portail .topbar{display:none!important}
+html.embed-portail body,html.embed-portail #main{padding-top:0!important;margin-top:0!important}
+/* ─── RESET & TOKENS ─────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#020b18;--cyan:#00eaff;--cyan2:#00bfff;--green:#00ff88;
+  --warn:#ffcc00;--red:#ff3b5c;--white:#ffffff;
+  --card:rgba(0,234,255,.03);--border:rgba(0,234,255,.15);
+  --border-hi:rgba(0,234,255,.38);
+  --glow-xs:0 0 6px rgba(0,234,255,.35);
+  --glow-sm:0 0 12px rgba(0,234,255,.45);
+  --glow-md:0 0 24px rgba(0,234,255,.3);
+  --topbar-h:90px;
+}
+html,body{background:var(--bg);color:var(--cyan);font-family:'Segoe UI',system-ui,Arial,sans-serif;min-height:100vh;overflow-x:hidden}
+a{text-decoration:none;color:inherit}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:rgba(0,234,255,.04)}
+::-webkit-scrollbar-thumb{background:rgba(0,234,255,.22);border-radius:2px}
+
+/* ─── STAR CANVAS ────────────────────────────────────────── */
+#stars-canvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* ─── TOPBAR ─────────────────────────────────────────────── */
+#topbar{
+  position:fixed;top:0;left:0;right:0;height:var(--topbar-h);z-index:300;
+  background:rgba(2,11,24,.97);border-bottom:1px solid var(--border);
+  backdrop-filter:blur(16px);display:flex;flex-direction:column;
+}
+.tb-r1{display:flex;align-items:center;justify-content:space-between;padding:8px 20px 0;flex:0 0 44px}
+.tb-logo{
+  display:flex;align-items:center;gap:8px;white-space:nowrap;
+  font-size:.92rem;font-weight:800;letter-spacing:.14em;text-shadow:var(--glow-sm);
+}
+.tb-logo .sym{color:var(--cyan);font-size:1.12rem}
+.tb-logo .brand{color:var(--white)}
+.tb-logo .sep{color:rgba(0,234,255,.28);font-weight:300;margin:0 2px}
+.tb-logo .sub{font-size:.63rem;font-weight:400;color:rgba(0,234,255,.48);letter-spacing:.1em}
+.tb-center{display:flex;flex-direction:column;align-items:center;gap:1px}
+.tb-clock{
+  font-size:1.8rem;font-weight:700;letter-spacing:.07em;color:var(--cyan);
+  text-shadow:0 0 18px #00eaff,0 0 36px rgba(0,234,255,.35);
+  font-variant-numeric:tabular-nums;line-height:1;
+}
+.tb-date{font-size:.62rem;letter-spacing:.18em;color:rgba(0,234,255,.5);text-transform:uppercase;margin-top:2px}
+.tb-right{display:flex;align-items:center;gap:9px;font-size:.73rem;color:rgba(255,255,255,.75);padding-right:20px}
+.tb-btn{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:4px;font-size:.65rem;font-weight:700;letter-spacing:.08em;color:#00eaff;background:rgba(0,234,255,.07);border:1px solid rgba(0,234,255,.2);cursor:pointer;text-decoration:none;transition:all .15s}
+.tb-btn:hover{background:rgba(0,234,255,.15);border-color:rgba(0,234,255,.5)}
+.header-actions{display:flex;align-items:center;gap:10px;margin-left:14px}
+.header-actions .astro-btn{display:flex;align-items:center;justify-content:center;height:32px;padding:0 16px;min-width:132px;box-sizing:border-box;margin-top:0;line-height:1;font-family:inherit;font-size:.68rem;font-weight:700;letter-spacing:.08em;border-radius:6px;border:1px solid rgba(0,234,255,.55);background:rgba(0,28,48,.82);color:#00eaff;cursor:pointer;text-decoration:none;white-space:nowrap;appearance:none;-webkit-appearance:none;transition:.2s ease}
+.header-actions .astro-btn:hover{transform:translateY(-1px);box-shadow:0 0 14px rgba(0,234,255,.35)}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:ldot 1.8s ease-in-out infinite}
+@keyframes ldot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(1.5)}}
+
+.tb-r2{
+  display:flex;align-items:center;overflow-x:auto;scrollbar-width:none;
+  padding:0 20px 7px;flex:0 0 46px;border-top:1px solid rgba(0,234,255,.07);
+}
+.tb-r2::-webkit-scrollbar{display:none}
+.tb-s{display:flex;flex-direction:column;padding:0 14px;border-right:1px solid rgba(0,234,255,.09);white-space:nowrap;min-width:fit-content}
+.tb-s:last-child{border-right:none}
+.tb-sl{font-size:.56rem;letter-spacing:.09em;color:rgba(0,234,255,.42);text-transform:uppercase;margin-bottom:1px}
+.tb-sv{font-size:1.2rem;font-weight:700;color:#fff;line-height:1.15}
+.tb-sv.ok{color:var(--green)}
+.tb-sd{font-size:.58rem;line-height:1}
+.tb-sd.up{color:var(--green)}
+.tb-sd.dn{color:var(--red)}
+
+/* ─── MAIN ───────────────────────────────────────────────── */
+#main{margin-left:0;padding-top:var(--topbar-h);position:relative;z-index:1;min-height:100vh;padding-bottom:26px}
+.pad{padding:13px 16px}
+.g6535{display:grid;grid-template-columns:65% 35%;gap:13px}
+
+/* ─── CARDS ──────────────────────────────────────────────── */
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:10px;
+  padding:15px 17px;position:relative;overflow:hidden;
+  transition:box-shadow .2s,border-color .2s;margin-bottom:11px;
+}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.5}
+.card:hover{box-shadow:var(--glow-md);border-color:var(--border-hi)}
+.card:last-child{margin-bottom:0}
+.ctitle{font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:11px;display:flex;align-items:center;gap:8px}
+.badge-live{padding:2px 7px;border-radius:20px;font-size:.54rem;font-weight:700;background:rgba(0,234,255,.1);color:var(--cyan);border:1px solid rgba(0,234,255,.3);animation:blv 2s ease-in-out infinite}
+.badge-ok{padding:2px 7px;border-radius:20px;font-size:.54rem;font-weight:700;background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.26)}
+
+/* ─── LEAFLET MAP ────────────────────────────────────────── */
+.map-wrap{display:flex;gap:12px;align-items:flex-start}
+#world-map{flex:1;height:300px;border-radius:8px;border:1px solid var(--border);overflow:hidden;min-width:0}
+/* Override Leaflet to match dark theme */
+.leaflet-container{background:#030f1e !important}
+.leaflet-control-zoom a{background:rgba(2,11,24,.9)!important;color:var(--cyan)!important;border-color:var(--border)!important}
+.leaflet-control-zoom a:hover{background:rgba(0,234,255,.1)!important}
+
+/* Pulsing map markers */
+.pm-wrap{position:relative;width:24px;height:24px}
+.pm-dot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.pm-dot.green{background:var(--green);box-shadow:0 0 8px var(--green)}
+.pm-ring{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:24px;height:24px;border-radius:50%;
+  border:2px solid var(--cyan);animation:pring 2.2s ease-out infinite;
+}
+.pm-ring.green{border-color:var(--green)}
+@keyframes pring{0%{transform:translate(-50%,-50%) scale(.3);opacity:1}100%{transform:translate(-50%,-50%) scale(1.6);opacity:0}}
+.pm-label{
+  position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);
+  background:rgba(2,11,24,.9);border:1px solid var(--border);border-radius:4px;
+  padding:2px 7px;font-size:.58rem;color:var(--white);white-space:nowrap;letter-spacing:.06em;
+}
+
+/* TOP PAYS panel */
+@keyframes fadeInBadge{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.map-right{min-width:170px;max-width:170px;display:flex;flex-direction:column;gap:3px}
+.pays-head{font-size:.6rem;letter-spacing:.12em;color:rgba(0,234,255,.42);text-transform:uppercase;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid rgba(0,234,255,.08)}
+.orb-badge{display:flex;align-items:center;gap:5px;padding:4px 7px;background:rgba(0,20,40,.85);border:1px solid rgba(0,212,255,.18);border-radius:5px;position:relative;overflow:hidden;transition:border-color .2s,box-shadow .2s;animation:fadeInBadge .35s ease both;width:100%;box-sizing:border-box}
+.orb-badge::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,212,255,.05) 0%,transparent 55%);pointer-events:none}
+.orb-badge:hover{border-color:rgba(0,212,255,.5);background:rgba(0,30,55,.95);box-shadow:0 3px 10px rgba(0,212,255,.1)}
+.orb-badge-rank{font-size:.5rem;color:rgba(255,183,0,.6);font-weight:700;min-width:13px;flex-shrink:0;font-family:var(--font)}
+.orb-badge-flag{width:18px;height:13px;border-radius:2px;object-fit:cover;flex-shrink:0}
+.orb-badge-name{flex:1;font-size:.59rem;color:rgba(200,223,240,.85);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.orb-badge-count{font-size:.59rem;font-weight:700;color:#00d4ff;padding:1px 4px;background:rgba(0,212,255,.08);border-radius:3px;border:1px solid rgba(0,212,255,.15);flex-shrink:0}
+
+.btn-sm{
+  display:inline-block;margin-top:9px;padding:5px 12px;border:1px solid var(--border);
+  border-radius:20px;font-size:.61rem;letter-spacing:.08em;color:rgba(0,234,255,.6);
+  background:rgba(0,234,255,.03);transition:all .17s;
+}
+.btn-sm:hover{background:rgba(0,234,255,.1);color:var(--cyan);border-color:var(--cyan)}
+
+.map-counters{display:flex;margin-top:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.mc{flex:1;text-align:center;padding:8px 4px;border-right:1px solid var(--border)}
+.mc:last-child{border-right:none}
+.mc-v{font-size:.85rem;font-weight:700;color:var(--white)}
+.mc-l{font-size:.53rem;letter-spacing:.07em;color:rgba(0,234,255,.38);text-transform:uppercase;margin-top:2px}
+
+/* ─── 3-COL GRID ─────────────────────────────────────────── */
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.svc-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(0,0,0,.17);border-radius:6px;border:1px solid var(--border);font-size:.72rem;margin-bottom:5px}
+.svc-row:last-child{margin-bottom:0}
+.svc-n{color:rgba(255,255,255,.72)}
+.log-row{display:flex;align-items:center;gap:6px;padding:5px 8px;background:rgba(0,0,0,.17);border-radius:6px;border:1px solid var(--border);font-size:.68rem;margin-bottom:4px}
+.log-row:last-child{margin-bottom:0}
+.log-t{color:rgba(0,234,255,.36);font-size:.6rem;min-width:52px;flex-shrink:0}
+.log-m{flex:1;color:rgba(255,255,255,.65)}
+.tag{padding:1px 5px;border-radius:20px;font-size:.53rem;font-weight:700;flex-shrink:0}
+.ti{background:rgba(0,191,255,.1);color:var(--cyan2);border:1px solid rgba(0,191,255,.22)}
+.tw{background:rgba(255,204,0,.1);color:var(--warn);border:1px solid rgba(255,204,0,.22)}
+.te{background:rgba(255,59,92,.1);color:var(--red);border:1px solid rgba(255,59,92,.22)}
+.vis-row{display:flex;align-items:center;gap:6px;padding:5px 8px;background:rgba(0,0,0,.17);border-radius:6px;border:1px solid var(--border);font-size:.68rem;margin-bottom:4px}
+.vis-row:last-child{margin-bottom:0}
+.vis-fl{font-size:.9rem;flex-shrink:0}
+.vis-c{flex:1;color:rgba(255,255,255,.7)}
+.vis-t{color:rgba(0,234,255,.36);font-size:.6rem}
+
+/* ─── ISS CARD ───────────────────────────────────────────── */
+.iss-photo{
+  position:relative;height:300px;border-radius:8px;overflow:hidden;
+  border:1px solid var(--border);
+  background:url('/static/earth.jpg') center/cover no-repeat;
+}
+.iss-photo img{width:100%;height:100%;object-fit:cover;object-position:center;opacity:.88}
+.iss-photo-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to bottom,rgba(2,11,24,.1) 0%,rgba(2,11,24,.55) 100%);
+  pointer-events:none;
+}
+.iss-s{
+  position:absolute;border-radius:50%;background:#fff;
+  animation:stwk 3s ease-in-out infinite;z-index:1;
+}
+@keyframes stwk{0%,100%{opacity:.7}50%{opacity:.07}}
+.iss-orb-track{height:4px;background:rgba(0,0,0,.3);border-radius:2px;border:1px solid var(--border);overflow:hidden;margin-bottom:10px}
+.iss-orb-fill{height:100%;width:63%;background:linear-gradient(90deg,transparent,var(--cyan),rgba(0,234,255,.25));animation:iorb 9s linear infinite}
+@keyframes iorb{0%{margin-left:-63%}100%{margin-left:100%}}
+.iss-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.iss-st{background:rgba(0,0,0,.27);border:1px solid var(--border);border-radius:6px;padding:7px 10px}
+.iss-st.span2{grid-column:1/-1}
+.iss-sl{font-size:.56rem;letter-spacing:.1em;color:rgba(0,234,255,.45);text-transform:uppercase;margin-bottom:3px}
+.iss-sv{font-size:.9rem;font-weight:700;color:var(--white)}
+.btn-carte{display:block;text-align:center;padding:7px;border:1px solid var(--border);border-radius:7px;font-size:.66rem;letter-spacing:.1em;color:rgba(0,234,255,.6);background:rgba(0,234,255,.03);transition:all .17s}
+.btn-carte:hover{background:rgba(0,234,255,.1);color:var(--cyan);box-shadow:var(--glow-xs)}
+
+/* ─── SPACE WEATHER ──────────────────────────────────────── */
+.sw-top{display:flex;align-items:center;gap:13px;margin-bottom:12px}
+.sw-kp{font-size:1.6rem;font-weight:700;color:var(--white);line-height:1}
+.sw-calm{font-size:.66rem;color:var(--green);margin-top:3px}
+.sw-g{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:11px}
+.sw-i{background:rgba(0,0,0,.24);border:1px solid var(--border);border-radius:6px;padding:7px 10px}
+.sw-l{font-size:.56rem;letter-spacing:.09em;color:rgba(0,234,255,.45);text-transform:uppercase;margin-bottom:3px}
+.sw-v{font-size:.86rem;font-weight:700;color:var(--white)}
+.sw-sub{font-size:.6rem;color:var(--green);margin-top:2px}
+.aur-hd{display:flex;justify-content:space-between;font-size:.58rem;letter-spacing:.08em;color:rgba(0,234,255,.42);text-transform:uppercase;margin-bottom:5px}
+.aur-bar{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--green) 0%,#aaff00 28%,var(--warn) 64%,var(--red) 100%);position:relative;border:1px solid rgba(0,234,255,.13)}
+.aur-cur{position:absolute;top:-5px;left:14%;width:3px;height:19px;background:#fff;border-radius:2px;box-shadow:0 0 6px #fff}
+.aur-sc{display:flex;justify-content:space-between;font-size:.53rem;color:rgba(0,234,255,.27);margin-top:3px}
+@keyframes sun-rot{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.sun-rays{animation:sun-rot 14s linear infinite;transform-origin:30px 30px}
+
+/* ─── GEOIP ──────────────────────────────────────────────── */
+.geo-row{display:flex;align-items:center;gap:6px;padding:6px 9px;background:rgba(0,0,0,.17);border-radius:6px;border:1px solid var(--border);font-size:.68rem;margin-bottom:4px}
+.geo-row:last-child{margin-bottom:0}
+.geo-ip{font-family:monospace;color:rgba(0,234,255,.58);font-size:.65rem;min-width:104px;flex-shrink:0}
+.geo-loc{flex:1;color:rgba(255,255,255,.68)}
+.bh{padding:1px 6px;border-radius:20px;font-size:.53rem;font-weight:700;background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.25)}
+.bb{padding:1px 6px;border-radius:20px;font-size:.53rem;font-weight:700;background:rgba(255,59,92,.1);color:var(--red);border:1px solid rgba(255,59,92,.25)}
+
+/* ─── FOOTER ─────────────────────────────────────────────── */
+.f-wrap{padding:0 16px 20px}
+.f-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-top:13px}
+.f-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:15px 17px;position:relative;overflow:hidden}
+.f-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.45}
+.f-title{font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:12px}
+
+/* Arch flow */
+.arch-flow{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
+.arch-n{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.65rem;text-align:center;color:var(--white);line-height:1.5}
+.arch-icon{font-size:.9rem;display:block;margin-bottom:2px}
+.arch-lbl{font-size:.53rem;color:rgba(0,234,255,.42);display:block}
+.arch-arr{color:rgba(0,234,255,.27);font-size:1rem;padding:0 3px}
+
+/* Gauge rings */
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pc{background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center}
+.pl{font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(0,234,255,.42);margin-bottom:6px}
+.ring{position:relative;width:58px;height:58px;margin:0 auto 5px}
+.ring svg{transform:rotate(-90deg)}
+.rbg{fill:none;stroke:rgba(0,234,255,.07);stroke-width:7}
+.rfg{fill:none;stroke-width:7;stroke-linecap:round;stroke-dasharray:157}
+.rc{stroke:var(--cyan)}
+.rr{stroke:var(--green)}
+.rd{stroke:var(--warn)}
+.rn{stroke:var(--cyan2)}
+.rlbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:.72rem;font-weight:700;color:var(--white)}
+.psub{font-size:.58rem;color:rgba(0,234,255,.4)}
+
+/* About */
+.abt-logo{font-size:1.75rem;font-weight:900;letter-spacing:.1em;text-shadow:var(--glow-sm);color:var(--white);margin-bottom:7px}
+.abt-desc{font-size:.68rem;color:rgba(0,234,255,.5);line-height:1.65;margin-bottom:9px}
+.abt-meta{font-size:.6rem;color:rgba(0,234,255,.32);letter-spacing:.08em;line-height:1.9}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
+<script>window.onload=function(){var el=document.querySelector(".map-right");if(el)twemoji.parse(el,{folder:"svg",ext:".svg"})}</script>
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+
+<!-- ══ TOPBAR ══ -->
+<div id="topbar">
+  <div class="tb-r1">
+    <div class="tb-logo">
+      <span class="sym">&#11041;</span>
+      ASTRO<span class="brand">SCAN</span>
+      <span class="sep">&middot;</span>
+      <span class="sub">SPACE OBSERVATION DASHBOARD</span>
+    </div>
+    <div class="tb-center">
+      <div class="tb-clock" id="utc-clock">00:00:00 UTC</div>
+      <div class="tb-date">25 AVRIL 2026</div>
+    </div>
+    <div class="tb-right">
+      <div class="live-dot"></div>
+      <span>&#9679; CONNEXION EN DIRECT</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(0,234,255,.55)" stroke-width="1.4">
+        <path d="M12 2L2 12l10 10 10-10L12 2z"/><circle cx="12" cy="12" r="3"/>
+        <path d="M6 6l3 3M15 15l3 3M18 6l-3 3M9 15l-3 3"/>
+      </svg>
+      <div class="header-actions">
+        <a href="/portail" class="astro-btn">⟵ PORTAIL</a>
+        <button onclick="location.reload()" class="astro-btn">↻ ACTUALISER</button>
+      </div>
+    </div>
+  </div>
+  <div class="tb-r2">
+    <div class="tb-s">
+      <span class="tb-sl">Statut Syst&egrave;me</span>
+      <span class="tb-sv ok">&#x1F7E2; OP&Eacute;RATIONNEL</span>
+    </div>
+    <div class="tb-s">
+      <span class="tb-sl">Visiteurs Aujourd'hui</span>
+      <span class="tb-sv" id="orb-visit-tb">—</span>
+      <span class="tb-sd up">&#9650; +23.5% vs hier</span>
+    </div>
+    <div class="tb-s">
+      <span class="tb-sl">Pays Distincts</span>
+      <span class="tb-sv" id="orb-pays-tb">&mdash;</span>
+      <span class="tb-sd up">&#9650; +5 vs hier</span>
+    </div>
+    <div class="tb-s">
+      <span class="tb-sl">Requ&ecirc;tes / 24h</span>
+      <span class="tb-sv">24&thinsp;532</span>
+      <span class="tb-sd up">&#9650; +18.7%</span>
+    </div>
+    <div class="tb-s">
+      <span class="tb-sl">Uptime</span>
+      <span class="tb-sv ok">99.82%</span>
+    </div>
+    <div class="tb-s">
+      <span class="tb-sl">Erreurs</span>
+      <span class="tb-sv">12</span>
+      <span class="tb-sd dn">&#9660; &minus;8.3%</span>
+    </div>
+    <div class="tb-s">
+      <span class="tb-sl">Latence Moy.</span>
+      <span class="tb-sv">128 ms</span>
+      <span class="tb-sd dn">&#9660; &minus;10.2%</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div id="main">
+  <div class="pad">
+    <div class="g6535">
+
+      <!-- ─ GAUCHE 65% ─ -->
+      <div>
+
+        <!-- CARTE LEAFLET -->
+        <div class="card">
+          <div class="ctitle">&#127757; VISITEURS EN TEMPS R&Eacute;EL <span class="badge-live">LIVE</span></div>
+          <div class="map-wrap">
+            <div id="world-map"></div>
+            <div class="map-right">
+              <div class="pays-head">TOP PAYS</div>
+              <div id="orb-top-pays-list"></div>
+              <button class="btn-sm" type="button" onclick="openAllCountriesModal()">VOIR TOUS LES PAYS</button>
+            </div>
+          </div>
+          <div class="map-counters">
+            <div class="mc"><div class="mc-v" id="orb-visit-mc">—</div><div class="mc-l">Visiteurs Aujourd'hui</div></div>
+            <div class="mc"><div class="mc-v" id="orb-pays-mc">&mdash;</div><div class="mc-l">Pays Distincts</div></div>
+            <div class="mc"><div class="mc-v">1&thinsp;247</div><div class="mc-l">Sessions Aujourd'hui</div></div>
+            <div class="mc"><div class="mc-v">03:42</div><div class="mc-l">Dur&eacute;e Moy. Session</div></div>
+          </div>
+        </div>
+
+        <!-- 3 PETITES CARDS -->
+        <div class="g3">
+          <!-- Services -->
+          <div class="card" style="margin-bottom:0">
+            <div class="ctitle">&#9881; &Eacute;TAT DES SERVICES</div>
+            <div class="svc-row"><span class="svc-n">NASA API</span><span class="badge-ok">OK</span></div>
+            <div class="svc-row"><span class="svc-n">ISS API</span><span class="badge-ok">OK</span></div>
+            <div class="svc-row"><span class="svc-n">M&Eacute;T&Eacute;O SPATIALE</span><span class="badge-ok">OK</span></div>
+            <div class="svc-row"><span class="svc-n">ORBITAL DATA</span><span class="badge-ok">OK</span></div>
+            <div class="svc-row"><span class="svc-n">FALLBACK SYSTEM</span><span class="badge-ok">OK</span></div>
+          </div>
+          <!-- Logs -->
+          <div class="card" style="margin-bottom:0">
+            <div class="ctitle">&#128203; DERNIERS LOGS</div>
+            <div class="log-row"><span class="log-t">14:32:08</span><span class="tag ti">INFO</span><span class="log-m">ISS position updated</span></div>
+            <div class="log-row"><span class="log-t">14:31:52</span><span class="tag ti">INFO</span><span class="log-m">TLE cache refreshed</span></div>
+            <div class="log-row"><span class="log-t">14:30:44</span><span class="tag tw">WARN</span><span class="log-m">NASA API slow response</span></div>
+            <div class="log-row"><span class="log-t">14:29:17</span><span class="tag ti">INFO</span><span class="log-m">New visitor DZ Alger</span></div>
+            <div class="log-row"><span class="log-t">14:28:05</span><span class="tag te">ERROR</span><span class="log-m">N2YO timeout fallback</span></div>
+            <div class="log-row"><span class="log-t">14:27:33</span><span class="tag ti">INFO</span><span class="log-m">Space weather updated</span></div>
+          </div>
+          <!-- Visiteurs -->
+          <div class="card" style="margin-bottom:0">
+            <div class="ctitle">&#128101; DERNIERS VISITEURS</div>
+            <div class="vis-row"><span class="vis-fl">&#127482;&#127480;</span><span class="vis-c">New York, USA</span><span class="vis-t">14:32</span></div>
+            <div class="vis-row"><span class="vis-fl">&#127465;&#127487;</span><span class="vis-c">Alger, Alg&eacute;rie</span><span class="vis-t">14:31</span></div>
+            <div class="vis-row"><span class="vis-fl">&#127480;&#127468;</span><span class="vis-c">Singapore</span><span class="vis-t">14:30</span></div>
+            <div class="vis-row"><span class="vis-fl">&#127475;&#127473;</span><span class="vis-c">Amsterdam, NL</span><span class="vis-t">14:29</span></div>
+            <div class="vis-row"><span class="vis-fl">&#127465;&#127466;</span><span class="vis-c">Frankfurt, DE</span><span class="vis-t">14:28</span></div>
+            <div class="vis-row"><span class="vis-fl">&#127468;&#127463;</span><span class="vis-c">London, UK</span><span class="vis-t">14:27</span></div>
+          </div>
+        </div>
+
+        <div class="panel" id="solar-system-panel">
+          <div class="panel-hdr">
+            <span>☀️ SYSTÈME SOLAIRE</span>
+            <span class="badge live">TEMPS RÉEL</span>
+          </div>
+          <div style="position:relative;width:100%;aspect-ratio:1/1;max-height:340px">
+            <canvas id="solarCanvas" style="width:100%;height:100%;display:block"></canvas>
+            <div id="planet-tooltip" style="position:absolute;display:none;background:rgba(2,11,24,.92);border:1px solid rgba(0,234,255,.3);padding:4px 9px;border-radius:4px;font-size:.62rem;color:#00eaff;pointer-events:none;white-space:nowrap"></div>
+          </div>
+          <div id="planet-info" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 0 2px;font-size:.6rem;color:rgba(0,234,255,.6)"></div>
+        </div>
+
+      </div><!-- /gauche -->
+
+      <!-- ─ DROITE 35% ─ -->
+      <div>
+
+        <!-- ISS CARD -->
+        <div class="card">
+          <div class="ctitle">&#128752; ISS &mdash; POSITION EN TEMPS R&Eacute;EL <span class="badge-live">LIVE</span></div>
+          <div style="position:relative;margin-bottom:12px">
+            <div class="iss-photo" style="width:100%;height:300px;cursor:pointer" onclick="toggleISSInfo()">
+              <div class="iss-s" style="width:2px;height:2px;left:8%;top:15%;animation-delay:.4s"></div>
+              <div class="iss-s" style="width:1px;height:1px;left:23%;top:38%;animation-delay:1.1s"></div>
+              <div class="iss-s" style="width:2px;height:2px;left:40%;top:18%;animation-delay:1.8s"></div>
+              <div class="iss-s" style="width:1px;height:1px;left:57%;top:65%;animation-delay:.7s"></div>
+              <div class="iss-s" style="width:2px;height:2px;left:15%;top:72%;animation-delay:2.2s"></div>
+              <div class="iss-s" style="width:1px;height:1px;left:74%;top:9%;animation-delay:1.4s"></div>
+              <div class="iss-s" style="width:2px;height:2px;left:84%;top:48%;animation-delay:.5s"></div>
+              <div class="iss-s" style="width:1px;height:1px;left:92%;top:80%;animation-delay:2s"></div>
+              <!-- Bouton info -->
+              <div style="position:absolute;top:8px;right:8px;z-index:10;background:rgba(0,234,255,.15);border:1px solid rgba(0,234,255,.4);border-radius:20px;padding:4px 10px;font-size:.65rem;color:#00eaff;cursor:pointer;letter-spacing:.08em;pointer-events:auto" onclick="event.stopPropagation();toggleISSInfo()">&#9432; ISS DATA</div>
+              <div class="iss-photo-overlay"></div>
+              <!-- Orbit ISS réaliste — bille disparaît derrière le globe -->
+              <svg style="position:absolute;inset:0;width:100%;height:100%;z-index:10;pointer-events:none" viewBox="0 0 400 300">
+                <ellipse cx="200" cy="150" rx="185" ry="55" fill="none" stroke="rgba(0,234,255,.25)" stroke-width="1" stroke-dasharray="6,4"/>
+                <circle r="5" fill="#00eaff" filter="url(#glow)">
+                  <animateMotion dur="10s" repeatCount="indefinite" rotate="auto">
+                    <mpath href="#orbit-path"/>
+                  </animateMotion>
+                  <animate attributeName="opacity" values="1;1;1;0;0;0;1;1;1" keyTimes="0;0.2;0.45;0.5;0.55;0.95;0.97;0.99;1" dur="10s" repeatCount="indefinite"/>
+                </circle>
+                <defs>
+                  <filter id="glow"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                  <path id="orbit-path" d="M15,150 A185,55 0 1,1 385,150 A185,55 0 1,1 15,150"/>
+                </defs>
+              </svg>
+            </div>
+            <!-- Popup ISS -->
+            <div id="iss-popup" style="display:none;position:absolute;top:10px;right:10px;z-index:100;background:rgba(2,11,24,.95);border:1px solid rgba(0,234,255,.35);border-radius:10px;padding:14px 16px;min-width:160px;backdrop-filter:blur(10px)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div style="font-size:.6rem;letter-spacing:.1em;color:#00eaff">&#128752; ISS POSITION</div>
+                <div onclick="toggleISSInfo()" style="cursor:pointer;color:rgba(0,234,255,.5);font-size:.8rem">&#x2715;</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div><div style="font-size:.48rem;color:rgba(0,234,255,.5);letter-spacing:.08em">LATITUDE</div><div style="font-size:.85rem;font-weight:700;color:#fff">12.45&deg; N</div></div>
+                <div><div style="font-size:.48rem;color:rgba(0,234,255,.5);letter-spacing:.08em">LONGITUDE</div><div style="font-size:.85rem;font-weight:700;color:#fff">45.23&deg; E</div></div>
+                <div><div style="font-size:.48rem;color:rgba(0,234,255,.5);letter-spacing:.08em">ALTITUDE</div><div style="font-size:.85rem;font-weight:700;color:#fff">419.7 km</div></div>
+                <div><div style="font-size:.48rem;color:rgba(0,234,255,.5);letter-spacing:.08em">VITESSE</div><div style="font-size:.85rem;font-weight:700;color:#fff">27&thinsp;600 km/h</div></div>
+                <div style="grid-column:span 2"><div style="font-size:.48rem;color:rgba(0,234,255,.5);letter-spacing:.08em">PROCHAINE PASSE</div><div style="font-size:.85rem;font-weight:700;color:var(--warn)">00:18:42</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="iss-orb-track"><div class="iss-orb-fill"></div></div>
+          <a class="btn-carte" href="/iss-tracker">&#127758; VOIR SUR LA CARTE</a>
+        </div>
+
+        <!-- MÉTÉO SPATIALE -->
+        <div class="card">
+          <div class="ctitle">&#9728; M&Eacute;T&Eacute;O SPATIALE <span class="badge-live">LIVE</span></div>
+          <div class="sw-top">
+            <svg width="62" height="62" viewBox="0 0 60 60" style="flex-shrink:0">
+              <g class="sun-rays">
+                <line x1="30" y1="3" x2="30" y2="11" stroke="#ff9500" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="30" y1="49" x2="30" y2="57" stroke="#ff9500" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="3" y1="30" x2="11" y2="30" stroke="#ff9500" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="49" y1="30" x2="57" y2="30" stroke="#ff9500" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="9" y1="9" x2="15" y2="15" stroke="#ff9500" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="45" y1="45" x2="51" y2="51" stroke="#ff9500" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="51" y1="9" x2="45" y2="15" stroke="#ff9500" stroke-width="2.2" stroke-linecap="round"/>
+                <line x1="15" y1="45" x2="9" y2="51" stroke="#ff9500" stroke-width="2.2" stroke-linecap="round"/>
+              </g>
+              <circle cx="30" cy="30" r="13" fill="#ff9500" opacity=".92"/>
+              <circle cx="30" cy="30" r="10" fill="#ffb300" opacity=".6"/>
+              <circle cx="30" cy="30" r="13" fill="none" stroke="#ffcc44" stroke-width="2" opacity=".25"/>
+            </svg>
+            <div>
+              <div style="font-size:.58rem;letter-spacing:.1em;color:rgba(0,234,255,.42);text-transform:uppercase;margin-bottom:4px">Activit&eacute; Solaire &mdash; Kp Index</div>
+              <div class="sw-kp">3</div>
+              <div class="sw-calm">&#x2713; Calme</div>
+            </div>
+          </div>
+          <div class="sw-g">
+            <div class="sw-i"><div class="sw-l">Vent Solaire</div><div class="sw-v">450 km/s</div><div class="sw-sub">Normal</div></div>
+            <div class="sw-i"><div class="sw-l">Champ Magn&eacute;tique</div><div class="sw-v">Bz &minus;2.1 nT</div><div class="sw-sub">Stable</div></div>
+          </div>
+          <div class="aur-hd"><span>RISQUE D'AURORES</span><span style="color:var(--green)">FAIBLE</span></div>
+          <div class="aur-bar"><div class="aur-cur"></div></div>
+          <div class="aur-sc"><span>NUL</span><span>FAIBLE</span><span>MOYEN</span><span>FORT</span></div>
+        </div>
+
+        <!-- GEO-IP -->
+        <div class="card">
+          <div class="ctitle">&#128205; GEO-IP TRACKER <span class="badge-live">LIVE</span></div>
+          <div class="geo-row"><span class="geo-ip">134.209.252.42</span><span class="geo-loc">Germany &mdash; Frankfurt</span><span class="bh">HUMAIN</span></div>
+          <div class="geo-row"><span class="geo-ip">43.130.139.136</span><span class="geo-loc">USA &mdash; Ashburn</span><span class="bh">HUMAIN</span></div>
+          <div class="geo-row"><span class="geo-ip">105.235.139.236</span><span class="geo-loc">Algeria &mdash; Bit el Djir</span><span class="bh">HUMAIN</span></div>
+          <div class="geo-row"><span class="geo-ip">88.151.34.35</span><span class="geo-loc">Inconnu</span><span class="bb">BOT</span></div>
+          <div class="geo-row"><span class="geo-ip">95.214.53.42</span><span class="geo-loc">Inconnu</span><span class="bb">BOT</span></div>
+        </div>
+
+      </div><!-- /droite -->
+    </div><!-- /g6535 -->
+  </div><!-- /pad -->
+
+  <!-- ══ FOOTER ══ -->
+  <div class="f-wrap">
+    <div class="f-grid">
+
+      <!-- Architecture -->
+      <div class="f-card">
+        <div class="f-title">&#9679; ARCHITECTURE DU SYST&Egrave;ME</div>
+        <div class="arch-flow">
+          <div class="arch-n"><span class="arch-icon">&#128452;</span><span class="arch-lbl">SOURCES</span>NASA, APIs</div>
+          <span class="arch-arr">&#8594;</span>
+          <div class="arch-n"><span class="arch-icon">&#9881;</span><span class="arch-lbl">TRAITEMENT</span>Flask Backend</div>
+          <span class="arch-arr">&#8594;</span>
+          <div class="arch-n"><span class="arch-icon">&#128190;</span><span class="arch-lbl">CACHE</span>R&eacute;silience</div>
+          <span class="arch-arr">&#8594;</span>
+          <div class="arch-n"><span class="arch-icon">&#128421;</span><span class="arch-lbl">INTERFACE</span>Dashboard</div>
+        </div>
+      </div>
+
+      <!-- Performances -->
+      <div class="f-card">
+        <div class="f-title">&#9889; PERFORMANCES SYST&Egrave;ME</div>
+        <div class="pg">
+          <!-- CPU 23% → offset = 157*(1-0.23) = 120.9 -->
+          <div class="pc">
+            <div class="pl">CPU</div>
+            <div class="ring">
+              <svg width="58" height="58" viewBox="0 0 58 58"><circle class="rbg" cx="29" cy="29" r="25"/><circle class="rfg rc" cx="29" cy="29" r="25" style="stroke-dashoffset:121"/></svg>
+              <div class="rlbl">23%</div>
+            </div>
+            <div class="psub">23% utilis&eacute;</div>
+          </div>
+          <!-- RAM 47% → offset = 157*(1-0.47) = 83.2 -->
+          <div class="pc">
+            <div class="pl">RAM</div>
+            <div class="ring">
+              <svg width="58" height="58" viewBox="0 0 58 58"><circle class="rbg" cx="29" cy="29" r="25"/><circle class="rfg rr" cx="29" cy="29" r="25" style="stroke-dashoffset:83"/></svg>
+              <div class="rlbl" style="color:var(--green)">47%</div>
+            </div>
+            <div class="psub">47% utilis&eacute;e</div>
+          </div>
+          <!-- Disque 32% → offset = 157*(1-0.32) = 106.8 -->
+          <div class="pc">
+            <div class="pl">DISQUE</div>
+            <div class="ring">
+              <svg width="58" height="58" viewBox="0 0 58 58"><circle class="rbg" cx="29" cy="29" r="25"/><circle class="rfg rd" cx="29" cy="29" r="25" style="stroke-dashoffset:107"/></svg>
+              <div class="rlbl" style="color:var(--warn)">32%</div>
+            </div>
+            <div class="psub">32% utilis&eacute;</div>
+          </div>
+          <!-- Réseau 128Mbps → visuel 68% → offset = 157*(1-0.68) = 50.2 -->
+          <div class="pc">
+            <div class="pl">R&Eacute;SEAU</div>
+            <div class="ring">
+              <svg width="58" height="58" viewBox="0 0 58 58"><circle class="rbg" cx="29" cy="29" r="25"/><circle class="rfg rn" cx="29" cy="29" r="25" style="stroke-dashoffset:50"/></svg>
+              <div class="rlbl" style="color:var(--cyan2);font-size:.65rem">128</div>
+            </div>
+            <div class="psub">128 Mbps</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- À propos -->
+      <div class="f-card">
+        <div class="f-title">&#8505; &Agrave; PROPOS D'ASTROSCAN</div>
+        <div class="abt-desc">Plateforme d'observation spatiale temps r&eacute;el avec architecture r&eacute;siliente multi-sources. Con&ccedil;u pour la surveillance, l'analyse et la visualisation de donn&eacute;es spatiales.</div>
+        <div class="abt-logo">ASTROSCAN</div>
+        <div class="abt-meta">Version v2.1.0 &mdash; Production<br>Node : 5.78.153.17 &mdash; Hetzner DE<br>Domaines : astroscan.space</div>
+      </div>
+
+    </div>
+  </div>
+</div><!-- /main -->
+
+<script src="/static/lib/leaflet/leaflet.js"></script>
+<script>
+/* ── UTC Clock ─────────────────────────────────────────────── */
+(function(){
+  var el=document.getElementById('utc-clock');
+  function p(n){return n<10?'0'+n:n}
+  function tick(){var d=new Date();el.textContent=p(d.getUTCHours())+':'+p(d.getUTCMinutes())+':'+p(d.getUTCSeconds())+' UTC'}
+  tick();setInterval(tick,1000);
+})();
+
+/* ── Star Canvas ───────────────────────────────────────────── */
+(function(){
+  var c=document.getElementById('stars-canvas');
+  var ctx=c.getContext('2d');
+  var stars=[];
+  function resize(){c.width=window.innerWidth;c.height=window.innerHeight}
+  function init(){
+    resize();stars=[];
+    var n=Math.floor(c.width*c.height/5000);
+    for(var i=0;i<n;i++)stars.push({
+      x:Math.random()*c.width,y:Math.random()*c.height,
+      r:Math.random()*.95+.15,t:Math.random()*Math.PI*2,
+      dt:(Math.random()*.0045+.001)*(Math.random()<.5?1:-1)
+    });
+  }
+  function draw(){
+    ctx.clearRect(0,0,c.width,c.height);
+    for(var i=0;i<stars.length;i++){
+      var s=stars[i];s.t+=s.dt;
+      var a=.22+Math.abs(Math.sin(s.t))*.68;
+      ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(180,220,255,'+a.toFixed(2)+')';ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',init);init();draw();
+})();
+
+/* ── Leaflet Map ───────────────────────────────────────────── */
+(function(){
+  var map=L.map('world-map',{
+    zoomControl:true,
+    attributionControl:false,
+    scrollWheelZoom:false,
+    minZoom:1,maxZoom:8
+  }).setView([15,0],1.4);
+  
+
+  /* NASA VIIRS City Lights (nuit) */
+  L.tileLayer(
+    'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/VIIRS_CityLights_2012/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg',
+    {maxZoom:8,errorTileUrl:'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}
+  ).addTo(map);
+
+  /* Custom pulsing marker factory */
+  function pulseIcon(color){
+    var c=color==='green'?'#00ff88':'#00eaff';
+    return L.divIcon({
+      className:'',
+      html:'<div style="position:relative;width:24px;height:24px">'
+        +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;background:'+c+';border-radius:50%;box-shadow:0 0 8px '+c+'"></div>'
+        +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:22px;height:22px;border:2px solid '+c+';border-radius:50%;animation:pring 2.2s ease-out infinite"></div>'
+        +'</div>',
+      iconSize:[24,24],
+      iconAnchor:[12,12]
+    });
+  }
+
+  /* Add keyframe to document */
+  var style=document.createElement('style');
+  style.textContent='@keyframes pring{0%{transform:translate(-50%,-50%) scale(.25);opacity:1}100%{transform:translate(-50%,-50%) scale(1.7);opacity:0}}';
+  document.head.appendChild(style);
+
+  /* Visitor markers */
+  var markers=[
+    {lat:40.71,lng:-74.01,city:'New York',color:'cyan'},
+    {lat:36.73,lng:3.09,city:'Alger',color:'green'},
+    {lat:1.35,lng:103.82,city:'Singapore',color:'cyan'},
+    {lat:48.86,lng:2.35,city:'Paris',color:'cyan'},
+    {lat:51.51,lng:-.13,city:'London',color:'cyan'},
+    {lat:52.52,lng:13.41,city:'Berlin',color:'cyan'},
+    {lat:52.37,lng:4.9,city:'Amsterdam',color:'cyan'},
+    {lat:50.45,lng:30.52,city:'Kyiv',color:'cyan'},
+    {lat:22.30,lng:114.17,city:'Hong Kong',color:'cyan'},
+    {lat:35.69,lng:139.69,city:'Tokyo',color:'cyan'},
+    {lat:-33.87,lng:151.21,city:'Sydney',color:'cyan'},
+    {lat:55.75,lng:37.62,city:'Moscow',color:'cyan'},
+    {lat:19.07,lng:72.87,city:'Mumbai',color:'cyan'},
+    {lat:31.23,lng:121.47,city:'Shanghai',color:'cyan'},
+    {lat:-23.55,lng:-46.63,city:'São Paulo',color:'cyan'},
+    {lat:30.04,lng:31.24,city:'Cairo',color:'cyan'},
+  ];
+
+  markers.forEach(function(m){
+    var popup=L.popup({
+      className:'leaflet-dark-popup',
+      closeButton:false,
+      offset:[0,-6]
+    }).setContent('<div style="background:rgba(2,11,24,.95);border:1px solid rgba(0,234,255,.3);border-radius:5px;padding:4px 10px;font-family:Segoe UI,sans-serif;font-size:.65rem;color:#fff;letter-spacing:.06em">'+m.city+'</div>');
+    L.marker([m.lat,m.lng],{icon:pulseIcon(m.color)}).addTo(map).bindPopup(popup);
+  });
+
+  /* Dark overlay on tiles that fail (NASA CDN can be slow) */
+  map.on('tileerror',function(){});
+})();
+</script>
+<script>
+function toggleISSInfo(){
+  var p=document.getElementById('iss-popup');
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+</script>
+<script>
+(function(){
+  const canvas = document.getElementById('solarCanvas');
+  const tooltip = document.getElementById('planet-tooltip');
+  const info = document.getElementById('planet-info');
+  const ctx = canvas.getContext('2d');
+
+  // Données orbitales réelles (période en jours terrestres, distance en UA)
+  const planets = [
+    {name:'Mercure', color:'#b5b5b5', r:3,  a:0.387, period:87.97,  phase:0.2},
+    {name:'Vénus',   color:'#f5cba7', r:5,  a:0.723, period:224.7,  phase:1.1},
+    {name:'Terre',   color:'#4fa3e0', r:5,  a:1.0,   period:365.25, phase:1.8},
+    {name:'Mars',    color:'#e07050', r:4,  a:1.524, period:686.97, phase:3.2},
+    {name:'Jupiter', color:'#c8a87a', r:10, a:2.5,   period:4332.6, phase:0.7},
+    {name:'Saturne', color:'#e8d5a0', r:8,  a:3.2,   period:10759,  phase:2.1},
+    {name:'Uranus',  color:'#7de8e8', r:6,  a:4.0,   period:30688,  phase:4.5},
+    {name:'Neptune', color:'#4060e0', r:6,  a:4.7,   period:60182,  phase:5.3},
+  ];
+
+  // Epoch J2000 = 1er janvier 2000 12h UTC
+  const J2000 = new Date('2000-01-01T12:00:00Z').getTime();
+
+  function resize(){
+    const size = canvas.parentElement.clientWidth;
+    canvas.width = size;
+    canvas.height = size;
+  }
+
+  function draw(){
+    resize();
+    const W = canvas.width, H = canvas.height;
+    const cx = W/2, cy = H/2;
+    const scale = (W/2 - 18) / 5.0;
+    const now = Date.now();
+    const t = now/1000;
+    const daysSinceJ2000 = (now - J2000) / 86400000;
+
+    ctx.clearRect(0,0,W,H);
+
+    // Fond étoilé
+    ctx.fillStyle = '#020b18';
+    ctx.fillRect(0,0,W,H);
+    // Nébuleuse animée
+    const nebT = t * 0.04;
+    [[cx*0.4, cy*0.6,'#0a1a3a'], [cx*1.6, cy*1.3,'#0a0a2a'], [cx, cy*0.3,'#050d1f']].forEach(([nx,ny,nc])=>{
+      const ng = ctx.createRadialGradient(nx+Math.sin(nebT)*15, ny+Math.cos(nebT)*10, 0, nx, ny, W*0.45);
+      ng.addColorStop(0, nc+'cc');
+      ng.addColorStop(1, 'transparent');
+      ctx.fillStyle=ng; ctx.fillRect(0,0,W,H);
+    });
+    // Init étoiles avec scintillement
+    if(!canvas._stars){
+      canvas._stars=[];
+      for(let i=0;i<120;i++) canvas._stars.push({
+        x:Math.random()*W, y:Math.random()*H,
+        r:Math.random()*1.4+0.3,
+        speed:Math.random()*0.02+0.005,
+        phase:Math.random()*Math.PI*2,
+        layer:Math.random()  // parallaxe : 0=loin, 1=proche
+      });
+    }
+    canvas._stars.forEach(s=>{
+      // Scintillement sinusoïdal
+      const alpha = 0.2 + 0.7*Math.abs(Math.sin(t*s.speed*60 + s.phase));
+      // Légère dérive parallaxe (les étoiles proches bougent plus vite)
+      const drift = Math.sin(t*0.08)*4*s.layer;
+      const sx = (s.x + drift + W) % W;
+      ctx.beginPath();
+      ctx.arc(sx, s.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+      // Halo pour les grosses étoiles
+      if(s.r > 1.1){
+        ctx.beginPath();
+        ctx.arc(sx, s.y, s.r*2.5, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(180,220,255,${alpha*0.12})`;
+        ctx.fill();
+      }
+    });
+
+    // Soleil
+    const sunGrad = ctx.createRadialGradient(cx,cy,0,cx,cy,14);
+    sunGrad.addColorStop(0,'#fff7a0');
+    sunGrad.addColorStop(0.4,'#ffcc00');
+    sunGrad.addColorStop(1,'rgba(255,150,0,0)');
+    ctx.beginPath();ctx.arc(cx,cy,14,0,Math.PI*2);
+    ctx.fillStyle=sunGrad;ctx.fill();
+
+    // Orbites et planètes
+    planets.forEach(p=>{
+      const orbitR = p.a * scale;
+      // Init historique de position
+      if(!p._trail) p._trail=[];
+      p._trail.push({x: cx + Math.cos(p.phase + (2*Math.PI * daysSinceJ2000 / p.period))*p.a*scale,
+                     y: cy + Math.sin(p.phase + (2*Math.PI * daysSinceJ2000 / p.period))*p.a*scale});
+      if(p._trail.length > 18) p._trail.shift();
+      // Dessiner traînée
+      p._trail.forEach((pt,i)=>{
+        const alpha = (i/p._trail.length)*0.35;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, p.r*(i/p._trail.length)*0.7, 0, Math.PI*2);
+        ctx.fillStyle = p.color.replace(')',`,${alpha})`).replace('rgb','rgba').replace('#',
+          ()=>{ const h=p.color.replace('#','');
+            const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+            return `rgba(${r},${g},${b},`; }) + `${alpha})`;
+        ctx.fill();
+      });
+      // Orbite
+      ctx.beginPath();ctx.arc(cx,cy,orbitR,0,Math.PI*2);
+      ctx.strokeStyle='rgba(0,234,255,.08)';ctx.lineWidth=.8;ctx.stroke();
+
+      // Position angulaire réelle
+      const angle = p.phase + (2*Math.PI * daysSinceJ2000 / p.period);
+      const px = cx + Math.cos(angle)*orbitR;
+      const py = cy + Math.sin(angle)*orbitR;
+
+      // Planète
+      ctx.beginPath();ctx.arc(px,py,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.color;ctx.fill();
+      // Glow planète
+      const grd = ctx.createRadialGradient(px,py,0,px,py,p.r*3);
+      grd.addColorStop(0, p.color+'55');
+      grd.addColorStop(1, 'transparent');
+      ctx.beginPath();ctx.arc(px,py,p.r*3,0,Math.PI*2);
+      ctx.fillStyle=grd;ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,.15)';ctx.lineWidth=.5;ctx.stroke();
+
+      // Anneau Saturne
+      if(p.name==='Saturne'){
+        ctx.beginPath();
+        ctx.ellipse(px,py,p.r*2.2,p.r*0.6,angle,0,Math.PI*2);
+        ctx.strokeStyle='rgba(232,213,160,.4)';ctx.lineWidth=1.5;ctx.stroke();
+      }
+
+      // Label
+      ctx.fillStyle='rgba(0,234,255,.55)';
+      ctx.font=`${W<300?'6':'7'}px "Segoe UI"`;
+      ctx.fillText(p.name,px+p.r+2,py-p.r);
+
+      p._px=px;p._py=py;
+    });
+  }
+
+  // Tooltip au survol
+  canvas.addEventListener('mousemove',e=>{
+    const rect=canvas.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)*(canvas.width/rect.width);
+    const my=(e.clientY-rect.top)*(canvas.height/rect.height);
+    let found=null;
+    planets.forEach(p=>{ if(p._px&&Math.hypot(mx-p._px,my-p._py)<p.r+6) found=p; });
+    if(found){
+      tooltip.style.display='block';
+      tooltip.style.left=(e.clientX-rect.left+10)+'px';
+      tooltip.style.top=(e.clientY-rect.top-20)+'px';
+      tooltip.textContent=`${found.name} · ${found.a} UA · ${found.period}j`;
+    } else { tooltip.style.display='none'; }
+  });
+
+  // Info bar planètes
+  info.innerHTML = planets.map(p=>`<span style="display:flex;align-items:center;gap:3px"><span style="width:7px;height:7px;border-radius:50%;background:${p.color};display:inline-block"></span>${p.name}</span>`).join('');
+
+  setInterval(draw, 50);
+  window.addEventListener('resize', draw);
+  draw();
+})();
+</script>
+<script>
+(function(){
+  function syncOrbitalOfficialStats(){
+    fetch('/api/visitors/snapshot?exclude_my_ip=1&_=' + Date.now(), {credentials:'same-origin'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d || typeof d !== 'object') return;
+
+        if (typeof d.distinct_countries === 'number') {
+          var pays = d.distinct_countries.toLocaleString('fr-FR');
+          var tb = document.getElementById('orb-pays-tb');
+          var mc = document.getElementById('orb-pays-mc');
+          if (tb) tb.textContent = pays;
+          if (mc) mc.textContent = pays;
+        }
+
+        if (typeof d.total === 'number') {
+          var visitors = d.total.toLocaleString('fr-FR');
+          var vtb = document.getElementById('orb-visit-tb');
+          var vmc = document.getElementById('orb-visit-mc');
+          if (vtb) vtb.textContent = visitors;
+          if (vmc) vmc.textContent = visitors;
+        }
+
+        var topList = document.getElementById('orb-top-pays-list');
+        if (topList && Array.isArray(d.top_countries)) {
+          var html = '';
+          var items = d.top_countries.slice(0, 10);
+          for (var i = 0; i < items.length; i++) {
+            var c = items[i];
+            var code = (c.code || 'xx').toLowerCase();
+            var name = c.country || code.toUpperCase();
+            var cnt = (c.count || 0).toLocaleString('fr-FR');
+            html += '<div class="orb-badge">'
+              + '<span class="orb-badge-rank">#' + (i + 1) + '</span>'
+              + '<img class="orb-badge-flag" src="https://flagcdn.com/20x15/' + code + '.png" alt="' + code.toUpperCase() + '">'
+              + '<span class="orb-badge-name">' + name + '</span>'
+              + '<span class="orb-badge-count">' + cnt + '</span>'
+              + '</div>';
+          }
+          topList.innerHTML = html;
+        }
+      })
+      .catch(function(){});
+  }
+
+  syncOrbitalOfficialStats();
+  setInterval(syncOrbitalOfficialStats, 15000);
+})();
+</script>
+
+<!-- PASS 27 — All countries modal -->
+<div id="all-countries-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeAllCountriesModal()">
+  <div style="background:#0a1626;border:1px solid rgba(0,255,255,0.3);border-radius:12px;max-width:600px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 40px rgba(0,255,255,0.2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(0,255,255,0.2)">
+      <h3 style="margin:0;color:#00ffff;font-size:1.1em;letter-spacing:1px">&#127757; TOUS LES PAYS VISITEURS</h3>
+      <button onclick="closeAllCountriesModal()" style="background:transparent;border:1px solid rgba(0,255,255,0.4);color:#00ffff;width:32px;height:32px;border-radius:6px;cursor:pointer;font-size:1.2em;line-height:1">&times;</button>
+    </div>
+    <div style="padding:12px 20px;border-bottom:1px solid rgba(0,255,255,0.1)">
+      <input type="text" id="all-countries-filter" placeholder="&#128270; Rechercher un pays..." oninput="filterAllCountries()" style="width:100%;padding:8px 12px;background:#0d1f3a;border:1px solid rgba(0,255,255,0.3);border-radius:6px;color:#e0f8ff;font-size:0.95em;outline:none" />
+    </div>
+    <div id="all-countries-content" style="overflow-y:auto;padding:8px 20px 20px 20px;flex:1">
+      <div style="text-align:center;color:#7fc8e0;padding:40px 0">Chargement...</div>
+    </div>
+    <div id="all-countries-footer" style="padding:10px 20px;border-top:1px solid rgba(0,255,255,0.1);font-size:0.85em;color:#7fc8e0;text-align:center"></div>
+  </div>
+</div>
+
+<script>
+/* PASS 27 — All countries modal logic */
+let _allCountriesData = [];
+function openAllCountriesModal(){
+  const m = document.getElementById('all-countries-modal');
+  m.style.display = 'flex';
+  const c = document.getElementById('all-countries-content');
+  c.innerHTML = '<div style="text-align:center;color:#7fc8e0;padding:40px 0">Chargement...</div>';
+  fetch('/api/export/visitors.json')
+    .then(r => r.json())
+    .then(data => {
+      const list = Array.isArray(data) ? data : (data.countries || data.data || []);
+      const merged = {};
+      list.forEach(row => {
+        const code = row.country_code || row.code || 'XX';
+        const name = (code === 'NL') ? 'Netherlands' : (row.country || row.name || 'Unknown');
+        const visits = parseInt(row.visits || row.count || row.cnt || 0, 10);
+        const key = code + '|' + name;
+        if (!merged[key]) merged[key] = {country:name, country_code:code, visits:0};
+        merged[key].visits += visits;
+      });
+      _allCountriesData = Object.values(merged).sort((a,b) => b.visits - a.visits);
+      renderAllCountries(_allCountriesData);
+      document.getElementById('all-countries-footer').textContent =
+        _allCountriesData.length + ' pays · ' +
+        _allCountriesData.reduce((s,r) => s + r.visits, 0) + ' visites totales';
+    })
+    .catch(e => {
+      c.innerHTML = '<div style="text-align:center;color:#ff7070;padding:40px 0">Erreur de chargement</div>';
+    });
+}
+function renderAllCountries(rows){
+  const c = document.getElementById('all-countries-content');
+  if (!rows || !rows.length){
+    c.innerHTML = '<div style="text-align:center;color:#7fc8e0;padding:40px 0">Aucun résultat</div>';
+    return;
+  }
+  const html = ['<table style="width:100%;border-collapse:collapse;font-size:0.92em">'];
+  html.push('<thead><tr style="color:#7fc8e0;font-size:0.8em;letter-spacing:1px"><th style="text-align:left;padding:6px 4px;border-bottom:1px solid rgba(0,255,255,0.15)">#</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(0,255,255,0.15)">PAYS</th><th style="text-align:right;padding:6px 4px;border-bottom:1px solid rgba(0,255,255,0.15)">VISITES</th></tr></thead><tbody>');
+  rows.forEach((r, i) => {
+    const flag = r.country_code && r.country_code !== 'XX' ?
+      String.fromCodePoint(...[...r.country_code.toUpperCase()].map(ch => 0x1F1E6 + ch.charCodeAt(0) - 65)) : '🌐';
+    html.push('<tr style="color:#e0f8ff"><td style="padding:6px 4px;color:#7fc8e0;font-size:0.85em">' + (i+1) + '</td><td style="padding:6px 8px">' + flag + ' ' + escapeHTML(r.country) + '</td><td style="padding:6px 4px;text-align:right;color:#00ffff;font-weight:600">' + r.visits + '</td></tr>');
+  });
+  html.push('</tbody></table>');
+  c.innerHTML = html.join('');
+}
+function filterAllCountries(){
+  const q = document.getElementById('all-countries-filter').value.toLowerCase().trim();
+  const filtered = _allCountriesData.filter(r => r.country.toLowerCase().includes(q));
+  renderAllCountries(filtered);
+}
+function closeAllCountriesModal(){
+  document.getElementById('all-countries-modal').style.display = 'none';
+}
+function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') closeAllCountriesModal();
+});
+</script>
+</body>
+</html>
