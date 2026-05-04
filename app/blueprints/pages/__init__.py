@@ -93,8 +93,8 @@ def overlord_live():
 
 @bp.route("/observatoire")
 def observatoire():
-    nasa_key = os.environ.get("NASA_API_KEY", "DEMO_KEY") or "DEMO_KEY"
-    response = make_response(render_template("observatoire.html", nasa_key=nasa_key))
+    # PASS 26.B — nasa_key no longer passed to template (proxy via /api/nasa/*)
+    response = make_response(render_template("observatoire.html"))
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"

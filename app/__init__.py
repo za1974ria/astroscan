@@ -130,6 +130,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.blueprints.lab import bp as lab_bp
     from app.blueprints.research import bp as research_bp
     from app.blueprints.satellites import bp as satellites_bp
+    from app.blueprints.nasa_proxy import bp as nasa_proxy_bp
 
     app.register_blueprint(seo_bp)
     app.register_blueprint(apod_bp)
@@ -154,4 +155,5 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(lab_bp)
     app.register_blueprint(research_bp)
     app.register_blueprint(satellites_bp)
-    log.info("[Blueprints] 23 blueprints + 8 hooks enregistrés (sync station_web.py)")
+    app.register_blueprint(nasa_proxy_bp)
+    log.info("[Blueprints] 24 blueprints + 8 hooks enregistrés (sync station_web.py)")
