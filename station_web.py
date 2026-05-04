@@ -3069,9 +3069,11 @@ except ImportError:
 # STATIC
 # ══════════════════════════════════════════════════════════════
 
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    return send_from_directory(f'{STATION}/static', filename)
+# PASS 25.2 — removed (Flask default static handler is sufficient,
+# no custom logic in original)
+# @app.route('/static/<path:filename>')
+# def static_files(filename):
+#     return send_from_directory(f'{STATION}/static', filename)
 
 # ══════════════════════════════════════════════════════════════
 # PAGE /ce_soir + APIs associées (Ce soir & news)
