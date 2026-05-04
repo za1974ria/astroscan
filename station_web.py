@@ -41,12 +41,12 @@ from datetime import datetime, timezone, timedelta
 # PASS 26.A — Sentry init removed from monolith.
 # Centralized in app/__init__.py:_init_sentry (called by create_app).
 # Avoids double-init that replaces the global hub.
-from flask import (Flask, render_template, jsonify, request, g,
-                   send_from_directory)
+from flask import Flask, render_template, jsonify, request, g
 # PASS 19 cleanup : flask {redirect, send_file, abort, make_response,
 # stream_with_context, Response} et werkzeug.secure_filename retirés (utilisés
 # uniquement dans des routes/handlers déjà migrés vers les BPs).
-# send_from_directory reste : utilisé par /static (override Flask).
+# PASS 25.2 residue : send_from_directory retiré — /static est servi par
+# Flask via static_folder du factory (app/__init__.py).
 from app.services.orbit_sgp4 import propagate_tle_debug  # noqa: F401 — re-export pour BPs
 from app.services.satellites import SATELLITES, list_satellites, get_satellite_tle_name_map  # noqa: F401 — re-export pour BPs
 from app.services.accuracy_history import get_accuracy_history, get_accuracy_stats  # noqa: F401 — re-export pour BPs
