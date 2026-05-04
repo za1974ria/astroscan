@@ -30,6 +30,7 @@ def create_app(config_name: str = "production") -> Flask:
     _init_sqlite_wal(app.config["DB_PATH"])
     _register_blueprints(app)
     _register_hooks(app)
+    _register_bootstrap(app)
 
     log.info("[AstroScan] Application factory initialisée — %s", config_name)
     return app
@@ -39,6 +40,12 @@ def _register_hooks(app: Flask) -> None:
     """Attache les 8 hooks app-level (PASS 24)."""
     from app.hooks import register_hooks
     register_hooks(app)
+
+
+def _register_bootstrap(app: Flask) -> None:
+    """Lance les threads de fond app-level (PASS 25.1)."""
+    from app.bootstrap import start_background_threads
+    start_background_threads()
 
 
 def _init_sentry(app: Flask) -> None:

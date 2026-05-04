@@ -1610,18 +1610,19 @@ def tle_refresh_loop():
             time.sleep(5)
 
 
+# PASS 25.1 — moved to app/bootstrap.py (factory-launched)
 # Initialiser le cache TLE au démarrage de l'application
-try:
-    load_tle_cache_from_disk()
-    # premier rafraîchissement non bloquant
-    try:
-        fetch_tle_from_celestrak()
-    except Exception:
-        pass
-    t = threading.Thread(target=tle_refresh_loop, daemon=True)
-    t.start()
-except Exception as e:
-    _orbital_log.warning(f"[TLE] init failed: {e}")
+# try:
+#     load_tle_cache_from_disk()
+#     # premier rafraîchissement non bloquant
+#     try:
+#         fetch_tle_from_celestrak()
+#     except Exception:
+#         pass
+#     t = threading.Thread(target=tle_refresh_loop, daemon=True)
+#     t.start()
+# except Exception as e:
+#     _orbital_log.warning(f"[TLE] init failed: {e}")
 
 # ══════════════════════════════════════════════════════════════
 # HELPERS
@@ -4907,12 +4908,13 @@ def translate_worker():
             time.sleep(60)
 
 
-_start_lab_image_collector()
-_start_skyview_sync()
-try:
-    threading.Thread(target=translate_worker, daemon=True).start()
-except Exception as e:
-    log.warning("translate_worker start: %s", e)
+# PASS 25.1 — moved to app/bootstrap.py (factory-launched)
+# _start_lab_image_collector()
+# _start_skyview_sync()
+# try:
+#     threading.Thread(target=translate_worker, daemon=True).start()
+# except Exception as e:
+#     log.warning("translate_worker start: %s", e)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -5130,7 +5132,8 @@ def _start_tle_collector():
     t.start()
 
 
-_start_tle_collector()
+# PASS 25.1 — moved to app/bootstrap.py (factory-launched)
+# _start_tle_collector()
 try:
     refresh_tle_from_amsat()
 except Exception:
