@@ -4,16 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=0.45, minimum-scale=0.1, maximum-scale=5.0, user-scalable=yes">
 <title>AstroScan-Chohra — Portail · ORBITAL-CHOHRA</title>
-<meta name="description" content="Tableau de bord astronomique — position ISS en direct, alertes NOAA, images James Webb, passages satellites et météo spatiale depuis Tlemcen.">
-<meta name="keywords" content="tableau de bord astronomique, ISS live, James Webb, NOAA, satellites, Tlemcen, Algérie, espace">
-<meta property="og:title" content="AstroScan-Chohra — Portail Astronomique">
-<meta property="og:description" content="Tableau de bord astronomique — position ISS live, alertes NOAA, images James Webb, passages satellites.">
+<meta name="description" content="{% if lang == 'en' %}Astronomy dashboard — live ISS position, NOAA alerts, James Webb imagery, satellite passes and space weather from Tlemcen.{% else %}Tableau de bord astronomique — position ISS en direct, alertes NOAA, images James Webb, passages satellites et météo spatiale depuis Tlemcen.{% endif %}">
+<meta name="keywords" content="{% if lang == 'en' %}astronomy dashboard, live ISS, James Webb, NOAA, satellites, Tlemcen, Algeria, space{% else %}tableau de bord astronomique, ISS live, James Webb, NOAA, satellites, Tlemcen, Algérie, espace{% endif %}">
+<meta property="og:title" content="{% if lang == 'en' %}AstroScan-Chohra — Astronomy Portal{% else %}AstroScan-Chohra — Portail Astronomique{% endif %}">
+<meta property="og:description" content="{% if lang == 'en' %}Astronomy dashboard — live ISS position, NOAA alerts, James Webb imagery, satellite passes.{% else %}Tableau de bord astronomique — position ISS live, alertes NOAA, images James Webb, passages satellites.{% endif %}">
 <meta property="og:url" content="https://astroscan.space/portail">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="AstroScan-Chohra — Portail Astronomique">
-<meta name="twitter:description" content="Tableau de bord astronomique — ISS live, alertes NOAA, James Webb, passages satellites.">
+<meta name="twitter:title" content="{% if lang == 'en' %}AstroScan-Chohra — Astronomy Portal{% else %}AstroScan-Chohra — Portail Astronomique{% endif %}">
+<meta name="twitter:description" content="{% if lang == 'en' %}Astronomy dashboard — live ISS, NOAA alerts, James Webb, satellite passes.{% else %}Tableau de bord astronomique — ISS live, alertes NOAA, James Webb, passages satellites.{% endif %}">
 <meta name="twitter:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
 <meta name="author" content="Zakaria Chohra — AstroScan">
 <meta name="robots" content="index, follow">
@@ -1244,19 +1244,19 @@ hr{
 
       <div class="nav-item" id="nav-ephemerides" onclick="navigate('ephemerides')">
         <span class="nav-icon">☀️</span>
-        <span class="nav-label">ÉPHÉMÉRIDES</span>
+        <span class="nav-label">{% if lang == 'en' %}EPHEMERIS{% else %}ÉPHÉMÉRIDES{% endif %}</span>
         <span class="nav-badge live">LIVE</span>
       </div>
 
       <div class="nav-item" id="nav-nasa-apod" onclick="navigate('nasa-apod')" style="border-left:2px solid rgba(245,197,24,0.35)">
         <span class="nav-icon">🛰</span>
-        <span class="nav-label" style="color:#f5c518">NASA IMAGE DU JOUR</span>
-        <span class="nav-badge" style="background:linear-gradient(90deg,#b8860b,#f5c518);color:#0a0a0a;font-size:7px;padding:1px 6px;border-radius:3px;letter-spacing:1px;font-weight:700;animation:pulse 2s infinite">QUOTIDIEN</span>
+        <span class="nav-label" style="color:#f5c518">{% if lang == 'en' %}NASA PICTURE OF THE DAY{% else %}NASA IMAGE DU JOUR{% endif %}</span>
+        <span class="nav-badge" style="background:linear-gradient(90deg,#b8860b,#f5c518);color:#0a0a0a;font-size:7px;padding:1px 6px;border-radius:3px;letter-spacing:1px;font-weight:700;animation:pulse 2s infinite">{% if lang == 'en' %}DAILY{% else %}QUOTIDIEN{% endif %}</span>
       </div>
 
       <div class="nav-item" id="nav-control" onclick="navigate('control')">
         <span class="nav-icon">🌤</span>
-        <span class="nav-label">MÉTÉO</span>
+        <span class="nav-label">{% if lang == 'en' %}WEATHER{% else %}MÉTÉO{% endif %}</span>
         <span class="nav-badge live">LIVE</span>
       </div>
 
@@ -1327,12 +1327,12 @@ hr{
 
       <a href="/flight-radar"
 style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00d4ff;text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:1px solid rgba(0,180,255,0.08);margin-top:4px">
-✈️ <span>TRAFIC AÉRIEN</span>
+✈️ <span>{% if lang == 'en' %}AIR TRAFFIC{% else %}TRAFIC AÉRIEN{% endif %}</span>
 <span style="background:#00ff88;color:#000;font-size:8px;padding:1px 5px;border-radius:3px;margin-left:auto">LIVE</span>
 </a>
       <a href="/scientific" target="_blank"
 style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;text-decoration:none;font-family:monospace;font-size:11px;letter-spacing:1px;border-top:1px solid #00ff8822;margin-top:4px">
-⚗️ MODE SCIENTIFIQUE
+⚗️ {% if lang == 'en' %}SCIENTIFIC MODE{% else %}MODE SCIENTIFIQUE{% endif %}
 <span style="background:#00ff88;color:#000;font-size:8px;padding:1px 6px;border-radius:10px;margin-left:auto">PRO</span>
 </a>
       <a href="/lab" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
@@ -1353,10 +1353,10 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     </div>
 
     <div style="border-top:none;padding:8px;margin-top:8px;background:rgba(0,20,40,0.5);display:block !important;visibility:visible !important">
-      <div style="font-family:monospace;font-size:9px;color:#00d4ff;letter-spacing:2px;margin-bottom:6px">🔭 OBSERVATOIRE GLOBAL — FLUX D'IMAGES NASA</div>
+      <div style="font-family:monospace;font-size:9px;color:#00d4ff;letter-spacing:2px;margin-bottom:6px">🔭 {% if lang == 'en' %}GLOBAL OBSERVATORY — NASA IMAGE FEED{% else %}OBSERVATOIRE GLOBAL — FLUX D'IMAGES NASA{% endif %}</div>
       <div id="sidebar-hubble" style="min-height:60px;display:block !important">
         <img src="https://cdn.spacetelescope.org/archives/images/publicationjpg/heic1509a.jpg" alt="Hubble test" style="width:100%;height:60px;object-fit:cover;border-radius:4px;border:1px solid rgba(0,255,136,0.2)" onerror="this.style.display='none'">
-        <div style="color:#00ff88;font-size:9px;text-align:center;padding:8px">⟳ Chargement...</div>
+        <div style="color:#00ff88;font-size:9px;text-align:center;padding:8px">⟳ {% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
       </div>
     </div>
 
@@ -1364,7 +1364,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
 
     <!-- ISS Live -->
     <div class="iss-panel">
-      <div class="iss-panel-title">🛰 ISS EN DIRECT</div>
+      <div class="iss-panel-title">🛰 {% if lang == 'en' %}ISS LIVE{% else %}ISS EN DIRECT{% endif %}</div>
       <div id="iss-status" style="font-size:0.65rem;color:var(--amber);text-align:center;margin:4px 0;min-height:1em;line-height:1.3"></div>
       <div class="iss-globe-wrap">
         <canvas id="iss-globe" width="180" height="180"></canvas>
@@ -1395,9 +1395,9 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     <div class="s-divider"></div>
 
     <div class="card" style="border: 1px solid var(--amber); background: rgba(255, 193, 7, 0.05); padding: 20px;">
-      <div class="section-title" style="margin-bottom: 20px;">📡 TÉLÉMÉTRIE INTERSTELLAIRE (RÉSEAU DSN)</div>
+      <div class="section-title" style="margin-bottom: 20px;">📡 {% if lang == 'en' %}INTERSTELLAR TELEMETRY (DSN NETWORK){% else %}TÉLÉMÉTRIE INTERSTELLAIRE (RÉSEAU DSN){% endif %}</div>
       <div id="voyager-live-container" style="font-family: monospace; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;">
-        <span style="color: var(--amber);">[ ÉTABLISSEMENT DE LA LIAISON DSN... ]</span>
+        <span style="color: var(--amber);">[ {% if lang == 'en' %}ESTABLISHING DSN LINK...{% else %}ÉTABLISSEMENT DE LA LIAISON DSN...{% endif %} ]</span>
       </div>
     </div>
 
@@ -1439,8 +1439,8 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     </div>
 
     <div id="system-health" class="sidebar-section" style="margin-top:12px;padding:10px 16px;background:rgba(0,20,40,0.5);border:1px solid var(--border);clip-path:polygon(4px 0%,100% 0%,100% calc(100% - 4px),calc(100% - 4px) 100%,0% 100%,0% 4px);">
-      <div class="sidebar-label" style="margin-bottom:6px;">ÉTAT DU SYSTÈME</div>
-      <div id="system-health-status" style="font-size:0.5rem;line-height:1.5;color:var(--text);letter-spacing:0.06em;">Chargement...</div>
+      <div class="sidebar-label" style="margin-bottom:6px;">{% if lang == 'en' %}SYSTEM STATUS{% else %}ÉTAT DU SYSTÈME{% endif %}</div>
+      <div id="system-health-status" style="font-size:0.5rem;line-height:1.5;color:var(--text);letter-spacing:0.06em;">{% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
       <div id="system-diagnostics" style="font-size:0.5rem;line-height:1.5;color:var(--text-dim);letter-spacing:0.06em;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);"></div>
     </div>
 
@@ -1461,22 +1461,22 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     <div class="portal-hero">
       <h1>AstroScan</h1>
       <p style="color:#7ddcff;font-family:monospace;font-size:18px">
-        Real-time space observation and prediction platform.
+        {% if lang == 'en' %}Real-time space observation and prediction platform.{% else %}Plateforme d'observation et de prédiction spatiale en temps réel.{% endif %}
       </p>
       <div class="brief-block">
-        <div class="brief-title">ISS Live Tracking</div>
-        <div class="brief-desc">Real-time position powered by SGP4 orbital model.</div>
-        <div class="meta-note" id="iss-meta-note">Loading data...</div>
+        <div class="brief-title">{% if lang == 'en' %}LIVE ISS TRACKING{% else %}SUIVI EN DIRECT DE L'ISS{% endif %}</div>
+        <div class="brief-desc">{% if lang == 'en' %}Real-time position via SGP4 orbital model.{% else %}Position en temps réel grâce au modèle orbital SGP4.{% endif %}</div>
+        <div class="meta-note" id="iss-meta-note">{% if lang == 'en' %}Loading data...{% else %}Chargement des données...{% endif %}</div>
       </div>
       <div class="brief-block" id="passes-brief">
-        <div class="brief-title">Satellite Pass Prediction</div>
-        <div class="brief-desc">Accurate satellite visibility predictions.</div>
-        <div class="meta-note" id="passes-meta-note">Loading data...</div>
+        <div class="brief-title">{% if lang == 'en' %}SATELLITE PASS PREDICTION{% else %}PRÉDICTION DU PASSAGE DU SATELLITE{% endif %}</div>
+        <div class="brief-desc">{% if lang == 'en' %}Accurate satellite visibility forecasts.{% else %}Prévisions précises de la visibilité par satellite.{% endif %}</div>
+        <div class="meta-note" id="passes-meta-note">{% if lang == 'en' %}Loading data...{% else %}Chargement des données...{% endif %}</div>
       </div>
       <div class="brief-block">
-        <div class="brief-title">Astronomy Picture of the Day</div>
-        <div class="brief-desc">Curated daily astronomy content.</div>
-        <div class="meta-note" id="apod-meta-note">Loading data...</div>
+        <div class="brief-title">{% if lang == 'en' %}ASTRONOMY PICTURE OF THE DAY{% else %}IMAGE ASTRONOMIQUE DU JOUR{% endif %}</div>
+        <div class="brief-desc">{% if lang == 'en' %}Daily curated astronomical content.{% else %}Contenu astronomique quotidien sélectionné avec soin.{% endif %}</div>
+        <div class="meta-note" id="apod-meta-note">{% if lang == 'en' %}Loading data...{% else %}Chargement des données...{% endif %}</div>
       </div>
     </div>
 
@@ -1531,7 +1531,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
         <div class="splash-btn" onclick="navigate('mission-control')">
           <div class="splash-btn-icon">🛰</div>
           <div class="splash-btn-name">Mission Control</div>
-          <div class="splash-btn-desc">Terre 3D · ISS · Vue spatiale</div>
+          <div class="splash-btn-desc">{% if lang == 'en' %}Earth 3D · ISS · Space view{% else %}Terre 3D · ISS · Vue spatiale{% endif %}</div>
         </div>
         <div class="splash-btn" onclick="window.open('/scientific','_blank')">
           <div class="splash-btn-icon">⚗️</div>
@@ -1540,55 +1540,55 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
         </div>
         <div class="splash-btn" onclick="window.open('http://5.78.153.17:5000','_blank')">
           <div class="splash-btn-icon">🔗</div>
-          <div class="splash-btn-name">OUVRIR DIRECT</div>
-          <div class="splash-btn-desc">Onglet séparé</div>
+          <div class="splash-btn-name">{% if lang == 'en' %}OPEN LIVE{% else %}OUVRIR DIRECT{% endif %}</div>
+          <div class="splash-btn-desc">{% if lang == 'en' %}Separate tab{% else %}Onglet séparé{% endif %}</div>
         </div>
       </div>
 
       <div class="portal-cards-grid">
         <a href="/orbital-map" class="portal-card card">
-          <div class="card-title">CARTE ORBITALE</div>
-          <div class="card-desc">ISS et satellites en direct sur la planète</div>
+          <div class="card-title">{% if lang == 'en' %}ORBITAL MAP{% else %}CARTE ORBITALE{% endif %}</div>
+          <div class="card-desc">{% if lang == 'en' %}ISS and satellites live on the planet{% else %}ISS et satellites en direct sur la planète{% endif %}</div>
           <span class="card-link">→ /orbital-map</span>
         </a>
         <a href="/space-weather" class="portal-card card">
-          <div class="card-title">MÉTÉO SPATIALE</div>
-          <div class="card-desc">Activité solaire, vent solaire, indice Kp</div>
+          <div class="card-title">{% if lang == 'en' %}SPACE WEATHER{% else %}MÉTÉO SPATIALE{% endif %}</div>
+          <div class="card-desc">{% if lang == 'en' %}Solar activity, solar wind, Kp index{% else %}Activité solaire, vent solaire, indice Kp{% endif %}</div>
           <span class="card-link">→ /space-weather</span>
         </a>
         <a href="/module/observatoire" class="portal-card card">
-          <div class="card-title">OBSERVATOIRE</div>
-          <div class="card-desc">Télescopes mondiaux et observations</div>
+          <div class="card-title">{% if lang == 'en' %}OBSERVATORY{% else %}OBSERVATOIRE{% endif %}</div>
+          <div class="card-desc">{% if lang == 'en' %}World telescopes and observations{% else %}Télescopes mondiaux et observations{% endif %}</div>
           <span class="card-link">→ /module/observatoire</span>
         </a>
         <a href="/module/vision" class="portal-card card">
           <div class="card-title">VISION 2026</div>
-          <div class="card-desc">Roadmap du projet</div>
+          <div class="card-desc">{% if lang == 'en' %}Project roadmap{% else %}Roadmap du projet{% endif %}</div>
           <span class="card-link">→ /module/vision</span>
         </a>
         <a href="/module/scientific" class="portal-card card">
-          <div class="card-title">MODE SCIENTIFIQUE</div>
-          <div class="card-desc">ISS, Lune, catalogue, météo solaire</div>
+          <div class="card-title">{% if lang == 'en' %}SCIENTIFIC MODE{% else %}MODE SCIENTIFIQUE{% endif %}</div>
+          <div class="card-desc">{% if lang == 'en' %}ISS, Moon, catalog, solar weather{% else %}ISS, Lune, catalogue, météo solaire{% endif %}</div>
           <span class="card-link">→ /module/scientific</span>
         </a>
         <a href="/module/lab" class="portal-card card">
           <div class="card-title">DIGITAL LAB</div>
-          <div class="card-desc">Analyse scientifique des images spatiales</div>
+          <div class="card-desc">{% if lang == 'en' %}Scientific analysis of space images{% else %}Analyse scientifique des images spatiales{% endif %}</div>
           <span class="card-link">→ /module/lab</span>
         </a>
         <a href="/mission-control" class="portal-card card">
           <div class="card-title">MISSION CONTROL</div>
-          <div class="card-desc">État ISS, Voyager, NOAA, alertes</div>
+          <div class="card-desc">{% if lang == 'en' %}ISS status, Voyager, NOAA, alerts{% else %}État ISS, Voyager, NOAA, alertes{% endif %}</div>
           <span class="card-link">→ /mission-control</span>
         </a>
         <a href="/space-intelligence-page" class="portal-card card">
           <div class="card-title">SPACE INTELLIGENCE</div>
-          <div class="card-desc">Alertes, événements, niveau de risque</div>
+          <div class="card-desc">{% if lang == 'en' %}Alerts, events, risk level{% else %}Alertes, événements, niveau de risque{% endif %}</div>
           <span class="card-link">→ /space-intelligence-page</span>
         </a>
         <a href="/module/galerie" class="portal-card card">
-          <div class="card-title">ARCHIVE STELLAIRE</div>
-          <div class="card-desc">Catalogue observations</div>
+          <div class="card-title">{% if lang == 'en' %}STELLAR ARCHIVE{% else %}ARCHIVE STELLAIRE{% endif %}</div>
+          <div class="card-desc">{% if lang == 'en' %}Observations catalog{% else %}Catalogue observations{% endif %}</div>
           <span class="card-link">→ /module/galerie</span>
         </a>
       </div>
@@ -1627,7 +1627,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
 
     <div class="frame-loader done" id="frame-loader">
       <div class="loader-spin"></div>
-      <div class="loader-text" id="loader-text">Chargement...</div>
+      <div class="loader-text" id="loader-text">{% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
     </div>
 
   </div>
@@ -1710,7 +1710,9 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
       inconnu: 'Inconnu',
       visites: 'visites',
       uniques: 'uniques',
-      pays: 'pays'
+      pays: 'pays',
+      nav_scientific: 'MODE SCIENTIFIQUE',
+      splash_scientific_desc: 'ISS, Lune, catalogue, météo solaire'
     },
     en: {
       aegis_active: 'AEGIS ACTIVE',
@@ -1769,7 +1771,9 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
       inconnu: 'Unknown',
       visites: 'visits',
       uniques: 'unique',
-      pays: 'countries'
+      pays: 'countries',
+      nav_scientific: 'SCIENTIFIC MODE',
+      splash_scientific_desc: 'ISS, Moon, catalog, solar weather'
     }
   };
 
@@ -1793,8 +1797,18 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
   }
 
   document.getElementById('lang-toggle').addEventListener('click', function() {
-    currentLang = currentLang === 'fr' ? 'en' : 'fr';
-    applyLang(currentLang);
+    var next = currentLang === 'fr' ? 'en' : 'fr';
+    /* Persist cookie before reload so server-side Jinja conditionals render in the new lang */
+    try { document.cookie = 'lang=' + next + ';path=/;max-age=31536000;samesite=Lax'; } catch (e) {}
+    try { localStorage.setItem('portail_lang', next); } catch (e) {}
+    /* Strip any ?lang= from the URL so cookie wins on reload, then reload */
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.delete('lang');
+      window.location.replace(url.toString());
+    } catch (e) {
+      window.location.reload();
+    }
   });
   applyLang(currentLang);
 
