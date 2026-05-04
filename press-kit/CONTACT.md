@@ -50,13 +50,13 @@ For fastest turnaround:
 **Languages:** French, English, Arabic
 **Formats:** email Q&A, video call (Google Meet, Zoom, Jitsi), phone, in-person (Tlemcen / Algeria — by arrangement)
 **Topics welcome:**
-- Solo engineering & full-stack ownership
+- Solo development & full-stack ownership
 - Open science & data accessibility
 - Independent observatories outside the US/EU
 - Bilingual scientific outreach (FR/EN/AR)
 - Astronomy from North Africa
 - AI orchestration in scientific applications
-- Reliability engineering on a single-operator stack
+- Reliability practices on a single-operator stack
 
 ---
 

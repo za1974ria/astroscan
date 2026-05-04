@@ -41,11 +41,11 @@ Drop-in copy for journalists, partner press releases, conference programs, and g
 ## 🏷️ Suggested headlines · Titres suggérés
 
 **EN**
-- *Solo Algerian engineer builds free real-time space observatory aggregating NASA, NOAA, ESA feeds*
-- *ASTRO-SCAN: How one engineer in Tlemcen made open space science accessible to 49 countries*
+- *Solo Algerian developer builds free real-time space observatory aggregating NASA, NOAA, ESA feeds*
+- *ASTRO-SCAN: How one developer in Tlemcen made open space science accessible to 49 countries*
 - *Independent observatory in North Africa serves real-time orbital data to citizen scientists worldwide*
 
 **FR**
-- *À Tlemcen, un ingénieur algérien construit en solo un observatoire spatial gratuit en temps réel*
+- *À Tlemcen, un développeur algérien construit en solo un observatoire spatial gratuit en temps réel*
 - *ASTRO-SCAN : la science spatiale ouverte servie depuis l'Algérie vers 49 pays*
 - *Comment un développeur indépendant rend accessibles NASA, NOAA et ESA à tout navigateur*

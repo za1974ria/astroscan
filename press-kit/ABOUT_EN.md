@@ -2,7 +2,7 @@
 
 ## One-line summary
 
-**ASTRO-SCAN is a free, open-data, real-time space observatory built solo by an independent scientist in Tlemcen, Algeria — bringing live NASA, NOAA, ESA, and JPL feeds to anyone with a browser.**
+**ASTRO-SCAN is a free, open-data, real-time space observatory built solo from Tlemcen, Algeria — bringing live NASA, NOAA, ESA, and JPL feeds to anyone with a browser.**
 
 ## Short description (50 words)
 

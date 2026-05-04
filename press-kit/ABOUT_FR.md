@@ -2,7 +2,7 @@
 
 ## Résumé en une ligne
 
-**ASTRO-SCAN est un observatoire spatial gratuit, en données ouvertes et en temps réel, conçu en solo par un scientifique indépendant à Tlemcen, Algérie — qui rend accessibles les flux NASA, NOAA, ESA et JPL à tout navigateur web.**
+**ASTRO-SCAN est un observatoire spatial gratuit, en données ouvertes et en temps réel, construit en solo depuis Tlemcen, Algérie — qui rend accessibles les flux NASA, NOAA, ESA et JPL à tout navigateur web.**
 
 ## Description courte (50 mots)
 
