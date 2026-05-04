@@ -29,9 +29,16 @@ def create_app(config_name: str = "production") -> Flask:
     _init_sentry(app)
     _init_sqlite_wal(app.config["DB_PATH"])
     _register_blueprints(app)
+    _register_hooks(app)
 
     log.info("[AstroScan] Application factory initialisée — %s", config_name)
     return app
+
+
+def _register_hooks(app: Flask) -> None:
+    """Attache les 8 hooks app-level (PASS 24)."""
+    from app.hooks import register_hooks
+    register_hooks(app)
 
 
 def _init_sentry(app: Flask) -> None:
@@ -122,4 +129,4 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(lab_bp)
     app.register_blueprint(research_bp)
     app.register_blueprint(satellites_bp)
-    log.info("[Blueprints] 23 blueprints enregistrés (sync station_web.py)")
+    log.info("[Blueprints] 23 blueprints + 8 hooks enregistrés (sync station_web.py)")
