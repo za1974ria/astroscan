@@ -198,12 +198,12 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full engineering record.
 
 ---
 
-## 👨‍🚀 Founder
+## 👨 About Zakaria
 
-**Zakaria Chohra** — *Founder & Director, ASTRO-SCAN Observatory*
-Tlemcen, Algeria · 34.87°N · 1.32°W
+**Zakaria Chohra** — *Built ASTRO-SCAN solo · Tlemcen, Algeria*
+34.87°N · 1.32°W
 
-Independent scientist and engineer. Built ASTRO-SCAN solo to make real-time orbital intelligence and space science accessible to the Francophone, Arabic-speaking, and global research communities.
+Independent solo developer. Built ASTRO-SCAN to make real-time orbital intelligence and space science accessible to the Francophone, Arabic-speaking, and global research communities.
 
 📧 **zakaria.chohra@gmail.com** · 🌍 **[astroscan.space](https://astroscan.space)** · 📰 **[Press Kit](./press-kit/)**
 

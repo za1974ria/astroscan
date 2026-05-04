@@ -2,7 +2,7 @@
 
 ## Primary contact
 
-**Zakaria Chohra** — Founder & Director, ASTRO-SCAN Observatory
+**Zakaria Chohra** — Created ASTRO-SCAN solo · Tlemcen, Algeria
 📧 **zakaria.chohra@gmail.com**
 🌍 [astroscan.space](https://astroscan.space)
 📍 Tlemcen, Algeria 🇩🇿 (34.87°N · 1.32°W)

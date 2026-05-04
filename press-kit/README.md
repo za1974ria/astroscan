@@ -14,7 +14,7 @@
 | **Tagline (EN)** | Real-time Space Observatory · Open Scientific Data |
 | **Tagline (FR)** | Observatoire spatial en temps réel · Données scientifiques ouvertes |
 | **Live URL** | [https://astroscan.space](https://astroscan.space) |
-| **Founder** | Zakaria Chohra |
+| **Built by** | Zakaria Chohra |
 | **Location** | Tlemcen, Algeria 🇩🇿 (34.87°N · 1.32°W) |
 | **Founded** | 2024 |
 | **License** | CC BY-NC-SA 4.0 (free for education & research) |
@@ -31,7 +31,7 @@
 
 - **[ABOUT_EN.md](./ABOUT_EN.md)** — Long description (English)
 - **[ABOUT_FR.md](./ABOUT_FR.md)** — Description longue (français)
-- **[FOUNDER.md](./FOUNDER.md)** — Founder bio (bilingual)
+- **[FOUNDER.md](./FOUNDER.md)** — About Zakaria (bilingual)
 - **[BOILERPLATE.md](./BOILERPLATE.md)** — Short, medium, long boilerplate texts
 - **[FAQ.md](./FAQ.md)** — Frequently asked press questions
 - **[CONTACT.md](./CONTACT.md)** — Media contact & outreach guidelines
@@ -41,7 +41,7 @@
 
 ## ✉️ Media Contact · Contact presse
 
-**Zakaria Chohra** — Founder & Director
+**Zakaria Chohra** — Built ASTRO-SCAN solo
 📧 **zakaria.chohra@gmail.com**
 🌍 [astroscan.space](https://astroscan.space)
 
