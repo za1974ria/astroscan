@@ -9,6 +9,24 @@ from flask import Flask
 log = logging.getLogger(__name__)
 
 
+def _resolve_secret_key(config_name: str) -> bytes:
+    """Return SECRET_KEY: enforce env presence in production,
+    fall back to ephemeral random in dev/test."""
+    key = os.environ.get("SECRET_KEY", "")
+    if config_name == "production":
+        if not key or len(key) < 16:
+            raise RuntimeError(
+                "SECRET_KEY must be set in environment "
+                "(min 16 chars) for production. See .env.example."
+            )
+        log.info("[CONFIG] SECRET_KEY loaded from env (len=%d)", len(key))
+        return key.encode() if isinstance(key, str) else key
+    if not key:
+        log.warning("[CONFIG] SECRET_KEY missing in %s, using ephemeral os.urandom(32)", config_name)
+        return os.urandom(32)
+    return key.encode() if isinstance(key, str) else key
+
+
 def create_app(config_name: str = "production") -> Flask:
     app = Flask(
         __name__,
@@ -17,7 +35,7 @@ def create_app(config_name: str = "production") -> Flask:
     )
 
     app.config.update(
-        SECRET_KEY=os.environ.get("SECRET_KEY", os.urandom(32)),
+        SECRET_KEY=_resolve_secret_key(config_name),
         TESTING=os.environ.get("TESTING", "0") == "1",
         STATION=os.environ.get("STATION", "/root/astro_scan"),
         DB_PATH=os.environ.get("DB_PATH",

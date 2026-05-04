@@ -38,20 +38,9 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
-# ─── OBSERVABILITÉ — SENTRY ─────────────────────────────────────────────────
-import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
-_SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
-if _SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=_SENTRY_DSN,
-        integrations=[FlaskIntegration()],
-        traces_sample_rate=0.1,
-        environment=os.environ.get("FLASK_ENV", "production"),
-        release="astroscan@2.0.0"
-    )
-    print("[SENTRY] Monitoring actif")
-# ─────────────────────────────────────────────────────────────────────────────
+# PASS 26.A — Sentry init removed from monolith.
+# Centralized in app/__init__.py:_init_sentry (called by create_app).
+# Avoids double-init that replaces the global hub.
 from flask import (Flask, render_template, jsonify, request, g,
                    send_from_directory)
 # PASS 19 cleanup : flask {redirect, send_file, abort, make_response,

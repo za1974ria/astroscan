@@ -3,3 +3,18 @@ data_core/
 *.json
 *.tle
 telescope_live/
+
+# Backups horodatés (refactor 2026-05-02 et suivants)
+*.bak_*
+station_web.py.bak*
+*.pre_restore_*
+*.AVANT_RESTAURATION
+*.REPETE_ERREUR
+
+# PASS 26.A — Environment files protection (NEVER commit secrets)
+.env
+.env.save
+.env.local
+.env.bak*
+.env.*.bak
+!.env.example
