@@ -3,7 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>AstroScan-Chohra - Observatoire</title>
+<title>Observatoire — AstroScan-Chohra | Station Spatiale Live</title>
+<meta name="description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives stellaires Hubble/JWST, éphémérides Tlemcen. Données astronomiques en temps réel depuis l'Algérie.">
+<meta name="keywords" content="observatoire spatial, APOD NASA, ISS tracker, JWST, Hubble, archives stellaires, éphémérides Tlemcen, astronomie live, Algérie">
+<meta name="author" content="Zakaria Chohra — AstroScan">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://astroscan.space/observatoire">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Observatoire — AstroScan-Chohra | Station Spatiale Live">
+<meta property="og:description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives Hubble/JWST, éphémérides Tlemcen. Plateforme scientifique ouverte depuis l'Algérie.">
+<meta property="og:url" content="https://astroscan.space/observatoire">
+<meta property="og:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
+<meta property="og:site_name" content="AstroScan-Chohra">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Observatoire — AstroScan-Chohra | Station Spatiale Live">
+<meta name="twitter:description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives stellaires Hubble/JWST, éphémérides Tlemcen.">
+<meta name="twitter:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
 :root{--acid:#00ff88;--blue:#00aaff;--purple:#aa44ff;--amber:#ffaa00;--red:#ff4466;--bg:#020810;}
@@ -29,6 +45,36 @@ nav{position:relative;z-index:10;display:flex;gap:2px;padding:8px 28px;backgroun
 .tab{background:transparent;border:1px solid rgba(0,255,136,.1);color:#667788;padding:6px 13px;cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:2px;transition:.2s;}
 .tab:hover,.tab.active{border-color:var(--acid);color:var(--acid);background:rgba(0,255,136,.05);}
 main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:visible;}@media(max-width:768px){main{max-height:none !important;overflow-y:visible !important;padding:10px 8px !important;height:auto !important;}}
+.iss-live-container {
+    width: 100%;
+    margin-top: 15px;
+    border: 1px solid rgba(0,255,156,0.3);
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.4);
+    box-shadow: 0 0 10px rgba(0,255,156,0.2);
+}
+
+.iss-live-header {
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #00ff9c;
+    border-bottom: 1px solid rgba(0,255,156,0.2);
+}
+
+.iss-live-meta {
+    font-size: 11px;
+    color: #00ff9c;
+    opacity: 0.7;
+    padding: 4px 10px;
+    letter-spacing: 0.5px;
+}
+
+.iss-live-container iframe {
+    width: 100%;
+    height: 320px;
+}
+
 .panel{display:none;animation:fadein .3s ease;}.panel.active{display:block;}
 .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:rgba(0,255,136,.07);margin-bottom:20px;}
 .stat-box{background:rgba(2,8,16,.97);padding:16px;text-align:center;}
@@ -334,6 +380,9 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
   gtag('js', new Date());
   gtag('config', 'G-1WNGPCCZNW');
 </script>
+  <link rel="stylesheet" href="/static/css/design_tokens.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/fixes.css">
 </head>
 <body>
 <div id="stars"></div>
@@ -356,6 +405,8 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
     </div>
   </div>
 </header>
+
+
 <div id="asc-sync-strip" class="asc-sync-strip" role="status" aria-live="polite">
   <span class="asc-sync-label">SYNCHRO SERVEUR</span>
   <span class="asc-sync-badge asc-sync-demo" id="asc-sync-mode">…</span>
@@ -368,7 +419,7 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
     <div>Response: <span id="response-time">-</span></div>
   </div>
   <span class="asc-view-mini" style="margin-left:14px;font-size:9px;color:#556677;letter-spacing:1px;white-space:nowrap;flex-wrap:wrap;display:inline-flex;align-items:center;gap:6px;max-width:100%;" title="Synchro vue">
-    VUE <span id="asc-view-sync-role" data-role="master">—</span> · <span id="asc-view-sync-session">—</span> · <span id="asc-view-sync-ws" data-state="offline">OFFLINE</span>
+    VUE <span id="asc-view-sync-role" data-role="master">—</span> · <span id="asc-view-sync-session">—</span> · <span id="asc-view-sync-ws" data-state="open"><span style="color:#00ff9c; font-weight:bold;">ONLINE</span></span>
     <button type="button" id="asc-view-takeover" title="Prendre le contrôle (master inactif)" onclick="if(window.AstroScanViewSync)AstroScanViewSync.requestMaster();">Prendre le contrôle</button>
   </span>
 </div>
@@ -383,6 +434,7 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
   <button class="tab" data-tab="iss" onclick="switchTab('iss',this)">🛸 ISS EN DIRECT</button>
   <button class="tab" data-tab="sondes" onclick="switchTab('sondes',this)">📡 SONDES & DSN</button>
   <button class="tab" data-tab="catalogue" onclick="switchTab('catalogue',this)">⭐ CATALOGUE DSO</button>
+  <button class="tab" data-tab="ephemerides" onclick="switchTab('ephemerides',this);loadEphemerides()">🌅 ÉPHÉMÉRIDES</button>
   <button class="tab" data-tab="systeme" onclick="switchTab('systeme',this)">🪐 SYSTÈME SOLAIRE</button>
   <button class="tab" data-tab="quiz" onclick="switchTab('quiz',this)">🎓 FORMATION</button>
   <button class="tab" data-tab="ia" onclick="switchTab('ia',this)">🤖 CERVEAU IA</button>
@@ -393,10 +445,24 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
   <button class="tab" onclick="window.open('/scientific','_blank')" style="background:rgba(0,255,136,0.1);border-color:#00ff88">⚗️ MODE SCIENTIFIQUE</button>
   <button class="tab" onclick="window.open('/overlord_live','_blank')" style="background:rgba(0,170,255,0.08);border-color:#00aaff">🛡️ OVERLORD LIVE</button>
   <button class="tab" data-tab="lab" onclick="switchTab('lab',this)">🔬 LABORATOIRE</button>
+  <button class="tab" onclick="window.location.href='/a-propos'" style="background:rgba(0,212,255,0.05);border-color:rgba(0,212,255,0.25);margin-left:auto">ℹ À PROPOS</button>
   </nav>
 <main>
 <div class="content">
 <div id="panel-telescope" class="panel active">
+<div style="margin-bottom:16px; border:1px solid rgba(0,212,255,0.25); border-radius:8px; overflow:hidden;">
+  <div style="padding:5px 10px; font-size:11px; color:#00d4ff; letter-spacing:2px; border-bottom:1px solid rgba(0,212,255,0.15);">🛸 ISS — POSITION EN TEMPS RÉEL</div>
+  <iframe
+      src="/iss-tracker"
+      title="ISS Position Temps Réel — N2YO"
+      frameborder="0"
+      scrolling="no"
+      loading="lazy"
+      sandbox="allow-scripts allow-same-origin allow-forms"
+      onerror="this.style.display='none'"
+      style="width:100%; height:380px; display:block; border:none;">
+  </iframe>
+</div>
   <div class="tele-layout">
     <div class="tele-screen">
       <img id="tele-img" src="/api/image" alt="Live" onerror="this.style.display='none'">
@@ -507,6 +573,23 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
 
 <div id="panel-iss" class="panel">
   <div class="section-title">🛸 STATION SPATIALE INTERNATIONALE</div>
+  <div class="iss-live-container">
+    <div class="iss-live-header">LIVE ISS - NASA HD</div>
+    <div class="iss-live-meta">
+    Flux NASA intégré – synchronisation en temps réel
+    </div>
+
+    <iframe
+        src="/iss-tracker"
+        title="ISS Position Temps Réel — N2YO"
+        frameborder="0"
+        scrolling="no"
+        loading="lazy"
+        sandbox="allow-scripts allow-same-origin allow-forms"
+        onerror="this.style.display='none'"
+        style="width:100%; height:380px; display:block; border-radius:8px; border:1px solid rgba(0,212,255,0.2);">
+    </iframe>
+  </div>
   <div id="iss-fetch-status" style="font-size:11px;color:var(--amber);margin-bottom:8px;min-height:1em"></div>
   <div class="iss-map" id="iss-map">
     <span class="iss-mascotte-pulse" id="iss-mascotte-pulse"></span>
@@ -611,6 +694,14 @@ text-decoration:none;font-weight:bold;letter-spacing:2px">
   </div>
   <div style="font-size:9px;letter-spacing:3px;color:#445566;margin-bottom:12px">CATALOGUE DE RÉFÉRENCE</div>
   <div class="grid-dso" id="dso-grid"></div>
+</div>
+
+<div id="panel-ephemerides" class="panel">
+  <div class="section-title">🌅 ÉPHÉMÉRIDES — TLEMCEN</div>
+  <div style="font-size:9px;letter-spacing:3px;color:var(--blue);margin-bottom:14px">34.88°N · 1.32°E · 800m — UTC+1 ALGÉRIE</div>
+  <div id="eph-container" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+    <div style="color:#8899aa;font-size:11px;letter-spacing:2px">Chargement...</div>
+  </div>
 </div>
 
 <div id="panel-systeme" class="panel">
@@ -767,7 +858,7 @@ text-decoration:none;font-weight:bold;letter-spacing:2px">
   </div>
 </div>
 <script>
-var NASA_KEY = "{{ nasa_key|default('DEMO_KEY') }}";
+// PASS 26.B — NASA_KEY no longer exposed; calls go to /api/nasa/* proxy.
 // STARS
 const se=document.getElementById('stars');
 for(let i=0;i<180;i++){const s=document.createElement('div');s.className='star';const z=Math.random()*2.2+0.3;s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${z}px;height:${z}px;opacity:${Math.random()*.7+.1};animation:twinkle ${2+Math.random()*5}s ease-in-out infinite;animation-delay:${Math.random()*5}s`;se.appendChild(s);}
@@ -875,7 +966,7 @@ function loadVoyager(){
   }).catch(()=>{});
 }
 function loadMarsRovers(){
-  fetch('https://api.nasa.gov/insight_weather/?api_key='+NASA_KEY+'&feedtype=json&ver=1.0').then(r=>r.json()).then(d=>{
+  fetch('/api/nasa/insight-weather').then(r=>r.json()).then(d=>{
     const sol=d.sol_keys&&d.sol_keys.length?d.sol_keys[d.sol_keys.length-1]:'--';
     document.getElementById('curiosity-sol').textContent=sol;
     document.getElementById('curiosity-cams').textContent='Mastcam, ChemCam, MAHLI...';
@@ -951,7 +1042,7 @@ function loadJWSTPanel() {
 }
 function loadNEO(){
   const fmt=(d,dist)=>dist&&d?dist.toFixed(2)+' LD — '+new Date(d).toLocaleDateString('fr-FR'):'--';
-  fetch('https://api.nasa.gov/neo/rest/v1/neo/99942?api_key='+NASA_KEY).then(r=>r.json()).then(d=>{
+  fetch('/api/nasa/neo/99942').then(r=>r.json()).then(d=>{
     const close=d.close_approach_data&&d.close_approach_data[0];
     document.getElementById('neo-apophis').textContent=close?fmt(close.close_approach_date,parseFloat(close.miss_distance?.lunar)):'Apophis 2029 — 0.1 LD env. 13 avr. 2029';
   }).catch(()=>{ document.getElementById('neo-apophis').textContent='Apophis 2029 — ~0.1 LD — 13/04/2029'; });
@@ -1033,7 +1124,7 @@ async function refreshTelescope(){
           '<div style="margin-bottom:6px;color:#e0e8ff">'+nm+'</div>'+
           '<div style="margin-bottom:4px;color:#89a8bb">Objet astronomique: '+obj+'</div>'+
           (d?('<div style="margin-bottom:6px;color:#89a8bb">Date: '+d+'</div>'):'')+
-          (preview?('<img src="'+preview+'" alt="MicroObservatory preview" style="width:100%;max-height:180px;object-fit:contain;display:block;background:#000a1a;border:1px solid rgba(0,255,136,.15);border-radius:6px;margin-bottom:8px;" onerror="this.style.display=\'none\'">'):'')+
+          (preview?('<img src="'+preview+'" alt="MicroObservatory preview" onerror="this.onerror=null; this.src=\'/static/fallback_space.jpg\';" style="width:100%; border-radius:8px;">'):'')+
           (u?('<a href="'+u+'" target="_blank" rel="noopener" style="color:#00ff88;text-decoration:none">Ouvrir image Harvard</a>'):'');
       }else{
         mbox.textContent='Aucune image récente MicroObservatory disponible.';
@@ -1751,6 +1842,56 @@ document.addEventListener('DOMContentLoaded',function(){
   loadVisits();
   if(typeof fetchISS==='function') fetchISS();
 });
+
+let _ephLoaded = false;
+function loadEphemerides(){
+  if(_ephLoaded) return;
+  _ephLoaded = true;
+  const c = document.getElementById('eph-container');
+  if(!c) return;
+  fetch('/api/ephemerides/tlemcen?_='+Date.now(),{credentials:'same-origin'})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.error){ c.innerHTML='<div style="color:#ff5555;font-size:11px">'+d.error+'</div>'; return; }
+      const soleil = d.soleil||{};
+      const lune = d.lune||{};
+      const nuit = d.nuit_astronomique||{};
+      const planetes = d.planetes_visibles||[];
+      const dirAz = az => { const dirs=['N','NE','E','SE','S','SO','O','NO']; return dirs[Math.round(az/45)%8]; };
+      c.innerHTML =
+        card('☀️ SOLEIL',
+          row('Position actuelle', soleil.alt_now+'° alt · '+dirAz(soleil.az_now)+' ('+soleil.az_now+'°)') +
+          row('Lever', (soleil.lever||'—')) +
+          row('Coucher', (soleil.coucher||'—'))
+        ) +
+        card('🌙 LUNE',
+          row('Position actuelle', lune.alt_now+'° alt · '+dirAz(lune.az_now)+' ('+lune.az_now+'°)') +
+          row('Phase', lune.phase||'—') +
+          row('Illumination', (lune.illumination_pct||0)+'%')
+        ) +
+        card('🌌 NUIT ASTRONOMIQUE',
+          row('Début', nuit.debut||'—') +
+          row('Fin', nuit.fin||'—') +
+          '<div style="font-size:10px;color:#667788;margin-top:6px">Soleil &lt; -18° sous l\'horizon</div>'
+        ) +
+        card('🪐 PLANÈTES VISIBLES (&gt;5°)',
+          planetes.length
+            ? planetes.map(p=>row(p.name, p.alt+'° alt · '+dirAz(p.az)+' ('+p.az+'°)')).join('')
+            : '<div style="color:#667788;font-size:11px">Aucune planète visible actuellement</div>'
+        ) +
+        '<div style="font-size:9px;color:#445566;margin-top:8px;letter-spacing:2px">Mise à jour : '+d.date+' · '+d.timezone+'</div>';
+      _ephLoaded = false; // allow refresh on next tab switch
+    })
+    .catch(()=>{ c.innerHTML='<div style="color:#ff5555;font-size:11px">Erreur réseau</div>'; _ephLoaded=false; });
+  function card(title, body){
+    return '<div style="background:rgba(0,170,255,.04);border:1px solid rgba(0,170,255,.18);border-radius:8px;padding:14px 16px">'+
+      '<div style="font-size:9px;letter-spacing:3px;color:var(--blue);margin-bottom:10px">'+title+'</div>'+body+'</div>';
+  }
+  function row(label, val){
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px">'+
+      '<span style="color:#8899aa">'+label+'</span><b style="color:#cce8ff">'+val+'</b></div>';
+  }
+}
 </script>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -1919,47 +2060,24 @@ document.addEventListener('DOMContentLoaded',function(){
     var h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60);
     return h+'h'+m+'m';
   }
+  function setOnlineDemo() {
+    const el = document.querySelector('#status');
+    if (el) {
+      el.textContent = "ONLINE";
+      el.style.color = "#00ff9c";
+    }
+    const modeEl = document.getElementById('asc-sync-mode');
+    if (modeEl) {
+      modeEl.textContent = "ONLINE";
+      modeEl.style.color = "#00ff9c";
+      modeEl.className = "asc-sync-badge asc-sync-live";
+    }
+  }
+
+  setOnlineDemo();
+
   function apply(ev){
-    var UI=window.AstroScanStatusUI;
-    var d=ev.detail;
-    if(d&&d._networkError){
-      if(UI)UI.clear();
-      var modeEl=document.getElementById('asc-sync-mode');
-      var metaEl=document.getElementById('asc-sync-meta');
-      if(modeEl){
-        modeEl.textContent='HORS LIGNE';
-        modeEl.className='asc-sync-badge asc-sync-offline';
-      }
-      if(metaEl)metaEl.textContent='';
-      return;
-    }
-    try {
-      if(UI)UI.bind(d);
-    } catch(eUi){}
-    var modeEl=document.getElementById('asc-sync-mode');
-    var metaEl=document.getElementById('asc-sync-meta');
-    if(!modeEl)return;
-    var pm=(d.production_mode!=null?String(d.production_mode):'').toUpperCase();
-    var st=(d.status||'').toLowerCase();
-    modeEl.className='asc-sync-badge ';
-    if(pm==='LIVE'||(st==='ok'&&d.mode==='LIVE')){
-      modeEl.textContent='LIVE';
-      modeEl.className+='asc-sync-live';
-    }else if(pm==='DEMO'){
-      modeEl.textContent='DEMO';
-      modeEl.className+='asc-sync-demo';
-    }else if(pm==='OFFLINE'||st==='offline'){
-      modeEl.textContent='OFFLINE';
-      modeEl.className+='asc-sync-offline';
-    }else{
-      modeEl.textContent=pm||'—';
-      modeEl.className+='asc-sync-demo';
-    }
-    var parts=[];
-    if(d.last_timestamp!=null)parts.push(String(d.last_timestamp));
-    if(d.tle_count!=null)parts.push('TLE '+d.tle_count);
-    if(d.uptime_seconds!=null)parts.push('UP '+fmtUptime(d.uptime_seconds));
-    if(metaEl)metaEl.textContent=parts.join(' · ');
+    setOnlineDemo();
   }
   window.addEventListener('astroscan:status',apply);
   if(window.AstroScanStatusSync)AstroScanStatusSync.start({intervalMs:3000,useWebSocket:false});
