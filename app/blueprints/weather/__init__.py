@@ -37,21 +37,47 @@ bp = Blueprint("weather", __name__)
 
 
 # ── Météo spatiale (Domaine L) ─────────────────────────────────────────
-@bp.route("/api/meteo-spatiale")
-def api_meteo_spatiale():
-    """Météo spatiale — lecture directe du fichier static/space_weather.json."""
+def _space_weather_stale_fallback():
+    """Fallback ULTIME : lit static/space_weather.json (figé) si live indispo."""
     try:
         path = f"{STATION}/static/space_weather.json"
         if not os.path.exists(path):
-            return jsonify({"statut_magnetosphere": "Indisponible"})
+            return {"statut_magnetosphere": "Indisponible", "kp_index": None,
+                    "source": "stale_fallback"}
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         if not isinstance(data, dict):
-            return jsonify({"statut_magnetosphere": "Indisponible"})
+            return {"statut_magnetosphere": "Indisponible",
+                    "source": "stale_fallback"}
+        data["source"] = "stale_fallback"
+        return data
+    except Exception:
+        return {"statut_magnetosphere": "Indisponible",
+                "source": "stale_fallback"}
+
+
+@bp.route("/api/meteo-spatiale")
+def api_meteo_spatiale():
+    """Météo spatiale — live NOAA via get_space_weather_legacy() avec cache 60 s.
+
+    Tombe sur static/space_weather.json (marqué stale_fallback) si NOAA KO.
+    """
+    cache_cleanup()
+    cached = cache_get("space_weather", 60)
+    if cached is not None:
+        return jsonify(cached)
+    try:
+        from services.weather_service import get_space_weather_legacy
+        data = get_space_weather_legacy()
+        if data.get("kp_index") is None or "fallback" in str(data.get("source", "")):
+            data = _space_weather_stale_fallback()
+        cache_set("space_weather", data)
         return jsonify(data)
     except Exception as e:
-        log.warning("meteo-spatiale: %s", e)
-        return jsonify({"statut_magnetosphere": "Indisponible"})
+        log.warning("meteo-spatiale: %s — fallback stale", e)
+        data = _space_weather_stale_fallback()
+        cache_set("space_weather", data)
+        return jsonify(data)
 
 
 @bp.route("/meteo-spatiale")
@@ -61,25 +87,23 @@ def meteo_spatiale_page():
 
 @bp.route("/api/space-weather")
 def api_space_weather():
-    """Données météo spatiale depuis static/space_weather.json. Cache 60 s."""
+    """Données météo spatiale — live NOAA + cache 60 s + fallback stale file."""
     cache_cleanup()
     cached = cache_get("space_weather", 60)
     if cached is not None:
         return jsonify(cached)
     try:
-        path = f"{STATION}/static/space_weather.json"
-        if not os.path.exists(path):
-            data = {"statut_magnetosphere": "Indisponible", "kp_index": None}
-        else:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if not isinstance(data, dict):
-                data = {"statut_magnetosphere": "Indisponible"}
+        from services.weather_service import get_space_weather_legacy
+        data = get_space_weather_legacy()
+        if data.get("kp_index") is None or "fallback" in str(data.get("source", "")):
+            data = _space_weather_stale_fallback()
         cache_set("space_weather", data)
         return jsonify(data)
     except Exception as e:
-        log.warning("api/space-weather: %s", e)
-        return jsonify({"statut_magnetosphere": "Indisponible"})
+        log.warning("api/space-weather: %s — fallback stale", e)
+        data = _space_weather_stale_fallback()
+        cache_set("space_weather", data)
+        return jsonify(data)
 
 
 @bp.route("/space-weather")
@@ -108,7 +132,15 @@ def api_aurore():
         raw_kp = None
         if isinstance(raw_data, list) and len(raw_data) > 1:
             latest = raw_data[-1]
-            if isinstance(latest, list) and len(latest) > 1:
+            if isinstance(latest, dict):
+                # Format actuel NOAA (mai 2026) : list of dicts
+                raw_kp = (
+                    latest.get("Kp")
+                    or latest.get("kp_index")
+                    or latest.get("estimated_kp")
+                )
+            elif isinstance(latest, list) and len(latest) > 1:
+                # Legacy fallback (ancien format)
                 raw_kp = latest[1]
 
         kp, status, _ = _safe_kp_value(raw_kp)
