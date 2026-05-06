@@ -18,3 +18,35 @@ station_web.py.bak*
 .env.bak*
 .env.*.bak
 !.env.example
+
+# Backups timestamped format .bak.YYYYMMDD_HHMMSS (session 4-6 mai 2026)
+*.bak.*
+*.bak
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor swap files
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Exports temporaires
+exports/
+
+# Données binaires lourdes (ephémérides, etc.)
+de421.bsp
+
+# IDE
+.vscode/
+.idea/
+*.iml
