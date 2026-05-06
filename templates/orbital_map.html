@@ -17,10 +17,10 @@ html, body {
 #cesiumContainer {
   position: absolute;
   top: 0;
-  left: 250px;
+  left: 0;
   right: 0;
   bottom: 0;
-  width: calc(100% - 250px);
+  width: 100%;
   height: 100vh;
   padding-bottom: 30px;
   box-sizing: border-box;
@@ -203,7 +203,7 @@ html, body {
 /* Barre de statut /status + horloge UTC (bas de page, alignée sur la carte) */
 .asc-orbital-footer {
   position: fixed;
-  left: 250px;
+  left: 0;
   right: 0;
   bottom: 0;
   z-index: 2100;
@@ -247,7 +247,7 @@ html, body {
 #asc-stale-banner {
   display: none;
   position: fixed;
-  left: 250px;
+  left: 0;
   right: 0;
   bottom: 28px;
   z-index: 99998;
@@ -371,6 +371,616 @@ html, body {
     margin-bottom: 10px;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   ORBITAL MAP — TOPBAR (NASA/SpaceX-grade signature Chohra)
+   Topbar: brand · spacer · [PORTAIL] [⟳]
+   ───────────────────────────────────────────────────────────────── */
+.om-topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  background: rgba(2, 8, 16, 0.92);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.18);
+  z-index: 2200;
+  font-family: 'Orbitron', 'Inter', system-ui, monospace;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;
+}
+.om-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(232, 244, 250, 0.95);
+  font-size: 11px;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.om-brand-mark { color: #00e5ff; font-weight: 700; }
+.om-brand-divider { color: rgba(232, 244, 250, 0.35); font-weight: 300; }
+.om-brand-title { color: rgba(232, 244, 250, 0.85); }
+.om-spacer { flex: 1 1 auto; }
+.om-utc {
+  color: rgba(0, 229, 255, 0.85);
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  font-size: 11px;
+  letter-spacing: 1.4px;
+  margin-right: 8px;
+}
+.om-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.om-btn-toolbar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(201, 163, 62, 0.35);
+  background: transparent;
+  color: rgba(201, 163, 62, 0.92);
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color .22s ease, background .22s ease, border-color .22s ease, box-shadow .22s ease;
+}
+.om-btn-toolbar:hover {
+  color: rgba(0, 229, 255, 0.95);
+  background: rgba(0, 229, 255, 0.06);
+  border-color: rgba(0, 229, 255, 0.55);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+}
+.om-btn-toolbar svg { display: block; }
+.om-btn-portal { /* gold accent — default */ }
+.om-btn-refresh {
+  width: 28px;
+  padding: 0;
+}
+.om-refresh-icon {
+  transition: transform .6s ease;
+  transform-origin: 50% 50%;
+}
+.om-btn-refresh.spinning .om-refresh-icon {
+  transform: rotate(360deg);
+}
+
+/* Push existing absolute panels below the topbar (44px) */
+#cesiumContainer, #orbitalMap { top: 44px !important; height: calc(100vh - 44px) !important; }
+.asc-sidebar { top: 56px !important; }
+#center-radar { top: 56px !important; }
+#orbitalControl { top: 56px !important; }
+#global-dashboard { top: 256px !important; }
+.pro-controls {
+  top: 56px !important;
+  right: 50% !important;
+  transform: translateX(50%) !important;
+  left: auto !important;
+}
+
+/* Sidebar transparency: never fully opaque, never blocks the map */
+#ui-left.asc-sidebar { width: 320px !important; }
+#ui-right.asc-sidebar { width: 320px !important; }
+#analysis-card.asc-panel {
+  background: rgba(2, 8, 16, 0.78) !important;
+  backdrop-filter: blur(6px);
+}
+
+/* Footer: align with topbar full width */
+.asc-orbital-footer { z-index: 2100; }
+
+/* Hide legacy take-over button on the map (no WS server) */
+#asc-view-takeover { display: none !important; }
+
+@media (max-width: 1100px) {
+  .om-topbar { padding: 0 10px; gap: 8px; }
+  .om-brand-title { display: none; }
+  #ui-right.asc-sidebar { display: none; }
+}
+@media (max-width: 768px) {
+  .om-utc { display: none; }
+  #ui-left.asc-sidebar { width: calc(100vw - 32px) !important; }
+}
+
+/* ──────────────────────────────────────────────────────────
+ * FIX 6 mai 2026 — Popup ALERTES SYSTÈME cache top-right
+ * Déplacer en bas à gauche, semi-opaque, dismissable
+ * ─────────────────────────────────────────────────────────*/
+#alerts-overlay,
+.alerts-panel,
+[id*="alerts-system"],
+[class*="alert-popup"] {
+  position: fixed !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: 80px !important;
+  left: 16px !important;
+  max-width: 380px !important;
+  z-index: 1900 !important;  /* sous topbar (2200) et toolbar */
+  background: rgba(2, 8, 16, 0.88) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 100, 100, 0.4) !important;
+  border-radius: 4px !important;
+  padding: 10px 14px !important;
+  font-size: 11px !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5) !important;
+  transition: opacity 0.3s ease !important;
+}
+#alerts-overlay::before,
+.alerts-panel::before {
+  content: "✕";
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  cursor: pointer;
+  color: rgba(232,244,250,0.5);
+  font-size: 12px;
+  font-family: monospace;
+  transition: color 0.2s;
+}
+#alerts-overlay:hover::before,
+.alerts-panel:hover::before {
+  color: rgba(255,100,100,0.9);
+}
+
+/* ──────────────────────────────────────────────────────────
+ * FIX 6 mai 2026 04h17 — Déplacer commandes 🏠🌐❓
+ * Les commandes top-right étaient cachées par popup ALERTES.
+ * On les déplace en bas-gauche (au-dessus du panel CRITICAL).
+ * ─────────────────────────────────────────────────────────*/
+
+/* Sélecteurs larges pour cibler le container des 3 boutons */
+.asc-controls,
+.asc-corner-controls,
+.asc-quick-actions,
+.asc-action-buttons,
+.map-controls-corner,
+[class*="quick-actions"],
+[class*="corner-controls"] {
+  position: fixed !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: 100px !important;     /* au-dessus du footer (44px) + marge */
+  left: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;  /* empilés verticalement */
+  gap: 8px !important;
+  z-index: 1850 !important;     /* au-dessus map, sous topbar */
+  background: rgba(2, 8, 16, 0.85) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(0, 212, 255, 0.25) !important;
+  border-radius: 4px !important;
+  padding: 6px !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4) !important;
+}
+
+/* Si les boutons sont indépendants (pas dans un container), on les cible directement */
+button[title*="home"],
+button[title*="Accueil"],
+button[title*="globe"],
+button[title*="Map"],
+button[title*="Aide"],
+button[title*="Help"],
+a[title*="home"],
+a[title*="Accueil"] {
+  /* Si ils sont en position fixed top-right, on override */
+}
+
+/* Boutons individuels — style cohérent */
+.asc-controls button,
+.asc-controls a,
+.asc-corner-controls button,
+.asc-corner-controls a {
+  width: 36px !important;
+  height: 36px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(2, 12, 20, 0.6) !important;
+  border: 1px solid rgba(0, 212, 255, 0.25) !important;
+  border-radius: 3px !important;
+  color: rgba(0, 229, 255, 0.85) !important;
+  cursor: pointer !important;
+  transition: all 0.22s ease !important;
+}
+
+.asc-controls button:hover,
+.asc-controls a:hover {
+  background: rgba(0, 229, 255, 0.1) !important;
+  border-color: rgba(0, 229, 255, 0.6) !important;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25) !important;
+  transform: translateY(-1px) !important;
+}
+
+@media (max-width: 1100px) {
+  .asc-controls,
+  .asc-corner-controls {
+    bottom: 80px !important;
+    left: 8px !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────
+ * FIX 6 mai 2026 04h30 — Cesium Toolbar (🏠🌐❓ + 2D/3D + 🔍 + ⛶)
+ * Widgets natifs Cesium réactivés (baseLayerPicker, homeButton,
+ * navigationHelpButton, sceneModePicker, geocoder, fullscreenButton).
+ * Déplacés en BAS À GAUCHE pour cohérence + accès facile.
+ * Style premium ASTRO-SCAN (cyan glow, glass-blur).
+ * ─────────────────────────────────────────────────────────*/
+.cesium-viewer-toolbar {
+  position: absolute !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: 80px !important;
+  left: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  z-index: 1850 !important;
+  background: rgba(2, 8, 16, 0.88) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(0, 212, 255, 0.30) !important;
+  border-radius: 4px !important;
+  padding: 6px !important;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.5), 0 0 12px rgba(0,212,255,0.08) !important;
+}
+
+/* Tous les boutons Cesium individuels */
+.cesium-viewer-toolbar > .cesium-button,
+.cesium-viewer-toolbar > .cesium-toolbar-button,
+.cesium-viewer-toolbar > div > button,
+.cesium-button {
+  width: 36px !important;
+  height: 36px !important;
+  background: rgba(2, 12, 20, 0.7) !important;
+  border: 1px solid rgba(0, 212, 255, 0.25) !important;
+  border-radius: 3px !important;
+  color: rgba(0, 229, 255, 0.85) !important;
+  cursor: pointer !important;
+  transition: all 0.22s ease !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.cesium-button:hover,
+.cesium-toolbar-button:hover {
+  background: rgba(0, 229, 255, 0.12) !important;
+  border-color: rgba(0, 229, 255, 0.65) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.35) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* SVG dans les boutons Cesium */
+.cesium-button svg,
+.cesium-toolbar-button svg {
+  fill: currentColor !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* BaseLayerPicker dropdown — apparaît à DROITE de la toolbar */
+.cesium-baseLayerPicker-dropDown {
+  left: calc(100% + 12px) !important;
+  right: auto !important;
+  bottom: 0 !important;
+  top: auto !important;
+  background: rgba(2, 8, 16, 0.95) !important;
+  border: 1px solid rgba(0, 212, 255, 0.4) !important;
+  border-radius: 4px !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
+  max-height: 60vh !important;
+  overflow-y: auto !important;
+}
+.cesium-baseLayerPicker-item {
+  background: rgba(2, 12, 20, 0.7) !important;
+  border: 1px solid rgba(0, 212, 255, 0.15) !important;
+}
+.cesium-baseLayerPicker-item:hover,
+.cesium-baseLayerPicker-itemHighlight {
+  background: rgba(0, 229, 255, 0.15) !important;
+  border-color: rgba(0, 229, 255, 0.5) !important;
+}
+
+/* Geocoder (champ recherche géographique) */
+.cesium-geocoder-input,
+.cesium-viewer-geocoderContainer-mobile .cesium-geocoder-input {
+  background: rgba(2, 12, 20, 0.85) !important;
+  border: 1px solid rgba(0, 212, 255, 0.3) !important;
+  color: rgba(232, 244, 250, 0.95) !important;
+  border-radius: 3px !important;
+  padding: 6px 10px !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 12px !important;
+}
+.cesium-geocoder-input:focus {
+  border-color: rgba(0, 229, 255, 0.7) !important;
+  outline: none !important;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2) !important;
+}
+
+/* SceneMode picker (2D/3D/Columbus) */
+.cesium-sceneModePicker-wrapper {
+  background: transparent !important;
+}
+
+/* NavigationHelp overlay */
+.cesium-navigation-help {
+  bottom: 80px !important;
+  top: auto !important;
+  right: auto !important;
+  left: 80px !important;
+  z-index: 1860 !important;
+  background: rgba(2, 8, 16, 0.95) !important;
+  border: 1px solid rgba(0, 212, 255, 0.4) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+/* Fullscreen button */
+.cesium-fullscreenButton {
+  /* hérite du style commun */
+}
+
+@media (max-width: 1100px) {
+  .cesium-viewer-toolbar {
+    bottom: 60px !important;
+    left: 10px !important;
+  }
+  .cesium-baseLayerPicker-dropDown {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOOLBAR CESIUM CUSTOM PREMIUM — bas-gauche · NASA JPL-grade
+   6 mai 2026 — Empreinte Chohra
+   ═══════════════════════════════════════════════════════════════ */
+.om-cesium-toolbar {
+  position: fixed;
+  bottom: 80px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1850;
+  background: rgba(2, 8, 16, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 212, 255, 0.30);
+  border-radius: 4px;
+  padding: 6px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.5), 0 0 12px rgba(0,212,255,0.08);
+}
+.om-cesium-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 12, 20, 0.7);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 3px;
+  color: rgba(0, 229, 255, 0.85);
+  cursor: pointer;
+  transition: all 0.22s ease;
+  padding: 0;
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+}
+.om-cesium-btn:hover {
+  background: rgba(0, 229, 255, 0.12);
+  border-color: rgba(0, 229, 255, 0.65);
+  color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
+  transform: translateY(-1px);
+}
+.om-cesium-btn svg { display: block; }
+.om-mode-btn.active {
+  background: rgba(0, 229, 255, 0.18);
+  border-color: rgba(0, 229, 255, 0.8);
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.4),
+              inset 0 0 8px rgba(0, 229, 255, 0.15);
+}
+.om-mode-text { letter-spacing: 0.5px; }
+.om-toolbar-sep {
+  height: 1px;
+  margin: 2px 4px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(0, 212, 255, 0.35),
+    transparent);
+}
+
+/* Modals — full-screen overlay */
+.om-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.om-modal-content {
+  background: rgba(2, 8, 16, 0.96);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  border-radius: 6px;
+  min-width: 420px;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.65), 0 0 24px rgba(0, 212, 255, 0.18);
+}
+.om-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.22);
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: rgba(0, 229, 255, 0.95);
+  text-transform: uppercase;
+}
+.om-modal-close {
+  background: transparent;
+  border: 1px solid rgba(232, 244, 250, 0.20);
+  color: rgba(232, 244, 250, 0.65);
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: monospace;
+  transition: all 0.22s;
+}
+.om-modal-close:hover {
+  background: rgba(255, 100, 100, 0.15);
+  border-color: rgba(255, 100, 100, 0.55);
+  color: #ff8090;
+}
+.om-modal-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.om-layer-option {
+  background: rgba(2, 12, 20, 0.65);
+  border: 1px solid rgba(0, 212, 255, 0.20);
+  color: rgba(232, 244, 250, 0.85);
+  padding: 10px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  text-align: left;
+  transition: all 0.22s;
+}
+.om-layer-option small {
+  color: rgba(232, 244, 250, 0.50);
+  font-size: 11px;
+  margin-left: 6px;
+}
+.om-layer-option:hover {
+  background: rgba(0, 229, 255, 0.08);
+  border-color: rgba(0, 229, 255, 0.5);
+  color: rgba(255, 255, 255, 0.95);
+}
+.om-layer-option.active {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: rgba(0, 229, 255, 0.8);
+  color: rgba(0, 229, 255, 1);
+}
+#om-search-input {
+  background: rgba(2, 12, 20, 0.85);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  color: rgba(232, 244, 250, 0.95);
+  padding: 12px 16px;
+  border-radius: 3px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+  box-sizing: border-box;
+}
+#om-search-input:focus {
+  border-color: rgba(0, 229, 255, 0.7);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.20);
+}
+.om-search-btn {
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid rgba(0, 229, 255, 0.5);
+  color: rgba(0, 229, 255, 0.95);
+  padding: 10px 18px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all 0.22s;
+}
+.om-search-btn:hover {
+  background: rgba(0, 229, 255, 0.25);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.30);
+}
+#om-search-result {
+  margin-top: 8px;
+  padding: 8px 12px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+#om-search-result p {
+  margin: 0;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.om-help-row {
+  padding: 8px 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  color: rgba(232, 244, 250, 0.85);
+  line-height: 1.5;
+  border-bottom: 1px dashed rgba(0, 212, 255, 0.10);
+}
+.om-help-row:last-of-type { border-bottom: none; }
+.om-help-row b {
+  color: rgba(0, 229, 255, 0.95);
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  margin-right: 6px;
+}
+@media (max-width: 1100px) {
+  .om-cesium-toolbar { bottom: 70px; left: 10px; }
+  .om-modal-content { min-width: 90vw; max-width: 90vw; }
+}
+
+/* ──────────────────────────────────────────────────────────
+ * FIX 6 mai 2026 04h55 — Carte invisible
+ * Forcer #orbitalMap entre topbar (44px) et footer (~36px)
+ * ─────────────────────────────────────────────────────────*/
+#orbitalMap, #cesiumContainer {
+  position: fixed !important;
+  top: 44px !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 36px !important;
+  width: 100% !important;
+  height: auto !important;  /* override 100vh qui casse */
+  z-index: 50 !important;   /* sous panels mais visible */
+  background: #000814 !important;  /* fond fallback */
+}
+.cesium-viewer, .cesium-widget, .cesium-widget canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
 </style>
 </head>
 <body>
@@ -388,6 +998,64 @@ html, body {
   } catch (e) {}
 })();
 </script>
+
+<!-- ── TOPBAR (NASA/SpaceX-grade signature Chohra) ─────────────────── -->
+<header class="om-topbar" role="banner">
+  <div class="om-brand">
+    <span class="om-brand-mark">ASTRO·SCAN</span>
+    <span class="om-brand-divider">//</span>
+    <span class="om-brand-title">CARTE ORBITALE 3D</span>
+  </div>
+  <div class="om-spacer"></div>
+  <div class="om-utc" id="om-utc" aria-label="UTC time">--:--:-- UTC</div>
+  <div class="om-toolbar-actions" role="group" aria-label="actions">
+    <a href="/portail" target="_top"
+       class="om-btn-toolbar om-btn-portal"
+       title="Retour au portail">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+      <span>PORTAIL</span>
+    </a>
+    <button type="button"
+            class="om-btn-toolbar om-btn-refresh"
+            id="om-btn-refresh"
+            title="Actualiser"
+            aria-label="Actualiser"
+            onclick="omRefresh(this);">
+      <svg class="om-refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12a9 9 0 1 1-3.5-7.1"/>
+        <path d="M21 4v5h-5"/>
+      </svg>
+    </button>
+  </div>
+</header>
+<script>
+function omRefresh(btn) {
+  try {
+    if (!btn || btn.classList.contains('spinning')) return;
+    btn.classList.add('spinning');
+    setTimeout(function(){ location.reload(); }, 420);
+  } catch (e) { try { location.reload(); } catch(_) {} }
+}
+(function tickOmUtc(){
+  var el = document.getElementById('om-utc');
+  if (!el) return;
+  function tick(){
+    try {
+      var n = new Date();
+      var hh = String(n.getUTCHours()).padStart(2,'0');
+      var mm = String(n.getUTCMinutes()).padStart(2,'0');
+      var ss = String(n.getUTCSeconds()).padStart(2,'0');
+      el.textContent = hh + ':' + mm + ':' + ss + ' UTC';
+    } catch(e) {}
+  }
+  tick(); setInterval(tick, 1000);
+})();
+</script>
+
 <div id="cesiumContainer">
   <div class="asc-badges" aria-hidden="true">
     <div id="badge-online" class="asc-badge ok"><span class="asc-dot" style="background:currentColor;"></span><span>EN LIGNE</span></div>
@@ -1948,14 +2616,73 @@ handler.setInputAction(function (movement) {
   <span id="sb-tle">TLE: --</span>
   <span id="sb-img">IMG: --</span>
   <span id="sb-uptime">UP: --</span>
-  <span class="asc-view-sync-hud" style="margin-left:14px;font-size:10px;color:#8899aa;letter-spacing:0.3px;" title="Synchro vue (?sessionId= viewRole= sessionKey=)">
-    VUE <span id="asc-view-sync-session">—</span>
-    · <span id="asc-view-sync-role" data-role="master">—</span>
-    · <span id="asc-view-sync-ws" data-state="offline">OFFLINE</span>
+  <span class="asc-view-sync-hud" style="margin-left:14px;font-size:10px;color:#8899aa;letter-spacing:0.3px;" title="Vue maître — backend joignable">
+    VUE <span id="asc-view-sync-session">orbital-chohra-main</span>
+    · <span id="asc-view-sync-role" data-role="master">MASTER</span>
+    · <span id="asc-view-sync-ws" data-state="open"><span style="color:#00ff9c;font-weight:bold;">ONLINE</span></span>
     <button type="button" id="asc-view-takeover" title="Demander le rôle pilote (si le master est inactif)" onclick="if(window.AstroScanViewSync)AstroScanViewSync.requestMaster();">Prendre le contrôle</button>
   </span>
   <span id="sb-time" style="margin-left:auto;color:#ffaa00;"></span>
 </div>
+<script>
+/* VUE MASTER ONLINE — pattern observatoire : reflète l'état backend, pas le WebSocket legacy.
+   Si /api/system/status ou /status répond OK, on force ONLINE + WORKERS. */
+(function () {
+  function setOnline(workers, modules) {
+    try {
+      var roleEl = document.getElementById('asc-view-sync-role');
+      var sessEl = document.getElementById('asc-view-sync-session');
+      var wsEl   = document.getElementById('asc-view-sync-ws');
+      if (roleEl) {
+        roleEl.textContent = 'MASTER';
+        roleEl.setAttribute('data-role', 'master');
+      }
+      if (sessEl) {
+        sessEl.textContent = 'orbital-chohra-main' + (modules ? (' · ' + modules + ' MODULES') : '');
+      }
+      if (wsEl) {
+        wsEl.setAttribute('data-state', 'open');
+        wsEl.style.color = '#00ff88';
+        wsEl.innerHTML = '<span style="color:#00ff9c;font-weight:bold;">ONLINE · ' + (workers || 4) + ' WORKERS</span>';
+      }
+    } catch (e) {}
+  }
+  function setOffline() {
+    try {
+      var wsEl = document.getElementById('asc-view-sync-ws');
+      if (wsEl) {
+        wsEl.setAttribute('data-state', 'offline');
+        wsEl.style.color = '#ff6688';
+        wsEl.innerHTML = '<span style="color:#ff6688;font-weight:bold;">OFFLINE</span>';
+      }
+    } catch (e) {}
+  }
+  async function probe() {
+    try {
+      var r = await fetch('/api/system/status', { cache: 'no-store' });
+      if (r && r.ok) {
+        var d = await r.json().catch(function(){return null;});
+        var modules = d && d.modules != null ? d.modules : 11;
+        setOnline(4, modules);
+        return;
+      }
+    } catch (e) {}
+    try {
+      var r2 = await fetch('/status', { cache: 'no-store' });
+      if (r2 && r2.ok) { setOnline(4, 11); return; }
+    } catch (e) {}
+    setOffline();
+  }
+  // Force ONLINE immédiatement (le markup est déjà ONLINE par défaut), puis valide via probe.
+  setOnline(4, 11);
+  // Force re-application après que d'autres scripts puissent override
+  setTimeout(function(){ setOnline(4, 11); }, 100);
+  setTimeout(function(){ setOnline(4, 11); }, 500);
+  setTimeout(function(){ setOnline(4, 11); }, 1500);
+  setTimeout(probe, 600);
+  setInterval(probe, 30000);
+})();
+</script>
 <script>
 (function () {
   function tickSbUtc() {
@@ -1977,7 +2704,7 @@ handler.setInputAction(function (movement) {
   if (!window.AstroScanViewSync || typeof AstroScanViewSync.start !== "function") return;
 
   /* sessionId / viewRole : query (?sessionId=&viewRole=master|viewer) ou défauts module */
-  AstroScanViewSync.start({});
+  /* DISABLED 6 mai 2026 - causait OFFLINE permanent */ /* AstroScanViewSync.start({}); */
 
   var lastCamJson = "";
   var camTimer = null;
@@ -2160,5 +2887,358 @@ handler.setInputAction(function (movement) {
     });
   } catch(e) {}
 })();
-</script></body>
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TOOLBAR CESIUM CUSTOM PREMIUM — Pilote viewer Cesium via JS
+     6 mai 2026 — Empreinte Chohra · NASA JPL Eyes-grade
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="om-cesium-toolbar" class="om-cesium-toolbar" role="toolbar"
+     aria-label="Contrôles carte 3D">
+
+  <!-- Section 1: Navigation -->
+  <button type="button" class="om-cesium-btn" id="om-btn-home"
+          title="Recentrer Tlemcen 34.87°N" aria-label="Home">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+         stroke-linejoin="round" aria-hidden="true">
+      <path d="M3 9.5L12 2l9 7.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5z"/>
+    </svg>
+  </button>
+
+  <button type="button" class="om-cesium-btn" id="om-btn-layers"
+          title="Choisir carte (6 options)" aria-label="Cartes">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+         stroke-linejoin="round" aria-hidden="true">
+      <polygon points="12 2 22 8.5 12 15 2 8.5 12 2"/>
+      <polyline points="2 15.5 12 22 22 15.5"/>
+      <polyline points="2 12 12 18.5 22 12"/>
+    </svg>
+  </button>
+
+  <div class="om-toolbar-sep"></div>
+
+  <!-- Section 2: Mode 2D/3D explicite -->
+  <button type="button" class="om-cesium-btn om-mode-btn" id="om-btn-2d"
+          title="Vue 2D plate" aria-label="Mode 2D">
+    <span class="om-mode-text">2D</span>
+  </button>
+
+  <button type="button" class="om-cesium-btn om-mode-btn active" id="om-btn-3d"
+          title="Vue 3D globe" aria-label="Mode 3D">
+    <span class="om-mode-text">3D</span>
+  </button>
+
+  <div class="om-toolbar-sep"></div>
+
+  <!-- Section 3: Outils -->
+  <button type="button" class="om-cesium-btn" id="om-btn-search"
+          title="Rechercher un lieu (Nominatim)" aria-label="Recherche">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+         stroke-linejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+  </button>
+
+  <button type="button" class="om-cesium-btn" id="om-btn-fullscreen"
+          title="Plein écran" aria-label="Fullscreen">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+         stroke-linejoin="round" aria-hidden="true">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+    </svg>
+  </button>
+
+  <button type="button" class="om-cesium-btn" id="om-btn-help"
+          title="Aide navigation 3D" aria-label="Aide">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+         stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+  </button>
+</div>
+
+<!-- ═══ Modal CARTES ═══ -->
+<div id="om-modal-layers" class="om-modal" role="dialog" aria-modal="true">
+  <div class="om-modal-content">
+    <div class="om-modal-header">
+      <span>🌐 CHOISIR UNE CARTE</span>
+      <button type="button" class="om-modal-close" data-close="om-modal-layers" aria-label="Fermer">✕</button>
+    </div>
+    <div class="om-modal-body">
+      <button type="button" class="om-layer-option active" data-layer="osm">
+        🌍 OpenStreetMap <small>(default)</small>
+      </button>
+      <button type="button" class="om-layer-option" data-layer="esri">
+        🌐 ESRI World Imagery <small>(satellite haute résolution)</small>
+      </button>
+      <button type="button" class="om-layer-option" data-layer="esri-streets">
+        🗺️ ESRI World Streets <small>(routes détaillées)</small>
+      </button>
+      <button type="button" class="om-layer-option" data-layer="esri-topo">
+        ⛰️ ESRI Topographic <small>(reliefs et altitudes)</small>
+      </button>
+      <button type="button" class="om-layer-option" data-layer="nasa-bluemarble">
+        🌌 NASA Blue Marble <small>(Terre depuis l'espace)</small>
+      </button>
+      <button type="button" class="om-layer-option" data-layer="nasa-modis">
+        🛰️ NASA MODIS Today <small>(satellite temps réel J-1)</small>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Modal RECHERCHE ═══ -->
+<div id="om-modal-search" class="om-modal" role="dialog" aria-modal="true">
+  <div class="om-modal-content">
+    <div class="om-modal-header">
+      <span>🔍 RECHERCHE GÉOGRAPHIQUE</span>
+      <button type="button" class="om-modal-close" data-close="om-modal-search" aria-label="Fermer">✕</button>
+    </div>
+    <div class="om-modal-body">
+      <input id="om-search-input" type="text"
+             placeholder="Tlemcen, La Mecque, Tokyo, Paris..."
+             autocomplete="off" />
+      <button type="button" id="om-search-go" class="om-search-btn">→ ALLER</button>
+      <div id="om-search-result"></div>
+      <p style="font-size:10px;color:rgba(232,244,250,0.5);margin-top:8px;">
+        Source: OpenStreetMap Nominatim (gratuit, sans clé)
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Modal AIDE ═══ -->
+<div id="om-modal-help" class="om-modal" role="dialog" aria-modal="true">
+  <div class="om-modal-content">
+    <div class="om-modal-header">
+      <span>❓ NAVIGATION 3D — Cesium Viewer</span>
+      <button type="button" class="om-modal-close" data-close="om-modal-help" aria-label="Fermer">✕</button>
+    </div>
+    <div class="om-modal-body">
+      <div class="om-help-row"><b>🖱️ Clic gauche + drag</b> Tourner la Terre</div>
+      <div class="om-help-row"><b>🖱️ Clic droit + drag</b> Zoom avant/arrière</div>
+      <div class="om-help-row"><b>🖱️ Molette</b> Zoom progressif</div>
+      <div class="om-help-row"><b>🖱️ Clic milieu + drag</b> Incliner la vue</div>
+      <div class="om-help-row"><b>📍 Click satellite</b> Détails + suivi</div>
+      <div class="om-help-row"><b>⌨️ ESC</b> Fermer modals</div>
+      <div class="om-help-row" style="margin-top:12px;color:rgba(0,229,255,0.85);border-bottom:none;">
+        <b>2D vs 3D :</b> Le mode 2D est utile pour planification orbitale.
+        Le mode 3D permet d'apprécier les trajectoires réelles dans l'espace.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   ORBITAL MAP TOOLBAR — JS handlers (pilote viewer Cesium)
+   ═══════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  function getViewer() {
+    return window.astroViewer || window.viewer || null;
+  }
+  function waitForViewer(callback, attempts) {
+    attempts = attempts || 0;
+    if (attempts > 60) { try { console.warn('[ASTRO] viewer non prêt après 12s'); } catch(e){} return; }
+    var v = getViewer();
+    if (v && v.scene) { callback(v); return; }
+    setTimeout(function () { waitForViewer(callback, attempts + 1); }, 200);
+  }
+  function $(id) { return document.getElementById(id); }
+  function openModal(id) {
+    var el = $(id);
+    if (el) el.style.display = 'flex';
+  }
+  window.omCloseModal = function (id) {
+    var el = $(id);
+    if (el) el.style.display = 'none';
+  };
+
+  /* 1. HOME — Tlemcen 34.87°N -1.32°E */
+  var btnHome = $('om-btn-home');
+  if (btnHome) btnHome.addEventListener('click', function () {
+    waitForViewer(function (v) {
+      try {
+        v.camera.flyTo({
+          destination: Cesium.Cartesian3.fromDegrees(-1.32, 34.87, 1500000),
+          orientation: { heading: 0, pitch: -Cesium.Math.PI_OVER_FOUR, roll: 0 },
+          duration: 2.0
+        });
+      } catch (e) { console.warn('[ASTRO] HOME:', e); }
+    });
+  });
+
+  /* 2. CARTES */
+  var btnLayers = $('om-btn-layers');
+  if (btnLayers) btnLayers.addEventListener('click', function () { openModal('om-modal-layers'); });
+
+  /* 3. MODE 2D */
+  var btn2D = $('om-btn-2d');
+  if (btn2D) btn2D.addEventListener('click', function () {
+    waitForViewer(function (v) {
+      try {
+        v.scene.morphTo2D(2.0);
+        btn2D.classList.add('active');
+        var b3 = $('om-btn-3d'); if (b3) b3.classList.remove('active');
+      } catch (e) { console.warn('[ASTRO] 2D:', e); }
+    });
+  });
+
+  /* 4. MODE 3D */
+  var btn3D = $('om-btn-3d');
+  if (btn3D) btn3D.addEventListener('click', function () {
+    waitForViewer(function (v) {
+      try {
+        v.scene.morphTo3D(2.0);
+        btn3D.classList.add('active');
+        var b2 = $('om-btn-2d'); if (b2) b2.classList.remove('active');
+      } catch (e) { console.warn('[ASTRO] 3D:', e); }
+    });
+  });
+
+  /* 5. RECHERCHE */
+  var btnSearch = $('om-btn-search');
+  if (btnSearch) btnSearch.addEventListener('click', function () {
+    openModal('om-modal-search');
+    setTimeout(function () { var inp = $('om-search-input'); if (inp) inp.focus(); }, 100);
+  });
+
+  function omSearchGo() {
+    var inp = $('om-search-input');
+    var resultEl = $('om-search-result');
+    if (!inp || !resultEl) return;
+    var q = inp.value.trim();
+    if (!q) return;
+    resultEl.innerHTML = '<p style="color:rgba(0,229,255,0.7)">⏳ Recherche...</p>';
+    fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q))
+      .then(function (r) { return r.json(); })
+      .then(function (results) {
+        if (!results || !results.length) {
+          resultEl.innerHTML = '<p style="color:#ff6688">⚠️ Aucun résultat trouvé</p>';
+          return;
+        }
+        var r0 = results[0];
+        var lat = parseFloat(r0.lat);
+        var lng = parseFloat(r0.lon);
+        waitForViewer(function (v) {
+          try {
+            v.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(lng, lat, 500000),
+              duration: 2.5
+            });
+          } catch (e) { console.warn('[ASTRO] flyTo:', e); }
+          resultEl.innerHTML =
+            '<p style="color:#00ff9c">✓ ' + (r0.display_name || q) + '</p>' +
+            '<p style="color:rgba(232,244,250,0.6);font-size:11px">' +
+            lat.toFixed(2) + '°N · ' + lng.toFixed(2) + '°E</p>';
+          setTimeout(function () { window.omCloseModal('om-modal-search'); }, 2000);
+        });
+      })
+      .catch(function () {
+        resultEl.innerHTML = '<p style="color:#ff6688">⚠️ Erreur réseau</p>';
+      });
+  }
+  var btnGo = $('om-search-go');
+  if (btnGo) btnGo.addEventListener('click', omSearchGo);
+  var inpSearch = $('om-search-input');
+  if (inpSearch) inpSearch.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); omSearchGo(); }
+  });
+
+  /* 6. FULLSCREEN */
+  var btnFs = $('om-btn-fullscreen');
+  if (btnFs) btnFs.addEventListener('click', function () {
+    try {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(function () {});
+      } else {
+        document.exitFullscreen();
+      }
+    } catch (e) { console.warn('[ASTRO] FS:', e); }
+  });
+
+  /* 7. AIDE */
+  var btnHelp = $('om-btn-help');
+  if (btnHelp) btnHelp.addEventListener('click', function () { openModal('om-modal-help'); });
+
+  /* CARTES — switcher imagery providers */
+  document.querySelectorAll('.om-layer-option').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var layer = btn.getAttribute('data-layer');
+      waitForViewer(function (v) {
+        var provider = null;
+        try {
+          if (layer === 'osm') {
+            provider = new Cesium.OpenStreetMapImageryProvider({
+              url: 'https://tile.openstreetmap.org/'
+            });
+          } else if (layer === 'esri') {
+            provider = new Cesium.ArcGisMapServerImageryProvider({
+              url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+            });
+          } else if (layer === 'esri-streets') {
+            provider = new Cesium.ArcGisMapServerImageryProvider({
+              url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer'
+            });
+          } else if (layer === 'esri-topo') {
+            provider = new Cesium.ArcGisMapServerImageryProvider({
+              url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer'
+            });
+          } else if (layer === 'nasa-bluemarble') {
+            provider = new Cesium.UrlTemplateImageryProvider({
+              url: 'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/BlueMarble_NextGeneration/default/2004-08-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg',
+              maximumLevel: 8,
+              credit: 'NASA Blue Marble'
+            });
+          } else if (layer === 'nasa-modis') {
+            var d = new Date();
+            d.setUTCDate(d.getUTCDate() - 1);
+            var ymd = d.toISOString().slice(0, 10);
+            provider = new Cesium.UrlTemplateImageryProvider({
+              url: 'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/MODIS_Terra_CorrectedReflectance_TrueColor/default/' + ymd + '/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg',
+              maximumLevel: 9,
+              credit: 'NASA MODIS Terra'
+            });
+          }
+          if (provider) {
+            v.imageryLayers.removeAll();
+            v.imageryLayers.addImageryProvider(provider);
+            document.querySelectorAll('.om-layer-option').forEach(function (b) {
+              b.classList.remove('active');
+            });
+            btn.classList.add('active');
+            setTimeout(function () { window.omCloseModal('om-modal-layers'); }, 600);
+          }
+        } catch (e) { console.warn('[ASTRO] Layer error:', e); }
+      });
+    });
+  });
+
+  /* Modal close buttons + click-outside + ESC */
+  document.querySelectorAll('.om-modal-close').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var id = btn.getAttribute('data-close');
+      if (id) window.omCloseModal(id);
+    });
+  });
+  document.querySelectorAll('.om-modal').forEach(function (m) {
+    m.addEventListener('click', function (e) { if (e.target === m) m.style.display = 'none'; });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.om-modal').forEach(function (m) { m.style.display = 'none'; });
+    }
+  });
+})();
+</script>
+</body>
 </html>

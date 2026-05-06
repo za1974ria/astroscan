@@ -236,6 +236,61 @@ html.embed-portail .content-area {
   min-width:0 !important;
 }
 html.embed-portail .topbar { grid-column:1 / -1 !important; }
+
+/* ──────────────────────────────────────────────────────────
+ * Boutons fétiches — PORTAIL + ACTUALISER
+ * Cohérence cross-modules (signature ground-assets style)
+ * Scoped .cs-btn-toolbar — pas de conflit avec ga-btn-toolbar
+ * ─────────────────────────────────────────────────────────*/
+.cs-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 12px;
+}
+.cs-btn-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(201, 163, 62, 0.9);
+  background: linear-gradient(135deg, rgba(201, 163, 62, 0.04) 0%, rgba(0, 229, 255, 0.03) 100%);
+  border: 1px solid rgba(201, 163, 62, 0.35);
+  border-radius: 3px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 8px rgba(201, 163, 62, 0.08), inset 0 0 6px rgba(201, 163, 62, 0.03);
+}
+.cs-btn-toolbar:hover {
+  color: rgba(0, 229, 255, 0.95);
+  border-color: rgba(0, 229, 255, 0.6);
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.06) 0%, rgba(201, 163, 62, 0.04) 100%);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.18), inset 0 0 8px rgba(0, 229, 255, 0.05);
+  transform: translateY(-1px);
+}
+.cs-btn-toolbar:active { transform: translateY(0); }
+.cs-btn-refresh { padding: 6px 8px; }
+.cs-refresh-icon { transition: transform 0.6s ease; }
+.cs-btn-refresh.spinning .cs-refresh-icon {
+  animation: cs-spin 0.6s ease;
+}
+@keyframes cs-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@media (max-width: 768px) {
+  .cs-toolbar-actions { gap: 5px; margin-right: 6px; }
+  .cs-btn-toolbar { padding: 5px 8px; font-size: 8px; letter-spacing: 1px; }
+  .cs-btn-toolbar span { display: none; }
+  .cs-btn-portal { padding: 5px 7px; }
+}
 </style>
 <!-- GA4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
@@ -280,6 +335,27 @@ html.embed-portail .topbar { grid-column:1 / -1 !important; }
       <div class="tbar-chip"><div class="tbar-dot amber"></div>NASA SYNC</div>
     </div>
     <div class="topbar-right">
+      <div class="cs-toolbar-actions" role="group" aria-label="actions">
+        <a href="/portail?lang={{ lang or 'fr' }}" target="_top"
+           class="cs-btn-toolbar cs-btn-portal"
+           title="{% if lang == 'en' %}Back to portal{% else %}Retour au portail{% endif %}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+          <span>{% if lang == 'en' %}PORTAL{% else %}PORTAIL{% endif %}</span>
+        </a>
+        <button type="button"
+                class="cs-btn-toolbar cs-btn-refresh"
+                id="cs-btn-refresh"
+                title="{% if lang == 'en' %}Refresh{% else %}Actualiser{% endif %}"
+                aria-label="{% if lang == 'en' %}Refresh{% else %}Actualiser{% endif %}"
+                onclick="csRefresh(this)">
+          <svg class="cs-refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-3.5-7.1"/>
+            <path d="M21 4v5h-5"/>
+          </svg>
+        </button>
+      </div>
       <div id="top-ip" style="font-size:.42rem;letter-spacing:.1em;color:var(--text-dim)">📍 Tlemcen · —</div>
       <div id="top-clock">--:--:-- UTC</div>
     </div>
@@ -363,6 +439,113 @@ html.embed-portail .topbar { grid-column:1 / -1 !important; }
       <div class="ti"><span class="ti-lbl">NUIT ASTRO</span><span class="ti-val" id="darkNight">—</span></div>
     </div>
 
+    <!-- ══════════════════ HILAL OBSERVATOIRE — STYLES ══════════════════ -->
+    <style>
+    .hilal-section { margin: 2rem auto 1.5rem; padding: 0 1.5rem; max-width: 1300px; }
+    .hilal-section h2 {
+      font-family: var(--font); font-size: .9rem; letter-spacing: .2em;
+      color: rgba(212,175,55,.95); text-shadow: 0 0 12px rgba(212,175,55,.25);
+      text-transform: uppercase; margin-bottom: .3rem; font-weight: 700;
+    }
+    .hilal-subtitle {
+      display: block; font-size: .65rem; letter-spacing: .15em;
+      color: var(--text-dim); margin-bottom: 1rem;
+    }
+    .hilal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    @media (max-width: 1100px) { .hilal-grid { grid-template-columns: 1fr; } }
+    .hilal-card {
+      border: 1px solid rgba(212,175,55,.25);
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(0,12,20,.6), rgba(0,8,14,.4));
+      padding: 1.1rem 1.2rem;
+      transition: all .25s;
+    }
+    .hilal-card:hover { border-color: rgba(212,175,55,.55); box-shadow: 0 0 22px rgba(212,175,55,.10); }
+    .hilal-card-title {
+      font-family: var(--font); font-size: .55rem; letter-spacing: .18em;
+      color: rgba(0,229,255,.92); text-transform: uppercase;
+      margin-bottom: .8rem; display: flex; align-items: center; gap: .4rem;
+    }
+    .hilal-row { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; padding: .35rem 0; border-bottom: 1px dashed rgba(212,175,55,.12); }
+    .hilal-row:last-child { border-bottom: none; }
+    .hilal-lbl { color: var(--text-dim); font-size: .68rem; letter-spacing: .04em; flex-shrink: 0; }
+    .hilal-val { font-family: var(--mono); color: rgba(220,228,240,.92); font-size: .78rem; text-align: right; }
+    .hilal-val .ar { color: rgba(212,175,55,.9); font-family: serif; margin-left: .35rem; font-size: .85rem; }
+
+    .hilal-consensus { margin-top: .9rem; padding: .65rem; background: rgba(0,255,136,.07); border: 1px solid rgba(0,255,136,.28); border-radius: 6px; text-align: center; }
+    .hilal-consensus-date { font-family: var(--font); font-size: 1rem; color: var(--green); font-weight: 700; letter-spacing: .08em; }
+    .hilal-consensus-conf { font-size: .55rem; letter-spacing: .15em; color: var(--text-dim); margin-top: .25rem; }
+
+    .hilal-events { display: flex; flex-direction: column; gap: .35rem; max-height: 340px; overflow-y: auto; padding-right: .25rem; }
+    .hilal-events::-webkit-scrollbar { width: 4px; }
+    .hilal-events::-webkit-scrollbar-thumb { background: rgba(212,175,55,.3); border-radius: 2px; }
+    .hilal-event { display: grid; grid-template-columns: 28px 1fr auto; gap: .5rem; align-items: center; padding: .4rem .55rem; background: rgba(0,212,255,.03); border-left: 2px solid rgba(212,175,55,.4); border-radius: 0 4px 4px 0; }
+    .hilal-event-icon { font-size: 1.05rem; text-align: center; }
+    .hilal-event-name { font-size: .68rem; color: var(--text-bright); line-height: 1.3; }
+    .hilal-event-name .ar { color: rgba(212,175,55,.85); margin-left: .3rem; font-family: serif; font-size: .78rem; }
+    .hilal-event-date { font-family: var(--mono); font-size: .65rem; color: var(--cyan); white-space: nowrap; }
+    .hilal-event-hijri { font-size: .55rem; color: var(--text-dim); margin-top: .1rem; letter-spacing: .04em; }
+
+    .hilal-disclaimer { margin-top: 1rem; padding: .6rem .9rem; background: rgba(255,140,0,.04); border-left: 3px solid rgba(255,140,0,.4); border-radius: 0 4px 4px 0; font-size: .62rem; line-height: 1.55; color: var(--text); letter-spacing: .03em; }
+    .hilal-disclaimer strong { color: rgba(255,140,0,.9); }
+
+    /* Prayer table */
+    .prayer-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .68rem; table-layout: fixed; }
+    .prayer-table th, .prayer-table td { padding: .42rem .25rem; text-align: center; border-bottom: 1px solid rgba(212,175,55,.1); }
+    .prayer-table th { font-family: var(--font); font-size: .52rem; letter-spacing: .1em; color: rgba(212,175,55,.9); text-transform: uppercase; background: rgba(212,175,55,.05); }
+    .prayer-table td { font-family: var(--mono); color: rgba(220,228,240,.9); }
+    .prayer-table td.method { text-align: left; padding-left: .5rem; color: var(--cyan); font-family: var(--font); font-size: .55rem; letter-spacing: .06em; }
+    .prayer-table td.maghrib, .prayer-table th.maghrib { color: var(--green); font-weight: 700; }
+    .prayer-table .imsak-grp { background: rgba(0,229,255,.04); }
+    .prayer-table tr:hover td { background: rgba(212,175,55,.04); }
+    .prayer-fasting { margin-top: .65rem; text-align: center; font-size: .68rem; color: var(--text); letter-spacing: .04em; }
+    .prayer-fasting strong { color: var(--green); font-family: var(--mono); font-size: .8rem; }
+
+    /* City search */
+    .city-search-wrap { position: relative; max-width: 600px; }
+    .city-search-input { width: 100%; padding: .7rem .9rem; background: rgba(0,12,20,.85); border: 1px solid rgba(212,175,55,.3); border-radius: 6px; color: var(--text-bright); font-family: 'Inter', system-ui, sans-serif; font-size: .85rem; outline: none; transition: all .2s; }
+    .city-search-input:focus { border-color: rgba(0,229,255,.65); box-shadow: 0 0 14px rgba(0,229,255,.15); }
+    .city-suggestions { position: absolute; top: 100%; left: 0; right: 0; background: rgba(2,8,16,.98); border: 1px solid rgba(212,175,55,.35); border-top: none; max-height: 320px; overflow-y: auto; z-index: 50; display: none; border-radius: 0 0 6px 6px; }
+    .city-suggestions.open { display: block; }
+    .city-suggestion-item { padding: .6rem .8rem; cursor: pointer; display: flex; align-items: center; gap: .6rem; border-bottom: 1px solid rgba(212,175,55,.08); transition: background .15s; }
+    .city-suggestion-item:hover { background: rgba(0,229,255,.09); }
+    .city-suggestion-flag { font-size: 1.15rem; }
+    .city-suggestion-info { flex: 1; min-width: 0; }
+    .city-suggestion-name { font-size: .8rem; color: var(--text-bright); }
+    .city-suggestion-country { font-size: .65rem; color: var(--text-dim); }
+    .city-suggestion-coords { font-family: var(--mono); font-size: .58rem; color: var(--cyan); white-space: nowrap; }
+
+    .recent-cities { margin-top: 1rem; display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; }
+    .recent-label { font-size: .6rem; color: var(--text-dim); letter-spacing: .12em; text-transform: uppercase; }
+    .city-pill { padding: .4rem .8rem; background: rgba(0,212,255,.05); border: 1px solid rgba(0,212,255,.22); border-radius: 999px; color: var(--text-bright); font-family: 'Inter', system-ui, sans-serif; font-size: .72rem; cursor: pointer; transition: all .2s; }
+    .city-pill:hover { border-color: var(--cyan); background: rgba(0,212,255,.13); transform: translateY(-1px); }
+
+    .city-result { margin-top: 1.2rem; padding: 1rem 1.2rem; background: linear-gradient(135deg, rgba(0,12,20,.7), rgba(0,8,14,.5)); border: 1px solid rgba(212,175,55,.3); border-radius: 10px; min-height: 80px; }
+    .city-result-header { display: flex; align-items: baseline; flex-wrap: wrap; gap: .6rem; margin-bottom: .6rem; padding-bottom: .5rem; border-bottom: 1px solid rgba(212,175,55,.15); }
+    .city-result-flag { font-size: 1.4rem; }
+    .city-result-name { font-family: var(--font); font-size: .9rem; color: rgba(212,175,55,.95); letter-spacing: .1em; text-transform: uppercase; }
+    .city-result-coords { font-family: var(--mono); font-size: .65rem; color: var(--text-dim); margin-left: auto; }
+
+    .ramadan-status-bar { padding: .85rem 1.1rem; margin-bottom: 1rem; background: linear-gradient(90deg, rgba(212,175,55,.12), rgba(0,229,255,.06)); border: 1px solid rgba(212,175,55,.32); border-radius: 8px; display: flex; align-items: center; gap: .9rem; }
+    .ramadan-status-icon { font-size: 1.5rem; }
+    .ramadan-status-text { font-family: var(--font); font-size: .8rem; color: rgba(220,228,240,.95); letter-spacing: .1em; }
+    .ramadan-status-detail { font-size: .65rem; color: var(--text-dim); margin-top: .2rem; letter-spacing: .06em; }
+
+    .hilal-empreinte { margin: 2rem 1.5rem 1rem; padding: 1.3rem 1.2rem; background: linear-gradient(135deg, rgba(0,8,14,.6), rgba(0,4,10,.4)); border: 1px solid rgba(212,175,55,.22); border-radius: 8px; text-align: center; max-width: 1300px; }
+    .hilal-empreinte blockquote { font-family: serif; font-style: italic; color: rgba(212,175,55,.88); font-size: .88rem; line-height: 1.7; margin-bottom: .65rem; }
+    .hilal-empreinte cite { font-family: var(--font); font-style: normal; font-size: .55rem; letter-spacing: .25em; color: var(--text-dim); text-transform: uppercase; }
+
+    @media (max-width: 768px) {
+      .hilal-section { padding: 0 .6rem; }
+      .prayer-table { font-size: .55rem; }
+      .prayer-table th, .prayer-table td { padding: .28rem .12rem; }
+      .prayer-table td.method { font-size: .5rem; padding-left: .25rem; }
+      .hilal-event { grid-template-columns: 22px 1fr; row-gap: .15rem; }
+      .hilal-event-date { grid-column: 2; text-align: left; }
+      .city-result-coords { margin-left: 0; width: 100%; }
+    }
+    </style>
+
     <!-- Main panels grid -->
     <div class="main-grid">
 
@@ -397,6 +580,79 @@ html.embed-portail .topbar { grid-column:1 / -1 !important; }
       </div>
 
     </div>
+
+    <!-- ════════════════════ HILAL OBSERVATOIRE ════════════════════ -->
+    <section class="hilal-section">
+      <h2>🌙 Observatoire Hilal Islamique</h2>
+      <span class="hilal-subtitle">Calculs astronomiques purs · Yallop 1997 + Odeh 2006 · NASA JPL DE421 · hijridate</span>
+      <div class="hilal-grid">
+        <div class="hilal-card">
+          <div class="hilal-card-title">📅 Aujourd'hui</div>
+          <div id="hilal-today-content"><div class="loading">Chargement...</div></div>
+        </div>
+        <div class="hilal-card">
+          <div class="hilal-card-title">🌒 Prochain Croissant Visible</div>
+          <div id="hilal-crescent-content"><div class="loading">Calcul Yallop+Odeh...</div></div>
+        </div>
+        <div class="hilal-card">
+          <div class="hilal-card-title">🗓️ Calendrier Hégirien (3 ans)</div>
+          <div id="hilal-events-content"><div class="loading">Chargement événements...</div></div>
+        </div>
+      </div>
+      <div class="hilal-disclaimer">
+        ⚠️ <strong>Avertissement scientifique</strong> — Les calculs astronomiques (Yallop, Odeh, Umm-al-Qura)
+        indiquent la <em>visibilité théorique</em> du croissant. La date officielle dépend de l'observation
+        locale par les autorités religieuses et peut différer de ±1 jour.
+      </div>
+    </section>
+
+    <!-- ════════════════════ PRIÈRES TLEMCEN ════════════════════ -->
+    <section class="hilal-section">
+      <h2>🕌 Horaires de Prière — Tlemcen 34.87°N</h2>
+      <span class="hilal-subtitle">5 méthodes de calcul en parallèle · Imsak −10/−15/−20 min · adhan-python</span>
+      <div class="hilal-card" style="padding: .85rem 1rem; overflow-x: auto;">
+        <div id="prayers-tlemcen-content"><div class="loading">Calcul des horaires...</div></div>
+      </div>
+    </section>
+
+    <!-- ════════════════════ RAMADAN MONDIAL ════════════════════ -->
+    <section class="hilal-section">
+      <h2>🌍 Ramadan Mondial — Imsak & Iftar Toutes Villes</h2>
+      <span class="hilal-subtitle">Recherche libre · OpenStreetMap Nominatim · 5 méthodes en parallèle</span>
+      <div class="ramadan-status-bar" id="ramadan-status">
+        <div class="ramadan-status-icon">🌙</div>
+        <div>
+          <div class="ramadan-status-text">Chargement statut Ramadan...</div>
+          <div class="ramadan-status-detail"></div>
+        </div>
+      </div>
+      <div class="city-search-wrap">
+        <input type="text" id="city-search-input" class="city-search-input"
+               placeholder="🔍 Recherchez une ville (Paris, La Mecque, Tokyo...)" autocomplete="off" />
+        <div id="city-suggestions" class="city-suggestions"></div>
+      </div>
+      <div class="recent-cities">
+        <span class="recent-label">📌 Villes récentes :</span>
+        <button class="city-pill" data-lat="34.87" data-lng="-1.32" data-name="Tlemcen" data-flag="🇩🇿">🇩🇿 Tlemcen</button>
+        <button class="city-pill" data-lat="21.4225" data-lng="39.8262" data-name="La Mecque" data-flag="🇸🇦">🇸🇦 La Mecque</button>
+        <button class="city-pill" data-lat="48.8566" data-lng="2.3522" data-name="Paris" data-flag="🇫🇷">🇫🇷 Paris</button>
+        <button class="city-pill" data-lat="41.0082" data-lng="28.9784" data-name="Istanbul" data-flag="🇹🇷">🇹🇷 Istanbul</button>
+        <button class="city-pill" data-lat="30.0444" data-lng="31.2357" data-name="Le Caire" data-flag="🇪🇬">🇪🇬 Le Caire</button>
+      </div>
+      <div id="city-result" class="city-result" style="display:none;">
+        <div id="city-result-inner"></div>
+      </div>
+    </section>
+
+    <!-- ════════════════════ EMPREINTE ════════════════════ -->
+    <div class="hilal-empreinte">
+      <blockquote>
+        « Cet observatoire ne tranche pas. Il calcule.<br>
+        Il offre les données scientifiques pures pour que chacun puisse comparer, vérifier, valider. »
+      </blockquote>
+      <cite>— ASTRO-SCAN-CHOHRA · Tlemcen 2026</cite>
+    </div>
+
   </div>
 
 </div><!-- .shell -->
@@ -592,10 +848,246 @@ async function loadISSPasses(){
 /* ── INIT ── */
 loadMoon(); loadSun(); loadConditions(); loadObjects(); loadPlanets(); loadISSPasses();
 setInterval(()=>{ loadConditions(); loadISSPasses(); }, 300000);
+
+/* ════════════════════════════════════════════════════════════
+   HILAL OBSERVATOIRE — calcul scientifique multi-méthodes
+   ════════════════════════════════════════════════════════════ */
+
+async function loadHilalToday(){
+  try{
+    const r = await fetch('/api/hilal/today');
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const h = d.hijri || {}, m = d.moon || {}, c = d.next_crescent_visible || {};
+    document.getElementById('hilal-today-content').innerHTML = `
+      <div class="hilal-row"><span class="hilal-lbl">Date grégorienne</span><span class="hilal-val">${d.gregorian||'—'}</span></div>
+      <div class="hilal-row"><span class="hilal-lbl">Date hégirienne</span><span class="hilal-val">${h.day??'?'} ${h.month_name_fr||''} ${h.year||''}<span class="ar">${h.month_name_ar||''}</span></span></div>
+      <div class="hilal-row"><span class="hilal-lbl">Phase lunaire</span><span class="hilal-val">${m.phase_icon||'🌙'} ${m.phase_name_fr||'—'}<span class="ar">${m.phase_name_ar||''}</span></span></div>
+      <div class="hilal-row"><span class="hilal-lbl">Illumination</span><span class="hilal-val">${m.illumination_percent??'?'}%</span></div>
+      <div class="hilal-row"><span class="hilal-lbl">Âge lunaire</span><span class="hilal-val">${m.age_days??'?'} jours</span></div>
+      <div class="hilal-row"><span class="hilal-lbl">Distance</span><span class="hilal-val">${(m.distance_km||0).toLocaleString('fr-FR')} km</span></div>
+      <div class="hilal-row"><span class="hilal-lbl">Magnitude</span><span class="hilal-val">${m.magnitude??'?'}</span></div>`;
+
+    const y = c.yallop_1997 || {}, o = c.odeh_2006 || {};
+    const conf = c.confidence || 'low';
+    const confTxt = conf==='high' ? '✅ Haute (Yallop = Odeh)' : conf==='medium' ? '⚠️ Moyenne' : '❓ Faible';
+    const nmStr = (d.next_newmoon_utc||'').replace('T',' ').slice(0,16);
+    document.getElementById('hilal-crescent-content').innerHTML = `
+      <div class="hilal-row"><span class="hilal-lbl">Nouvelle Lune</span><span class="hilal-val">${nmStr} UTC</span></div>
+      <div class="hilal-row"><span class="hilal-lbl">Yallop 1997</span><span class="hilal-val">${y.date||'—'} <small style="opacity:.6">cat. ${y.category||'?'}</small></span></div>
+      <div class="hilal-row" style="border:none;padding-top:0"><span class="hilal-lbl" style="font-size:.6rem">↳</span><span class="hilal-val" style="font-size:.65rem;color:var(--text-dim)">${y.category_label||'—'} · q=${y.q_value??'?'}</span></div>
+      <div class="hilal-row"><span class="hilal-lbl">Odeh 2006</span><span class="hilal-val">${o.date||'—'} <small style="opacity:.6">cat. ${o.category||'?'}</small></span></div>
+      <div class="hilal-row" style="border:none;padding-top:0"><span class="hilal-lbl" style="font-size:.6rem">↳</span><span class="hilal-val" style="font-size:.65rem;color:var(--text-dim)">${o.category_label||'—'} · V=${o.q_value??'?'}</span></div>
+      <div class="hilal-consensus">
+        <div class="hilal-consensus-date">${c.consensus_date||'—'}</div>
+        <div class="hilal-consensus-conf">CONSENSUS · ${confTxt}</div>
+      </div>`;
+  }catch(e){
+    console.warn('[hilal/today]', e);
+    const t = document.getElementById('hilal-today-content');
+    if(t) t.innerHTML = '<div class="err">⚠️ '+e.message+'</div>';
+    const c = document.getElementById('hilal-crescent-content');
+    if(c) c.innerHTML = '<div class="err">⚠️ Calcul indisponible</div>';
+  }
+}
+
+async function loadHilalEvents(){
+  try{
+    const r = await fetch('/api/hilal/events?years=3');
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const events = d.events || [];
+    const today = new Date().toISOString().slice(0,10);
+    const upcoming = events.filter(ev => ev.gregorian_date >= today).slice(0, 24);
+    if(!upcoming.length){
+      document.getElementById('hilal-events-content').innerHTML = '<div class="err">Aucun événement à venir</div>';
+      return;
+    }
+    document.getElementById('hilal-events-content').innerHTML =
+      '<div class="hilal-events">' +
+      upcoming.map(ev=>{
+        const dt = new Date(ev.gregorian_date+'T12:00:00Z');
+        const fmt = dt.toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'2-digit'});
+        return `<div class="hilal-event" title="${ev.hijri}">
+          <div class="hilal-event-icon">${ev.icon||'🌙'}</div>
+          <div>
+            <div class="hilal-event-name">${ev.name_fr}<span class="ar">${ev.name_ar||''}</span></div>
+            <div class="hilal-event-hijri">${ev.hijri||''}</div>
+          </div>
+          <div class="hilal-event-date">${fmt}</div>
+        </div>`;
+      }).join('') + '</div>';
+  }catch(e){
+    document.getElementById('hilal-events-content').innerHTML = '<div class="err">⚠️ '+e.message+'</div>';
+  }
+}
+
+async function loadCityPrayers(lat, lng, name, flag, targetId, showHeader){
+  const target = document.getElementById(targetId);
+  if(!target) return;
+  target.innerHTML = '<div class="loading">Calcul des horaires...</div>';
+  try{
+    const r = await fetch(`/api/hilal/prayers?lat=${lat}&lng=${lng}&city=${encodeURIComponent(name)}`);
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const m = d.methods || {}, loc = d.location || {};
+    const methods = ['MWL','ISNA','Karachi','Egypt','UmmAlQura'];
+    const labels = {MWL:'Muslim World League',ISNA:'ISNA',Karachi:'Karachi',Egypt:'Égypte',UmmAlQura:'Umm al-Qura'};
+    const tbl = `<table class="prayer-table">
+      <thead><tr>
+        <th style="text-align:left">Méthode</th>
+        <th class="imsak-grp">−10</th><th class="imsak-grp">−15</th><th class="imsak-grp">−20</th>
+        <th>Fajr</th><th>Lever</th><th>Dhuhr</th><th>Asr</th>
+        <th class="maghrib">Maghrib</th><th>Isha</th>
+      </tr></thead>
+      <tbody>${methods.map(k=>{
+        const v = m[k] || {};
+        if(v.error) return `<tr><td class="method">${labels[k]}</td><td colspan="9" style="color:var(--red);font-size:.55rem">⚠️ ${(v.error||'').slice(0,60)}</td></tr>`;
+        return `<tr>
+          <td class="method">${labels[k]}</td>
+          <td class="imsak-grp">${v.imsak_10min||'—'}</td>
+          <td class="imsak-grp">${v.imsak_15min||'—'}</td>
+          <td class="imsak-grp">${v.imsak_20min||'—'}</td>
+          <td>${v.fajr||'—'}</td>
+          <td>${v.sunrise||'—'}</td>
+          <td>${v.dhuhr||'—'}</td>
+          <td>${v.asr||'—'}</td>
+          <td class="maghrib">${v.maghrib||'—'}</td>
+          <td>${v.isha||'—'}</td>
+        </tr>`;
+      }).join('')}</tbody></table>`;
+    const dur = d.fasting_duration_minutes;
+    const fasting = dur ? `<div class="prayer-fasting">⏱️ Durée du jeûne (Fajr → Maghrib · MWL) : <strong>${Math.floor(dur/60)}h ${dur%60}m</strong></div>` : '';
+    const tz = loc.timezone || '?';
+    const off = (loc.tz_offset_hours>=0?'+':'') + (loc.tz_offset_hours||0);
+    const header = showHeader ? `<div class="city-result-header">
+      <span class="city-result-flag">${flag||'🏳️'}</span>
+      <span class="city-result-name">${name}</span>
+      <span class="city-result-coords">${(+lat).toFixed(2)}°N · ${(+lng).toFixed(2)}°E · ${tz} (UTC${off})</span>
+    </div>` : '';
+    target.innerHTML = header + tbl + fasting;
+  }catch(e){
+    target.innerHTML = '<div class="err">⚠️ '+e.message+'</div>';
+  }
+}
+
+function loadPrayersTlemcen(){
+  return loadCityPrayers(34.87, -1.32, 'Tlemcen', '🇩🇿', 'prayers-tlemcen-content', false);
+}
+
+async function loadRamadanStatus(){
+  try{
+    const r = await fetch('/api/hilal/ramadan');
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const bar = document.getElementById('ramadan-status');
+    if(!bar) return;
+    const icon = bar.querySelector('.ramadan-status-icon');
+    const txt = bar.querySelector('.ramadan-status-text');
+    const det = bar.querySelector('.ramadan-status-detail');
+    if(d.in_ramadan){
+      icon.textContent = '🌙';
+      txt.textContent = `RAMADAN EN COURS — Jour ${d.day} / ${d.total}`;
+      det.textContent = `Année hégirienne ${d.hijri_year || ''}`;
+    } else if((d.days_until||999) <= 7){
+      icon.textContent = '🌙';
+      txt.textContent = `RAMADAN APPROCHE — J−${d.days_until}`;
+      det.textContent = `Début prévu : ${d.next_ramadan_gregorian}`;
+    } else {
+      icon.textContent = '📅';
+      txt.textContent = `Prochain Ramadan : ${d.next_ramadan_gregorian||'—'}`;
+      det.textContent = `Dans ${d.days_until||'?'} jours · Année hégirienne ${d.next_ramadan_hijri_year||''}`;
+    }
+  }catch(e){
+    const txt = document.querySelector('#ramadan-status .ramadan-status-text');
+    if(txt) txt.textContent = '⚠️ Statut indisponible';
+  }
+}
+
+function selectCity(lat, lng, name, flag){
+  const result = document.getElementById('city-result');
+  result.style.display = 'block';
+  loadCityPrayers(lat, lng, name, flag, 'city-result-inner', true);
+  result.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function initCitySearch(){
+  const input = document.getElementById('city-search-input');
+  const dropdown = document.getElementById('city-suggestions');
+  if(!input || !dropdown) return;
+  let timer = null;
+  input.addEventListener('input', ()=>{
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if(q.length < 2){ dropdown.classList.remove('open'); return; }
+    timer = setTimeout(async ()=>{
+      try{
+        const r = await fetch(`/api/hilal/cities/search?q=${encodeURIComponent(q)}&limit=8`);
+        const d = await r.json();
+        const results = d.results || [];
+        if(!results.length){
+          dropdown.innerHTML = '<div class="city-suggestion-item" style="color:var(--text-dim);cursor:default">Aucun résultat</div>';
+          dropdown.classList.add('open'); return;
+        }
+        dropdown.innerHTML = results.map(c=>`
+          <div class="city-suggestion-item" data-lat="${c.lat}" data-lng="${c.lng}" data-name="${(c.name||'').replace(/"/g,'&quot;')}" data-flag="${c.flag||''}">
+            <span class="city-suggestion-flag">${c.flag||'🏳️'}</span>
+            <div class="city-suggestion-info">
+              <div class="city-suggestion-name">${c.name||'?'}</div>
+              <div class="city-suggestion-country">${c.country||''}</div>
+            </div>
+            <div class="city-suggestion-coords">${(+c.lat).toFixed(2)}, ${(+c.lng).toFixed(2)}</div>
+          </div>`).join('');
+        dropdown.classList.add('open');
+      }catch(e){ console.warn('[city search]', e); }
+    }, 320);
+  });
+  dropdown.addEventListener('click', (e)=>{
+    const item = e.target.closest('.city-suggestion-item');
+    if(!item || !item.dataset.lat) return;
+    const lat = parseFloat(item.dataset.lat);
+    const lng = parseFloat(item.dataset.lng);
+    const name = item.dataset.name;
+    const flag = item.dataset.flag;
+    input.value = name;
+    dropdown.classList.remove('open');
+    selectCity(lat, lng, name, flag);
+  });
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('.city-search-wrap')) dropdown.classList.remove('open');
+  });
+}
+
+function initRecentCityPills(){
+  document.querySelectorAll('.city-pill').forEach(pill=>{
+    pill.addEventListener('click', ()=>{
+      selectCity(parseFloat(pill.dataset.lat), parseFloat(pill.dataset.lng),
+                 pill.dataset.name, pill.dataset.flag);
+    });
+  });
+}
+
+/* INIT HILAL */
+loadHilalToday();
+loadHilalEvents();
+loadPrayersTlemcen();
+loadRamadanStatus();
+initCitySearch();
+initRecentCityPills();
 </script>
 
 <script>
 (function(){try{fetch('/api/visitors/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:window.location.pathname})});}catch(e){}})();
+
+/* Bouton ACTUALISER — debounced spin + reload */
+function csRefresh(btn) {
+  if (btn.classList.contains('spinning')) return;
+  btn.classList.add('spinning');
+  setTimeout(function() {
+    location.reload();
+  }, 400);
+}
+
 </script>
 </body>
 </html>

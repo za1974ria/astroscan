@@ -3307,6 +3307,8 @@
   } catch (e) {}
 
   window.viewer = viewer;
+  window.astroViewer = viewer;
+  try { console.log('[ASTRO] Cesium viewer exposé globalement (window.astroViewer)'); } catch (e) {}
   window.OrbitalMapEngine = window.OrbitalMapEngine || {};
   window.OrbitalMapEngine.exportShowroomReport = exportShowroomReport;
   window.OrbitalMapEngine.buildShowroomReportData = buildShowroomReportData;

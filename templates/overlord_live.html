@@ -5,7 +5,50 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstroScan-Chohra - Overlord Live · ORBITAL-CHOHRA</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
-<style id="embed-style"></style>
+<style id="embed-style">
+/* ─────────────────────────────────────────────────────────
+ * FIX TÉLÉMÉTRIE STATION — NEXT PASS overflow
+ * 6 mai 2026, 02h25 — Le grid était 2 colonnes mais 4 cells
+ * ─────────────────────────────────────────────────────────*/
+.iss-next-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 8px !important;
+  padding: 8px 4px !important;
+}
+.iss-next-grid .cell {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  padding: 6px 8px !important;
+  background: rgba(2, 12, 20, 0.5);
+  border-left: 2px solid rgba(0, 212, 255, 0.4);
+  min-width: 0;
+  overflow: hidden;
+}
+.iss-next-grid .cell .k {
+  font-size: 9px !important;
+  letter-spacing: 1.2px !important;
+  color: rgba(155, 176, 196, 0.85) !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+}
+.iss-next-grid .cell .v {
+  font-size: 12px !important;
+  font-family: monospace !important;
+  color: #5eead4 !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+@media (max-width: 1200px) {
+  .iss-next-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+</style>
 <script>
 (function(){
   if (window.location.search.indexOf('embed=1') !== -1 || window !== window.parent) {
