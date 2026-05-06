@@ -229,6 +229,12 @@ font-size: 10px;
 .tbar-dot.green { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
 .tbar-dot.amber { background:var(--amber); box-shadow:0 0 5px var(--amber); }
 .tbar-visits { display:flex; align-items:center; font-family:var(--font); font-size:0.6rem; letter-spacing:0.12em; color:var(--cyan); padding:4px 10px; background:rgba(0,255,136,0.08); border:1px solid rgba(0,212,255,0.3); border-radius:4px; }
+.header-counter-pulse { animation: counterFlash 0.4s ease-out; display:inline-block; }
+@keyframes counterFlash {
+  0%   { transform: scale(1); color: inherit; text-shadow: none; }
+  35%  { transform: scale(1.08); color: #00DCFF; text-shadow: 0 0 8px rgba(0, 220, 255, 0.8); }
+  100% { transform: scale(1); color: inherit; text-shadow: none; }
+}
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
 /* Langue FR/EN */
@@ -2001,8 +2007,8 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
       if (!d) return;
       var st = document.getElementById('iss-status');
       if (d.ok === false) {
-        if (st) st.textContent = 'Données temporairement indisponibles';
-        if (metaEl) metaEl.textContent = 'Data temporarily unavailable';
+        if (st) st.textContent = currentLang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API';
+        if (metaEl) metaEl.textContent = currentLang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API';
         return;
       }
       if (st) st.textContent = '';
@@ -2034,7 +2040,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
 
   // Compteur visites (format "000 123")
   function fmtVisits(n){var s=String(Math.max(0,n));var p=('000000'+s).slice(-6);return p.slice(0,3)+' '+p.slice(3);}
-  function loadVisitsPortail(){fetch('/api/visits').then(function(r){return r.ok?r.json():null;}).then(function(d){var el=document.getElementById('tbar-visits-val');if(el&&d)el.textContent=fmtVisits(d.count||0);}).catch(function(){});}
+  function loadVisitsPortail(){fetch('/api/visits').then(function(r){return r.ok?r.json():null;}).then(function(d){var el=document.getElementById('tbar-visits-val');if(el&&d){var newVal=fmtVisits(d.count||0);if(el.textContent!==newVal){el.textContent=newVal;el.classList.remove('header-counter-pulse');void el.offsetWidth;el.classList.add('header-counter-pulse');setTimeout(function(){el.classList.remove('header-counter-pulse');},450);}}}).catch(function(){});}
   loadVisitsPortail();
   setInterval(loadVisitsPortail, API_INTERVALS.visits);
 
@@ -2066,7 +2072,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
         if (m.source || m.status || m.last_updated) {
           metaEl.textContent = 'Source: ' + (m.source || '—') + ' | Status: ' + (m.status || '—') + ' | Updated: ' + (m.last_updated || '—');
         } else {
-          metaEl.textContent = d ? '' : 'Data temporarily unavailable';
+          metaEl.textContent = d ? '' : (currentLang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API');
         }
       }
       updateRadioWidget();
@@ -2092,7 +2098,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     var metaEl = document.getElementById('apod-meta-note');
     if (!metaEl) return;
     fetch('/apod').then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
-      if (!d) { metaEl.textContent = 'Data temporarily unavailable'; return; }
+      if (!d) { metaEl.textContent = currentLang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API'; return; }
       var m = d.meta || {};
       if (m.source || m.status || m.last_updated) {
         metaEl.textContent = 'Source: ' + (m.source || '—') + ' | Status: ' + (m.status || '—') + ' | Updated: ' + (m.last_updated || '—');
@@ -2100,7 +2106,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
         metaEl.textContent = '';
       }
     }).catch(function() {
-      metaEl.textContent = 'Data temporarily unavailable';
+      metaEl.textContent = currentLang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API';
     });
   }
   fetchApodMeta();
