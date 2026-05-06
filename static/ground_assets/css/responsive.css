@@ -1,0 +1,136 @@
+/* ============================================================
+   GROUND ASSETS — animations + responsive
+   ============================================================ */
+
+/* ── Existing core animations ────────────────────────────────────── */
+@keyframes ga-pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.85); }
+}
+
+@keyframes ga-pulse {
+  0%   { transform: scale(1);   opacity: 0.7; }
+  70%  { transform: scale(2.2); opacity: 0;   }
+  100% { transform: scale(2.2); opacity: 0;   }
+}
+
+@keyframes ga-fade-in {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Marker animations ──────────────────────────────────────────── */
+@keyframes ga-halo-pulse-gold {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%      { transform: scale(1.30); opacity: 0.35; }
+}
+@keyframes ga-halo-pulse-cyan {
+  0%, 100% { transform: scale(1);    opacity: 0.65; }
+  50%      { transform: scale(1.30); opacity: 0.20; }
+}
+@keyframes ga-wave-emit {
+  0%   { transform: scale(0.6); opacity: 0.85; }
+  70%  { transform: scale(1.5); opacity: 0;    }
+  100% { transform: scale(1.5); opacity: 0;    }
+}
+@keyframes ga-balloon-bob {
+  0%, 100% { transform: translateY(-1.5px); }
+  50%      { transform: translateY(1.5px);  }
+}
+@keyframes ga-blip {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%      { opacity: 0.4; transform: scale(1.6); }
+}
+@keyframes ga-home-ring {
+  0%   { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.6);  opacity: 0;   }
+}
+
+/* ── Triangulation link animations (SVG path stroke) ────────────── */
+@keyframes ga-link-flow {
+  0%   { stroke-dashoffset: 0;   }
+  100% { stroke-dashoffset: -86; }
+}
+@keyframes ga-link-secondary-flow {
+  0%   { stroke-dashoffset: 0;   }
+  100% { stroke-dashoffset: -56; }
+}
+
+/* ── Radar uncertainty pulse ─────────────────────────────────────── */
+@keyframes ga-radar-pulse {
+  0%, 100% { stroke-opacity: 0.55; }
+  50%      { stroke-opacity: 0.15; }
+}
+
+/* ── HUD scan line ───────────────────────────────────────────────── */
+@keyframes ga-hud-scan {
+  0%   { transform: translateY(-80px); }
+  100% { transform: translateY(100vh); }
+}
+
+/* ── Boot sequence ───────────────────────────────────────────────── */
+@keyframes ga-boot-line {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0);   }
+}
+@keyframes ga-boot-scan {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(420%);  }
+}
+
+/* ── Mobile / responsive ─────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .ga-shell {
+    grid-template-rows: 48px 1fr auto;
+    grid-template-columns: 1fr;
+  }
+  .ga-main { grid-column: 1; grid-row: 2; border-right: none; }
+  .ga-focus {
+    grid-column: 1;
+    grid-row: 2;
+    border-left: none;
+    border-top: 1px solid var(--ga-border-2);
+    position: fixed;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    max-height: 65vh;
+    transform: translateY(100%);
+    transition: transform .35s cubic-bezier(.2,.8,.3,1);
+    z-index: 100;
+    background: var(--ga-bg-3);
+  }
+  .ga-focus.open { transform: translateY(0); }
+  .ga-stream { grid-column: 1; grid-row: 3; min-height: 60px; }
+  .ga-stream-body { display: none; }
+  .ga-stream.open .ga-stream-body { display: block; max-height: 240px; }
+  .ga-stream-head { cursor: pointer; }
+  .ga-brand-title { display: none; }
+  .ga-utc { font-size: 10px; }
+  .ga-toolbar { flex-direction: column; height: auto; padding: 8px 14px; gap: 6px; }
+  .ga-stats-bar { gap: 12px; flex-wrap: wrap; }
+  .ga-filters { padding: 0; flex-wrap: wrap; }
+
+  /* Compact legend on mobile */
+  .ga-legend { top: 8px; left: 8px; min-width: 150px; }
+  .ga-legend-title { padding: 8px 10px; font-size: 9px; }
+  .ga-legend-body  { padding: 8px 10px 10px; }
+  .ga-legend-row   { font-size: 9px; }
+  /* Boot card narrower on mobile */
+  .ga-boot-content { font-size: 10px; padding: 22px 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ga-marker-halo,
+  .ga-icon-waves .ga-wave,
+  .ga-marker--bal .ga-icon,
+  .ga-marker--obs.is-home::before,
+  .ga-marker--obs.is-home::after,
+  path.ga-link--primary-flow,
+  path.ga-link--secondary,
+  path.ga-radar-circle,
+  .ga-hud-scan,
+  .ga-boot-scan,
+  .ga-live-dot,
+  .ga-stream-row { animation: none !important; }
+}

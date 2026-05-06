@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="{{ lang or 'fr' }}" data-lang="{{ lang or 'fr' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#05070A">
+  <title>{% if lang == 'en' %}SCAN A SIGNAL — VESSEL TRACKER{% else %}SCAN A SIGNAL — TRACEUR NAVIRES{% endif %}</title>
+  <meta name="description" content="{% if lang == 'en' %}Acquire a real-time signal from a vessel via AIS. Live position, speed, heading, antenna reception.{% else %}Acquérir le signal d'un navire en temps réel via AIS. Position en direct, vitesse, cap, réception antenne.{% endif %}">
+
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="preconnect" href="https://basemaps.cartocdn.com">
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="">
+
+  <link rel="stylesheet" href="/static/scan_signal/css/scan_signal.css?v=20260505v">
+  <link rel="stylesheet" href="/static/scan_signal/css/panels.css?v=20260505v">
+  <link rel="stylesheet" href="/static/scan_signal/css/live_effects.css?v=20260505v">
+
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; min-height: 100vh; }
+  </style>
+</head>
+<body class="ss-app">
+
+  <div class="ss-shell">
+
+    <!-- ── HEADER ──────────────────────────────────────────────── -->
+    <header class="ss-header" role="banner">
+      <div class="ss-brand">
+        <span class="ss-brand-mark">ASTRO·SCAN</span>
+        <span class="ss-brand-divider">//</span>
+        <span class="ss-brand-title">{% if lang == 'en' %}VESSEL TRACKER{% else %}TRACEUR NAVIRES{% endif %}</span>
+      </div>
+      <div class="ss-header-spacer"></div>
+
+      <div class="ss-live" aria-live="polite">
+        <span class="ss-live-dot"></span>
+        <span>{% if lang == 'en' %}LIVE{% else %}EN DIRECT{% endif %}</span>
+      </div>
+
+      <div class="ss-utc" id="ss-utc" aria-label="UTC time">--:--:-- UTC</div>
+
+      <div class="ss-lang" role="group" aria-label="language">
+        <button data-lang="fr" class="{% if lang != 'en' %}active{% endif %}">FR</button>
+        <button data-lang="en" class="{% if lang == 'en' %}active{% endif %}">EN</button>
+      </div>
+    </header>
+
+    <!-- ── TABS (vessel + aircraft only) ───────────────────────── -->
+    <nav class="ss-tabs" role="tablist" aria-label="signal type">
+      <button class="ss-tab active" data-tab="vessel" role="tab" aria-selected="true">
+        <span class="ss-tab-icon">🚢</span>
+        <span>{% if lang == 'en' %}VESSEL{% else %}NAVIRE{% endif %}</span>
+      </button>
+      <button class="ss-tab" data-tab="aircraft" role="tab" aria-selected="false" title="{% if lang == 'en' %}Open Flight Radar{% else %}Ouvrir Flight Radar{% endif %}">
+        <span class="ss-tab-icon">✈️</span>
+        <span>{% if lang == 'en' %}AIRCRAFT{% else %}AVION{% endif %}</span>
+        <span class="ss-tab-arrow">→</span>
+      </button>
+    </nav>
+
+    <!-- ── STATS BAR ───────────────────────────────────────────── -->
+    <div class="ss-stats-bar" aria-label="scan stats">
+      <div class="ss-stat">
+        <span class="ss-stat-pulse gold"></span>
+        <span class="ss-stat-val" id="ss-stat-today">0</span>
+        <span>{% if lang == 'en' %}SIGNALS SCANNED TODAY{% else %}SIGNAUX SCANNÉS AUJOURD'HUI{% endif %}</span>
+      </div>
+      <div class="ss-stat">
+        <span class="ss-stat-pulse"></span>
+        <span class="ss-stat-val" id="ss-stat-active">0</span>
+        <span>{% if lang == 'en' %}ACTIVE NOW{% else %}ACTIFS MAINTENANT{% endif %}</span>
+      </div>
+      <div class="ss-stat" style="margin-left:auto">
+        <span class="ss-stat-pulse"></span>
+        <span class="ss-stat-val" id="ss-stat-cache">—</span>
+        <span>{% if lang == 'en' %}VESSELS IN CACHE{% else %}NAVIRES EN CACHE{% endif %}</span>
+      </div>
+      <div class="ss-stat">
+        <span class="ss-stat-pulse gold"></span>
+        <span class="ss-stat-val" id="ss-stat-ais">—</span>
+        <span>{% if lang == 'en' %}AIS MSG/SESS.{% else %}MSG AIS/SESS.{% endif %}</span>
+      </div>
+    </div>
+
+    <!-- ── VESSEL PANEL (active) ───────────────────────────────── -->
+    <div class="ss-tab-panel" data-panel="vessel">
+
+      <section class="ss-main">
+
+        <div class="ss-search-area">
+          <div class="ss-search-box">
+            <div class="ss-input-wrap">
+              <input id="ss-search-input"
+                     class="ss-input"
+                     type="search"
+                     autocomplete="off"
+                     spellcheck="false"
+                     placeholder="{% if lang == 'en' %}Vessel name or MMSI (e.g. MAERSK SOFIA, 235123456){% else %}Nom du navire ou MMSI (ex: MAERSK SOFIA, 235123456){% endif %}">
+              <div id="ss-search-dropdown" class="ss-search-dropdown" role="listbox"></div>
+            </div>
+            <button id="ss-search-btn" class="ss-btn">
+              [ {% if lang == 'en' %}ACQUIRE SIGNAL{% else %}ACQUÉRIR SIGNAL{% endif %} → ]
+            </button>
+          </div>
+
+          <div class="ss-popular">
+            <div class="ss-popular-label">// {% if lang == 'en' %}RECENT VESSELS{% else %}NAVIRES RÉCENTS{% endif %}</div>
+            <div class="ss-popular-chips" id="ss-popular-chips" aria-label="recent vessels">
+              <!-- chips injected by JS -->
+            </div>
+            <div class="ss-popular-hint" id="ss-popular-hint">
+              {% if lang == 'en' %}Collaborative AISStream network — coverage varies by area.{% else %}Réseau collaboratif AISStream — couverture variable selon zone.{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="ss-map-wrap">
+          <div id="ss-map" role="application" aria-label="vessel map"></div>
+          <div class="ss-map-loader" id="ss-map-loader">{% if lang == 'en' %}LOADING MAP…{% else %}CHARGEMENT…{% endif %}</div>
+        </div>
+      </section>
+
+      <aside class="ss-side" aria-label="telemetry">
+        <div class="ss-side-idle" id="ss-side-idle">
+          <div class="ss-idle-label">// {% if lang == 'en' %}STANDBY{% else %}EN ATTENTE{% endif %}</div>
+          <div class="ss-idle-msg">
+            {% if lang == 'en' %}
+              Awaiting — enter a MMSI or vessel name, or pick a recent vessel.
+              Live AIS position, speed, heading and antenna reception will appear here.
+            {% else %}
+              En attente — entrez un MMSI ou nom de navire, ou choisissez un navire récent.
+              Position AIS en direct, vitesse, cap et réception antenne s'afficheront ici.
+            {% endif %}
+          </div>
+          <div class="ss-idle-hint">{% if lang == 'en' %}AISStream · refresh every 5 s once locked.{% else %}AISStream · rafraîchissement toutes les 5 s.{% endif %}</div>
+        </div>
+
+        <div class="ss-acquire" id="ss-acquire" aria-live="polite"></div>
+
+        <div class="ss-hud" id="ss-hud" data-tracking="1"></div>
+      </aside>
+
+    </div>
+
+    <!-- ── AIRCRAFT PANEL (redirect) ───────────────────────────── -->
+    <div class="ss-tab-panel hidden" data-panel="aircraft">
+      <div class="ss-redirect-card">
+        <div class="ss-cs-inner">
+          <div class="ss-cs-icon">✈️</div>
+          <div class="ss-cs-title">{% if lang == 'en' %}AIRCRAFT TRACKING{% else %}SUIVI DES AVIONS{% endif %}</div>
+          <div class="ss-cs-subtitle">
+            {% if lang == 'en' %}
+              Live aircraft tracking is handled by our dedicated module
+              (OpenSky Network · ADS-B feed).
+            {% else %}
+              Le suivi des avions en direct est géré par notre module dédié
+              (Réseau OpenSky · flux ADS-B).
+            {% endif %}
+          </div>
+          <a href="/flight-radar" class="ss-cta-btn">
+            {% if lang == 'en' %}OPEN FLIGHT RADAR →{% else %}OUVRIR FLIGHT RADAR →{% endif %}
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="/static/scan_signal/js/cinematic.js?v=20260505v" defer></script>
+  <script src="/static/scan_signal/js/vessel_render.js?v=20260505v" defer></script>
+  <script src="/static/scan_signal/js/scan_signal.js?v=20260505v" defer></script>
+</body>
+</html>

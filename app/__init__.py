@@ -58,7 +58,11 @@ def create_app(config_name: str = "production") -> Flask:
             "/root/astro_scan/data/archive_stellaire.db"),
         SUPPORTED_LANGS={"fr", "en"},
         DEFAULT_LANG="fr",
+        TEMPLATES_AUTO_RELOAD=True,
+        SEND_FILE_MAX_AGE_DEFAULT=0,
     )
+    # Force Jinja to re-check template mtime on every render across workers.
+    app.jinja_env.auto_reload = True
 
     _init_sentry(app)
     _init_sqlite_wal(app.config["DB_PATH"])
@@ -155,6 +159,10 @@ def _register_blueprints(app: Flask) -> None:
     from app.blueprints.satellites import bp as satellites_bp
     from app.blueprints.nasa_proxy import bp as nasa_proxy_bp
     from app.blueprints.version import bp as version_bp
+    from app.blueprints.ground_assets import ground_assets_bp
+    from app.blueprints.scan_signal import scan_signal_bp
+    from app.blueprints.flight_radar import flight_radar_bp
+    from app.blueprints.hilal import bp as hilal_bp
 
     app.register_blueprint(seo_bp)
     app.register_blueprint(apod_bp)
@@ -181,4 +189,8 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(satellites_bp)
     app.register_blueprint(nasa_proxy_bp)
     app.register_blueprint(version_bp)
-    log.info("[Blueprints] 25 blueprints + 8 hooks enregistrés (sync station_web.py)")
+    app.register_blueprint(ground_assets_bp)
+    app.register_blueprint(scan_signal_bp)
+    app.register_blueprint(flight_radar_bp)
+    app.register_blueprint(hilal_bp)
+    log.info("[Blueprints] 29 blueprints + 8 hooks enregistrés (sync station_web.py + hilal)")

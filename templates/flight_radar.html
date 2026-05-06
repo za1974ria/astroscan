@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="{{ lang or 'fr' }}" data-lang="{{ lang or 'fr' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#02060A">
+  <title>{% if lang == 'en' %}FLIGHT RADAR — ATC TOWER{% else %}FLIGHT RADAR — TOUR DE CONTRÔLE{% endif %}</title>
+  <meta name="description" content="{% if lang == 'en' %}Live aircraft tracking via OpenSky Network ADS-B feed. ATC-grade tower control panel.{% else %}Suivi avions en direct via le réseau OpenSky ADS-B. Panneau tour de contrôle ATC.{% endif %}">
+
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="preconnect" href="https://basemaps.cartocdn.com">
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="">
+
+  <link rel="stylesheet" href="/static/flight_radar/css/atc_premium.css?v=20260505c">
+
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; min-height: 100vh; }
+  </style>
+</head>
+<body class="fr-app">
+
+  <div class="fr-shell">
+
+    <!-- ── HEADER ──────────────────────────────────────────────── -->
+    <header class="fr-header" role="banner">
+      <div class="fr-brand">
+        <span class="fr-brand-mark">ASTRO·SCAN</span>
+        <span class="fr-brand-divider">//</span>
+        <span class="fr-brand-title">{% if lang == 'en' %}FLIGHT RADAR — ATC TOWER{% else %}FLIGHT RADAR — TOUR DE CONTRÔLE{% endif %}</span>
+      </div>
+      <div class="fr-header-spacer"></div>
+
+      <div class="fr-live" aria-live="polite">
+        <span class="fr-live-dot"></span>
+        <span>{% if lang == 'en' %}LIVE ADS-B{% else %}EN DIRECT ADS-B{% endif %}</span>
+      </div>
+
+      <div class="fr-utc" id="fr-utc" aria-label="UTC time">--:--:-- UTC</div>
+
+      <div class="fr-lang" role="group" aria-label="language">
+        <button data-lang="fr" class="{% if lang != 'en' %}active{% endif %}">FR</button>
+        <button data-lang="en" class="{% if lang == 'en' %}active{% endif %}">EN</button>
+      </div>
+    </header>
+
+    <!-- ── STATS BAR ───────────────────────────────────────────── -->
+    <div class="fr-stats-bar" aria-label="aircraft stats">
+      <div class="fr-stat">
+        <span class="fr-stat-pulse"></span>
+        <span class="fr-stat-val" id="fr-stat-total">—</span>
+        <span>{% if lang == 'en' %}TOTAL AIRCRAFT{% else %}AVIONS TOTAUX{% endif %}</span>
+      </div>
+      <div class="fr-stat">
+        <span class="fr-stat-pulse cyan"></span>
+        <span class="fr-stat-val" id="fr-stat-air">—</span>
+        <span>{% if lang == 'en' %}IN AIR{% else %}EN VOL{% endif %}</span>
+      </div>
+      <div class="fr-stat">
+        <span class="fr-stat-pulse amber"></span>
+        <span class="fr-stat-val" id="fr-stat-ground">—</span>
+        <span>{% if lang == 'en' %}ON GROUND{% else %}AU SOL{% endif %}</span>
+      </div>
+      <div class="fr-stat">
+        <span class="fr-stat-pulse"></span>
+        <span class="fr-stat-val" id="fr-stat-rendered">—</span>
+        <span>{% if lang == 'en' %}RENDERED{% else %}AFFICHÉS{% endif %}</span>
+      </div>
+      <div class="fr-stat" style="margin-left:auto">
+        <span class="fr-stat-pulse cyan"></span>
+        <span class="fr-stat-val" id="fr-stat-source">OpenSky</span>
+        <span>{% if lang == 'en' %}SOURCE{% else %}SOURCE{% endif %}</span>
+      </div>
+    </div>
+
+    <!-- ── MAIN ────────────────────────────────────────────────── -->
+    <section class="fr-main">
+
+      <div class="fr-map-wrap">
+        <div id="fr-map" role="application" aria-label="aircraft map"></div>
+        <div class="fr-map-loader" id="fr-map-loader">{% if lang == 'en' %}LOADING RADAR…{% else %}CHARGEMENT RADAR…{% endif %}</div>
+
+        <!-- Filter chips -->
+        <div class="fr-filters" aria-label="filters">
+          <button class="fr-fchip on" data-mode="all">{% if lang == 'en' %}ALL{% else %}TOUS{% endif %}</button>
+          <button class="fr-fchip" data-mode="fly">✈ {% if lang == 'en' %}FLYING{% else %}VOL{% endif %}</button>
+          <button class="fr-fchip amber" data-mode="gnd">🛬 {% if lang == 'en' %}GROUND{% else %}SOL{% endif %}</button>
+          <select class="fr-fselect" id="fr-country-select" aria-label="country filter">
+            <option value="">{% if lang == 'en' %}ALL COUNTRIES{% else %}TOUS PAYS{% endif %}</option>
+          </select>
+        </div>
+      </div>
+
+      <aside class="fr-side" aria-label="ATC tower">
+        <div class="fr-side-idle" id="fr-side-idle">
+          <div class="fr-idle-label">// {% if lang == 'en' %}STANDBY{% else %}EN ATTENTE{% endif %}</div>
+          <div class="fr-idle-msg">
+            {% if lang == 'en' %}
+              Click any aircraft on the map to lock the radar.<br>
+              The ATC tower panel displays live ADS-B telemetry: altitude, ground speed,
+              track, vertical rate, squawk, last contact.
+            {% else %}
+              Cliquez sur un avion pour verrouiller le radar.<br>
+              Le panneau tour de contrôle affiche la télémétrie ADS-B en direct : altitude,
+              vitesse fond, cap, taux vertical, squawk, dernier contact.
+            {% endif %}
+          </div>
+          <div class="fr-idle-hint">
+            {% if lang == 'en' %}
+              OpenSky Network · refresh every 30 s.
+            {% else %}
+              Réseau OpenSky · rafraîchissement toutes les 30 s.
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="atc-hud" id="fr-hud" data-tracking="1" hidden></div>
+        <div class="airport-hud" id="fr-airport-hud" hidden></div>
+      </aside>
+
+    </section>
+
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="/static/flight_radar/js/atc_render.js?v=20260505c" defer></script>
+  <script src="/static/flight_radar/js/airport_render.js?v=20260505c" defer></script>
+  <script src="/static/flight_radar/js/flight_radar.js?v=20260505c" defer></script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="{{ lang or 'fr' }}" data-lang="{{ lang or 'fr' }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#05070A">
+  <title>{% if lang == 'en' %}Ground Assets Network — ASTRO-SCAN{% else %}Réseau au sol — ASTRO-SCAN{% endif %}</title>
+  <meta name="description" content="{% if lang == 'en' %}Live map of ASTRO-SCAN's distributed ground assets: observatories, field missions, stratospheric balloons.{% else %}Carte en direct du réseau au sol d'ASTRO-SCAN : observatoires, missions de terrain, ballons stratosphériques.{% endif %}">
+
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="preconnect" href="https://basemaps.cartocdn.com">
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="">
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+        crossorigin="">
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+        crossorigin="">
+
+  <link rel="stylesheet" href="/static/ground_assets/css/ground_assets.css">
+  <link rel="stylesheet" href="/static/ground_assets/css/panels.css">
+  <link rel="stylesheet" href="/static/ground_assets/css/responsive.css">
+
+  <style>
+    /* When embedded in the portal iframe, kill the browser default margins. */
+    html, body { margin: 0; padding: 0; height: 100%; }
+  </style>
+</head>
+<body class="ga-app">
+
+  <!-- ── BOOT SEQUENCE OVERLAY ──────────────────────────────────── -->
+  <div class="ga-boot" id="ga-boot" role="status" aria-live="polite">
+    <div class="ga-boot-content">
+      <div class="ga-boot-line" data-i18n="boot_l1">{% if lang == 'en' %}INITIALIZING GROUND ASSETS NETWORK...{% else %}INITIALIZING GROUND ASSETS NETWORK...{% endif %}</div>
+      <div class="ga-boot-line" data-i18n="boot_l2">{% if lang == 'en' %}ESTABLISHING ANTENNA SYNC...{% else %}ESTABLISHING ANTENNA SYNC...{% endif %}</div>
+      <div class="ga-boot-line" data-i18n="boot_l3">{% if lang == 'en' %}TRIANGULATION ENGINE ACTIVE.{% else %}TRIANGULATION ENGINE ACTIVE.{% endif %}</div>
+      <div class="ga-boot-scan"></div>
+    </div>
+  </div>
+
+  <div class="ga-shell">
+
+    <!-- ── HEADER ────────────────────────────────────────────────── -->
+    <header class="ga-header" role="banner">
+      <div class="ga-brand">
+        <span class="ga-brand-mark">ASTRO·SCAN</span>
+        <span class="ga-brand-divider">//</span>
+        <span class="ga-brand-title" data-i18n="title">{% if lang == 'en' %}GROUND ASSETS NETWORK{% else %}RÉSEAU AU SOL{% endif %}</span>
+      </div>
+      <div class="ga-header-spacer"></div>
+
+      <div class="ga-live" aria-live="polite">
+        <span class="ga-live-dot"></span>
+        <span data-i18n="live">{% if lang == 'en' %}LIVE{% else %}EN DIRECT{% endif %}</span>
+      </div>
+
+      <div class="ga-utc" id="ga-utc" aria-label="UTC time">--:--:-- UTC</div>
+
+      <div class="ga-lang" role="group" aria-label="language">
+        <button data-lang="fr" class="{% if lang != 'en' %}active{% endif %}">FR</button>
+        <button data-lang="en" class="{% if lang == 'en' %}active{% endif %}">EN</button>
+      </div>
+    </header>
+
+    <!-- ── MAIN (stats + filters + map) ──────────────────────────── -->
+    <section class="ga-main" aria-label="map">
+
+      <div class="ga-toolbar" aria-label="network toolbar">
+        <div class="ga-stats-bar" aria-label="network stats">
+          <div class="ga-stat" title="OBSERVATORIES ONLINE">
+            <span class="ga-stat-dot gold"></span>
+            <span class="ga-stat-value" id="ga-stat-obs">— / —</span>
+            <span class="ga-stat-label" data-i18n="stat_obs">{% if lang == 'en' %}OBS{% else %}OBS{% endif %}</span>
+          </div>
+          <div class="ga-stat" title="ACTIVE FIELD MISSIONS">
+            <span class="ga-stat-dot cyan"></span>
+            <span class="ga-stat-value" id="ga-stat-msn">—</span>
+            <span class="ga-stat-label" data-i18n="stat_msn">{% if lang == 'en' %}MISS{% else %}MISS{% endif %}</span>
+          </div>
+          <div class="ga-stat" title="STRATOSPHERIC PROBES">
+            <span class="ga-stat-dot white"></span>
+            <span class="ga-stat-value" id="ga-stat-bal">—</span>
+            <span class="ga-stat-label" data-i18n="stat_bal">{% if lang == 'en' %}BALL{% else %}BALL{% endif %}</span>
+          </div>
+          <div class="ga-stat" title="ACTIVE LINKS">
+            <span class="ga-stat-dot amber"></span>
+            <span class="ga-stat-value" id="ga-stat-links">—</span>
+            <span class="ga-stat-label" data-i18n="stat_links">{% if lang == 'en' %}LINKS{% else %}LIENS{% endif %}</span>
+          </div>
+          <div class="ga-stat ga-stat--latency" title="NETWORK LATENCY">
+            <span class="ga-stat-label">↯</span>
+            <span class="ga-stat-value" id="ga-stat-latency">— MS</span>
+          </div>
+        </div>
+
+        <div class="ga-filters" role="group" aria-label="filters">
+          <button class="ga-filter-btn active" data-filter="all"         data-i18n="filter_all">{% if lang == 'en' %}ALL{% else %}TOUS{% endif %}</button>
+          <button class="ga-filter-btn"        data-filter="observatory" data-i18n="filter_obs">{% if lang == 'en' %}OBS{% else %}OBS{% endif %}</button>
+          <button class="ga-filter-btn"        data-filter="mission"     data-i18n="filter_msn">{% if lang == 'en' %}MISS{% else %}MISS{% endif %}</button>
+          <button class="ga-filter-btn"        data-filter="balloon"     data-i18n="filter_bal">{% if lang == 'en' %}BALL{% else %}BALL{% endif %}</button>
+        </div>
+
+        <div class="ga-toolbar-actions" role="group" aria-label="actions">
+          <a href="/portail?lang={{ lang or 'fr' }}"
+             target="_top"
+             class="ga-btn-toolbar ga-btn-portal"
+             title="{% if lang == 'en' %}Back to portal{% else %}Retour au portail{% endif %}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+            <span>{% if lang == 'en' %}PORTAL{% else %}PORTAIL{% endif %}</span>
+          </a>
+          <button type="button"
+                  class="ga-btn-toolbar ga-btn-refresh"
+                  id="ga-btn-refresh"
+                  title="{% if lang == 'en' %}Refresh{% else %}Actualiser{% endif %}"
+                  aria-label="{% if lang == 'en' %}Refresh{% else %}Actualiser{% endif %}">
+            <svg class="ga-refresh-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-3.5-7.1"/>
+              <path d="M21 4v5h-5"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="ga-map">
+        <div id="ga-leaflet-map" role="application" aria-label="ground assets map"></div>
+        <div class="ga-map-loader" id="ga-map-loader">{% if lang == 'en' %}LOADING MAP DATA…{% else %}CHARGEMENT…{% endif %}</div>
+      </div>
+    </section>
+
+    <!-- ── FOCUS PANEL (right) ───────────────────────────────────── -->
+    <aside class="ga-focus" id="ga-focus" aria-label="asset focus">
+
+      <!-- Network overview (default) -->
+      <div id="ga-network-overview" class="ga-network-overview">
+        <div class="ga-focus-section">
+          <h3 data-i18n="panel_stations">{% if lang == 'en' %}STATIONS DETAIL{% else %}DÉTAIL DES STATIONS{% endif %}</h3>
+          <div class="ga-stations-detail" id="ga-stations-detail">
+            <div style="color:var(--ga-text-mute);font-family:var(--ga-mono);font-size:10px;letter-spacing:1.5px">
+              {% if lang == 'en' %}Loading…{% else %}Chargement…{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="ga-focus-section">
+          <h3 data-i18n="panel_recent">{% if lang == 'en' %}RECENT ACTIVITY{% else %}ACTIVITÉ RÉCENTE{% endif %}</h3>
+          <div class="ga-recent-list" id="ga-recent-list">
+            <div style="color:var(--ga-text-mute);font-family:var(--ga-mono);font-size:10px;letter-spacing:1.5px"
+                 data-i18n="panel_select">
+              {% if lang == 'en' %}Select an asset on the map{% else %}Sélectionnez un actif sur la carte{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Asset detail (active when an asset is selected) -->
+      <div id="ga-detail" class="ga-detail"></div>
+
+    </aside>
+
+    <!-- ── MISSION CONTROL STREAM (bottom) ───────────────────────── -->
+    <section class="ga-stream" aria-label="mission control stream">
+      <div class="ga-stream-head" data-i18n="stream_head">
+        {% if lang == 'en' %}MISSION CONTROL STREAM — LIVE{% else %}FLUX MISSION CONTROL — DIRECT{% endif %}
+      </div>
+      <div class="ga-stream-body" id="ga-stream-body" aria-live="polite"></div>
+    </section>
+
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"
+          crossorigin=""></script>
+  <script src="/static/ground_assets/js/triangulation.js"></script>
+  <script src="/static/ground_assets/js/render.js"></script>
+  <script src="/static/ground_assets/js/ground_assets.js"></script>
+</body>
+</html>
