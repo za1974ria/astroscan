@@ -73,12 +73,15 @@ class CircuitBreaker:
         except Exception:
             return "CLOSED"
 
-    def _set_state(self, state):
+    def _set_state(self, state, ttl=None):
         c = _get_redis()
         if c is None:
             return
         try:
-            c.set(self._key_state, state)
+            if ttl is not None and ttl > 0:
+                c.setex(self._key_state, int(ttl), state)
+            else:
+                c.set(self._key_state, state)
         except Exception as e:
             log.warning("[CB %s] set_state failed: %s", self.name, e)
 
@@ -137,8 +140,11 @@ class CircuitBreaker:
         current = self._get_state_raw()
         if current == "OPEN":
             last = self._get_last_fail()
-            if last is not None and time.time() - last > self.recovery_timeout:
-                self._set_state("HALF_OPEN")
+            # Recovery window elapsed → ready for HALF_OPEN probe.
+            # last is None means the :last_fail TTL expired before the probe — treat as elapsed
+            # to avoid the breaker getting stuck OPEN forever.
+            if last is None or time.time() - last > self.recovery_timeout:
+                self._set_state("HALF_OPEN", ttl=self.recovery_timeout * 2)
                 log.info("CircuitBreaker [%s] -> HALF_OPEN", self.name)
                 return "HALF_OPEN"
         return current
@@ -159,7 +165,7 @@ class CircuitBreaker:
             n = self._incr_failures()
             self._set_last_fail(time.time())
             if n >= self.failure_threshold:
-                self._set_state("OPEN")
+                self._set_state("OPEN", ttl=self.recovery_timeout * 2)
                 log.error("CircuitBreaker [%s] -> OPEN after %d failures: %s",
                           self.name, n, e)
             return fallback
