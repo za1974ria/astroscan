@@ -31,6 +31,10 @@ log = logging.getLogger(__name__)
 
 bp = Blueprint("health_bp", __name__)
 
+# Breakers whose OPEN state must NOT degrade overall_status.
+# GROQ is a non-critical translation fallback (Gemini is primary).
+NON_CRITICAL_APIS = {"GROQ"}
+
 
 @bp.route("/api/system-status")
 def api_system_status():
@@ -221,7 +225,10 @@ def health_check():
         from services.circuit_breaker import all_status as _cb_all_status
         cb_statuses = _cb_all_status()
         active_apis = {s["name"]: s["state"] for s in cb_statuses}
-        open_count = sum(1 for s in cb_statuses if s["state"] == "OPEN")
+        open_count = sum(
+            1 for s in cb_statuses
+            if s["state"] == "OPEN" and s["name"] not in NON_CRITICAL_APIS
+        )
         if open_count > 0 and overall_status == "ok":
             overall_status = "degraded"
     except Exception:

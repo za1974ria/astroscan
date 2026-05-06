@@ -235,9 +235,7 @@ def europe_live():
     return render_template("europe_live.html")
 
 
-@bp.route("/flight-radar")
-def flight_radar():
-    return render_template("flight_radar.html", lang=get_lang())
+# /flight-radar moved to app/blueprints/flight_radar (premium ATC tower).
 
 
 # ── Galerie (Domaine C, accès DB léger) ────────────────────────────────
