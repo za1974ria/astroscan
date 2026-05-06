@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<script>(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>NASA Image du Jour — AstroScan</title>
+<meta name="description" content="Image Astronomique du Jour NASA, traduite en français par IA. Mise à jour quotidienne — AstroScan Tlemcen.">
+<meta property="og:title" content="NASA Image du Jour — AstroScan">
+<meta property="og:description" content="APOD quotidien traduit en français par intelligence artificielle.">
+<meta property="og:url" content="https://astroscan.space/nasa-apod">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://astroscan.space/nasa-apod">
+<link rel="icon" href="/static/favicon.ico?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+html.embed-portail .topbar{display:none!important}
+html.embed-portail body{padding-top:0!important}
+/* ── Variables ──────────────────────────────────────────────────────────── */
+:root {
+  --bg:       #050a14;
+  --panel:    rgba(5,12,28,0.96);
+  --gold:     #f5c518;
+  --gold-dim: #b8860b;
+  --text:     #d8e8f4;
+  --muted:    #6a8aa0;
+  --border:   rgba(245,197,24,0.15);
+  --border-b: rgba(245,197,24,0.45);
+  --cyan:     #00d4ff;
+  --red:      #ff3355;
+  --shadow:   0 0 60px rgba(245,197,24,0.08), 0 8px 40px rgba(0,0,0,0.8);
+}
+
+/* ── Reset / base ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Mono', 'Courier New', monospace;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Starfield background ───────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(245,197,24,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 100%, rgba(0,212,255,0.03) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.page {
+  position: relative;
+  z-index: 1;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.back-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.back-link:hover { color: var(--gold); }
+
+.nasa-wordmark {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  color: var(--gold);
+  border: 1px solid var(--border-b);
+  padding: 4px 10px;
+  border-radius: 3px;
+  background: rgba(245,197,24,0.06);
+}
+
+/* ── Hero title block ───────────────────────────────────────────────────── */
+.hero {
+  text-align: center;
+  margin-bottom: 36px;
+  animation: fadeInDown 0.7s ease both;
+}
+
+.hero-eyebrow {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.hero-title {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: clamp(1.4rem, 4vw, 2.4rem);
+  color: var(--gold);
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-shadow: 0 0 40px rgba(245,197,24,0.3);
+  min-height: 2.8rem;
+}
+
+.hero-date {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 10px;
+  letter-spacing: 0.1em;
+}
+
+/* ── Media container ────────────────────────────────────────────────────── */
+.media-wrap {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-b);
+  box-shadow: var(--shadow);
+  background: #000;
+  margin-bottom: 36px;
+  animation: fadeIn 0.9s ease 0.2s both;
+}
+
+.media-wrap img {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: zoom-in;
+  transition: transform 0.4s ease;
+}
+.media-wrap:hover img { transform: scale(1.012); }
+
+.media-wrap iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+
+/* HD hover overlay */
+.media-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(5,10,20,0.85));
+  padding: 28px 20px 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+.media-wrap:hover .media-overlay { opacity: 1; }
+
+.overlay-pill {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.15em;
+  color: var(--gold);
+  border: 1px solid var(--border-b);
+  background: rgba(5,10,20,0.9);
+  padding: 5px 12px;
+  border-radius: 20px;
+  pointer-events: none;
+}
+
+/* ── Info block ─────────────────────────────────────────────────────────── */
+.info {
+  animation: fadeIn 0.9s ease 0.4s both;
+}
+
+.apod-title {
+  font-family: 'Orbitron', monospace;
+  font-weight: 700;
+  font-size: clamp(1rem, 2.8vw, 1.5rem);
+  color: #fff;
+  letter-spacing: 0.03em;
+  margin-bottom: 20px;
+  line-height: 1.3;
+  min-height: 1.5em;
+}
+
+.desc-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.apod-desc {
+  font-size: 0.92rem;
+  color: #a8c0d0;
+  line-height: 1.75;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-b) transparent;
+  min-height: 80px;
+}
+.apod-desc::-webkit-scrollbar { width: 4px; }
+.apod-desc::-webkit-scrollbar-track { background: transparent; }
+.apod-desc::-webkit-scrollbar-thumb { background: var(--border-b); border-radius: 2px; }
+
+/* ── Actions ────────────────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.btn-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #050a14;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  border: none;
+  padding: 10px 22px;
+  border-radius: 4px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 18px rgba(245,197,24,0.25);
+}
+.btn-gold:hover {
+  opacity: 0.88;
+  box-shadow: 0 0 28px rgba(245,197,24,0.5);
+}
+
+.ai-badge {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  border: 1px solid rgba(245,197,24,0.2);
+  border-radius: 20px;
+  padding: 4px 12px;
+  background: rgba(245,197,24,0.04);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Copyright ───────────────────────────────────────────────────────────── */
+.copyright-bar {
+  margin-top: 20px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  opacity: 0.7;
+  min-height: 1.2em;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.page-footer {
+  margin-top: 56px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  animation: fadeIn 1s ease 0.6s both;
+}
+
+.footer-credit {
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+/* ── Skeleton loader ────────────────────────────────────────────────────── */
+.skel {
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  color: transparent !important;
+  pointer-events: none;
+  user-select: none;
+}
+.skel::before { content: '\00a0'; }
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Error state ────────────────────────────────────────────────────────── */
+.error-block {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--red);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  border: 1px solid rgba(255,51,85,0.3);
+  border-radius: 12px;
+  background: rgba(255,51,85,0.04);
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .page { padding: 18px 14px 48px; }
+  .top-bar { margin-bottom: 20px; }
+  .hero { margin-bottom: 24px; }
+  .apod-desc { max-height: 260px; }
+  .btn-gold { font-size: 0.55rem; padding: 9px 16px; }
+}
+</style>
+  <link rel="stylesheet" href="/static/css/design_tokens.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/fixes.css">
+</head>
+<body>
+<div class="page">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <a href="/" class="back-link">← PORTAIL</a>
+    <div class="nasa-wordmark">🛰 NASA · APOD</div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-eyebrow">Astronomy Picture of the Day</div>
+    <div class="hero-title" id="apod-title">IMAGE DU JOUR</div>
+    <div class="hero-date" id="apod-date">—</div>
+  </div>
+
+  <!-- Media -->
+  <div class="media-wrap" id="media-wrap">
+    <div id="media-inner" style="min-height:260px;background:#000;display:flex;align-items:center;justify-content:center">
+      <div class="skel" style="width:100%;height:420px;border-radius:0"></div>
+    </div>
+    <div class="media-overlay">
+      <span class="overlay-pill">VOIR EN HD →</span>
+    </div>
+  </div>
+
+  <!-- Info -->
+  <div class="info" id="info-block" style="display:none">
+    <div class="desc-label">Description · Traduction FR</div>
+    <div class="apod-desc" id="apod-desc"></div>
+    <div class="actions">
+      <a id="btn-hd" href="#" target="_blank" rel="noopener noreferrer" class="btn-gold">
+        📥 TÉLÉCHARGER HD
+      </a>
+      <div class="ai-badge">🤖 Traduit par IA · Mis à jour quotidiennement</div>
+    </div>
+    <div class="copyright-bar" id="apod-copyright"></div>
+  </div>
+
+  <!-- Skeleton info (shown while loading) -->
+  <div id="skel-info">
+    <div class="skel" style="height:1.4rem;width:60%;max-width:440px;margin-bottom:14px"></div>
+    <div class="skel" style="height:0.9rem;width:100%;margin-bottom:8px"></div>
+    <div class="skel" style="height:0.9rem;width:95%;margin-bottom:8px"></div>
+    <div class="skel" style="height:0.9rem;width:88%;margin-bottom:8px"></div>
+    <div class="skel" style="height:0.9rem;width:72%"></div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-block" id="error-block" style="display:none">
+    ⚠️ Image non disponible — réessayez dans quelques instants.
+  </div>
+
+  <!-- Footer -->
+  <div class="page-footer">
+    <a href="/" class="back-link">← Retour au portail AstroScan</a>
+    <div class="footer-credit">AstroScan · Tlemcen · NASA APOD</div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var MONTHS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+
+  function formatDateFR(s) {
+    if (!s) return '—';
+    var parts = String(s).split('-');
+    if (parts.length < 3) return s;
+    var d = parseInt(parts[2], 10);
+    var m = parseInt(parts[1], 10) - 1;
+    var y = parts[0];
+    return d + ' ' + MONTHS_FR[m] + ' ' + y;
+  }
+
+  function getYouTubeId(url) {
+    if (!url) return null;
+    var m = String(url).match(/(?:embed\/|youtu\.be\/|[?&]v=)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  function setSkeletonVisible(v) {
+    document.getElementById('skel-info').style.display = v ? 'block' : 'none';
+  }
+
+  function showError(msg) {
+    document.getElementById('media-wrap').style.display = 'none';
+    setSkeletonVisible(false);
+    var el = document.getElementById('error-block');
+    if (msg) el.textContent = '⚠️ ' + msg;
+    el.style.display = 'block';
+  }
+
+  function render(d) {
+    /* title */
+    var title = d.title_fr || d.title_en || d.title || '—';
+    document.getElementById('apod-title').textContent = title;
+    document.title = 'NASA APOD — ' + title + ' · AstroScan';
+
+    /* date */
+    document.getElementById('apod-date').textContent = formatDateFR(d.date);
+
+    /* media */
+    var mediaInner = document.getElementById('media-inner');
+    var hdurl = d.hdurl || d.url || '';
+    var url   = d.url   || d.hdurl || '';
+    var isVideo = (d.media_type === 'video');
+
+    if (isVideo) {
+      var ytId = getYouTubeId(url);
+      if (ytId) {
+        mediaInner.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '" allowfullscreen title="' + title + '"></iframe>';
+      } else if (d.thumbnail_url) {
+        mediaInner.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener noreferrer"><img src="' + d.thumbnail_url + '" alt="' + title + '" style="width:100%;height:auto"></a>';
+      } else {
+        mediaInner.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--gold);font-family:Orbitron,monospace;font-size:0.7rem;letter-spacing:0.1em">▶ VOIR LA VIDÉO →</a>';
+      }
+    } else {
+      var imgTarget = hdurl || url;
+      if (imgTarget) {
+        var img = document.createElement('img');
+        img.alt = title;
+        img.style.width = '100%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        img.onclick = function() { window.open(hdurl || url, '_blank', 'noopener'); };
+        img.src = imgTarget;
+        mediaInner.innerHTML = '';
+        mediaInner.appendChild(img);
+      }
+    }
+
+    /* HD button */
+    var btnHd = document.getElementById('btn-hd');
+    if (hdurl && !isVideo) {
+      btnHd.href = hdurl;
+      btnHd.style.display = 'inline-flex';
+    } else {
+      btnHd.style.display = 'none';
+    }
+
+    /* description */
+    var desc = d.explanation_fr || d.explanation_en || d.explanation || '';
+    document.getElementById('apod-desc').textContent = desc;
+
+    /* copyright */
+    var cr = d.copyright || '';
+    var crEl = document.getElementById('apod-copyright');
+    crEl.textContent = cr ? ('© ' + cr) : '';
+
+    /* reveal info, hide skeleton */
+    setSkeletonVisible(false);
+    document.getElementById('info-block').style.display = 'block';
+
+    /* schedule auto-refresh if date mismatch */
+    scheduleRefresh(d.date);
+  }
+
+  function scheduleRefresh(apodDate) {
+    if (!apodDate) return;
+    var today = new Date().toISOString().slice(0, 10);
+    if (today !== apodDate) {
+      /* APOD not yet updated for today — check again in 10 min */
+      setTimeout(loadApod, 10 * 60 * 1000);
+    } else {
+      /* Correct date loaded — check at next midnight + 5min */
+      var now = new Date();
+      var midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 5, 0);
+      var ms = midnight.getTime() - now.getTime();
+      if (ms > 0 && ms < 24 * 3600 * 1000) setTimeout(loadApod, ms);
+    }
+  }
+
+  function loadApod() {
+    fetch('/apod', { credentials: 'same-origin', cache: 'no-cache' })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function(d) {
+        if (d.error) throw new Error(d.error);
+        render(d);
+      })
+      .catch(function(err) {
+        showError('Image non disponible (' + (err && err.message ? err.message : 'erreur réseau') + ')');
+      });
+  }
+
+  /* boot */
+  loadApod();
+})();
+</script>
+</body>
+</html>

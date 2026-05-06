@@ -1,0 +1,44 @@
+/**
+ * fixes.css — Patches CSS AstroScan centralisés
+ * Toute correction urgente va ici. NE PAS modifier les CSS existants.
+ * Format : /* FIX: raison — date (YYYY-MM-DD) *\/
+ *
+ * NOTE !important :
+ *   - orbital_command.css : ~19 !important légitimes → overrides Leaflet/CSS tiers (OK)
+ *   - templates inline : ~393 !important → dette acceptable, pas de risque fonctionnel
+ *   - fixes.css : 1 seul !important (toast z-index, voir ci-dessous) → documenté
+ */
+
+/* FIX: sidebar overflow masqué sur mobile Safari (scroll bounce) — 2026-04-27 */
+.sidebar {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* FIX: iframes SPA sans hauteur explicite collapsent sur Firefox — 2026-04-27 */
+.page-frame {
+  min-height: 1px;
+}
+
+/* FIX: boutons désactivés non distinguables en thème sombre — 2026-04-27 */
+button:disabled,
+[disabled] {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* FIX: images cassées ne laissent pas de boîte vide visible — 2026-04-27 */
+img[src=""],
+img:not([src]) {
+  visibility: hidden;
+  width: 0;
+  height: 0;
+}
+
+/* FIX: éléments avec z-index très élevés masquent les toasts — 2026-04-27 */
+#toast-container,
+.toast,
+.notification {
+  z-index: 99999 !important;  /* toujours au-dessus */
+}

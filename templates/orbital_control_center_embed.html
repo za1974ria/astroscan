@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Control Embed</title>
+<style>
+body {
+    background: #000;
+    color: #0ff;
+    font-family: monospace;
+    padding: 20px;
+}
+</style>
+</head>
+<body>
+
+<h2>CONTROL EMBED</h2>
+
+<div>Temp: {{ weather_data.get('temp', '--') }}</div>
+<div>Wind: {{ weather_data.get('wind', '--') }}</div>
+<div>Humidity: {{ weather_data.get('humidity', '--') }}</div>
+
+<div>ISS Lat: {{ iss_data.get('lat', 0) }}</div>
+<div>ISS Lon: {{ iss_data.get('lon', 0) }}</div>
+
+</body>
+</html>

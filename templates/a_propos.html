@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>À propos — AstroScan-Chohra · Observatoire de Tlemcen</title>
+<meta name="description" content="Station astronomique de Tlemcen, Algérie. Plateforme de données astronomiques en temps réel fondée par Zakaria Chohra. Collaborations scientifiques internationales.">
+<meta name="keywords" content="AstroScan-Chohra, Zakaria Chohra, observatoire, Tlemcen, Algérie, astronomie, éphémérides, ISS, NASA, ESA, NOAA, UNAWE, IAU">
+<meta name="author" content="Zakaria Chohra — AstroScan">
+<meta name="robots" content="index, follow">
+<meta property="og:title" content="À propos — AstroScan-Chohra">
+<meta property="og:description" content="Station astronomique de Tlemcen, Algérie. Plateforme de données astronomiques en temps réel fondée par Zakaria Chohra.">
+<meta property="og:url" content="https://astroscan.space/a-propos">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
+<meta property="og:site_name" content="AstroScan-Chohra">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="À propos — AstroScan-Chohra">
+<meta name="twitter:description" content="Station astronomique de Tlemcen, Algérie. Données astronomiques en temps réel, éphémérides, ISS, météo spatiale.">
+<link rel="canonical" href="https://astroscan.space/a-propos">
+<link rel="icon" href="/static/favicon.ico?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #010408;
+  --panel: rgba(3,10,20,0.97);
+  --border: rgba(0,180,255,0.13);
+  --border-bright: rgba(0,212,255,0.4);
+  --cyan: #00d4ff;
+  --amber: #ff8c00;
+  --green: #00ff88;
+  --red: #ff3355;
+  --gold: #ffd166;
+  --text: #7a9ab0;
+  --text-bright: #d0e8f0;
+  --text-dim: #3a5868;
+  --font: 'Orbitron', monospace;
+  --mono: 'Share Tech Mono', monospace;
+  --sidebar-w: 220px;
+}
+*, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+html, body { width:100%; min-height:100vh; background:var(--void); font-family:var(--mono); color:var(--text); overflow-x:hidden; }
+
+/* STARS */
+#stars { position:fixed; inset:0; z-index:0; pointer-events:none; }
+.star { position:absolute; border-radius:50%; background:#fff; animation:tw var(--d,4s) ease-in-out infinite; animation-delay:var(--dl,0s); opacity:var(--op,.4); }
+@keyframes tw { 0%,100%{opacity:var(--op)} 50%{opacity:calc(var(--op)*.15)} }
+
+/* LAYOUT */
+.shell { display:grid; grid-template-columns:var(--sidebar-w) 1fr; grid-template-rows:48px 1fr; width:100%; min-height:100vh; }
+
+/* TOPBAR */
+.topbar {
+  grid-column:1/-1; grid-row:1;
+  display:flex; align-items:center; justify-content:space-between;
+  height:48px; padding:0 20px;
+  background:rgba(1,4,8,0.99);
+  border-bottom:1px solid var(--border-bright);
+  position:sticky; top:0; z-index:100;
+}
+.topbar::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--cyan),transparent); opacity:.5; }
+.brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
+.brand-icon { width:26px; height:26px; }
+.brand-icon svg { width:100%; height:100%; }
+.brand-name { font-family:var(--font); font-size:.7rem; font-weight:900; letter-spacing:.2em; color:var(--cyan); text-shadow:0 0 15px rgba(0,212,255,.5); }
+.brand-sep { color:var(--text-dim); margin:0 3px; }
+.brand-sub { font-size:.5rem; letter-spacing:.2em; color:var(--text-dim); }
+.topbar-center { display:flex; align-items:center; gap:12px; }
+.tbar-chip { display:flex; align-items:center; gap:5px; font-size:.5rem; letter-spacing:.12em; color:var(--text-dim); padding:3px 8px; border:1px solid var(--border); border-radius:4px; text-transform:uppercase; }
+.tbar-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.tbar-dot.green { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
+.tbar-dot.amber { background:var(--amber); }
+.tbar-visits { display:flex; align-items:center; gap:5px; font-family:var(--font); font-size:.55rem; letter-spacing:.1em; color:var(--cyan); padding:3px 9px; background:rgba(0,255,136,.08); border:1px solid rgba(0,212,255,.3); border-radius:4px; }
+.topbar-right { display:flex; align-items:center; gap:14px; }
+#top-ip { font-size:.45rem; letter-spacing:.12em; color:var(--text-dim); }
+#top-clock { font-family:var(--font); font-size:.75rem; font-weight:600; letter-spacing:.1em; color:var(--text-bright); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* HAMBURGER */
+.hamburger-btn { display:none; align-items:center; justify-content:center; width:36px; height:36px; background:transparent; border:none; cursor:pointer; color:var(--cyan); font-size:1.1rem; border-radius:4px; }
+.hamburger-btn:hover { background:rgba(0,212,255,.1); }
+
+/* SIDEBAR */
+.sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; opacity:0; pointer-events:none; transition:opacity .3s; }
+.sidebar {
+  grid-column:1; grid-row:2;
+  display:flex; flex-direction:column;
+  background:rgba(1,4,8,0.98);
+  border-right:1px solid var(--border);
+  overflow-y:auto; overflow-x:hidden;
+  position:sticky; top:48px; height:calc(100vh - 48px);
+  z-index:50;
+}
+.sidebar::-webkit-scrollbar { width:3px; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--border); }
+.s-divider { height:1px; background:linear-gradient(90deg,transparent,rgba(0,212,255,.1),transparent); margin:6px 0; flex-shrink:0; }
+.s-section { padding:10px 0 6px; flex-shrink:0; }
+.s-label { display:block; font-family:var(--font); font-size:.4rem; letter-spacing:.25em; color:var(--text-dim); padding:2px 16px 8px; text-transform:uppercase; }
+.nav-item { display:flex; align-items:center; gap:9px; padding:8px 16px; cursor:pointer; transition:all .2s; border-left:2px solid transparent; text-decoration:none; color:inherit; }
+.nav-item:hover { background:rgba(0,212,255,.04); border-left-color:rgba(0,212,255,.3); }
+.nav-item.active { background:rgba(0,212,255,.07); border-left-color:var(--cyan); }
+.nav-item.active .nav-label { color:var(--cyan); }
+.nav-item.active .nav-icon { color:var(--cyan); }
+.nav-icon { font-size:.85rem; width:17px; text-align:center; color:var(--text-dim); transition:color .2s; }
+.nav-label { font-family:var(--font); font-size:.5rem; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); transition:color .2s; flex:1; }
+.nav-badge { font-size:.42rem; letter-spacing:.1em; padding:1px 5px; border:1px solid currentColor; text-transform:uppercase; border-radius:2px; }
+.nav-badge.live { color:var(--green); border-color:rgba(0,255,136,.4); animation:pulse 2s infinite; }
+.nav-badge.active-page { color:var(--cyan); border-color:rgba(0,212,255,.5); }
+
+/* SIDEBAR BOTTOM */
+.s-bottom { padding:10px 14px; border-top:1px solid var(--border); margin-top:auto; }
+.s-bottom-info { font-size:.42rem; letter-spacing:.08em; color:var(--text-dim); line-height:1.7; }
+.s-bottom-info .sv { color:var(--text); }
+
+/* CONTENT */
+.content-area { grid-column:2; grid-row:2; overflow-y:auto; overflow-x:hidden; min-height:calc(100vh - 48px); }
+
+/* PAGE HEADER */
+.page-header {
+  padding:1.4rem 1.5rem 1rem;
+  border-bottom:1px solid rgba(0,212,255,.08);
+  background:rgba(0,212,255,.02);
+}
+.page-title { font-family:var(--font); font-size:1rem; font-weight:900; letter-spacing:.2em; color:var(--cyan); text-shadow:0 0 20px rgba(0,212,255,.4); text-transform:uppercase; }
+.page-sub { font-size:.65rem; letter-spacing:.1em; color:var(--text-dim); margin-top:.3rem; }
+.page-meta { display:flex; gap:1.5rem; margin-top:.8rem; flex-wrap:wrap; }
+.pm { font-size:.6rem; letter-spacing:.08em; color:var(--text-dim); }
+.pm span { color:var(--text-bright); font-family:var(--mono); }
+
+/* UPDATE BAR */
+.update-bar {
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem;
+  padding:.5rem 1.5rem;
+  background:rgba(0,212,255,.025);
+  border-bottom:1px solid rgba(0,212,255,.06);
+  font-size:.55rem; letter-spacing:.1em;
+}
+.ub-status { display:flex; align-items:center; gap:6px; color:var(--text-dim); }
+.ub-dot { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; flex-shrink:0; }
+.ub-time { color:var(--text-dim); }
+#ub-next { color:var(--cyan); font-family:var(--font); font-size:.5rem; }
+
+/* MAIN GRID */
+.main-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; padding:1.5rem; max-width:1300px; }
+.full { grid-column:1/-1; }
+@media(max-width:1100px) { .main-grid { grid-template-columns:1fr; } .full { grid-column:1; } }
+
+/* PANELS */
+.panel { background:rgba(0,212,255,.04); border:1px solid var(--border); border-radius:6px; overflow:hidden; position:relative; z-index:1; }
+.panel:hover { border-color:rgba(0,212,255,0.25); }
+.ph { padding:.75rem 1.1rem; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:.6rem; font-family:var(--font); font-size:.6rem; letter-spacing:.15em; color:var(--cyan); text-transform:uppercase; text-shadow:0 0 12px rgba(0,212,255,.3); }
+.dot-calc { width:7px; height:7px; border-radius:50%; background:rgba(0,212,255,.65); flex-shrink:0; border:1px solid rgba(0,212,255,.4); }
+.dot-live { width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; flex-shrink:0; }
+.dot-prev { width:7px; height:7px; border-radius:50%; background:rgba(255,180,50,.7); flex-shrink:0; border:1px solid rgba(255,180,50,.4); }
+.pb { padding:1.1rem; }
+
+/* STATES */
+.loading { text-align:center; color:var(--text-dim); font-family:var(--mono); padding:2rem; font-size:.8rem; letter-spacing:.15em; }
+.err { color:var(--red); font-family:var(--mono); font-size:.75rem; padding:.8rem; text-align:center; }
+
+/* EMBED */
+html.embed-portail .sidebar,
+html.embed-portail .sidebar-overlay,
+html.embed-portail .hamburger-btn { display:none !important; }
+html.embed-portail .shell { grid-template-columns:1fr !important; }
+html.embed-portail .content-area { grid-column:1/-1 !important; grid-row:2 !important; width:100% !important; }
+html.embed-portail .topbar { grid-column:1/-1 !important; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:#010408; }
+::-webkit-scrollbar-thumb { background:rgba(0,212,255,.25); }
+::-webkit-scrollbar-thumb:hover { background:rgba(0,212,255,.45); }
+
+/* SIDEBAR refinements */
+.s-divider { background:linear-gradient(90deg,transparent,rgba(0,212,255,.15),transparent) !important; }
+.nav-item.active { box-shadow:inset 0 0 10px rgba(0,212,255,.04) !important; }
+
+@media(max-width:768px) {
+  .hamburger-btn { display:flex !important; }
+  .sidebar { position:fixed; left:-240px; top:0; bottom:0; width:240px; z-index:200; transition:left .3s ease; background:#050a10; box-shadow:4px 0 20px rgba(0,255,136,.15); grid-column:1; grid-row:2; }
+  .sidebar.open { left:0; }
+  .sidebar-overlay { display:block !important; }
+  .sidebar-overlay.active { opacity:1 !important; pointer-events:all !important; }
+  .shell { grid-template-columns:1fr; }
+  .content-area { grid-column:1; }
+}
+
+/* ── A_PROPOS SPECIFIC ── */
+
+/* page header override */
+.page-header {
+  padding:2rem 1.5rem 1.2rem;
+  border-bottom:1px solid rgba(0,212,255,.08);
+  background:linear-gradient(180deg,rgba(0,212,255,.025),transparent);
+  position:relative; overflow:hidden;
+}
+.page-header::before {
+  content:'';
+  position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 80% at 50% 0%,rgba(0,212,255,.04),transparent);
+  pointer-events:none;
+}
+.page-title { font-size:1.1rem; margin-bottom:.4rem; }
+.page-sub { font-size:.7rem; letter-spacing:.06em; color:var(--text); line-height:1.6; max-width:700px; margin-bottom:1rem; margin-top:0; }
+.page-eyebrow { font-size:.5rem; letter-spacing:.3em; color:var(--text-dim); margin-bottom:.6rem; text-transform:uppercase; }
+.badge-row { display:flex; gap:.5rem; flex-wrap:wrap; }
+.badge { background:rgba(0,212,255,.05); border:1px solid rgba(0,212,255,.2); border-radius:20px; padding:3px 12px; font-size:.5rem; color:var(--text-dim); letter-spacing:.1em; }
+.astro-controls{position:absolute;top:85px;right:24px;display:flex;gap:10px;z-index:9999}
+.astro-btn{height:38px;padding:0 14px;border-radius:10px;border:1px solid #00eaff;background:rgba(0,25,45,.88);color:#00eaff;font-size:13px;font-weight:700;text-decoration:none;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 10px rgba(0,234,255,.28);transition:.2s ease;white-space:nowrap}
+.astro-btn:hover{transform:translateY(-1px);background:rgba(0,45,70,.96);box-shadow:0 0 16px rgba(0,234,255,.45)}
+@media(max-width:768px){.astro-controls{position:static;margin:14px 0 0;justify-content:flex-end}}
+
+/* dot-info */
+.dot-info { width:7px; height:7px; border-radius:50%; background:rgba(0,212,255,.65); flex-shrink:0; border:1px solid rgba(0,212,255,.4); }
+
+/* profile */
+.profile-name { font-family:var(--font); font-size:1rem; font-weight:900; color:var(--text-bright); letter-spacing:.15em; margin-bottom:.25rem; }
+.profile-role { font-size:.55rem; letter-spacing:.2em; color:var(--cyan); text-transform:uppercase; margin-bottom:1rem; }
+.profile-bio { font-size:.75rem; color:var(--text); line-height:1.8; }
+
+/* stats */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:.8rem; }
+.stat-card { background:rgba(0,212,255,.04); border:1px solid rgba(0,212,255,.12); border-radius:6px; padding:1rem; text-align:center; }
+.stat-num { font-family:var(--font); font-size:1.4rem; font-weight:900; color:var(--cyan); display:block; line-height:1; text-shadow:0 0 12px rgba(0,212,255,.3); }
+.stat-lbl { font-size:.5rem; letter-spacing:.15em; color:var(--text-dim); margin-top:.4rem; text-transform:uppercase; }
+
+/* mission list */
+.mission-list { list-style:none; padding:0; }
+.mission-list li { padding:.55rem 0; border-bottom:1px solid rgba(0,212,255,.06); font-size:.75rem; color:var(--text); line-height:1.7; display:flex; gap:.8rem; align-items:flex-start; }
+.mission-list li::before { content:"▸"; color:var(--cyan); flex-shrink:0; margin-top:.1rem; }
+.mission-list li:last-child { border-bottom:none; }
+
+/* tech grid */
+.tech-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:.7rem; }
+.tech-item { background:rgba(0,0,0,.2); border:1px solid rgba(0,212,255,.1); border-radius:5px; padding:.8rem 1rem; }
+.tech-name { font-family:var(--font); font-size:.5rem; letter-spacing:.15em; color:var(--cyan); margin-bottom:.3rem; text-transform:uppercase; }
+.tech-desc { font-size:.68rem; color:var(--text-dim); line-height:1.5; }
+
+/* collab grid */
+.collab-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:.8rem; }
+.collab-item { background:rgba(0,212,255,.03); border:1px solid rgba(0,212,255,.12); border-radius:5px; padding:.9rem; }
+.collab-label { font-family:var(--font); font-size:.48rem; letter-spacing:.18em; color:var(--cyan); text-transform:uppercase; margin-bottom:.5rem; }
+.collab-value { font-size:.72rem; color:var(--text); line-height:1.6; }
+.collab-value a { color:var(--cyan); text-decoration:none; }
+.collab-value a:hover { text-decoration:underline; }
+
+/* callout */
+.callout { background:rgba(0,212,255,.04); border:1px solid rgba(0,212,255,.2); border-radius:5px; padding:1rem 1.2rem; margin-top:.9rem; font-size:.72rem; color:var(--text); line-height:1.8; }
+.callout strong { color:var(--text-bright); }
+
+/* form */
+.form-group { display:flex; flex-direction:column; gap:.3rem; }
+.form-label { font-family:var(--font); font-size:.48rem; letter-spacing:.18em; color:var(--text-dim); text-transform:uppercase; }
+.form-input {
+  background:rgba(0,0,0,.3); border:1px solid rgba(0,212,255,.18); border-radius:4px;
+  padding:.55rem .8rem; font-family:var(--mono); font-size:.75rem; color:var(--text-bright);
+  outline:none; transition:border-color .2s;
+}
+.form-input:focus { border-color:rgba(0,212,255,.5); background:rgba(0,212,255,.03); }
+.form-input::placeholder { color:var(--text-dim); }
+.form-textarea { min-height:110px; resize:vertical; }
+.form-btn {
+  font-family:var(--font); font-size:.52rem; letter-spacing:.18em; text-transform:uppercase;
+  padding:.55rem 1.4rem; background:rgba(0,212,255,.08); border:1px solid rgba(0,212,255,.4);
+  color:var(--cyan); border-radius:4px; cursor:pointer; transition:all .2s;
+}
+.form-btn:hover { background:rgba(0,212,255,.15); border-color:var(--cyan); box-shadow:0 0 12px rgba(0,212,255,.15); }
+.form-btn:disabled { opacity:.4; cursor:not-allowed; }
+.form-btn.sending { animation:pulse 1s infinite; }
+@keyframes fadeInBadge{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scanline{0%{top:0%;opacity:1}100%{top:100%;opacity:.3}}
+.ap-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 11px;
+  background:rgba(0,20,40,.85);
+  border:1px solid rgba(0,212,255,.22);
+  border-radius:5px;
+  font-family:var(--mono);font-size:.52rem;
+  color:rgba(160,200,224,.9);
+  position:relative;overflow:hidden;
+  transition:border-color .2s,box-shadow .2s,transform .2s;
+  animation:fadeInBadge .35s ease both;
+}
+.ap-badge::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(0,212,255,.06) 0%,transparent 55%);
+  pointer-events:none;
+}
+.ap-badge:hover{
+  border-color:rgba(0,212,255,.6);
+  background:rgba(0,30,55,.95);
+  transform:translateY(-1px);
+  box-shadow:0 4px 14px rgba(0,212,255,.12);
+}
+.ap-badge-flag{width:22px;height:15px;border-radius:2px;object-fit:cover;flex-shrink:0;}
+.ap-badge-name{color:rgba(200,223,240,.9);letter-spacing:.04em;}
+.ap-badge-count{
+  color:#00d4ff;font-weight:700;
+  padding:1px 6px;
+  background:rgba(0,212,255,.1);
+  border-radius:3px;
+  border:1px solid rgba(0,212,255,.18);
+  margin-left:2px;
+}
+.ap-badge-rank{
+  font-size:.38rem;color:rgba(255,183,0,.65);
+  position:absolute;top:2px;right:4px;
+  font-family:var(--font);letter-spacing:.05em;
+}
+</style>
+<!-- GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-1WNGPCCZNW');</script>
+  <link rel="stylesheet" href="/static/css/design_tokens.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/fixes.css">
+</head>
+<body>
+
+<div id="stars"></div>
+<script>
+(function(){const s=document.getElementById('stars');for(let i=0;i<80;i++){const el=document.createElement('div');el.className='star';const sz=Math.random()<.8?1:Math.random()<.6?1.5:2;el.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${3+Math.random()*5}s;--dl:${Math.random()*6}s;--op:${.2+Math.random()*.5}`;s.appendChild(el);}})();
+</script>
+
+
+<div class="shell">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">☰</button>
+    <a class="brand" href="/portail">
+      <div class="brand-icon">
+        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="14" cy="14" r="12" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+          <circle cx="14" cy="14" r="7" stroke="#00d4ff" stroke-width="0.8" opacity="0.7"/>
+          <circle cx="14" cy="14" r="2" fill="#00d4ff"/>
+          <line x1="14" y1="1" x2="14" y2="5" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="14" y1="23" x2="14" y2="27" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="1" y1="14" x2="5" y2="14" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="23" y1="14" x2="27" y2="14" stroke="#00d4ff" stroke-width="1.2"/>
+          <circle cx="14" cy="5" r="1.5" fill="#ff8c00"/>
+        </svg>
+      </div>
+      <span class="brand-name">AstroScan-Chohra</span>
+      <span class="brand-sep">·</span>
+      <span class="brand-sub">ORBITAL-CHOHRA</span>
+    </a>
+    <div class="topbar-center">
+      <div class="tbar-visits"><span>👁</span><span id="tbar-visits-val">— —</span></div>
+      <div class="tbar-chip"><div class="tbar-dot green"></div>TLEMCEN · DZ</div>
+      <div class="tbar-chip"><div class="tbar-dot green"></div>ORBITAL-CHOHRA</div>
+    </div>
+    <div class="topbar-right">
+      <div id="top-clock">--:--:-- UTC+1</div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  
+
+
+  <!-- CONTENT -->
+  <div class="content-area">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div class="page-eyebrow">ORBITAL-CHOHRA · TLEMCEN · ALGÉRIE · 34.8731°N 1.3154°E · 800m</div>
+      <div class="page-title">Station Astronomique Chohra — Tlemcen, Algérie</div>
+      <div class="page-sub">34.8731°N · 1.3154°E · Altitude 800 m. Produire des données astronomiques open source depuis l'Algérie pour la communauté scientifique internationale.</div>
+      <div class="badge-row">
+        <span class="badge">🌍 OPEN DATA</span>
+        <span class="badge">🛸 ISS TEMPS RÉEL</span>
+        <span class="badge">🔭 NASA · ESA · NOAA</span>
+        <span class="badge" id="badge-countries">🌐 — PAYS VISITEURS</span>
+        <span class="badge">📡 TLEMCEN · 34.87°N · 800m</span>
+        <span class="badge">⚙ ASTROPY 7.2 · DE432</span>
+      </div>
+      <div class="astro-controls">
+        <a href="/portail" class="astro-btn">⟵ Portail</a>
+        <button type="button" onclick="location.reload()" class="astro-btn">↻ Actualiser</button>
+      </div>
+    </div>
+
+    <div class="main-grid">
+
+      <!-- FONDATEUR -->
+      <div class="panel full">
+        <div class="ph"><div class="dot-info"></div>FONDATEUR — STATION ASTRONOMIQUE CHOHRA</div>
+        <div class="pb">
+          <div class="profile-name">Zakaria Chohra</div>
+          <div class="profile-role">Fondateur AstroScan-Chohra · Tlemcen, Algérie</div>
+          <p class="profile-bio">
+            Entrepreneur et développeur indépendant basé à Tlemcen, Algérie.
+            Passionné d'astronomie et de technologies spatiales, il a conçu et déployé
+            AstroScan comme plateforme d'observation astronomique en temps réel,
+            combinant données NASA, tracking ISS, météo spatiale et intelligence artificielle.
+          </p>
+          <p class="profile-bio" style="margin-top:.7rem;">
+            Son frère, le Professeur Amine Chohra, chercheur en robotique et intelligence artificielle,
+            incarne l'ambition familiale de contribuer à la science internationale depuis l'Algérie.
+            AstroScan s'inscrit dans cette même démarche : produire de la valeur scientifique depuis le Sud.
+          </p>
+        </div>
+      </div>
+
+      <!-- STATS + MISSION combinés -->
+      <div class="panel full" id="panel-stats" style="position:relative;overflow:hidden;">
+        <canvas id="stars-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.9;"></canvas>
+        <div style="position:relative;z-index:1;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+
+            <!-- Colonne gauche : stats -->
+            <div>
+              <div class="ph" style="border-bottom:1px solid var(--border);"><div class="dot-info"></div>LA PLATEFORME EN CHIFFRES</div>
+              <div class="pb">
+                <div class="stats-grid">
+                  <div class="stat-card">
+                    <span class="stat-num">1535+</span>
+                    <div class="stat-lbl">Observations archivées</div>
+                  </div>
+                  <div class="stat-card">
+                    <span class="stat-num">44+</span>
+                    <div class="stat-lbl">Pays visiteurs</div>
+                  </div>
+                  <div class="stat-card">
+                    <span class="stat-num">5</span>
+                    <div class="stat-lbl">Sources de données majeures</div>
+                  </div>
+                  <div class="stat-card">
+                    <span class="stat-num">99%+</span>
+                    <div class="stat-lbl">Uptime depuis mars 2026</div>
+                  </div>
+                  <div class="stat-card">
+                    <span class="stat-num">NASA · ESA</span>
+                    <div class="stat-lbl">Agences spatiales</div>
+                  </div>
+                  <div class="stat-card">
+                    <span class="stat-num">NOAA · N2YO · LCO</span>
+                    <div class="stat-lbl">Partenaires data</div>
+                  </div>
+                  <!-- MINI TOP PAYS sous les stats -->
+                  <div style="grid-column:1/-1;margin-top:.6rem;border-top:1px solid rgba(0,212,255,.08);padding-top:.8rem;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.8rem;">
+
+                      <!-- Colonne gauche : badges pays -->
+                      <div>
+                        <div style="font-family:var(--font);font-size:.42rem;letter-spacing:.2em;
+                          color:var(--text-dim);margin-bottom:.6rem;text-transform:uppercase;
+                          display:flex;align-items:center;gap:6px;">
+                          <span style="width:6px;height:6px;border-radius:50%;background:var(--green);
+                            animation:pulse 2s infinite;display:inline-block;"></span>
+                          Top pays visiteurs · Live
+                        </div>
+                        <div id="ap-stats-countries" style="display:flex;flex-direction:column;gap:.35rem;">
+                          <span style="color:var(--text-dim);font-size:.6rem;">Chargement…</span>
+                        </div>
+                      </div>
+
+                      <!-- Colonne droite : mini carte monde SVG -->
+                      <div style="position:relative;width:100%;height:260px;
+                        border-radius:6px;overflow:hidden;
+                        border:1px solid rgba(0,212,255,.15);
+                        background:rgba(0,5,15,.9);">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/The_earth_at_night.jpg/1280px-The_earth_at_night.jpg"
+                          style="position:absolute;top:0;left:0;width:100%;height:100%;
+                          object-fit:cover;opacity:.6;" alt="carte nuit"/>
+                        <div style="position:absolute;inset:0;
+                          background:rgba(0,5,20,.3);"></div>
+                        <svg viewBox="0 0 500 260" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;"
+                          xmlns="http://www.w3.org/2000/svg">
+                          <!-- TLEMCEN 34.8731N 1.3154E : cx=(1.3154+180)/360*500=252, cy=(90-34.8731)/180*260=80 -->
+                          <circle cx="252" cy="80" r="10" fill="rgba(0,255,136,.15)">
+                            <animate attributeName="r" values="10;20;10" dur="2s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values=".8;.1;.8" dur="2s" repeatCount="indefinite"/>
+                          </circle>
+                          <circle cx="252" cy="80" r="4" fill="#00ff88"/>
+                          <line x1="244" y1="80" x2="260" y2="80" stroke="#00ff88" stroke-width="2"/>
+                          <line x1="252" y1="72" x2="252" y2="88" stroke="#00ff88" stroke-width="2"/>
+                          <text x="252" y="66" text-anchor="middle"
+                            font-family="monospace" font-size="9" fill="#00ff88"
+                            letter-spacing="1.5">TLEMCEN</text>
+                          <!-- USA cx=(−100+180)/360*500=111, cy=(90−38)/180*260=75 -->
+                          <circle cx="111" cy="75" r="7" fill="rgba(0,212,255,.2)">
+                            <animate attributeName="r" values="7;13;7" dur="3s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values=".7;.1;.7" dur="3s" repeatCount="indefinite"/>
+                          </circle>
+                          <circle cx="111" cy="75" r="3" fill="#00d4ff"/>
+                          <!-- UK cx=(−0.12+180)/360*500=250, cy=(90−51.5)/180*260=56 -->
+                          <circle cx="248" cy="56" r="5" fill="rgba(0,212,255,.2)">
+                            <animate attributeName="r" values="5;9;5" dur="2.8s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values=".7;.1;.7" dur="2.8s" repeatCount="indefinite"/>
+                          </circle>
+                          <circle cx="248" cy="56" r="2.5" fill="#00d4ff"/>
+                          <!-- Singapore cx=(103.82+180)/360*500=394, cy=(90−1.35)/180*260=128 -->
+                          <circle cx="394" cy="128" r="5" fill="rgba(0,212,255,.2)">
+                            <animate attributeName="r" values="5;9;5" dur="3.5s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values=".7;.1;.7" dur="3.5s" repeatCount="indefinite"/>
+                          </circle>
+                          <circle cx="394" cy="128" r="2.5" fill="#00d4ff"/>
+                          <!-- Chine cx=(116.4+180)/360*500=412, cy=(90−39.9)/180*260=72 -->
+                          <circle cx="412" cy="72" r="5" fill="rgba(0,212,255,.2)">
+                            <animate attributeName="r" values="5;9;5" dur="4s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values=".7;.1;.7" dur="4s" repeatCount="indefinite"/>
+                          </circle>
+                          <circle cx="412" cy="72" r="2.5" fill="#00d4ff"/>
+                          <!-- Ukraine cx=(30.52+180)/360*500=293, cy=(90−50.45)/180*260=57 -->
+                          <circle cx="293" cy="57" r="4" fill="rgba(0,212,255,.2)">
+                            <animate attributeName="r" values="4;7;4" dur="3.2s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values=".6;.1;.6" dur="3.2s" repeatCount="indefinite"/>
+                          </circle>
+                          <circle cx="293" cy="57" r="2" fill="#00d4ff"/>
+                          <!-- Lignes vers Tlemcen -->
+                          <line x1="111" y1="75" x2="252" y2="80" stroke="rgba(0,212,255,.3)" stroke-width="1" stroke-dasharray="5,5">
+                            <animate attributeName="stroke-dashoffset" values="0;-20" dur="2s" repeatCount="indefinite"/>
+                          </line>
+                          <line x1="248" y1="56" x2="252" y2="80" stroke="rgba(0,255,136,.3)" stroke-width="1" stroke-dasharray="4,4">
+                            <animate attributeName="stroke-dashoffset" values="0;-16" dur="1.5s" repeatCount="indefinite"/>
+                          </line>
+                          <line x1="394" y1="128" x2="252" y2="80" stroke="rgba(0,212,255,.2)" stroke-width=".8" stroke-dasharray="5,5">
+                            <animate attributeName="stroke-dashoffset" values="0;-20" dur="2.5s" repeatCount="indefinite"/>
+                          </line>
+                          <line x1="412" y1="72" x2="252" y2="80" stroke="rgba(0,212,255,.2)" stroke-width=".8" stroke-dasharray="4,4">
+                            <animate attributeName="stroke-dashoffset" values="0;-16" dur="3s" repeatCount="indefinite"/>
+                          </line>
+                          <line x1="293" y1="57" x2="252" y2="80" stroke="rgba(0,212,255,.2)" stroke-width=".8" stroke-dasharray="3,4">
+                            <animate attributeName="stroke-dashoffset" values="0;-14" dur="2.2s" repeatCount="indefinite"/>
+                          </line>
+                          <!-- Scan -->
+                          <line x1="0" y1="0" x2="500" y2="0" stroke="rgba(0,212,255,.4)" stroke-width="1.5">
+                            <animate attributeName="y1" values="0;260;0" dur="5s" repeatCount="indefinite"/>
+                            <animate attributeName="y2" values="0;260;0" dur="5s" repeatCount="indefinite"/>
+                            <animate attributeName="opacity" values="1;.1;1" dur="5s" repeatCount="indefinite"/>
+                          </line>
+                          <text x="250" y="252" text-anchor="middle"
+                            font-family="monospace" font-size="7" fill="rgba(0,212,255,.35)"
+                            letter-spacing="2">SIGNAL MONDIAL · 34.87°N 1.32°E · ALGÉRIE</text>
+                        </svg>
+                        <div style="position:absolute;top:8px;left:10px;
+                          font-family:monospace;font-size:.4rem;letter-spacing:.18em;
+                          color:rgba(0,255,136,.8);background:rgba(0,0,0,.5);
+                          padding:2px 8px;border-radius:3px;">&#x2295; STATION TLEMCEN</div>
+                        <div style="position:absolute;top:0;left:0;right:0;height:1px;
+                          background:linear-gradient(90deg,transparent,rgba(0,212,255,.5),transparent);
+                          animation:scanline 5s linear infinite;"></div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Colonne droite : mission -->
+            <div>
+              <div class="ph" style="border-bottom:1px solid var(--border);"><div class="dot-info"></div>MISSION &amp; OBJECTIFS</div>
+              <div class="pb">
+                <ul class="mission-list">
+                  <li>Fournir un accès gratuit aux données spatiales en temps réel (ISS, météo spatiale, APOD NASA) pour le public francophone et arabophone</li>
+                  <li>Développer des outils d'observation astronomique adaptés aux coordonnées nord-africaines (éphémérides Tlemcen, passages ISS locaux)</li>
+                  <li>Créer un pont entre les données scientifiques internationales (NASA, ESA, NOAA) et les communautés scientifiques du Maghreb</li>
+                  <li>Offrir une API ouverte aux chercheurs et développeurs pour intégrer des données spatiales dans leurs projets</li>
+                  <li>Contribuer à la vulgarisation scientifique spatiale via l'intelligence artificielle (AEGIS, Oracle Cosmique, Guide Stellaire)</li>
+                  <li>Documenter et archiver les phénomènes célestes observables depuis Tlemcen (34.8731°N, 1.3154°E, alt. 800m)</li>
+                </ul>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ARCHITECTURE TECHNIQUE -->
+      <div class="panel full">
+        <div class="ph"><div class="dot-info"></div>ARCHITECTURE TECHNIQUE — AstroScan-Chohra v2.0</div>
+        <div class="pb">
+          <div class="tech-grid">
+            <div class="tech-item">
+              <div class="tech-name">Backend</div>
+              <div class="tech-desc">Python 3 · Flask · Gunicorn · SQLite</div>
+            </div>
+            <div class="tech-item">
+              <div class="tech-name">Orbites &amp; TLE</div>
+              <div class="tech-desc">Skyfield SGP4 · TLE NORAD temps réel · N2YO API</div>
+            </div>
+            <div class="tech-item">
+              <div class="tech-name">Éphémérides</div>
+              <div class="tech-desc">astropy 7.2 · JPL DE432 · AltAz · EarthLocation</div>
+            </div>
+            <div class="tech-item">
+              <div class="tech-name">Données NASA</div>
+              <div class="tech-desc">APOD · NEO/Horizons · DSN · MicroObservatory · SkyView</div>
+            </div>
+            <div class="tech-item">
+              <div class="tech-name">Météo Spatiale</div>
+              <div class="tech-desc">NOAA SWPC · Kp-index · Aurores boréales · CME</div>
+            </div>
+            <div class="tech-item">
+              <div class="tech-name">Intelligence Artificielle</div>
+              <div class="tech-desc">Claude (Anthropic) · AEGIS IA · Oracle Cosmique</div>
+            </div>
+            <div class="tech-item">
+              <div class="tech-name">Temps réel</div>
+              <div class="tech-desc">SSE · WebSocket · PWA · Service Worker · GeoIP</div>
+            </div>
+            <div class="tech-item">
+              <div class="tech-name">Infrastructure</div>
+              <div class="tech-desc">Hetzner Hillsboro, USA (Oregon) · Nginx · HTTPS/TLS · systemd · Let's Encrypt</div>
+            </div>
+            <div class="tech-item">
+              <div class="tech-name">Domaine &amp; SSL</div>
+              <div class="tech-desc">astroscan.space · Let's Encrypt (certbot) · DuckDNS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PARTENARIATS -->
+      <div class="panel full">
+        <div class="ph"><div class="dot-info"></div>PARTENARIATS &amp; COLLABORATIONS</div>
+        <div class="pb">
+          <p style="font-size:.75rem;color:var(--text);line-height:1.8;margin-bottom:.8rem;">
+            AstroScan-Chohra est une plateforme indépendante à vocation scientifique et éducative,
+            ouverte à toute collaboration avec des universités, laboratoires et agences spatiales.
+          </p>
+          <ul class="mission-list">
+            <li>Partage de données d'observation et intégration de flux télescopes institutionnels</li>
+            <li>Intégration dans des programmes d'éducation scientifique universitaire</li>
+            <li>Collaboration sur des projets de recherche en astronomie observationnelle</li>
+            <li>Déploiement dans des établissements nord-africains et francophones</li>
+          </ul>
+          <div class="callout">
+            Réseau scientifique et éducatif: <strong>NASA</strong>, <strong>ESA</strong>, <strong>NOAA</strong>,
+            <strong>IAU</strong>, <strong>UNAWE</strong> et <strong>LCO</strong>.
+            Pour toute demande formelle, utilisez le formulaire de contact sur le site
+            <strong>astroscan.space</strong>.
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.4rem;align-items:center;">
+
+            <!-- Carte visiteurs live -->
+            <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(0,212,255,.2);background:rgba(0,0,0,.4);height:280px;display:flex;flex-direction:column;">
+              <div style="padding:.6rem 1rem;border-bottom:1px solid rgba(0,212,255,.1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <div style="font-family:var(--font);font-size:.48rem;letter-spacing:.2em;color:var(--cyan);text-transform:uppercase;">
+                  <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;margin-right:5px;"></span>
+                  Visiteurs en temps réel · Top Pays
+                </div>
+                <div style="font-size:.42rem;color:var(--text-dim);font-family:var(--font);letter-spacing:.1em;" id="ap-visitor-count">— visiteurs</div>
+              </div>
+              <div id="ap-countries-list" style="flex:1;overflow-y:auto;padding:.5rem .8rem;display:flex;flex-direction:column;gap:.3rem;">
+                <div style="color:var(--text-dim);font-size:.65rem;text-align:center;padding:1rem;">Chargement…</div>
+              </div>
+            </div>
+
+            <!-- Message universel -->
+            <div style="display:flex;flex-direction:column;gap:1rem;">
+              <div style="font-family:var(--font);font-size:.55rem;letter-spacing:.2em;color:var(--cyan);text-transform:uppercase;">
+                Une Science Sans Frontières
+              </div>
+              <div style="font-size:.75rem;color:var(--text);line-height:1.9;">
+                AstroScan-Chohra démontre qu'une plateforme astronomique
+                de niveau international peut émerger depuis <strong style="color:var(--text-bright)">n'importe où sur Terre</strong> —
+                y compris depuis Tlemcen, Algérie, à 34.87°N.
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.3rem;">
+                <span style="font-size:.5rem;padding:3px 10px;border:1px solid rgba(0,212,255,.3);border-radius:3px;color:var(--cyan);font-family:var(--font);letter-spacing:.1em;">🌍 ALGÉRIE</span>
+                <span style="font-size:.5rem;padding:3px 10px;border:1px solid rgba(0,212,255,.3);border-radius:3px;color:var(--cyan);font-family:var(--font);letter-spacing:.1em;">🔭 NASA · ESA · NOAA · N2YO · LCO</span>
+                <span style="font-size:.5rem;padding:3px 10px;border:1px solid rgba(0,212,255,.3);border-radius:3px;color:var(--cyan);font-family:var(--font);letter-spacing:.1em;">🎓 UNAWE · IAU</span>
+                <span style="font-size:.5rem;padding:3px 10px;border:1px solid rgba(0,212,255,.3);border-radius:3px;color:var(--cyan);font-family:var(--font);letter-spacing:.1em;">📡 44+ PAYS VISITEURS</span>
+                <span style="font-size:.5rem;padding:3px 10px;border:1px solid rgba(0,255,136,.3);border-radius:3px;color:var(--green);font-family:var(--font);letter-spacing:.1em;">● LIVE 24/7</span>
+              </div>
+              <div style="margin-top:.5rem;font-size:.65rem;color:var(--text-dim);line-height:1.7;border-left:2px solid rgba(0,212,255,.3);padding-left:.8rem;">
+                "L'astronomie est le seul domaine scientifique où
+                un observateur isolé peut contribuer à la connaissance mondiale
+                depuis son propre ciel."
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTACT -->
+      <div class="panel full">
+        <div class="ph"><div class="dot-info"></div>CONTACT &amp; RESSOURCES</div>
+        <div class="pb">
+
+          <div class="collab-grid" style="margin-bottom:1.4rem;">
+            <div class="collab-item">
+              <div class="collab-label">Plateforme</div>
+              <div class="collab-value"><a href="https://astroscan.space" target="_blank">astroscan.space</a></div>
+            </div>
+            <div class="collab-item">
+              <div class="collab-label">Localisation</div>
+              <div class="collab-value">Tlemcen, Algérie<br>34.8731°N · 1.3154°E · Alt. 800m</div>
+            </div>
+            <div class="collab-item">
+              <div class="collab-label">Email</div>
+              <div class="collab-value">
+                <a href="mailto:contact@astroscan.space" style="color:var(--cyan)">
+                  contact@astroscan.space
+                </a>
+              </div>
+            </div>
+            <div class="collab-item">
+              <div class="collab-label">Téléphone</div>
+              <div class="collab-value" style="color:var(--text-bright);font-family:var(--mono)">
+                +213 540 388 413<br>
+                +213 775 947 113
+              </div>
+            </div>
+            <div class="collab-item">
+              <div class="collab-label">Open Data Portal</div>
+              <div class="collab-value"><a href="/data">astroscan.space/data</a><br><span style="font-size:.6rem;color:var(--text-dim)">CSV · JSON · CC BY 4.0</span></div>
+            </div>
+            <div class="collab-item">
+              <div class="collab-label">API Documentation</div>
+              <div class="collab-value"><a href="/api/docs">api/docs</a><br><span style="font-size:.6rem;color:var(--text-dim)">OpenAPI 3.0</span></div>
+            </div>
+            <div class="collab-item">
+              <div class="collab-label">GitHub</div>
+              <div class="collab-value"><a href="https://github.com/za1974ria/astro_scan" target="_blank" rel="noopener">github.com/za1974ria/astro_scan</a></div>
+            </div>
+            <div class="collab-item">
+              <div class="collab-label">Contact direct</div>
+              <div class="collab-value" id="contact-email-reveal" style="cursor:pointer;color:var(--cyan);" title="Cliquer pour afficher">[afficher l'adresse]</div>
+            </div>
+            <div class="collab-item">
+              <div class="collab-label">Hébergement</div>
+              <div class="collab-value">Hetzner Hillsboro, USA (Oregon)<br><span style="font-size:.6rem;color:var(--text-dim)">99.9% uptime · SSL certbot</span></div>
+            </div>
+          </div>
+
+          <!-- Formulaire de contact -->
+          <div style="border-top:1px solid rgba(0,212,255,.1);padding-top:1.2rem;">
+            <div style="font-family:var(--font);font-size:.58rem;letter-spacing:.18em;color:var(--cyan);margin-bottom:1rem;text-transform:uppercase;">Formulaire de contact</div>
+            <form id="contact-form" style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;">
+              <div class="form-group">
+                <label class="form-label">Nom *</label>
+                <input type="text" id="f-nom" name="nom" class="form-input" placeholder="Votre nom" maxlength="120" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Organisme / Institution</label>
+                <input type="text" id="f-org" name="organisme" class="form-input" placeholder="Université, laboratoire…" maxlength="200">
+              </div>
+              <div class="form-group" style="grid-column:1/-1;">
+                <label class="form-label">Message *</label>
+                <textarea id="f-msg" name="message" class="form-input form-textarea" placeholder="Votre demande ou proposition de collaboration…" maxlength="2000" required></textarea>
+                <div id="f-charcount" style="font-size:.5rem;color:var(--text-dim);text-align:right;margin-top:.2rem;">0 / 2000</div>
+              </div>
+              <div style="grid-column:1/-1;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+                <button type="submit" class="form-btn" id="f-submit">Envoyer le message</button>
+                <div id="f-status" style="font-size:.65rem;letter-spacing:.06em;"></div>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /main-grid -->
+
+    <div style="padding:.8rem 1.5rem 1.5rem;font-size:.5rem;color:var(--text-dim);letter-spacing:.08em;border-top:1px solid rgba(0,212,255,.06);margin-top:.5rem;">
+      © 2026 AstroScan-Chohra · Zakaria Chohra · Tlemcen, Algérie · Données NASA, ESA, NOAA à des fins scientifiques et éducatives ·
+      <a href="/sitemap.xml" style="color:var(--text-dim);text-decoration:none;">Sitemap</a>
+    </div>
+
+  </div><!-- /content-area -->
+</div><!-- /shell -->
+
+<script>
+// Horloge UTC+1
+function tickClock() {
+  const d = new Date();
+  const utc1 = new Date(d.getTime() + 3600000);
+  const hh = String(utc1.getUTCHours()).padStart(2,'0');
+  const mm = String(utc1.getUTCMinutes()).padStart(2,'0');
+  const ss = String(utc1.getUTCSeconds()).padStart(2,'0');
+  document.getElementById('top-clock').textContent = hh+':'+mm+':'+ss+' UTC+1';
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+// Visites
+(function(){
+  fetch('/api/visitors/snapshot?exclude_my_ip=1&_='+Date.now(),{credentials:'same-origin'})
+    .then(r=>r.json())
+    .then(d=>{
+      const sv = document.getElementById('stat-visitors');
+      const sc = document.getElementById('stat-countries');
+      const bc = document.getElementById('badge-countries');
+      const tv = document.getElementById('tbar-visits-val');
+      if(d.total) {
+        if(sv) sv.textContent = d.total.toLocaleString('fr-FR');
+        if(tv) tv.textContent = d.total.toLocaleString('fr-FR');
+      }
+      if(d.distinct_countries) {
+        if(sc) sc.textContent = d.distinct_countries;
+        if(bc) bc.textContent = '🌐 '+d.distinct_countries+' PAYS VISITEURS';
+      }
+    }).catch(()=>{
+      const sv = document.getElementById('stat-visitors');
+      if(sv) sv.textContent = '1 000+';
+    });
+})();
+
+// Hamburger
+const ham = document.getElementById('hamburger-btn');
+const sb  = document.getElementById('sidebar');
+const ov  = document.getElementById('sidebar-overlay');
+if(ham && sb && ov) {
+  ham.addEventListener('click', () => { sb.classList.toggle('open'); ov.classList.toggle('active'); });
+  ov.addEventListener('click', () => { sb.classList.remove('open'); ov.classList.remove('active'); });
+}
+
+// Email obfusqué — assemblé en JS, jamais dans le HTML source
+(function(){
+  const el = document.getElementById('contact-email-reveal');
+  if(!el) return;
+  const u = 'contact'; const d = 'astroscan' + '.' + 'space';
+  let revealed = false;
+  el.addEventListener('click', function(){
+    if(!revealed){
+      el.textContent = u + '@' + d;
+      el.style.cursor = 'default';
+      revealed = true;
+    }
+  });
+})();
+
+// Compteur caractères message
+(function(){
+  const ta = document.getElementById('f-msg');
+  const cc = document.getElementById('f-charcount');
+  if(ta && cc) ta.addEventListener('input', () => { cc.textContent = ta.value.length + ' / 2000'; });
+})();
+
+// Soumission formulaire
+(function(){
+  const form = document.getElementById('contact-form');
+  const btn  = document.getElementById('f-submit');
+  const status = document.getElementById('f-status');
+  if(!form) return;
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const nom       = document.getElementById('f-nom').value.trim();
+    const organisme = document.getElementById('f-org').value.trim();
+    const message   = document.getElementById('f-msg').value.trim();
+    if(!nom || !message){ status.style.color='#ff3355'; status.textContent='Nom et message requis.'; return; }
+
+    btn.disabled = true;
+    btn.classList.add('sending');
+    status.style.color = 'var(--text-dim)';
+    status.textContent = 'Envoi en cours…';
+
+    fetch('/contact', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nom, organisme, message})
+    })
+    .then(r => r.json())
+    .then(d => {
+      if(d.ok){
+        status.style.color = 'var(--green)';
+        status.textContent = '✓ ' + d.message;
+        form.reset();
+        document.getElementById('f-charcount').textContent = '0 / 2000';
+      } else {
+        status.style.color = '#ff3355';
+        status.textContent = '✗ ' + (d.error || 'Erreur.');
+      }
+    })
+    .catch(() => {
+      status.style.color = '#ff3355';
+      status.textContent = '✗ Erreur réseau. Réessayez.';
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.classList.remove('sending');
+    });
+  });
+})();
+
+// Carte visiteurs live — section À propos
+(function(){
+  function flagImg(code){
+    if(!code || code.length!==2) return '';
+    var lc = code.toLowerCase();
+    return '<img src="https://flagcdn.com/20x15/'+lc+'.png" '+
+      'width="20" height="15" '+
+      'style="border-radius:2px;vertical-align:middle;flex-shrink:0;" '+
+      'alt="'+code+'" '+
+      'onerror="this.style.display=\'none\'">';
+  }
+  function loadCountries(){
+    fetch('/api/visitors/snapshot?exclude_my_ip=1&_='+Date.now(),{credentials:'same-origin'})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var el = document.getElementById('ap-countries-list');
+      var vc = document.getElementById('ap-visitor-count');
+      if(!el) return;
+      if(d.total && vc) vc.textContent = d.total.toLocaleString('fr-FR') + ' visiteurs';
+      var countries = d.countries_list || d.top_countries || [];
+      if(!countries.length){
+        el.innerHTML='<div style="color:var(--text-dim);font-size:.65rem;text-align:center;padding:1rem;">Données indisponibles</div>';
+        return;
+      }
+      var max = countries[0].count || countries[0].visitors || 1;
+      el.innerHTML = countries.slice(0,15).map(function(c,i){
+        var name  = c.country || c.name || '?';
+        var count = c.count || c.visitors || 0;
+        var pct   = Math.round((count/max)*100);
+        var first = i===0 ? '<span style="font-size:.42rem;color:var(--amber);font-family:var(--font);">●</span>' : '';
+        return '<div style="display:flex;align-items:center;gap:.6rem;">'+
+          '<span style="flex-shrink:0;display:flex;align-items:center;">'+flagImg(c.code || c.country_code)+'</span>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="display:flex;justify-content:space-between;margin-bottom:2px;">'+
+              '<span style="font-size:.55rem;color:var(--text);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+name+'</span>'+
+              '<span style="font-size:.55rem;color:var(--cyan);font-family:var(--font);margin-left:.4rem;flex-shrink:0;">'+count+'</span>'+
+            '</div>'+
+            '<div style="height:3px;background:rgba(0,212,255,.1);border-radius:2px;overflow:hidden;">'+
+              '<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,rgba(0,212,255,.5),rgba(0,212,255,.9));border-radius:2px;"></div>'+
+            '</div>'+
+          '</div>'+
+          first+
+        '</div>';
+      }).join('');
+      // Mini badges pays sous stats
+      var sc2 = document.getElementById('ap-stats-countries');
+      if(sc2 && countries.length){
+        sc2.innerHTML = countries.slice(0,8).map(function(c,i){
+          var code     = (c.code||'').toLowerCase();
+          var name     = c.country||c.name||'?';
+          var count    = c.count||c.visitors||0;
+          var delay    = (i*0.06).toFixed(2)+'s';
+          var maxCount = countries[0].count||countries[0].visitors||1;
+          var pct      = Math.round((count/maxCount)*100);
+          return '<div class="ap-badge" style="animation-delay:'+delay+';'+
+            'width:100%;justify-content:flex-start;">'+
+            '<span class="ap-badge-rank">#'+(i+1)+'</span>'+
+            '<img class="ap-badge-flag" src="https://flagcdn.com/20x15/'+code+'.png"'+
+            ' alt="'+code.toUpperCase()+'" onerror="this.style.display=\'none\'">'+
+            '<span class="ap-badge-name" style="flex:1;">'+name+'</span>'+
+            '<div style="width:50px;height:3px;background:rgba(0,212,255,.1);'+
+            'border-radius:2px;overflow:hidden;margin-right:4px;">'+
+            '<div style="width:'+pct+'%;height:100%;'+
+            'background:linear-gradient(90deg,rgba(0,212,255,.4),rgba(0,212,255,.9));'+
+            'border-radius:2px;"></div></div>'+
+            '<span class="ap-badge-count">'+count+'</span>'+
+            '</div>';
+        }).join('');
+      }
+    }).catch(function(){
+      var el=document.getElementById('ap-countries-list');
+      if(el) el.innerHTML='<div style="color:var(--text-dim);font-size:.65rem;text-align:center;">Données indisponibles</div>';
+    });
+  }
+  loadCountries();
+  setInterval(loadCountries, 30000);
+})();
+
+// Étoiles scintillantes — panel stats
+(function(){
+  const canvas = document.getElementById('stars-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  let W, H;
+
+  function resize(){
+    const panel = document.getElementById('panel-stats');
+    if(!panel) return;
+    W = canvas.width  = panel.offsetWidth;
+    H = canvas.height = panel.offsetHeight;
+  }
+
+  function initStars(){
+    stars = [];
+    const count = Math.floor((W * H) / 400);
+    for(let i = 0; i < count; i++){
+      stars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.2 + 0.2,
+        alpha: Math.random(),
+        delta: (Math.random() * 0.015 + 0.005) * (Math.random()<.5?1:-1),
+        color: Math.random() < 0.15
+          ? `rgba(0,255,136,`
+          : Math.random() < 0.3
+            ? `rgba(255,183,0,`
+            : `rgba(0,212,255,`
+      });
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+    for(const s of stars){
+      s.alpha += s.delta;
+      if(s.alpha > 1){ s.alpha = 1; s.delta = -Math.abs(s.delta); }
+      if(s.alpha < 0){ s.alpha = 0; s.delta =  Math.abs(s.delta); }
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      ctx.fillStyle = s.color + s.alpha.toFixed(2) + ')';
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  initStars();
+  draw();
+  window.addEventListener('resize', ()=>{ resize(); initStars(); });
+})();
+</script>
+
+</body>
+</html>

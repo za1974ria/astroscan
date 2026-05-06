@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Documentation — AstroScan-Chohra</title>
+  <meta name="description" content="Documentation API publique AstroScan-Chohra — données spatiales en temps réel : ISS, APOD NASA, météo spatiale, éphémérides Tlemcen. OpenAPI 3.0.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://astroscan.space/api/docs">
+  <link rel="icon" href="/static/favicon.ico?v=2">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.17.14/swagger-ui.min.css">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#000810;font-family:'Courier New',monospace;min-height:100vh}
+
+    .api-header{
+      background:rgba(0,8,20,0.98);
+      border-bottom:1px solid rgba(0,180,255,0.2);
+      padding:14px 28px;
+      display:flex;align-items:center;gap:12px;
+      position:sticky;top:0;z-index:1000;
+      backdrop-filter:blur(10px);
+    }
+    .api-header .logo{color:#00d4ff;text-decoration:none;font-size:15px;font-weight:700;letter-spacing:3px}
+    .api-header .logo span{color:#fff}
+    .badge{background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);border-radius:12px;padding:3px 10px;font-size:10px;color:#00d4ff;letter-spacing:1px}
+    .api-header nav{margin-left:auto;display:flex;gap:20px;align-items:center}
+    .api-header nav a{color:#556677;font-size:11px;letter-spacing:1px;text-decoration:none;transition:color .2s}
+    .api-header nav a:hover{color:#00d4ff}
+
+    .intro-bar{
+      background:rgba(0,180,255,0.04);
+      border-bottom:1px solid rgba(0,180,255,0.1);
+      padding:12px 28px;
+      display:flex;gap:24px;flex-wrap:wrap;align-items:center;
+    }
+    .intro-bar .stat{font-size:11px;color:#6688aa;letter-spacing:1px}
+    .intro-bar .stat b{color:#00d4ff}
+
+    #swagger-ui{max-width:1200px;margin:0 auto;padding:24px 20px 60px}
+
+    /* Swagger UI dark theme overrides */
+    .swagger-ui .topbar{display:none!important}
+    .swagger-ui,.swagger-ui *{font-family:'Courier New',monospace!important}
+    .swagger-ui .info{margin:20px 0}
+    .swagger-ui .info .title{color:#00d4ff!important;font-size:1.6em!important}
+    .swagger-ui .info p,.swagger-ui .info li,.swagger-ui .info a{color:#8899aa!important}
+    .swagger-ui .info a{color:#00d4ff!important}
+    .swagger-ui .scheme-container{background:rgba(0,20,40,0.8)!important;border:1px solid rgba(0,180,255,0.15)!important;border-radius:8px!important;padding:12px!important}
+    .swagger-ui .opblock-tag{color:#00d4ff!important;border-bottom:1px solid rgba(0,180,255,0.15)!important;font-size:14px!important;letter-spacing:2px!important}
+    .swagger-ui .opblock{background:rgba(0,15,30,0.7)!important;border:1px solid rgba(0,180,255,0.12)!important;border-radius:8px!important;margin-bottom:8px!important}
+    .swagger-ui .opblock .opblock-summary{border-bottom:1px solid rgba(0,180,255,0.08)!important}
+    .swagger-ui .opblock .opblock-summary-method{border-radius:4px!important;font-size:12px!important}
+    .swagger-ui .opblock .opblock-summary-path{color:#c8d8e8!important}
+    .swagger-ui .opblock .opblock-summary-description{color:#6688aa!important;font-size:12px!important}
+    .swagger-ui .opblock-body,.swagger-ui .tab,.swagger-ui .opblock-section{background:rgba(0,10,25,0.6)!important}
+    .swagger-ui .response-col_status{color:#00d4ff!important}
+    .swagger-ui table thead tr th{color:#00d4ff!important;border-bottom:1px solid rgba(0,180,255,0.15)!important}
+    .swagger-ui .parameter__name{color:#c8d8e8!important}
+    .swagger-ui .parameter__type{color:#00d4ff!important}
+    .swagger-ui input[type=text],.swagger-ui textarea,.swagger-ui select{background:rgba(0,15,30,0.8)!important;color:#c8d8e8!important;border:1px solid rgba(0,180,255,0.2)!important;border-radius:4px!important}
+    .swagger-ui .btn{border-radius:4px!important}
+    .swagger-ui .btn.execute{background:linear-gradient(90deg,#0066cc,#00aaff)!important;border:none!important}
+    .swagger-ui section.models{display:none!important}
+    .swagger-ui .servers>label select{background:rgba(0,15,30,0.9)!important;color:#00d4ff!important;border-color:rgba(0,180,255,0.2)!important}
+    .swagger-ui .response-control-media-type label{color:#6688aa!important}
+    .swagger-ui .highlight-code pre,.swagger-ui .microlight{background:rgba(0,5,15,0.8)!important;border-radius:4px!important;border:1px solid rgba(0,180,255,0.1)!important}
+    .swagger-ui .prop-type{color:#00ff88!important}
+    .swagger-ui .renderedMarkdown p{color:#8899aa!important}
+    .swagger-ui .markdown p{color:#8899aa!important}
+  </style>
+</head>
+<body>
+
+<header class="api-header">
+  <a href="/portail" class="logo">⟨ ASTRO<span>SCAN</span> ⟩</a>
+  <span class="badge">API v2.0</span>
+  <span class="badge">OpenAPI 3.0</span>
+  <nav>
+    <a href="/api/spec.json" target="_blank">spec.json</a>
+    <a href="/a-propos">À propos</a>
+    <a href="/observatoire">Observatoire</a>
+    <a href="/portail">Portail</a>
+  </nav>
+</header>
+
+<div class="intro-bar">
+  <span class="stat">🌍 <b>Base URL</b> : https://astroscan.space</span>
+  <span class="stat">🔓 <b>Auth</b> : Aucune requise — API publique</span>
+  <span class="stat">📡 <b>Format</b> : JSON / XML</span>
+  <span class="stat">⚡ <b>Rate limit</b> : Usage raisonnable — contact pour accès intensif</span>
+  <span class="stat">📧 <b>Contact</b> : zakaria.chohra@gmail.com</span>
+</div>
+
+<div id="swagger-ui"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.17.14/swagger-ui-bundle.min.js"></script>
+<script>
+  SwaggerUIBundle({
+    url: "/api/spec.json",
+    dom_id: '#swagger-ui',
+    presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
+    layout: "BaseLayout",
+    deepLinking: true,
+    displayRequestDuration: true,
+    tryItOutEnabled: true,
+    defaultModelsExpandDepth: -1,
+    defaultModelExpandDepth: -1,
+    docExpansion: "list",
+    filter: true,
+    requestSnippetsEnabled: true
+  });
+</script>
+
+</body>
+</html>

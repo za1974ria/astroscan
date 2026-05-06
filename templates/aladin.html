@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<script>(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASTRO-SCAN — Carte du Ciel Interactive · ESA Aladin</title>
+<meta name="description" content="Carte du ciel interactive ESA/CDS — explorer l'univers en optique, infrarouge, rayons X depuis Tlemcen.">
+<link rel="canonical" href="https://astroscan.space/aladin">
+
+<!-- Aladin Lite v3 CDN officiel ESA/CDS -->
+<link rel="stylesheet"
+  href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.min.css"/>
+<script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js"
+  charset="utf-8"></script>
+
+<style>
+html.embed-portail .top-bar,html.embed-portail .topbar{display:none!important}
+html.embed-portail body{padding-top:0!important}
+  :root {
+    --bg: #020810; --cyan: #00d4ff; --acid: #00ff88;
+    --amber: #ffaa00; --text: #c8dce8; --border: rgba(0,212,255,0.2);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text);
+         font-family:'Share Tech Mono', monospace; }
+
+  /* NAVBAR */
+  .top-bar {
+    display:flex; align-items:center; gap:12px;
+    padding:8px 16px; background:rgba(0,10,25,0.95);
+    border-bottom:1px solid var(--border);
+    position:fixed; top:0; left:0; right:0; z-index:1000;
+  }
+  .top-bar .brand { color:var(--cyan); font-size:13px;
+    letter-spacing:3px; font-weight:700; }
+  .top-bar .badge {
+    background:rgba(0,212,255,0.1); border:1px solid var(--cyan);
+    color:var(--cyan); font-size:9px; padding:2px 8px;
+    letter-spacing:2px;
+  }
+  .back-btn {
+    margin-left:auto; color:var(--text); text-decoration:none;
+    font-size:11px; letter-spacing:1px; opacity:0.7;
+    border:1px solid var(--border); padding:4px 10px;
+  }
+  .back-btn:hover { opacity:1; color:var(--cyan); }
+
+  /* PANNEAU DE CONTRÔLE */
+  .controls {
+    position:fixed; top:44px; left:0; bottom:0; width:280px;
+    background:rgba(0,8,20,0.97); border-right:1px solid var(--border);
+    overflow-y:auto; z-index:900; padding:12px;
+    display:flex; flex-direction:column;
+  }
+
+  .ctrl-section { margin-bottom:16px; }
+  .ctrl-title {
+    color:var(--cyan); font-size:9px; letter-spacing:3px;
+    margin-bottom:8px; border-bottom:1px solid var(--border);
+    padding-bottom:4px;
+  }
+
+  .search-box {
+    display:flex; gap:6px; margin-bottom:10px;
+  }
+  .search-box input {
+    flex:1; background:rgba(0,212,255,0.05);
+    border:1px solid var(--border); color:var(--text);
+    padding:6px 10px; font-family:inherit; font-size:11px;
+  }
+  .search-box input::placeholder { color:rgba(200,220,232,0.4); }
+  .search-box button, .ctrl-btn {
+    background:rgba(0,212,255,0.1); border:1px solid var(--cyan);
+    color:var(--cyan); padding:6px 12px; cursor:pointer;
+    font-family:inherit; font-size:10px; letter-spacing:1px;
+    white-space:nowrap;
+  }
+  .ctrl-btn:hover, .search-box button:hover {
+    background:rgba(0,212,255,0.25);
+  }
+  .ctrl-btn.active { background:rgba(0,212,255,0.3);
+    border-color:var(--acid); color:var(--acid); }
+
+  /* Surveys */
+  .survey-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+  .survey-btn {
+    background:rgba(0,212,255,0.05); border:1px solid var(--border);
+    color:var(--text); padding:5px 8px; cursor:pointer;
+    font-family:inherit; font-size:9px; letter-spacing:1px;
+    text-align:center;
+  }
+  .survey-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+  .survey-btn.active { border-color:var(--acid); color:var(--acid);
+    background:rgba(0,255,136,0.1); }
+
+  /* Objets favoris */
+  .obj-btn {
+    display:block; width:100%; text-align:left;
+    background:rgba(0,212,255,0.03); border:1px solid var(--border);
+    color:var(--text); padding:6px 10px; cursor:pointer;
+    font-family:inherit; font-size:10px; margin-bottom:3px;
+  }
+  .obj-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+  .obj-btn .obj-type {
+    float:right; font-size:8px; color:var(--amber);
+    letter-spacing:1px;
+  }
+
+  /* Infos objet */
+  .obj-info {
+    background:rgba(0,212,255,0.05); border:1px solid var(--border);
+    padding:10px; font-size:10px; line-height:1.8;
+  }
+  .obj-info .label { color:var(--cyan); font-size:9px;
+    letter-spacing:2px; }
+  .obj-info .value { color:var(--text); }
+
+  /* Carte principale */
+  #aladin-lite-div {
+    position:fixed; top:44px; left:280px;
+    right:0; bottom:24px;
+  }
+
+  /* Coordonnées live */
+  .coords-bar {
+    position:fixed; bottom:0; left:280px; right:0;
+    background:rgba(0,5,15,0.9); border-top:1px solid var(--border);
+    padding:4px 12px; font-size:10px; letter-spacing:1px;
+    display:flex; gap:24px; z-index:800;
+  }
+  .coords-bar span { color:var(--cyan); }
+  .coords-bar .val { color:var(--text); }
+
+  .credit-block {
+    margin-top:auto; padding:8px 0; opacity:0.5;
+    font-size:9px; line-height:1.6; letter-spacing:1px;
+  }
+
+  /* Responsive */
+  @media (max-width:768px) {
+    .controls { width:100%; height:200px; bottom:auto; top:44px;
+      overflow-x:auto; white-space:nowrap; flex-direction:row;
+      gap:12px; padding:8px; }
+    #aladin-lite-div { left:0; top:250px; }
+    .coords-bar { left:0; }
+  }
+</style>
+<style>
+.fab-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
+.fab-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(1,4,8,0.95);border:1px solid rgba(0,212,255,0.3);color:#00d4ff;font-family:'Orbitron',monospace;font-size:0.45rem;letter-spacing:0.15em;text-decoration:none;cursor:pointer;transition:all 0.2s;border-radius:3px;white-space:nowrap;}
+.fab-btn:hover{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.6);box-shadow:0 0 14px rgba(0,212,255,0.2);}
+@media(max-width:600px){.fab-btn{font-size:0.38rem;padding:6px 10px;}}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <span class="brand">ASTRO-SCAN</span>
+  <span class="badge">CARTE DU CIEL · ESA/CDS ALADIN</span>
+  <a class="back-btn" href="/portail">← PORTAIL</a>
+</div>
+
+<!-- PANNEAU DE CONTRÔLE GAUCHE -->
+<div class="controls">
+
+  <!-- Recherche d'objet -->
+  <div class="ctrl-section">
+    <div class="ctrl-title">🔍 RECHERCHE D'OBJET</div>
+    <div class="search-box">
+      <input type="text" id="search-input"
+             placeholder="M42, NGC 224, Orion..."
+             onkeydown="if(event.key==='Enter')searchObject()">
+      <button onclick="searchObject()">GO</button>
+    </div>
+  </div>
+
+  <!-- Surveys / Longueurs d'onde -->
+  <div class="ctrl-section">
+    <div class="ctrl-title">📡 SOURCE D'IMAGES</div>
+    <div class="survey-grid">
+      <button class="survey-btn active" onclick="setSurvey('CDS/P/DSS2/color',this)">
+        🔴 Optique DSS2
+      </button>
+      <button class="survey-btn" onclick="setSurvey('CDS/P/2MASS/color',this)">
+        🔴 Infrarouge 2MASS
+      </button>
+      <button class="survey-btn" onclick="setSurvey('CDS/P/SDSS9/color',this)">
+        🔵 SDSS Couleur
+      </button>
+      <button class="survey-btn" onclick="setSurvey('P/XMM/EPIC/color',this)">
+        ⚡ Rayons X XMM
+      </button>
+      <button class="survey-btn" onclick="setSurvey('CDS/P/GALEXGR6/FUV',this)">
+        💜 UV GALEX
+      </button>
+      <button class="survey-btn" onclick="setSurvey('CDS/P/PanSTARRS/DR1/color-i-r-g',this)">
+        🌈 PanSTARRS
+      </button>
+      <button class="survey-btn" onclick="setSurvey('CDS/P/PLANCK/R2/HFI/color',this)">
+        🌡️ Planck CMB
+      </button>
+      <button class="survey-btn" onclick="setSurvey('CDS/P/DECaPS2/DR2/color/g/r/i',this)">
+        ⭐ DECaPS Voie Lactée
+      </button>
+    </div>
+  </div>
+
+  <!-- Catalogue overlay -->
+  <div class="ctrl-section">
+    <div class="ctrl-title">📋 CATALOGUES</div>
+    <button class="ctrl-btn" id="btn-messier"
+            onclick="toggleMessier()">
+      ✦ Objets Messier
+    </button>
+    <button class="ctrl-btn" style="margin-top:4px" id="btn-grid"
+            onclick="toggleGrid()">
+      ⊞ Grille Équatoriale
+    </button>
+  </div>
+
+  <!-- Objets favoris Tlemcen -->
+  <div class="ctrl-section">
+    <div class="ctrl-title">🌌 OBJETS FAVORIS · TLEMCEN</div>
+    <button class="obj-btn" onclick="goTo('M42',83.8221,-5.3911,0.5)">
+      Nébuleuse d'Orion — M42
+      <span class="obj-type">NÉBULEUSE</span>
+    </button>
+    <button class="obj-btn" onclick="goTo('M31',10.6848,41.2690,3)">
+      Galaxie d'Andromède — M31
+      <span class="obj-type">GALAXIE</span>
+    </button>
+    <button class="obj-btn" onclick="goTo('M45',56.85,24.1167,2)">
+      Amas des Pléiades — M45
+      <span class="obj-type">AMAS OUVERT</span>
+    </button>
+    <button class="obj-btn" onclick="goTo('M1',83.6333,22.0144,0.3)">
+      Nébuleuse du Crabe — M1
+      <span class="obj-type">RESTE SNE</span>
+    </button>
+    <button class="obj-btn" onclick="goTo('M51',202.4696,47.1952,0.5)">
+      Galaxie du Tourbillon — M51
+      <span class="obj-type">GALAXIE</span>
+    </button>
+    <button class="obj-btn" onclick="goTo('M57',283.3962,33.0289,0.1)">
+      Nébuleuse de la Lyre — M57
+      <span class="obj-type">NÉBULEUSE</span>
+    </button>
+    <button class="obj-btn" onclick="goTo('M13',250.4221,36.4613,0.3)">
+      Amas globulaire M13
+      <span class="obj-type">AMAS GLOB.</span>
+    </button>
+    <button class="obj-btn" onclick="goTo('M16',274.7,-13.8069,0.5)">
+      Nébuleuse de l'Aigle — M16
+      <span class="obj-type">NÉBULEUSE</span>
+    </button>
+    <button class="obj-btn" onclick="goTo('center',0,0,180)">
+      🌌 Vue Voie Lactée complète
+      <span class="obj-type">PANORAMA</span>
+    </button>
+    <button class="obj-btn" onclick="goTo('Tlemcen',83.8221,-5.3911,60)">
+      🏠 Ciel de Tlemcen ce soir
+      <span class="obj-type">LOCAL</span>
+    </button>
+  </div>
+
+  <!-- Infos objet courant -->
+  <div class="ctrl-section">
+    <div class="ctrl-title">ℹ️ OBJET SÉLECTIONNÉ</div>
+    <div class="obj-info" id="obj-info">
+      <div class="label">STATUT</div>
+      <div class="value">Cliquer sur un objet pour les détails</div>
+    </div>
+  </div>
+
+  <!-- Crédit -->
+  <div class="credit-block">
+    SOURCE : ESA/CDS Aladin Lite v3<br>
+    Centre de Données Astronomiques<br>
+    de Strasbourg — CDS/CNRS<br>
+    ASTRO-SCAN · Tlemcen 34.87°N
+  </div>
+
+</div>
+
+<!-- CARTE ALADIN -->
+<div id="aladin-lite-div"></div>
+
+<!-- BARRE COORDONNÉES -->
+<div class="coords-bar">
+  <span>AR : <span class="val" id="coord-ra">—</span></span>
+  <span>DÉC : <span class="val" id="coord-dec">—</span></span>
+  <span>FoV : <span class="val" id="coord-fov">—</span></span>
+  <span>SURVEY : <span class="val" id="coord-survey">DSS2</span></span>
+</div>
+
+<script>
+// ── Init Aladin Lite ──────────────────────────────────────────
+var aladin;
+var messierLayer = null;
+var gridOn       = false;
+var messierOn    = false;
+
+A.init.then(function() {
+  aladin = A.aladin('#aladin-lite-div', {
+    survey:    'CDS/P/DSS2/color',
+    target:    'M42',
+    fov:       2.0,
+    showReticle:           true,
+    showZoomControl:       false,
+    showFullscreenControl: false,
+    showLayersControl:     false,
+    showGotoControl:       false,
+    showShareControl:      false,
+    showStatusBar:         false,
+    cooFrame:  'ICRSd',
+    backgroundColor: '#020810',
+  });
+
+  // Coordonnées en temps réel
+  aladin.on('positionChanged', function(pos) {
+    if (!pos) return;
+    document.getElementById('coord-ra').textContent  =
+      pos.ra  !== undefined ? pos.ra.toFixed(5)+'°'  : '—';
+    document.getElementById('coord-dec').textContent =
+      pos.dec !== undefined ? pos.dec.toFixed(5)+'°' : '—';
+  });
+
+  aladin.on('zoomChanged', function(fov) {
+    document.getElementById('coord-fov').textContent =
+      fov ? fov.toFixed(3)+'°' : '—';
+  });
+
+  // Clic sur un objet du catalogue
+  aladin.on('objectClicked', function(obj) {
+    if (!obj) return;
+    var info = document.getElementById('obj-info');
+    info.innerHTML =
+      '<div class="label">IDENTIFIANT</div>' +
+      '<div class="value">' + (obj.data && obj.data.name ? obj.data.name : 'Inconnu') + '</div>' +
+      '<div class="label" style="margin-top:6px">COORDONNÉES</div>' +
+      '<div class="value">AR ' + (obj.ra  !== undefined ? obj.ra.toFixed(4)+'°'  : '—') + '</div>' +
+      '<div class="value">DÉC ' + (obj.dec !== undefined ? obj.dec.toFixed(4)+'°' : '—') + '</div>';
+  });
+});
+
+// ── Recherche ─────────────────────────────────────────────────
+function searchObject() {
+  var q = document.getElementById('search-input').value.trim();
+  if (!q || !aladin) return;
+  aladin.gotoObject(q, {
+    success: function(pos) {
+      document.getElementById('obj-info').innerHTML =
+        '<div class="label">OBJET TROUVÉ</div>' +
+        '<div class="value">' + q + '</div>' +
+        '<div class="label" style="margin-top:6px">AR</div>' +
+        '<div class="value">' + pos.ra.toFixed(4) + '°</div>' +
+        '<div class="label">DÉC</div>' +
+        '<div class="value">' + pos.dec.toFixed(4) + '°</div>';
+    },
+    error: function() {
+      document.getElementById('obj-info').innerHTML =
+        '<div class="value" style="color:#ff4466">Objet introuvable : ' + q + '</div>';
+    }
+  });
+}
+
+// ── Survey ────────────────────────────────────────────────────
+function setSurvey(surveyId, btn) {
+  if (!aladin) return;
+  aladin.setImageSurvey(surveyId);
+  document.querySelectorAll('.survey-btn').forEach(function(b){
+    b.classList.remove('active');
+  });
+  if (btn) btn.classList.add('active');
+  var name = surveyId.split('/').pop();
+  document.getElementById('coord-survey').textContent = name;
+}
+
+// ── Navigation vers objet ─────────────────────────────────────
+function goTo(name, ra, dec, fov) {
+  if (!aladin) return;
+  if (name === 'center') {
+    aladin.gotoRaDec(184, -30);
+    aladin.setFov(180);
+  } else {
+    aladin.gotoRaDec(ra, dec);
+    aladin.setFov(fov);
+  }
+}
+
+// ── Catalogue Messier ─────────────────────────────────────────
+function toggleMessier() {
+  if (!aladin) return;
+  messierOn = !messierOn;
+  var btn = document.getElementById('btn-messier');
+  if (messierOn) {
+    messierLayer = A.catalogFromURL(
+      'https://vizier.cds.unistra.fr/viz-bin/votable?-source=VII/118/mwsc&-out=Name,RAJ2000,DEJ2000,Type&-out.max=110&-oc.form=dec',
+      {name:'Messier', color:'#ffaa00', sourceSize:14},
+      function(cat) { aladin.addCatalog(cat); }
+    );
+    btn.classList.add('active');
+  } else {
+    if (messierLayer) {
+      aladin.removeCatalog(messierLayer);
+      messierLayer = null;
+    }
+    btn.classList.remove('active');
+  }
+}
+
+// ── Grille équatoriale ────────────────────────────────────────
+function toggleGrid() {
+  if (!aladin) return;
+  gridOn = !gridOn;
+  aladin.setGridOptions({enabled: gridOn, color:'rgba(0,212,255,0.3)'});
+  document.getElementById('btn-grid').classList.toggle('active', gridOn);
+}
+</script>
+<div class="fab-wrap">
+  <a class="fab-btn" href="/portail">&#8962; Portail</a>
+  <button class="fab-btn" onclick="location.reload()">&#8635; Actualiser</button>
+</div>
+</body>
+</html>
