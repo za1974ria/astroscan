@@ -481,7 +481,10 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
 <!-- PASS UI O-B FIX 3 (2026-05-07) : breadcrumb retour portail.
      Position fixed top-left, z-index 1010 (au-dessus du header relative). -->
 <nav class="breadcrumb-nav" aria-label="{% if lang == 'en' %}Navigation{% else %}Navigation{% endif %}">
-  <a href="/portail" class="breadcrumb-link" target="_self">◄ {% if lang == 'en' %}HOME{% else %}PORTAIL{% endif %}</a>
+  <!-- PASS UI O-C FIX 2 (2026-05-07) — onclick cache-bust pour neutraliser
+       d'éventuels artéfacts bfcache de Chrome (sidebar fantôme reportée). -->
+  <a href="/portail" class="breadcrumb-link" target="_self"
+     onclick="this.href='/portail?_t='+Date.now();">◄ {% if lang == 'en' %}HOME{% else %}PORTAIL{% endif %}</a>
 </nav>
 <div id="stars"></div>
 <div class="nebula"></div>
