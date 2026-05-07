@@ -22,7 +22,26 @@ TLE_CACHE_FILE` continuent de fonctionner.
 
 from app.services.station_state import STATION
 
+# PASS 20.2 (2026-05-08) — Façade unifiée des 5 helpers/globals TLE+Satellites :
+# - TLE_CACHE (mutable dict, défini ici, identity-stable)
+# - TLE_CACHE_FILE (path JSON cache, défini ici)
+# - TLE_MAX_SATELLITES (constante limite, déplacée depuis station_web.py:4248)
+# - _parse_tle_file (re-export depuis app.services.tle)
+# - TLE_ACTIVE_PATH (re-export depuis app.services.tle)
+# - list_satellites (re-export depuis app.services.satellites)
+# Le shim station_web ré-exporte ces noms pour la rétro-compat des imports
+# legacy `from station_web import TLE_CACHE`, `from station_web import TLE_MAX_SATELLITES`, etc.
+from app.services.tle import (  # noqa: F401 — re-exports
+    TLE_ACTIVE_PATH,
+    _parse_tle_file,
+)
+from app.services.satellites import list_satellites  # noqa: F401 — re-export
+
 TLE_CACHE_FILE: str = f"{STATION}/data/tle_active_cache.json"
+
+# Limite haute de satellites considérés (taille catalogue active TLE).
+# Déplacé depuis station_web.py:4248 lors de PASS 20.2.
+TLE_MAX_SATELLITES: int = 200
 
 TLE_CACHE: dict = {
     "status": "cached",
@@ -32,3 +51,12 @@ TLE_CACHE: dict = {
     "items": [],
     "error": None,
 }
+
+__all__ = [
+    "TLE_CACHE",
+    "TLE_CACHE_FILE",
+    "TLE_MAX_SATELLITES",
+    "TLE_ACTIVE_PATH",
+    "_parse_tle_file",
+    "list_satellites",
+]

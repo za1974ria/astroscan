@@ -4245,7 +4245,16 @@ def translate_worker():
 # PASS 2D Cat 2 (2026-05-07) : TLE_DIR + TLE_ACTIVE_PATH retirés ici, désormais
 # définis dans app/services/tle.py et re-exportés en haut de ce fichier.
 
-TLE_MAX_SATELLITES = 200
+# PASS 20.2 (2026-05-08) — TLE/Satellites helpers extracted to app/services/tle_cache.py
+# Shim re-exports for backward compatibility (les blueprints satellites_bp,
+# iss_bp, api_bp importent encore via `from station_web import TLE_CACHE` etc.)
+from app.services.tle_cache import (  # noqa: E402,F401
+    _parse_tle_file,
+    list_satellites,
+    TLE_CACHE,
+    TLE_ACTIVE_PATH,
+    TLE_MAX_SATELLITES,
+)
 
 
 def download_tle_now():
