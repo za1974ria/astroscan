@@ -1012,7 +1012,7 @@ body.embed-mode main {
         </div>
       </div>
     </div>
-    <div class="tele-panel">
+    <div class="tele-panel" style="grid-column:2;grid-row:1 / span 2">
       <div style="font-family:Orbitron;font-size:11px;color:var(--cyan);letter-spacing:3px;padding-bottom:10px;border-bottom:1px solid rgba(0,212,255,.1)">📡 {% if lang == 'en' %}STATION DATA{% else %}DONNÉES STATION{% endif %}</div>
       <div class="tele-stat"><div class="tele-stat-key">{% if lang == 'en' %}TOTAL OBSERVATIONS{% else %}OBSERVATIONS TOTALES{% endif %}</div><div class="tele-stat-val" id="tp-total">--</div></div>
       <div class="tele-stat"><div class="tele-stat-key">{% if lang == 'en' %}ANOMALIES DETECTED{% else %}ANOMALIES DÉTECTÉES{% endif %}</div><div class="tele-stat-val" style="color:var(--red)" id="tp-anomalies">--</div></div>
@@ -1038,33 +1038,36 @@ body.embed-mode main {
       </div>
       <button class="refresh-btn" onclick="refreshTelescope()">🔄 {% if lang == 'en' %}REFRESH{% else %}ACTUALISER{% endif %}</button>
     </div>
-  </div>
-
-  <!-- PASS UI O-H (2026-05-07) — SOLAR SYSTEM LIVE.
-       Vue orbitale top-down avec mécanique céleste réelle (Kepler) +
-       ambiance cinématographique (étoiles filantes, comète, parallaxe). -->
-  <div class="solar-system-widget" id="solar-system-widget">
-    <div class="ssw-header">
-      <div class="ssw-title-block">
-        <span class="ssw-title">{% if lang == 'en' %}LIVE SOLAR SYSTEM · ORBITAL VIEW{% else %}SYSTÈME SOLAIRE LIVE · VUE ORBITALE{% endif %}</span>
-        <span class="ssw-subtitle" id="ssw-subtitle">—</span>
+    <!-- PASS UI O-I (2026-05-07) : déplacement Solar System widget vers le vide
+         central de la zone APOD, position cible utilisateur. Le widget occupe
+         row 2 col 1 (sous l'image APOD), le tele-panel à droite s'étend sur
+         les 2 rows pour conserver sa hauteur. -->
+    <!-- PASS UI O-H (2026-05-07) — SOLAR SYSTEM LIVE.
+         Vue orbitale top-down avec mécanique céleste réelle (Kepler) +
+         ambiance cinématographique (étoiles filantes, comète, parallaxe). -->
+    <div class="solar-system-widget" id="solar-system-widget" style="grid-column:1;grid-row:2;margin:0">
+      <div class="ssw-header">
+        <div class="ssw-title-block">
+          <span class="ssw-title">{% if lang == 'en' %}LIVE SOLAR SYSTEM · ORBITAL VIEW{% else %}SYSTÈME SOLAIRE LIVE · VUE ORBITALE{% endif %}</span>
+          <span class="ssw-subtitle" id="ssw-subtitle">—</span>
+        </div>
+        <div class="ssw-status">
+          <span class="ssw-pulse"></span>
+          <span class="ssw-status-text">{% if lang == 'en' %}REAL-TIME · KEPLERIAN{% else %}TEMPS RÉEL · KEPLER{% endif %}</span>
+        </div>
       </div>
-      <div class="ssw-status">
-        <span class="ssw-pulse"></span>
-        <span class="ssw-status-text">{% if lang == 'en' %}REAL-TIME · KEPLERIAN{% else %}TEMPS RÉEL · KEPLER{% endif %}</span>
+      <div class="ssw-canvas-wrap">
+        <canvas id="ssw-bg-canvas" class="ssw-bg-canvas"></canvas>
+        <svg class="ssw-svg" id="ssw-svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="ssw-legend">
+          <div class="ssw-legend-item"><span class="ssw-dot" style="background:#ffcc66;box-shadow:0 0 8px #ffcc66"></span>{% if lang == 'en' %}Sun{% else %}Soleil{% endif %}</div>
+          <div class="ssw-legend-item"><span class="ssw-dot" style="background:#3b8cff;box-shadow:0 0 4px #3b8cff"></span>{% if lang == 'en' %}Earth (Tlemcen){% else %}Terre (Tlemcen){% endif %}</div>
+          <div class="ssw-legend-item"><span class="ssw-dot" style="background:#ff6644;box-shadow:0 0 4px #ff6644"></span>Mars</div>
+        </div>
       </div>
-    </div>
-    <div class="ssw-canvas-wrap">
-      <canvas id="ssw-bg-canvas" class="ssw-bg-canvas"></canvas>
-      <svg class="ssw-svg" id="ssw-svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet"></svg>
-      <div class="ssw-legend">
-        <div class="ssw-legend-item"><span class="ssw-dot" style="background:#ffcc66;box-shadow:0 0 8px #ffcc66"></span>{% if lang == 'en' %}Sun{% else %}Soleil{% endif %}</div>
-        <div class="ssw-legend-item"><span class="ssw-dot" style="background:#3b8cff;box-shadow:0 0 4px #3b8cff"></span>{% if lang == 'en' %}Earth (Tlemcen){% else %}Terre (Tlemcen){% endif %}</div>
-        <div class="ssw-legend-item"><span class="ssw-dot" style="background:#ff6644;box-shadow:0 0 4px #ff6644"></span>Mars</div>
+      <div class="ssw-footer">
+        {% if lang == 'en' %}Heliocentric orbital mechanics · Kepler J2000 · Speeds proportional · Updates every second{% else %}Mécanique orbitale héliocentrique · Kepler J2000 · Vitesses proportionnelles · Refresh 1s{% endif %}
       </div>
-    </div>
-    <div class="ssw-footer">
-      {% if lang == 'en' %}Heliocentric orbital mechanics · Kepler J2000 · Speeds proportional · Updates every second{% else %}Mécanique orbitale héliocentrique · Kepler J2000 · Vitesses proportionnelles · Refresh 1s{% endif %}
     </div>
   </div>
 
