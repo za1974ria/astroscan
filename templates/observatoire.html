@@ -463,6 +463,109 @@ body.embed-mode main {
 
 /* PASS UI O-D FIX 3 (2026-05-07) — breadcrumb flottant supprimé.
    Le bouton header « ◄ PORTAIL » (OD1) couvre déjà le besoin. */
+
+/* PASS UI O-F FIX 3 (2026-05-07) — Widget COSMIC LIVE DASHBOARD.
+   Design cosmos cyan, grid 4 cards, animations subtiles. */
+.cosmic-dashboard {
+  margin: 24px 16px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(0,12,24,0.85), rgba(0,18,32,0.7));
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 8px;
+  position: relative;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.cosmic-dashboard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.5;
+}
+.cosmic-dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+}
+.cd-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--cyan);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.cd-pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #00ff9c;
+  box-shadow: 0 0 8px #00ff9c;
+  animation: cdPulse 2s ease-in-out infinite;
+}
+@keyframes cdPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+.cosmic-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.cd-card {
+  padding: 12px 14px;
+  background: rgba(0, 8, 16, 0.6);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+.cd-card:hover {
+  border-color: rgba(0, 212, 255, 0.4);
+  background: rgba(0, 12, 24, 0.8);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.15);
+}
+.cd-card-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: #7a9ab0;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.cd-card-value {
+  font-family: 'Orbitron', monospace;
+  font-size: 18px;
+  color: var(--cyan);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  text-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+}
+.cd-card-meta {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: #aabbcc;
+  letter-spacing: 0.05em;
+}
+.cosmic-dashboard-footer {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 212, 255, 0.1);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: #556677;
+  letter-spacing: 0.12em;
+  text-align: center;
+}
+@media (max-width: 768px) {
+  .cosmic-dashboard { margin: 16px 8px; padding: 12px; }
+  .cosmic-dashboard-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .cd-card-value { font-size: 14px; }
+}
 </style>
 <!-- Google Analytics GA4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
@@ -602,6 +705,42 @@ body.embed-mode main {
       <button class="refresh-btn" onclick="refreshTelescope()">🔄 {% if lang == 'en' %}REFRESH{% else %}ACTUALISER{% endif %}</button>
     </div>
   </div>
+
+  <!-- PASS UI O-F FIX 3 (2026-05-07) — Widget COSMIC LIVE DASHBOARD.
+       Embryon du Chemin B (hyperlocal observability Tlemcen).
+       4 cards en temps réel : ISS, Lune, Kp index, Conditions Tlemcen. -->
+  <div class="cosmic-dashboard" id="cosmic-dashboard">
+    <div class="cosmic-dashboard-header">
+      <span class="cd-title">{% if lang == 'en' %}LIVE COSMIC STATE — TLEMCEN 34.87°N · 1.32°E{% else %}ÉTAT COSMIQUE LIVE — TLEMCEN 34.87°N · 1.32°E{% endif %}</span>
+      <span class="cd-pulse"></span>
+    </div>
+    <div class="cosmic-dashboard-grid">
+      <div class="cd-card" id="cd-iss">
+        <div class="cd-card-label">{% if lang == 'en' %}ISS POSITION{% else %}POSITION ISS{% endif %}</div>
+        <div class="cd-card-value" id="cd-iss-coords">—</div>
+        <div class="cd-card-meta" id="cd-iss-altitude">—</div>
+      </div>
+      <div class="cd-card" id="cd-moon">
+        <div class="cd-card-label">{% if lang == 'en' %}MOON PHASE{% else %}PHASE LUNAIRE{% endif %}</div>
+        <div class="cd-card-value" id="cd-moon-phase">—</div>
+        <div class="cd-card-meta" id="cd-moon-illumination">—</div>
+      </div>
+      <div class="cd-card" id="cd-space-weather">
+        <div class="cd-card-label">{% if lang == 'en' %}SPACE WEATHER{% else %}MÉTÉO SPATIALE{% endif %}</div>
+        <div class="cd-card-value" id="cd-kp-value">—</div>
+        <div class="cd-card-meta" id="cd-kp-status">{% if lang == 'en' %}Kp index{% else %}Indice Kp{% endif %}</div>
+      </div>
+      <div class="cd-card" id="cd-tlemcen">
+        <div class="cd-card-label">{% if lang == 'en' %}TLEMCEN SKY{% else %}CIEL TLEMCEN{% endif %}</div>
+        <div class="cd-card-value" id="cd-tlemcen-temp">—</div>
+        <div class="cd-card-meta" id="cd-tlemcen-cloud">—</div>
+      </div>
+    </div>
+    <div class="cosmic-dashboard-footer">
+      {% if lang == 'en' %}Real-time data · Updates every 30s · Embryo of hyperlocal observability research{% else %}Données temps réel · Refresh 30s · Embryon de recherche en observabilité hyperlocale{% endif %}
+    </div>
+  </div>
+
   <div style="font-family:Orbitron;font-size:11px;color:var(--cyan);letter-spacing:3px;margin-bottom:12px">📋 {% if lang == 'en' %}LATEST OBSERVATIONS{% else %}DERNIÈRES OBSERVATIONS{% endif %}</div>
   <div class="obs-grid" id="latest-obs"></div>
 </div>
@@ -2219,6 +2358,117 @@ function loadEphemerides(){
 <!-- AEGIS Chat Widget -->
 <script src="/static/js/astro_notifications.js"></script>
 <script src="/static/js/aegis_chat_widget.js"></script>
+
+<script>
+/* PASS UI O-F FIX 3 (2026-05-07) — Cosmic Live Dashboard refresh.
+   Récupère ISS, Lune (calcul local), Kp NOAA, météo Tlemcen via Open-Meteo.
+   Refresh toutes les 30 secondes. */
+(function(){
+  var TLEMCEN_LAT = 34.87;
+  var TLEMCEN_LON = -1.32;
+
+  function fmt(n, d) { return (typeof n === 'number' && isFinite(n)) ? n.toFixed(d == null ? 2 : d) : '—'; }
+
+  function refreshISS() {
+    fetch('/api/iss').then(function(r){ return r.json(); }).then(function(d){
+      if (!d) return;
+      var lat = (d.lat !== undefined) ? d.lat : d.latitude;
+      var lon = (d.lon !== undefined) ? d.lon : d.longitude;
+      var alt = (d.altitude !== undefined) ? d.altitude : (d.alt !== undefined ? d.alt : null);
+      var coords = document.getElementById('cd-iss-coords');
+      var altEl = document.getElementById('cd-iss-altitude');
+      if (coords && lat !== undefined && lon !== undefined) {
+        coords.textContent = fmt(lat) + '° / ' + fmt(lon) + '°';
+      }
+      if (altEl) {
+        altEl.textContent = (alt !== null ? fmt(alt, 0) + ' km' : '~408 km') + ' · 27 540 km/h';
+      }
+    }).catch(function(){});
+  }
+
+  function refreshMoon() {
+    /* Calcul local de la phase lunaire — précis ±1 jour.
+       Référence : nouvelle lune 2000-01-06 18:14 UTC (JD 2451550.1).
+       Période synodique : 29.53058867 jours. */
+    var SYNODIC = 29.53058867;
+    var REF_NEW_MOON_MS = Date.UTC(2000, 0, 6, 18, 14, 0);
+    var now = Date.now();
+    var daysSince = (now - REF_NEW_MOON_MS) / 86400000;
+    var phase = (daysSince % SYNODIC + SYNODIC) % SYNODIC;
+    var illum = (1 - Math.cos(2 * Math.PI * phase / SYNODIC)) / 2;
+    var label, frac = phase / SYNODIC;
+    if (frac < 0.0625 || frac >= 0.9375) label = '🌑 Nouvelle lune';
+    else if (frac < 0.1875) label = '🌒 Premier croissant';
+    else if (frac < 0.3125) label = '🌓 Premier quartier';
+    else if (frac < 0.4375) label = '🌔 Gibbeuse croissante';
+    else if (frac < 0.5625) label = '🌕 Pleine lune';
+    else if (frac < 0.6875) label = '🌖 Gibbeuse décroissante';
+    else if (frac < 0.8125) label = '🌗 Dernier quartier';
+    else label = '🌘 Dernier croissant';
+    var phaseEl = document.getElementById('cd-moon-phase');
+    var illEl = document.getElementById('cd-moon-illumination');
+    if (phaseEl) phaseEl.textContent = label;
+    if (illEl) illEl.textContent = (illum * 100).toFixed(0) + '% éclairée · J' + phase.toFixed(1) + '/' + SYNODIC.toFixed(1);
+  }
+
+  function refreshSpaceWeather() {
+    fetch('/api/meteo-spatiale').then(function(r){ return r.json(); }).then(function(d){
+      var kpVal = (d && typeof d.kp_index === 'number') ? d.kp_index : null;
+      var kpEl = document.getElementById('cd-kp-value');
+      var stEl = document.getElementById('cd-kp-status');
+      if (kpVal !== null && isFinite(kpVal)) {
+        if (kpEl) kpEl.textContent = fmt(kpVal, 1);
+        var status;
+        if (kpVal < 4) status = 'Calme';
+        else if (kpVal < 5) status = 'Actif';
+        else if (kpVal < 7) status = 'Tempête mineure';
+        else status = 'Tempête majeure';
+        if (stEl) stEl.textContent = 'Kp · ' + status;
+      }
+    }).catch(function(){});
+  }
+
+  function refreshTlemcenSky() {
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=' + TLEMCEN_LAT +
+          '&longitude=' + TLEMCEN_LON +
+          '&current=temperature_2m,cloud_cover,weather_code')
+      .then(function(r){ return r.json(); }).then(function(d){
+        if (!d || !d.current) return;
+        var t = d.current.temperature_2m;
+        var cc = d.current.cloud_cover;
+        var tEl = document.getElementById('cd-tlemcen-temp');
+        var cEl = document.getElementById('cd-tlemcen-cloud');
+        if (tEl && t !== undefined) tEl.textContent = fmt(t, 1) + '°C';
+        if (cEl && cc !== undefined) {
+          var skyState;
+          if (cc < 25) skyState = 'Ciel dégagé · idéal';
+          else if (cc < 60) skyState = 'Partiellement couvert';
+          else if (cc < 85) skyState = 'Nuageux';
+          else skyState = 'Couvert · obs limitée';
+          cEl.textContent = cc + '% nuages · ' + skyState;
+        }
+      }).catch(function(){});
+  }
+
+  function refreshAll() {
+    refreshISS();
+    refreshMoon();
+    refreshSpaceWeather();
+    refreshTlemcenSky();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){
+      refreshAll();
+      setInterval(refreshAll, 30000);
+    });
+  } else {
+    refreshAll();
+    setInterval(refreshAll, 30000);
+  }
+})();
+</script>
+
 <script defer src="/static/js/starfield.js"></script>
 <script>
 /* PASS UI O-C FIX 2 RÉEL — détection mode embarqué */
