@@ -49,7 +49,10 @@ html, body {
   width: 100%;
   min-height: 100vh;
   overflow: hidden;
-  background: var(--void);
+  /* PASS UI C STARFIELD FIX (2026-05-07) : background transparent
+     pour laisser le canvas #starfield-bg (z-index: -1) visible.
+     Le canvas a son propre radial-gradient deep-space. */
+  background: transparent;
   font-family: var(--mono);
 }
 
@@ -294,8 +297,8 @@ font-size: 10px;
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
-  /* Sous la ligne de séparation (topbar 48px + glow décalé -26px = 74px) : 8px de marge */
-  padding-top: 82px;
+  /* PASS UI C STARFIELD FIX : padding-top réduit 82→56px (topbar 48px + 8px de marge) */
+  padding-top: 56px;
 }
 
 .main-content {
@@ -305,9 +308,9 @@ font-size: 10px;
 .sidebar-section {
   padding: 12px 0 4px;
 }
-/* Respiration entre la ligne de séparation (74px) et le label NAVIGATION */
+/* PASS UI C STARFIELD FIX : respiration réduite 28→8px */
 .sidebar > .sidebar-section:first-of-type {
-  padding-top: 28px;
+  padding-top: 8px;
 }
 .sidebar-label {
   font-size:0.45rem; letter-spacing:0.3em; text-transform:uppercase;
@@ -1081,23 +1084,14 @@ hr{
     box-shadow: 0 0 20px rgba(0,255,200,0.3);
 }
 
-/* ═══ CAMOUFLAGE PRÉCIS — DESKTOP ONLY ═══ */
+/* ═══ PASS UI D FIX 1 (2026-05-07) — CAMOUFLAGE RETIRÉ ═══
+   Ancien mask body::after (310px × 100vh, fond #07090d) qui couvrait
+   la zone "fantôme" entre la sidebar (left:220px) et le contenu.
+   Avec le starfield Canvas (#starfield-bg z-index:-1), ce mask cachait
+   les étoiles dans toute cette bande, créant une dead-zone visible.
+   Retiré entièrement — la zone est désormais transparente, le canvas
+   y rayonne. .content-area garde z-index:200 pour rester au-dessus. */
 @media (min-width: 901px) {
-  /* Masque noir qui couvre UNIQUEMENT la zone fantôme */
-  /* Entre la sidebar (220px) et le début du contenu (500px) */
-  body::after {
-    content: '' !important;
-    display: block !important;
-    position: fixed !important;
-    top: 68px !important;
-    left: 220px !important;
-    width: 310px !important;
-    height: 100vh !important;
-    background: #07090d !important;
-    z-index: 50 !important;
-    pointer-events: none !important;
-  }
-  /* Contenu principal par-dessus le masque */
   .content-area {
     position: relative !important;
     z-index: 200 !important;
