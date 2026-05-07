@@ -4,27 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 {% if lang == 'en' %}
-<title>Observatory — AstroScan-Chohra | Live Space Station</title>
+<title>Observatory — ORBITAL-CHOHRA | Live Space Station</title>
 <meta name="description" content="Live space observatory: NASA APOD, ISS tracker, Hubble/JWST stellar archives, Tlemcen ephemerides. Real-time astronomical data from Algeria.">
 <meta name="keywords" content="space observatory, NASA APOD, ISS tracker, JWST, Hubble, stellar archives, Tlemcen ephemerides, live astronomy, Algeria">
-<meta property="og:title" content="Observatory — AstroScan-Chohra | Live Space Station">
+<meta property="og:title" content="Observatory — ORBITAL-CHOHRA | Live Space Station">
 <meta property="og:description" content="Live space observatory: NASA APOD, ISS tracker, Hubble/JWST archives, Tlemcen ephemerides. Open scientific platform from Algeria.">
 <meta property="og:locale" content="en_US">
 <meta property="og:locale:alternate" content="fr_FR">
-<meta name="twitter:title" content="Observatory — AstroScan-Chohra | Live Space Station">
+<meta name="twitter:title" content="Observatory — ORBITAL-CHOHRA | Live Space Station">
 <meta name="twitter:description" content="Live space observatory: NASA APOD, ISS tracker, Hubble/JWST stellar archives, Tlemcen ephemerides.">
 {% else %}
-<title>Observatoire — AstroScan-Chohra | Station Spatiale Live</title>
+<title>Observatoire — ORBITAL-CHOHRA | Station Spatiale Live</title>
 <meta name="description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives stellaires Hubble/JWST, éphémérides Tlemcen. Données astronomiques en temps réel depuis l'Algérie.">
 <meta name="keywords" content="observatoire spatial, APOD NASA, ISS tracker, JWST, Hubble, archives stellaires, éphémérides Tlemcen, astronomie live, Algérie">
-<meta property="og:title" content="Observatoire — AstroScan-Chohra | Station Spatiale Live">
+<meta property="og:title" content="Observatoire — ORBITAL-CHOHRA | Station Spatiale Live">
 <meta property="og:description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives Hubble/JWST, éphémérides Tlemcen. Plateforme scientifique ouverte depuis l'Algérie.">
 <meta property="og:locale" content="fr_FR">
 <meta property="og:locale:alternate" content="en_US">
-<meta name="twitter:title" content="Observatoire — AstroScan-Chohra | Station Spatiale Live">
+<meta name="twitter:title" content="Observatoire — ORBITAL-CHOHRA | Station Spatiale Live">
 <meta name="twitter:description" content="Observatoire spatial live : APOD NASA, ISS tracker, archives stellaires Hubble/JWST, éphémérides Tlemcen.">
 {% endif %}
-<meta name="author" content="Zakaria Chohra — AstroScan">
+<meta name="author" content="Zakaria Chohra — ORBITAL-CHOHRA">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://astroscan.space/observatoire">
 <link rel="alternate" hreflang="fr" href="https://astroscan.space/observatoire">
@@ -33,7 +33,7 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://astroscan.space/observatoire">
 <meta property="og:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
-<meta property="og:site_name" content="AstroScan-Chohra">
+<meta property="og:site_name" content="ORBITAL-CHOHRA">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
 <style>
@@ -408,7 +408,7 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
 <header>
   <div>
     <div class="logo-tag">🔭 {% if lang == 'en' %}COSMIC OBSERVATION STATION{% else %}STATION D'OBSERVATION COSMIQUE{% endif %}</div>
-    <div class="logo">AstroScan-Chohra · Observatory</div>
+    <div class="logo">ORBITAL-CHOHRA · Observatory</div>
     <div class="logo-sub">{% if lang == 'en' %}DIRECTOR{% else %}DIRECTEUR{% endif %} : ZAKARIA CHOHRA — TLEMCEN, {% if lang == 'en' %}ALGERIA{% else %}ALGÉRIE{% endif %} | TLEMCEN STATION 5.78.153.17</div>
   </div>
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
@@ -1361,7 +1361,7 @@ function fetchISS(){
         };
         earthImg.src = '/static/earth_texture.jpg';
       }
-      // Radar de survol via endpoint backend AstroScan-Chohra
+      // Radar de survol via endpoint backend ORBITAL-CHOHRA
       fetch('/api/survol').then(function(r){ return r.json(); }).then(function(geo){
         var el = document.getElementById('iss-region-name');
         if(!el) return;
