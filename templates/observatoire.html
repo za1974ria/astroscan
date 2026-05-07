@@ -242,12 +242,11 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
 
 /* PASS UI O-C FIX 2 RÉEL (2026-05-07) — mode embarqué dans iframe portail.
    Quand observatoire est chargé via ?embed=1 par le portail (iframe),
-   on cache la sidebar (déjà présente sur le portail parent) et le breadcrumb
-   (inutile dans une iframe). La page reste fonctionnelle, juste épurée. */
+   on cache la sidebar (déjà présente sur le portail parent) et le logo
+   header (inutile dans une iframe). La page reste fonctionnelle, juste épurée. */
 body.embed-mode .sidebar,
 body.embed-mode aside.sidebar,
 body.embed-mode #sidebar,
-body.embed-mode .breadcrumb-nav,
 body.embed-mode header > .logo {
   display: none !important;
 }
@@ -462,42 +461,8 @@ body.embed-mode main {
   opacity: 0.7;
 }
 
-/* PASS UI O-C FIX 1 (2026-05-07) — breadcrumb ancré top-right, au-dessus
-   de la carte ISS, ne croise plus le titre « Observatoire ORBITAL-CHOHRA ».
-   Forme épurée : « ◄ PORTAIL » seul (le contexte courant est évident). */
-.breadcrumb-nav {
-  position: fixed;
-  top: 235px;
-  right: 24px;
-  z-index: 1010;
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 0.65rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  pointer-events: auto;
-}
-.breadcrumb-link {
-  color: var(--cyan);
-  text-decoration: none;
-  padding: 4px 10px;
-  border: 1px solid rgba(0, 212, 255, 0.3);
-  border-radius: 4px;
-  background: rgba(0, 12, 24, 0.55);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transition: all 0.18s ease;
-  display: inline-block;
-}
-.breadcrumb-link:hover {
-  background: rgba(0, 212, 255, 0.08);
-  border-color: var(--cyan);
-  box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
-  color: #cce4ff;
-}
-@media (max-width: 768px) {
-  .breadcrumb-nav { font-size: 0.5rem; top: 8px; right: 8px; }
-  .breadcrumb-link { padding: 3px 8px; }
-}
+/* PASS UI O-D FIX 3 (2026-05-07) — breadcrumb flottant supprimé.
+   Le bouton header « ◄ PORTAIL » (OD1) couvre déjà le besoin. */
 </style>
 <!-- Google Analytics GA4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
@@ -513,14 +478,8 @@ body.embed-mode main {
 </head>
 <body>
 <canvas id="starfield-bg" aria-hidden="true"></canvas>
-<!-- PASS UI O-B FIX 3 (2026-05-07) : breadcrumb retour portail.
-     Position fixed top-left, z-index 1010 (au-dessus du header relative). -->
-<nav class="breadcrumb-nav" aria-label="{% if lang == 'en' %}Navigation{% else %}Navigation{% endif %}">
-  <!-- PASS UI O-C FIX 2 (2026-05-07) — onclick cache-bust pour neutraliser
-       d'éventuels artéfacts bfcache de Chrome (sidebar fantôme reportée). -->
-  <a href="/portail" class="breadcrumb-link" target="_self"
-     onclick="this.href='/portail?_t='+Date.now();">◄ {% if lang == 'en' %}HOME{% else %}PORTAIL{% endif %}</a>
-</nav>
+<!-- PASS UI O-D FIX 3 (2026-05-07) : breadcrumb flottant retiré
+     (redondant avec le bouton header « ◄ PORTAIL » introduit en OD1). -->
 <div id="stars"></div>
 <div class="nebula"></div>
 <header>
