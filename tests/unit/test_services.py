@@ -4,9 +4,23 @@ Ces tests sont purs (pas de Flask, pas de réseau) et doivent passer en <1s.
 """
 import sys
 import os
-sys.path.insert(0, '/root/astro_scan')
+from pathlib import Path as _Path
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent))
 
 import pytest
+
+# PASS 2D fix (2026-05-07) — circuit_breaker tests require Redis (integration).
+# Skip cleanly if Redis is not reachable (e.g. GitHub Actions runners without Redis service).
+def _skip_if_no_redis():
+    """Skip the test if Redis is not reachable. CB depends on Redis for state."""
+    try:
+        from services.circuit_breaker import _get_redis
+        client = _get_redis()
+        if client is None:
+            pytest.skip("Redis not available — CircuitBreaker tests require Redis backend")
+    except Exception as e:
+        pytest.skip(f"Redis check failed: {e}")
+
 
 
 # ── Cache ─────────────────────────────────────────────────────────────────────
@@ -49,6 +63,7 @@ def test_circuit_breaker_calls_fn():
 
 
 def test_circuit_breaker_opens_after_threshold():
+    _skip_if_no_redis()
     from services.circuit_breaker import CircuitBreaker
     cb = CircuitBreaker('test_open', failure_threshold=2, recovery_timeout=60)
 
@@ -61,6 +76,7 @@ def test_circuit_breaker_opens_after_threshold():
 
 
 def test_circuit_breaker_returns_fallback_when_open():
+    _skip_if_no_redis()
     from services.circuit_breaker import CircuitBreaker
     cb = CircuitBreaker('test_fallback', failure_threshold=1, recovery_timeout=60)
 
@@ -74,6 +90,7 @@ def test_circuit_breaker_returns_fallback_when_open():
 
 
 def test_circuit_breaker_reset():
+    _skip_if_no_redis()
     from services.circuit_breaker import CircuitBreaker
     cb = CircuitBreaker('test_reset', failure_threshold=1, recovery_timeout=60)
 

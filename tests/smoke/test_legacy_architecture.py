@@ -1,9 +1,21 @@
 """Tests de la nouvelle Application Factory + Blueprints."""
 import pytest
+
+# PASS 2D fix (2026-05-07) — skip data-dependent tests if SQLite DBs are absent (e.g. CI).
+from pathlib import Path as _Path_helper
+_DATA_DIR = _Path_helper(__file__).resolve().parent.parent.parent / "data"
+
+def _skip_if_db_missing(db_name):
+    """Skip the current test if the SQLite DB file is not present in data/."""
+    db_path = _DATA_DIR / db_name
+    if not db_path.exists():
+        pytest.skip(f"{db_path} not present (CI environment) — requires integration data")
+
 import json
 import sys
 import os
-sys.path.insert(0, '/root/astro_scan')
+from pathlib import Path as _Path
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent))
 
 
 @pytest.fixture(scope='module')
@@ -78,6 +90,7 @@ def test_api_docs_blueprint(new_client):
 
 
 def test_export_visitors_csv_blueprint(new_client):
+    _skip_if_db_missing('visitors.db')
     resp = new_client.get('/api/export/visitors.csv')
     assert resp.status_code == 200
     text = resp.data.decode('utf-8')
@@ -85,6 +98,7 @@ def test_export_visitors_csv_blueprint(new_client):
 
 
 def test_export_visitors_json_blueprint(new_client):
+    _skip_if_db_missing('visitors.db')
     resp = new_client.get('/api/export/visitors.json')
     assert resp.status_code == 200
     data = json.loads(resp.data)
@@ -93,6 +107,7 @@ def test_export_visitors_json_blueprint(new_client):
 
 
 def test_export_observations_blueprint(new_client):
+    _skip_if_db_missing('astroscan.db')
     resp = new_client.get('/api/export/observations.json')
     assert resp.status_code == 200
     data = json.loads(resp.data)

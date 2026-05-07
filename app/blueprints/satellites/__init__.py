@@ -26,9 +26,10 @@ bp = Blueprint("satellites", __name__)
 # ── /api/satellite/<name> — propagation SGP4 d'un satellite connu ─────
 @bp.route("/api/satellite/<name>")
 def api_satellite(name):
+    from app.services.satellites import SATELLITES, list_satellites
     from station_web import (
-        SATELLITES, list_satellites,
-        _get_satellite_tle_by_name, propagate_tle_debug,
+        _get_satellite_tle_by_name,
+        propagate_tle_debug,
     )
     satellite_name = str(name or "").upper()
     if satellite_name not in SATELLITES:
@@ -69,10 +70,8 @@ def api_satellite(name):
 @bp.route("/api/satellites/tle")
 def api_satellites_tle():
     """Serves real Celestrak active TLE from data/tle/active.tle."""
-    from station_web import (
-        TLE_ACTIVE_PATH, TLE_MAX_SATELLITES,
-        _parse_tle_file, _TLE_FOR_PASSES,
-    )
+    from app.services.tle import TLE_ACTIVE_PATH, _parse_tle_file, _TLE_FOR_PASSES
+    from station_web import TLE_MAX_SATELLITES
     try:
         satellites = _parse_tle_file(TLE_ACTIVE_PATH, limit=TLE_MAX_SATELLITES)
         if not satellites:
@@ -110,7 +109,7 @@ def api_satellites_tle():
 
 @bp.route("/api/satellites/tle/debug")
 def debug_tle():
-    from station_web import TLE_ACTIVE_PATH, _parse_tle_file
+    from app.services.tle import TLE_ACTIVE_PATH, _parse_tle_file
     exists = os.path.exists(TLE_ACTIVE_PATH)
     size = os.path.getsize(TLE_ACTIVE_PATH) if exists else 0
     sats = _parse_tle_file(TLE_ACTIVE_PATH, limit=10) if exists else []
@@ -143,7 +142,7 @@ def _elevation_above_observer(lat, lon, jd, fr, obs_teme, obs_norm, sat_teme):
 @bp.route("/api/satellite/passes")
 def api_satellite_passes():
     """Prédiction des prochains passages (élévation > 10°) pour un observateur lat/lon."""
-    from station_web import _TLE_FOR_PASSES
+    from app.services.tle import _TLE_FOR_PASSES
 
     lat = request.args.get("lat", type=float)
     lon = request.args.get("lon", type=float)

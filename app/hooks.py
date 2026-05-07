@@ -121,7 +121,8 @@ def _maybe_increment_visits():
     - visitor_log : une entrée par session (IP+session_id unique)
     S'exécute APRÈS _astroscan_visitor_session_before (g._astroscan_sid déjà défini).
     """
-    from station_web import PAGE_PATHS, _register_unique_visit_from_request
+    from app.services.db_visitors import _register_unique_visit_from_request
+    from station_web import PAGE_PATHS
     try:
         g._astroscan_req_start = time.time()
     except Exception:

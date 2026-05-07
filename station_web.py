@@ -50,6 +50,27 @@ from flask import Flask, render_template, jsonify, request, g
 from app.services.orbit_sgp4 import propagate_tle_debug  # noqa: F401 — re-export pour BPs
 from app.services.satellites import SATELLITES, list_satellites, get_satellite_tle_name_map  # noqa: F401 — re-export pour BPs
 from app.services.accuracy_history import get_accuracy_history, get_accuracy_stats  # noqa: F401 — re-export pour BPs
+# PASS 2D Cat 1 (2026-05-07) : extraction visitors → app/services/db_visitors.py
+from app.services.db_visitors import (  # noqa: F401 — re-export pour BPs (compat legacy)
+    _get_visits_count,
+    _increment_visits,
+    _compute_human_score,
+    _invalidate_owner_ips_cache,
+    _load_owner_ips,
+    _is_owner_ip,
+    _register_unique_visit_from_request,
+)
+# PASS 2D Cat 2 (2026-05-07) : extraction TLE → app/services/tle.py
+from app.services.tle import (  # noqa: F401 — re-export pour BPs + station_web internals
+    TLE_ACTIVE_PATH,
+    _parse_tle_file,
+    _TLE_FOR_PASSES,
+)
+# PASS 2D Cat 5 (2026-05-07) : extraction security → app/services/security.py
+from app.services.security import (  # noqa: F401 — re-export pour BPs (compat legacy)
+    _api_rate_limit_allow,
+    _client_ip_from_request,
+)
 # api_iss_impl : iss_bp l'importe directement depuis app.routes.iss (PASS 16),
 # plus besoin du re-export ici.
 # MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
@@ -476,6 +497,11 @@ def _inject_seo_site_description():
     return {'seo_site_description': SEO_HOME_DESCRIPTION}
 
 
+# PASS 2D fix (2026-05-07) — ensure logs directory exists before FileHandler
+# Previously os.makedirs was 84 lines later, causing FileNotFoundError on
+# fresh deployments (CI, Docker, new servers) — production worked only because
+# /root/astro_scan/logs already existed historically.
+os.makedirs(f'{STATION}/logs', exist_ok=True)
 logging.basicConfig(level=logging.INFO,
     format='%(asctime)s [WEB] %(message)s',
     handlers=[
@@ -693,36 +719,6 @@ def _http_request_log_allow() -> bool:
         return True
 
 
-_API_RATE_LOCK = threading.Lock()
-_API_RATE_HITS: dict[str, list[float]] = {}
-
-
-def _api_rate_limit_allow(key: str, limit: int, window_sec: int) -> tuple[bool, int]:
-    """
-    Fenêtre glissante simple anti-abus.
-    Retourne (allowed, retry_after_sec).
-    """
-    now = time.time()
-    try:
-        with _API_RATE_LOCK:
-            hits = _API_RATE_HITS.get(key, [])
-            cutoff = now - float(window_sec)
-            hits = [t for t in hits if t >= cutoff]
-            if len(hits) >= int(limit):
-                retry_after = max(1, int(window_sec - (now - hits[0])))
-                _API_RATE_HITS[key] = hits
-                return False, retry_after
-            hits.append(now)
-            _API_RATE_HITS[key] = hits
-            # Garde-fou mémoire (rare)
-            if len(_API_RATE_HITS) > 8000:
-                for k in list(_API_RATE_HITS.keys())[:1500]:
-                    arr = _API_RATE_HITS.get(k) or []
-                    if not arr or arr[-1] < now - 3600:
-                        _API_RATE_HITS.pop(k, None)
-            return True, 0
-    except Exception:
-        return True, 0
 
 
 def struct_log(level: int, **fields) -> None:
@@ -1615,24 +1611,6 @@ _init_session_tracking_db()
 _init_visits_table()
 
 
-def _get_visits_count():
-    """Retourne le nombre actuel de visites."""
-    conn = get_db()
-    row = conn.execute("SELECT count FROM visits WHERE id=1").fetchone()
-    conn.close()
-    return row[0] if row else 0
-
-
-def _increment_visits():
-    """Incrémente le compteur de visites et retourne la nouvelle valeur."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("UPDATE visits SET count = count + 1 WHERE id=1")
-    new_count = conn.execute("SELECT count FROM visits WHERE id=1").fetchone()[0]
-    conn.commit()
-    conn.close()
-    return new_count
-
-
 def _curl_get(url, timeout=15):
     """GET via curl — contourne restrictions réseau urllib (Tlemcen)."""
     try:
@@ -1688,183 +1666,7 @@ PAGE_PATHS = {
     '/aurores', '/orbital-map',
 }
 
-def _client_ip_from_request(req):
-    ip = req.headers.get("X-Forwarded-For", req.remote_addr or "")
-    ip = (ip or "").split(",")[0].strip()
-    return ip
-
-
 # ── Owner IPs : cache in-memory rechargé toutes les 5 min ───────────────────
-_OWNER_IPS_CACHE: set = set()
-_OWNER_IPS_CACHE_TS: float = 0.0
-_OWNER_IPS_LOCK = threading.Lock()
-
-
-def _load_owner_ips() -> set:
-    """Charge les IPs propriétaire depuis : env ASTROSCAN_OWNER_IPS + table owner_ips DB.
-    Cache 5 min en mémoire pour éviter une requête DB à chaque requête HTTP."""
-    global _OWNER_IPS_CACHE, _OWNER_IPS_CACHE_TS
-    now = time.time()
-    with _OWNER_IPS_LOCK:
-        if now - _OWNER_IPS_CACHE_TS < 300 and _OWNER_IPS_CACHE:
-            return set(_OWNER_IPS_CACHE)
-        ips: set = set()
-        # Depuis .env
-        for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(","):
-            x = x.strip()
-            if x:
-                ips.add(x)
-        single = (os.environ.get("ASTROSCAN_MY_IP") or "").strip()
-        if single:
-            ips.add(single)
-        # Depuis la table DB
-        try:
-            conn = _get_db_visitors()
-            rows = conn.execute("SELECT ip FROM owner_ips").fetchall()
-            conn.close()
-            for r in rows:
-                if r[0]:
-                    ips.add(str(r[0]).strip())
-        except Exception:
-            pass
-        _OWNER_IPS_CACHE = ips
-        _OWNER_IPS_CACHE_TS = now
-        return set(ips)
-
-
-def _is_owner_ip(ip: str) -> bool:
-    """Retourne True si l'IP appartient au propriétaire."""
-    if not ip:
-        return False
-    return ip in _load_owner_ips()
-
-
-def _invalidate_owner_ips_cache():
-    """Force le rechargement du cache IPs propriétaire au prochain appel."""
-    global _OWNER_IPS_CACHE_TS
-    with _OWNER_IPS_LOCK:
-        _OWNER_IPS_CACHE_TS = 0.0
-
-
-def _compute_human_score(ua: str, page_count: int = 1, session_sec: int = 0,
-                          referrer: str = "", js_beacon: bool = False) -> int:
-    """Score humain 0-100 pour un visiteur.
-    - UA bot connu → 0
-    - UA vide ou générique → 20
-    - Navigation multi-pages → +30
-    - Temps sur site > 30s → +20
-    - Référent valide → +10
-    - JS beacon reçu → +20
-    Score ≥ 60 = humain probable."""
-    ua_clean = (ua or "").strip()
-    if _is_bot_user_agent(ua_clean):
-        return 0
-    score = 20  # Base : UA non-bot
-    if not ua_clean:
-        score = 5
-    elif len(ua_clean) < 15:
-        score = 10
-    if page_count > 1:
-        score += 30
-    if session_sec > 30:
-        score += 20
-    if referrer and referrer not in ("", "direct") and not referrer.startswith("https://astroscan.space"):
-        score += 10
-    if js_beacon:
-        score += 20
-    return min(100, score)
-
-
-def _register_unique_visit_from_request(path_override=None):
-    """Insère 1 visite par session (IP+session_id), page_views pour chaque vue de page.
-    - Détecte is_owner, calcule human_score initial
-    - ISP + lat/lon stockés depuis ip-api.com
-    - INSERT OR IGNORE + UNIQUE INDEX = résistance totale race condition multi-workers."""
-    try:
-        ip = _client_ip_from_request(request)
-        if ip in ("", "0.0.0.0", "127.0.0.1", "::1"):
-            return False
-        ua = (request.headers.get("User-Agent") or "")[:200]
-        sid = (
-            getattr(g, "_astroscan_sid", None)
-            or request.cookies.get("astroscan_sid")
-            or secrets.token_urlsafe(16)
-        )[:128]
-        path = (path_override or request.path or "/")[:500]
-        referrer = (request.headers.get("Referer") or "")[:500]
-        is_bot = 1 if _is_bot_user_agent(ua) else 0
-        is_owner = 1 if _is_owner_ip(ip) else 0
-
-        conn = _get_db_visitors()
-        cur = conn.cursor()
-
-        # ── 1. Enregistrement page_views (chaque vue, y compris bots) ────────
-        try:
-            cur.execute(
-                "INSERT INTO page_views (session_id, ip, path, referrer) VALUES (?, ?, ?, ?)",
-                (sid, ip, path, referrer),
-            )
-        except Exception:
-            pass
-
-        # ── 2. Une seule entrée visitor_log par (ip, session_id) ─────────────
-        exists = cur.execute(
-            "SELECT 1 FROM visitor_log WHERE ip = ? AND session_id = ? LIMIT 1",
-            (ip, sid),
-        ).fetchone()
-        if exists:
-            # Session connue : mettre à jour human_score si nécessaire
-            try:
-                page_cnt = cur.execute(
-                    "SELECT COUNT(*) FROM page_views WHERE session_id=? AND ip=?",
-                    (sid, ip),
-                ).fetchone()[0]
-                score = _compute_human_score(ua, page_count=page_cnt, referrer=referrer)
-                cur.execute(
-                    "UPDATE visitor_log SET human_score=? WHERE ip=? AND session_id=?",
-                    (score, ip, sid),
-                )
-            except Exception:
-                pass
-            conn.commit()
-            conn.close()
-            return False
-
-        # Nouveau visiteur / nouvelle session — récupérer la géoloc
-        if is_bot:
-            geo = {}
-        else:
-            geo = get_geo_from_ip(ip)
-        country = (geo.get("country") or "Inconnu")[:80]
-        country_code = (geo.get("country_code") or "XX")[:8]
-        city = (geo.get("city") or "Inconnu")[:120]
-        region = (geo.get("region") or "Inconnu")[:120]
-        isp = (geo.get("isp") or "")[:200]
-        lat = geo.get("lat")
-        lon = geo.get("lon")
-        score = _compute_human_score(ua, page_count=1, referrer=referrer)
-
-        # INSERT OR IGNORE : sécurité race condition
-        cur.execute(
-            """
-            INSERT OR IGNORE INTO visitor_log (
-                ip, user_agent, path, session_id,
-                country, country_code, city, region, flag,
-                is_bot, is_owner, isp, lat, lon, human_score
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (ip, ua, path, sid,
-             country, country_code, city, region, country_code,
-             is_bot, is_owner, isp, lat, lon, score),
-        )
-        if cur.rowcount > 0 and not is_bot and not is_owner:
-            cur.execute("UPDATE visits SET count = count + 1 WHERE id=1")
-        conn.commit()
-        conn.close()
-        return cur.rowcount > 0
-    except Exception as e:
-        log.warning("register unique visit: %s", e)
-        return False
 
 
 @app.before_request
@@ -4804,9 +4606,8 @@ def translate_worker():
 # ══════════════════════════════════════════════════════════════
 # Catalogue TLE complet (Celestrak) — data/tle/, /api/tle/full
 # ══════════════════════════════════════════════════════════════
-TLE_DIR = os.path.join(STATION, "data", "tle")
-os.makedirs(TLE_DIR, exist_ok=True)
-TLE_ACTIVE_PATH = os.path.join(TLE_DIR, "active.tle")
+# PASS 2D Cat 2 (2026-05-07) : TLE_DIR + TLE_ACTIVE_PATH retirés ici, désormais
+# définis dans app/services/tle.py et re-exportés en haut de ce fichier.
 
 TLE_MAX_SATELLITES = 200
 
@@ -4966,26 +4767,8 @@ def _download_tle_catalog():
         log.warning("download_tle_catalog: %s", e)
 
 
-def _parse_tle_file(path, limit=None):
-    """Parse un fichier TLE (blocs de 3 lignes: name, line1, line2). Retourne [ { name, line1, line2 }, ... ], max `limit` entries."""
-    out = []
-    if not path or not os.path.isfile(path):
-        return out
-    try:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            lines = [line.rstrip("\r\n") for line in f.readlines()]
-        i = 0
-        while i + 2 < len(lines) and (limit is None or len(out) < limit):
-            name = (lines[i] or "").strip()
-            line1 = (lines[i + 1] or "").strip()
-            line2 = (lines[i + 2] or "").strip()
-            if line1.startswith("1 ") and line2.startswith("2 "):
-                out.append({"name": name or "Unknown", "line1": line1, "line2": line2})
-            i += 3
-    except Exception as e:
-        log.warning("parse_tle_file: %s", e)
-    return out
-
+# PASS 2D Cat 2 (2026-05-07) : _parse_tle_file extrait → app/services/tle.py
+# (re-export en haut de ce fichier).
 
 # MIGRATED TO satellites_bp PASS 14 — /api/satellites/tle → see app/blueprints/satellites/__init__.py (api_satellites_tle)
 # MIGRATED TO satellites_bp PASS 14 — /api/satellites/tle/debug → see app/blueprints/satellites/__init__.py (debug_tle)
@@ -5029,11 +4812,8 @@ else:
     log.warning("TLE active.tle missing after startup")
 
 
-# Données TLE pour prédiction de passages (lecture seule, ne pas modifier api/tle/catalog)
-_TLE_FOR_PASSES = [
-    {"name": "Hubble", "tle1": "1 20580U 90037B   24100.47588426  .00000856  00000+0  43078-4 0  9993", "tle2": "2 20580  28.4694  45.2957 0002837  48.3533 311.7862 15.09100244430766"},
-    {"name": "NOAA 19", "tle1": "1 33591U 09005A   24100.17364847  .00000077  00000+0  66203-4 0  9996", "tle2": "2 33591  99.1954  60.9022 0014193 183.3210 176.7778 14.12414904786721"},
-]
+# PASS 2D Cat 2 (2026-05-07) : _TLE_FOR_PASSES extrait → app/services/tle.py
+# (re-export en haut de ce fichier).
 
 
 def _elevation_above_observer(lat, lon, jd, fr, obs_teme, obs_norm, sat_teme):

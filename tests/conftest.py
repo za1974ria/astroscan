@@ -10,6 +10,10 @@ Two app fixtures are exposed:
 The session pre-patches ``logging.handlers.RotatingFileHandler`` so that
 ``station_web`` import does not crash when the production log directory
 is not writable by the current user (typical for unprivileged CI runners).
+
+PASS 2D (2026-05-07) — Project root is now resolved dynamically from
+``__file__`` so that the suite works in any environment (Hetzner, GitHub
+Actions, local dev, Docker), not only ``/root/astro_scan``.
 """
 from __future__ import annotations
 
@@ -17,10 +21,13 @@ import logging
 import logging.handlers
 import os
 import sys
+from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, "/root/astro_scan")
+# Resolve project root dynamically: this file is at <PROJECT_ROOT>/tests/conftest.py
+_PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
+sys.path.insert(0, _PROJECT_ROOT)
 
 
 def _safe_rotating_handler(filename, *args, **kwargs):
@@ -38,10 +45,11 @@ if not hasattr(logging.handlers, "_OriginalRotatingFileHandler"):
 @pytest.fixture(scope="session")
 def app():
     """Legacy monolith app (station_web:app)."""
-    env_path = "/root/astro_scan/.env"
-    if os.path.exists(env_path) and not os.access(env_path, os.R_OK):
+    env_path = os.path.join(_PROJECT_ROOT, ".env")
+    # Skip cleanly if .env is missing (CI) or not readable (unprivileged user)
+    if not os.path.exists(env_path) or not os.access(env_path, os.R_OK):
         pytest.skip(
-            f"app skipped — {env_path} is not readable by the current user."
+            f"app skipped — {env_path} is missing or not readable by the current user."
         )
 
     os.environ["TESTING"] = "1"
@@ -67,16 +75,17 @@ def client(app):
 def factory_app():
     """Clean Flask app via ``app.create_app('testing')`` — post-PASS-18 target.
 
-    The factory reads ``/root/astro_scan/.env`` at boot (mode 0600, root-owned).
-    When the test runner does not have read access, the fixture skips cleanly
-    rather than erroring — production runs as root and is unaffected.
+    The factory reads ``<PROJECT_ROOT>/.env`` at boot (mode 0600, root-owned in
+    production). When the test runner does not have read access, the fixture
+    skips cleanly rather than erroring — production runs as root and is
+    unaffected.
     """
-    env_path = "/root/astro_scan/.env"
-    if os.path.exists(env_path) and not os.access(env_path, os.R_OK):
+    env_path = os.path.join(_PROJECT_ROOT, ".env")
+    if not os.path.exists(env_path) or not os.access(env_path, os.R_OK):
         pytest.skip(
-            f"factory_app skipped — {env_path} is not readable by the current "
-            "user (production runs as root). Run the suite as root or grant read "
-            "access to the test runner to enable factory tests."
+            f"factory_app skipped — {env_path} is missing or not readable by "
+            "the current user (production runs as root). Run the suite as root "
+            "or grant read access to the test runner to enable factory tests."
         )
 
     os.environ["TESTING"] = "1"

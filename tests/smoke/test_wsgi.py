@@ -21,11 +21,17 @@ import pytest
 from flask import Flask
 
 
-_ENV_PATH = "/root/astro_scan/.env"
-if os.path.exists(_ENV_PATH) and not os.access(_ENV_PATH, os.R_OK):
+from pathlib import Path as _Path
+_ENV_PATH = str(_Path(__file__).resolve().parent.parent.parent / ".env")
+# PASS 2D fix (2026-05-07) — skip if .env is missing OR not readable.
+# Previously only checked "exists AND not readable", which let CI pass
+# the gate (no .env) and then fail on factory load (env_guard rejects
+# fake SECRET_KEY). Aligned with tests/conftest.py logic.
+if not os.path.exists(_ENV_PATH) or not os.access(_ENV_PATH, os.R_OK):
     pytest.skip(
-        f"WSGI smoke tests skipped — {_ENV_PATH} is not readable by the "
-        "current user. Run as root or grant read access to enable.",
+        f"WSGI smoke tests skipped — {_ENV_PATH} is missing or not "
+        "readable by the current user. Run as root with .env present "
+        "(production runs as root) to enable these tests.",
         allow_module_level=True,
     )
 

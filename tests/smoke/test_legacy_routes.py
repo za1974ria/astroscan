@@ -4,7 +4,8 @@ Ces tests vérifient que les routes répondent avec un code HTTP valide.
 Ils n'appellent pas le réseau externe (les APIs sont cachées ou mockées par l'app).
 """
 import sys
-sys.path.insert(0, '/root/astro_scan')
+from pathlib import Path as _Path
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent))
 
 import pytest
 
