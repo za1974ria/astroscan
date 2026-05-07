@@ -497,6 +497,11 @@ def _inject_seo_site_description():
     return {'seo_site_description': SEO_HOME_DESCRIPTION}
 
 
+# PASS 2D fix (2026-05-07) — ensure logs directory exists before FileHandler
+# Previously os.makedirs was 84 lines later, causing FileNotFoundError on
+# fresh deployments (CI, Docker, new servers) — production worked only because
+# /root/astro_scan/logs already existed historically.
+os.makedirs(f'{STATION}/logs', exist_ok=True)
 logging.basicConfig(level=logging.INFO,
     format='%(asctime)s [WEB] %(message)s',
     handlers=[
