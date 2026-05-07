@@ -3,7 +3,8 @@ import pytest
 import json
 import sys
 import os
-sys.path.insert(0, '/root/astro_scan')
+from pathlib import Path as _Path
+sys.path.insert(0, str(_Path(__file__).resolve().parent.parent.parent))
 
 
 @pytest.fixture(scope='module')

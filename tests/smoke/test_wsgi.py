@@ -21,7 +21,8 @@ import pytest
 from flask import Flask
 
 
-_ENV_PATH = "/root/astro_scan/.env"
+from pathlib import Path as _Path
+_ENV_PATH = str(_Path(__file__).resolve().parent.parent.parent / ".env")
 if os.path.exists(_ENV_PATH) and not os.access(_ENV_PATH, os.R_OK):
     pytest.skip(
         f"WSGI smoke tests skipped — {_ENV_PATH} is not readable by the "
