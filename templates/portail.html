@@ -1229,7 +1229,7 @@ hr{
     <div class="topbar-center">
       <div class="tbar-visits" id="tbar-visits" title="Visites">
         <span style="margin-right:4px">👁️</span>
-        <span id="tbar-visits-val">{% set _vc_raw = visitor_count|default(none) %}{% if _vc_raw is not none and _vc_raw is number %}{% set _vc = '%06d' % (_vc_raw|int) %}{{ _vc[:3] }} {{ _vc[3:] }}{% else %}<span style="opacity:0.55">•••</span>{% endif %}</span>
+        <span id="tbar-visits-val">{% set _vc_raw = visitor_count|default(none) %}{% if _vc_raw is not none and _vc_raw is number and _vc_raw > 0 %}{% set _vc = '%06d' % (_vc_raw|int) %}{{ _vc[:3] }} {{ _vc[3:] }}{% else %}<span style="opacity:0.55">•••</span>{% endif %}</span>
       </div>
       <div class="tbar-stat"><div class="tbar-dot green"></div><span data-i18n="aegis_active">AEGIS ACTIF</span></div>
       <div class="tbar-stat"><div class="tbar-dot green"></div><span data-i18n="web_online">WEB EN LIGNE</span></div>
@@ -2142,7 +2142,7 @@ hr{
 
   // Compteur visites (format "000 123")
   function fmtVisits(n){var s=String(Math.max(0,n));var p=('000000'+s).slice(-6);return p.slice(0,3)+' '+p.slice(3);}
-  function loadVisitsPortail(){fetch('/api/visits').then(function(r){return r.ok?r.json():null;}).then(function(d){var el=document.getElementById('tbar-visits-val');if(el&&d){var newVal=fmtVisits(d.count||0);if(el.textContent!==newVal){el.textContent=newVal;el.classList.remove('header-counter-pulse');void el.offsetWidth;el.classList.add('header-counter-pulse');setTimeout(function(){el.classList.remove('header-counter-pulse');},450);}}}).catch(function(){});}
+  function loadVisitsPortail(){fetch('/api/visits').then(function(r){return r.ok?r.json():null;}).then(function(d){var el=document.getElementById('tbar-visits-val');if(!el||!d)return;var n=Number(d.count||0);if(n<=0){return;/* PHASE B1: pas d'overwrite SSR si count<=0 */}var newVal=fmtVisits(n);if(el.textContent!==newVal){el.textContent=newVal;el.classList.remove('header-counter-pulse');void el.offsetWidth;el.classList.add('header-counter-pulse');setTimeout(function(){el.classList.remove('header-counter-pulse');},450);}}).catch(function(){});}
   loadVisitsPortail();
   setInterval(loadVisitsPortail, API_INTERVALS.visits);
 
