@@ -324,8 +324,9 @@ font-size: 10px;
   user-select: none;
 }
 .nav-item:hover {
-  background: rgba(0,212,255,0.04);
-  border-left-color: rgba(0,212,255,0.3);
+  background: rgba(0,212,255,0.06);
+  border-left-color: rgba(0,212,255,0.5);
+  transition: all 0.18s ease;
 }
 .nav-item.active {
   background: rgba(0,212,255,0.07);
@@ -1123,19 +1124,22 @@ hr{
   user-select: none;
 }
 .sidebar-group-header:hover {
-  background: rgba(0,212,255,0.04);
-  border-left-color: rgba(0,212,255,0.3);
+  background: rgba(0,212,255,0.06);
+  border-left-color: rgba(0,212,255,0.5);
+  transition: all 0.18s ease;
 }
 .sidebar-group-header:focus { outline: none; }
 .sidebar-group-header .nav-label {
   font-family: var(--font);
   font-size:0.55rem; letter-spacing:0.14em; text-transform:uppercase;
   color:var(--text); flex:1;
-  /* PASS UI B FIX 3 : ellipsis si label > 1 ligne (ex. "MÉTÉO & AURORES") */
+  /* PASS UI B/C FIX : ellipsis si label trop long. max-width relevé à 152px
+     (Phase C) pour accueillir "MÉTÉO & AURORES" sans troncature. Labels
+     trop longs raccourcis dans le HTML directement (DONNÉES, IA OUTILS). */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 152px;
 }
 .sidebar-group-header .nav-icon { color: var(--cyan); }
 /* PASS UI B FIX 3 : icône uniforme — SVG 14×14 dans conteneur 20×20 (vs 22 avant) */
@@ -1173,7 +1177,9 @@ hr{
   border-left: 2px solid transparent;
 }
 .nav-item.nav-sub:hover {
-  border-left-color: rgba(0,212,255,0.3);
+  background: rgba(0,212,255,0.04);
+  border-left-color: rgba(0,212,255,0.35);
+  transition: all 0.18s ease;
 }
 .nav-item.nav-sub.active {
   border-left-color: var(--cyan);
@@ -1349,7 +1355,7 @@ hr{
           <span class="nav-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           </span>
-          <span class="nav-label">{% if lang == 'en' %}Weather &amp; Aurora{% else %}Météo &amp; Aurores{% endif %}</span>
+          <span class="nav-label">{% if lang == 'en' %}Weather{% else %}Météo &amp; Aurores{% endif %}</span>
           <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg></span>
         </button>
         <div class="sidebar-group-content">
@@ -1401,7 +1407,7 @@ hr{
           <span class="nav-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
           </span>
-          <span class="nav-label">{% if lang == 'en' %}AI &amp; Tools{% else %}IA &amp; Outils{% endif %}</span>
+          <span class="nav-label">{% if lang == 'en' %}AI Tools{% else %}IA &amp; Outils{% endif %}</span>
           <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg></span>
         </button>
         <div class="sidebar-group-content">
@@ -1429,7 +1435,7 @@ hr{
           <span class="nav-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
           </span>
-          <span class="nav-label">{% if lang == 'en' %}Data &amp; Research{% else %}Données &amp; Recherche{% endif %}</span>
+          <span class="nav-label">{% if lang == 'en' %}Data{% else %}Données{% endif %}</span>
           <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg></span>
         </button>
         <div class="sidebar-group-content">
