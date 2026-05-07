@@ -100,7 +100,7 @@ def api_science_analyze_image():
 @bp.route("/api/space/intelligence", methods=["GET", "POST"])
 def api_space_intelligence():
     """Analyse spatiale : alertes, événements, niveau de risque."""
-    from station_web import _fetch_iss_live
+    from app.services.iss_live import _fetch_iss_live
     try:
         from modules.space_intelligence_engine import detect_space_event
         data = {}

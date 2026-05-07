@@ -453,7 +453,7 @@ def api_orbits_live():
 
     satellites = []
     try:
-        from station_web import _fetch_iss_live
+        from app.services.iss_live import _fetch_iss_live
         iss = get_cached("iss_live", 5, _fetch_iss_live)
         if iss:
             lat = iss.get("latitude") if "latitude" in iss else iss.get("lat", 0)
@@ -496,7 +496,7 @@ def api_missions_overview():
 
     iss = {"ok": False, "lat": 0, "lon": 0, "alt": 408}
     try:
-        from station_web import _fetch_iss_live
+        from app.services.iss_live import _fetch_iss_live
         iss = get_cached("iss_live", 5, _fetch_iss_live) or iss
     except Exception:
         pass
