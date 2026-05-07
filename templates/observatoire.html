@@ -388,6 +388,44 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
   td, th { padding: 3px 2px !important; }
   .section-title { font-size: 9px !important; }
 }
+
+/* PASS UI O-B FIX 2 (2026-05-07) — apaiser le widget OFFLINE.
+   La sync multi-observateur n'est pas utilisée (station solo) ; un OFFLINE
+   rouge transmettait un état d'incident inquiétant. On masque le mot
+   « OFFLINE » brut (textContent injecté par astroscan_view_sync.js) et on
+   le remplace visuellement par « STATION SOLO » en cyan dim. CSS-only,
+   aucun .js touché : si la sync redevient active, l'état "open" reprend
+   normalement (ONLINE cyan). */
+#asc-view-sync-ws[data-state="offline"],
+#asc-view-sync-ws[data-state="connecting"],
+#asc-view-sync-ws[data-state="reconnecting"] {
+  color: transparent !important;
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+  position: relative;
+}
+#asc-view-sync-ws[data-state="offline"]::before,
+#asc-view-sync-ws[data-state="connecting"]::before,
+#asc-view-sync-ws[data-state="reconnecting"]::before {
+  content: "STATION SOLO";
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--cyan);
+  opacity: 0.6;
+  font-weight: 700;
+}
+#asc-view-sync-ws[data-state="connecting"]::before,
+#asc-view-sync-ws[data-state="reconnecting"]::before {
+  opacity: 0.4;
+}
+/* Override de toute classe legacy "offline" éventuelle ailleurs */
+.asc-view-sync-master[data-state="offline"],
+.asc-view-sync-master.bad-offline,
+.asc-status-master.offline {
+  color: var(--cyan) !important;
+  background: rgba(0, 212, 255, 0.06) !important;
+  opacity: 0.7;
+}
 </style>
 <!-- Google Analytics GA4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
