@@ -205,8 +205,8 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
 .asc-sync-demo{background:rgba(255,170,0,.12);color:#ffaa00;border:1px solid rgba(255,170,0,.3);}
 .asc-sync-offline{background:rgba(255,68,102,.12);color:#ff6688;border:1px solid rgba(255,68,102,.3);}
 .asc-sync-meta{color:#8899aa;font-size:10px;flex:1;min-width:140px;line-height:1.4;}
-.status-panel.asc-obs-status-panel{width:100%;margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,212,255,.12);display:grid;gap:6px;font-size:11px;color:#aabbcc;}
-.status-panel.asc-obs-status-panel span[id]{color:#00d4ff;font-weight:600;}
+/* PASS UI O-B FIX 1 (2026-05-07) : règles .asc-obs-status-panel supprimées
+   (bloc visuel retiré → stub caché). */
 @media (max-width:640px){.asc-sync-strip{padding:12px 14px;}.asc-sync-meta{width:100%;}}
 #asc-view-sync-role[data-role="master"],#asc-view-sync-role[data-role="collaborative"]{color:#00d4ff;font-weight:700;}
 #asc-view-sync-role[data-role="viewer"]{color:#66aaff;font-weight:700;}
@@ -430,12 +430,13 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
   <span class="asc-sync-label">{% if lang == 'en' %}SERVER SYNC{% else %}SYNCHRO SERVEUR{% endif %}</span>
   <span class="asc-sync-badge asc-sync-demo" id="asc-sync-mode">…</span>
   <span class="asc-sync-meta" id="asc-sync-meta"></span>
-  <div class="status-panel asc-obs-status-panel">
-    <div>Mode: <span id="mode-status">-</span></div>
-    <div>Status: <span id="global-status">-</span></div>
-    <div>Object: <span id="priority-object">-</span></div>
-    <div>Score: <span id="priority-score">-</span></div>
-    <div>Response: <span id="response-time">-</span></div>
+  <!-- PASS UI O-B FIX 1 (2026-05-07) : bloc visuel "Mode: -, Status: -, Object: -, ..."
+       supprimé (ghost block — aucune donnée live). Stub caché conservé car
+       astroscan_status_ui.js référence ces IDs (setText). -->
+  <div class="asc-obs-status-stub" style="display:none" aria-hidden="true">
+    <span id="mode-status"></span><span id="global-status"></span>
+    <span id="priority-object"></span><span id="priority-score"></span>
+    <span id="response-time"></span>
   </div>
   <span class="asc-view-mini" style="margin-left:14px;font-size:9px;color:#556677;letter-spacing:1px;white-space:nowrap;flex-wrap:wrap;display:inline-flex;align-items:center;gap:6px;max-width:100%;" title="{% if lang == 'en' %}View sync{% else %}Synchro vue{% endif %}">
     {% if lang == 'en' %}VIEW{% else %}VUE{% endif %} <span id="asc-view-sync-role" data-role="master">—</span> · <span id="asc-view-sync-session">—</span> · <span id="asc-view-sync-ws" data-state="open"><span style="color:#00ff9c; font-weight:bold;">ONLINE</span></span>
