@@ -60,6 +60,12 @@ from app.services.db_visitors import (  # noqa: F401 — re-export pour BPs (com
     _is_owner_ip,
     _register_unique_visit_from_request,
 )
+# PASS 2D Cat 2 (2026-05-07) : extraction TLE → app/services/tle.py
+from app.services.tle import (  # noqa: F401 — re-export pour BPs + station_web internals
+    TLE_ACTIVE_PATH,
+    _parse_tle_file,
+    _TLE_FOR_PASSES,
+)
 # api_iss_impl : iss_bp l'importe directement depuis app.routes.iss (PASS 16),
 # plus besoin du re-export ici.
 # MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
@@ -4626,9 +4632,8 @@ def translate_worker():
 # ══════════════════════════════════════════════════════════════
 # Catalogue TLE complet (Celestrak) — data/tle/, /api/tle/full
 # ══════════════════════════════════════════════════════════════
-TLE_DIR = os.path.join(STATION, "data", "tle")
-os.makedirs(TLE_DIR, exist_ok=True)
-TLE_ACTIVE_PATH = os.path.join(TLE_DIR, "active.tle")
+# PASS 2D Cat 2 (2026-05-07) : TLE_DIR + TLE_ACTIVE_PATH retirés ici, désormais
+# définis dans app/services/tle.py et re-exportés en haut de ce fichier.
 
 TLE_MAX_SATELLITES = 200
 
@@ -4788,26 +4793,8 @@ def _download_tle_catalog():
         log.warning("download_tle_catalog: %s", e)
 
 
-def _parse_tle_file(path, limit=None):
-    """Parse un fichier TLE (blocs de 3 lignes: name, line1, line2). Retourne [ { name, line1, line2 }, ... ], max `limit` entries."""
-    out = []
-    if not path or not os.path.isfile(path):
-        return out
-    try:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            lines = [line.rstrip("\r\n") for line in f.readlines()]
-        i = 0
-        while i + 2 < len(lines) and (limit is None or len(out) < limit):
-            name = (lines[i] or "").strip()
-            line1 = (lines[i + 1] or "").strip()
-            line2 = (lines[i + 2] or "").strip()
-            if line1.startswith("1 ") and line2.startswith("2 "):
-                out.append({"name": name or "Unknown", "line1": line1, "line2": line2})
-            i += 3
-    except Exception as e:
-        log.warning("parse_tle_file: %s", e)
-    return out
-
+# PASS 2D Cat 2 (2026-05-07) : _parse_tle_file extrait → app/services/tle.py
+# (re-export en haut de ce fichier).
 
 # MIGRATED TO satellites_bp PASS 14 — /api/satellites/tle → see app/blueprints/satellites/__init__.py (api_satellites_tle)
 # MIGRATED TO satellites_bp PASS 14 — /api/satellites/tle/debug → see app/blueprints/satellites/__init__.py (debug_tle)
@@ -4851,11 +4838,8 @@ else:
     log.warning("TLE active.tle missing after startup")
 
 
-# Données TLE pour prédiction de passages (lecture seule, ne pas modifier api/tle/catalog)
-_TLE_FOR_PASSES = [
-    {"name": "Hubble", "tle1": "1 20580U 90037B   24100.47588426  .00000856  00000+0  43078-4 0  9993", "tle2": "2 20580  28.4694  45.2957 0002837  48.3533 311.7862 15.09100244430766"},
-    {"name": "NOAA 19", "tle1": "1 33591U 09005A   24100.17364847  .00000077  00000+0  66203-4 0  9996", "tle2": "2 33591  99.1954  60.9022 0014193 183.3210 176.7778 14.12414904786721"},
-]
+# PASS 2D Cat 2 (2026-05-07) : _TLE_FOR_PASSES extrait → app/services/tle.py
+# (re-export en haut de ce fichier).
 
 
 def _elevation_above_observer(lat, lon, jd, fr, obs_teme, obs_norm, sat_teme):

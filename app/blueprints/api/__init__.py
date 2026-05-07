@@ -146,7 +146,7 @@ def api_version():
 @bp.route("/api/tle/status", methods=["GET"])
 def api_tle_status():
     """Retourne l'etat actuel du cache TLE connecte/cache/simulation."""
-    from station_web import TLE_CACHE
+    from app.services.tle_cache import TLE_CACHE
     try:
         return jsonify({
             "status": TLE_CACHE.get("status"),
@@ -169,7 +169,7 @@ def api_tle_status():
 @bp.route("/api/tle/active", methods=["GET"])
 def api_tle_active():
     """Retourne les TLE actifs depuis le cache connecte/disque/simulation."""
-    from station_web import TLE_CACHE
+    from app.services.tle_cache import TLE_CACHE
     try:
         return jsonify({
             "status": TLE_CACHE.get("status"),
@@ -195,7 +195,7 @@ def api_tle_active():
 @bp.route("/api/tle/full")
 def api_tle_full():
     """Catalogue TLE complet (parsed depuis data/tle/active.tle)."""
-    from station_web import _parse_tle_file, TLE_ACTIVE_PATH
+    from app.services.tle import _parse_tle_file, TLE_ACTIVE_PATH
     try:
         satellites = _parse_tle_file(TLE_ACTIVE_PATH)
         return jsonify({"satellites": satellites})
@@ -260,7 +260,7 @@ def ready():
 @bp.route("/api/satellites")
 def api_satellites():
     """Liste des satellites disponibles."""
-    from station_web import list_satellites
+    from app.services.satellites import list_satellites
     return jsonify({"available": list_satellites()})
 
 
