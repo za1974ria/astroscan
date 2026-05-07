@@ -40,7 +40,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
 :root{--acid:#00ff88;--blue:#00aaff;--purple:#aa44ff;--amber:#ffaa00;--red:#ff4466;--bg:#020810;}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);min-height:100vh;font-family:'Share Tech Mono',monospace;color:#c8d8e8;overflow-x:hidden;}
+html,body{background:transparent;min-height:100vh;font-family:'Share Tech Mono',monospace;color:#c8d8e8;overflow-x:hidden;}
+#starfield-bg{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at center,#020615 0%,#000409 70%,#000000 100%);}
 @keyframes twinkle{0%,100%{opacity:.1}50%{opacity:.9}}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
@@ -401,6 +402,7 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
   <link rel="stylesheet" href="/static/css/fixes.css">
 </head>
 <body>
+<canvas id="starfield-bg" aria-hidden="true"></canvas>
 <div id="stars"></div>
 <div class="nebula"></div>
 <header>
@@ -2121,5 +2123,6 @@ function loadEphemerides(){
 <!-- AEGIS Chat Widget -->
 <script src="/static/js/astro_notifications.js"></script>
 <script src="/static/js/aegis_chat_widget.js"></script>
+<script defer src="/static/js/starfield.js"></script>
 </body>
 </html>
