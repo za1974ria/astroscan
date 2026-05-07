@@ -28,7 +28,7 @@ DB_PATH = "/root/astro_scan/data/archive_stellaire.db"
 @bp.route("/api/visits", methods=["GET"])
 def api_visits_get():
     """Retourne le nombre actuel de visites."""
-    from station_web import _get_visits_count
+    from app.services.db_visitors import _get_visits_count
     try:
         count = _get_visits_count()
         return jsonify({"count": count})
@@ -40,7 +40,7 @@ def api_visits_get():
 @bp.route("/api/visits/increment", methods=["POST"])
 def api_visits_increment():
     """Incremente le compteur et retourne la nouvelle valeur."""
-    from station_web import _increment_visits, _get_visits_count
+    from app.services.db_visitors import _increment_visits, _get_visits_count
     try:
         count = _increment_visits()
         return jsonify({"count": count})
@@ -79,7 +79,7 @@ def get_visits():
 @bp.route("/api/visitors/snapshot")
 def api_visitors_snapshot():
     """REST one-shot : meme payload que le SSE - polling fallback."""
-    from station_web import get_global_stats
+    from services.stats_service import get_global_stats
     try:
         exclude_my_ip = (request.args.get("exclude_my_ip", "1") or "0").strip().lower() in (
             "1", "true", "yes", "on",
@@ -104,7 +104,7 @@ def api_visitors_connection_time_legacy():
 @bp.route("/api/owner-ips", methods=["POST"])
 def api_owner_ips_add():
     """Ajoute une IP propriétaire. Body JSON: {"ip": "x.x.x.x", "label": "Maison"}"""
-    from station_web import _get_db_visitors, _invalidate_owner_ips_cache
+    from app.services.db_visitors import _get_db_visitors, _invalidate_owner_ips_cache
     try:
         data = request.get_json(force=True, silent=True) or {}
         ip = (data.get("ip") or "").strip()
@@ -128,7 +128,7 @@ def api_owner_ips_add():
 @bp.route("/api/owner-ips/<int:ip_id>", methods=["DELETE"])
 def api_owner_ips_delete(ip_id):
     """Supprime une IP propriétaire par son ID."""
-    from station_web import _get_db_visitors, _invalidate_owner_ips_cache
+    from app.services.db_visitors import _get_db_visitors, _invalidate_owner_ips_cache
     try:
         conn = _get_db_visitors()
         row = conn.execute("SELECT ip FROM owner_ips WHERE id=?", (ip_id,)).fetchone()
@@ -150,7 +150,7 @@ def api_owner_ips_delete(ip_id):
 @bp.route("/api/visitor/score-update", methods=["POST"])
 def api_visitor_score_update():
     """Beacon JS : met à jour le human_score (JS activé, temps sur page)."""
-    from station_web import _get_db_visitors, _compute_human_score
+    from app.services.db_visitors import _get_db_visitors, _compute_human_score
     try:
         data = request.get_json(force=True, silent=True) or {}
         sid = (data.get("session_id") or "")[:128].strip()
@@ -188,7 +188,7 @@ def api_visitor_score_update():
 @bp.route("/api/analytics/summary", methods=["GET"])
 def api_analytics_summary():
     """JSON summary pour dashboard : visiteurs, pages vues, human%, top pages, owner."""
-    from station_web import _get_db_visitors
+    from app.services.db_visitors import _get_db_visitors
     try:
         conn = _get_db_visitors()
         conn.row_factory = sqlite3.Row
@@ -270,7 +270,7 @@ def api_analytics_summary():
 @bp.route("/api/visitors/globe-data")
 def api_visitors_globe_data():
     """Points carte (Leaflet) pour /visiteurs-live — agrégation par pays."""
-    from station_web import get_global_stats
+    from services.stats_service import get_global_stats
     try:
         exclude_my_ip = (request.args.get("exclude_my_ip", "1") or "0").strip().lower() in (
             "1", "true", "yes", "on",
@@ -288,7 +288,7 @@ def api_visitors_stream():
     import json as _json
     import time as _time
     from flask import Response
-    from station_web import get_global_stats
+    from services.stats_service import get_global_stats
 
     exclude_my_ip = (request.args.get("exclude_my_ip", "1") or "0").strip().lower() in (
         "1", "true", "yes", "on",
@@ -324,7 +324,7 @@ def api_visitors_stream():
 @bp.route("/api/visitors/log", methods=["POST"])
 def api_log_visitor():
     """Log un visiteur depuis le frontend."""
-    from station_web import _register_unique_visit_from_request
+    from app.services.db_visitors import _register_unique_visit_from_request
     try:
         data = request.get_json(silent=True) or {}
         path = data.get("path", "/")
@@ -338,7 +338,7 @@ def api_log_visitor():
 def api_visitors_geo():
     """Retourne les derniers visiteurs avec géolocalisation live (résolution ip-api.com)."""
     import requests as _req
-    from station_web import _get_db_visitors
+    from app.services.db_visitors import _get_db_visitors
     try:
         my_ip = "105.235.139.99"
         exclude_my_ip = (request.args.get("exclude_my_ip", "0") or "0").strip() in (
@@ -415,7 +415,7 @@ def api_visitors_geo():
 @bp.route("/api/visitors/stats")
 def api_visitors_stats():
     """Statistiques visiteurs par pays."""
-    from station_web import _get_db_visitors
+    from app.services.db_visitors import _get_db_visitors
     try:
         my_ip = "105.235.139.99"
         exclude_my_ip = (request.args.get("exclude_my_ip", "0") or "0").strip() in (
@@ -500,7 +500,7 @@ def api_visitors_connection_time():
     """Temps de connexion par IP (visiteurs externes), dédupliqué et plafonné."""
     import os
     from datetime import datetime
-    from station_web import _get_db_visitors
+    from app.services.db_visitors import _get_db_visitors
     try:
         def _parse_visitor_at(ts):
             s = (ts or "").strip()
@@ -761,7 +761,7 @@ def api_visitors_connection_time():
 @bp.route("/analytics")
 def analytics_dashboard():
     """Dashboard analytics complet : sessions, page_views, human_score, owner IPs."""
-    from station_web import _get_db_visitors
+    from app.services.db_visitors import _get_db_visitors
     from app.services.analytics_dashboard import (
         load_analytics_readonly, analytics_empty_payload,
     )

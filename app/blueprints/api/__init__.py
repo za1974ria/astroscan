@@ -231,7 +231,7 @@ def api_modules_status():
 def api_owner_ips_get():
     """Liste les IPs proprietaire (DB + env)."""
     import os
-    from station_web import _get_db_visitors
+    from app.services.db_visitors import _get_db_visitors
     try:
         conn = _get_db_visitors()
         rows = conn.execute(
