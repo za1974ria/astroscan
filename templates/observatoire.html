@@ -464,6 +464,156 @@ body.embed-mode main {
 /* PASS UI O-D FIX 3 (2026-05-07) — breadcrumb flottant supprimé.
    Le bouton header « ◄ PORTAIL » (OD1) couvre déjà le besoin. */
 
+/* PASS UI O-G (2026-05-07) — Sky Map widget.
+   Cosmos cyan harmony, circular SVG, scientific stereographic projection. */
+.sky-map-widget {
+  margin: 24px 16px;
+  padding: 18px;
+  background: radial-gradient(circle at center, rgba(0,8,20,0.95), rgba(0,2,8,0.99));
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.sky-map-widget::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.5;
+}
+.sky-map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+  gap: 12px;
+}
+.sky-map-title-block { display: flex; flex-direction: column; gap: 4px; }
+.sky-map-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--cyan);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.sky-map-subtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: #7a9ab0;
+  letter-spacing: 0.1em;
+}
+.sky-map-status {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: #00ff9c;
+  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  border: 1px solid rgba(0, 255, 156, 0.3);
+  border-radius: 4px;
+  background: rgba(0, 255, 156, 0.05);
+  white-space: nowrap;
+}
+.sky-map-canvas-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 600px;
+  margin: 0 auto;
+}
+.sky-map-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 0 18px rgba(0, 212, 255, 0.08));
+}
+/* SVG primitives */
+.sky-horizon {
+  fill: none;
+  stroke: rgba(0, 212, 255, 0.5);
+  stroke-width: 1.2;
+}
+.sky-altring {
+  fill: none;
+  stroke: rgba(0, 212, 255, 0.13);
+  stroke-width: 0.7;
+  stroke-dasharray: 2 4;
+}
+.sky-cardinal {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  fill: var(--cyan);
+  letter-spacing: 0.15em;
+  font-weight: 700;
+}
+.sky-star {
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.6));
+}
+.sky-planet {
+  filter: drop-shadow(0 0 4px currentColor);
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 0.6;
+}
+.sky-shooting {
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0;
+  filter: drop-shadow(0 0 4px #aaffff);
+}
+.sky-map-legend {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgba(0, 4, 12, 0.65);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 4px;
+  pointer-events: none;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: #aabbcc;
+  letter-spacing: 0.08em;
+}
+.lg-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.lg-star { background: #ffffff; box-shadow: 0 0 4px #ffffff; }
+.lg-planet { background: #ff6644; box-shadow: 0 0 4px #ff6644; }
+.lg-moon { background: #fff5d6; box-shadow: 0 0 6px #fff5d6; }
+.sky-map-footer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 212, 255, 0.1);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: #556677;
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+@media (max-width: 768px) {
+  .sky-map-widget { margin: 16px 8px; padding: 12px; }
+  .sky-map-header { flex-direction: column; gap: 8px; align-items: stretch; }
+  .sky-map-status { align-self: flex-start; }
+  .sky-map-legend { position: static; margin: 8px auto 0; align-items: flex-start; flex-direction: row; flex-wrap: wrap; }
+}
+
 /* PASS UI O-F FIX 3 (2026-05-07) — Widget COSMIC LIVE DASHBOARD.
    Design cosmos cyan, grid 4 cards, animations subtiles. */
 .cosmic-dashboard {
@@ -703,6 +853,32 @@ body.embed-mode main {
         <div class="analyse-text" id="microobs-desc" style="font-size:10px;line-height:1.4">{% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
       </div>
       <button class="refresh-btn" onclick="refreshTelescope()">🔄 {% if lang == 'en' %}REFRESH{% else %}ACTUALISER{% endif %}</button>
+    </div>
+  </div>
+
+  <!-- PASS UI O-G (2026-05-07) — CARTE DU CIEL TLEMCEN CE SOIR.
+       Carte stéréographique calculée localement. Étoiles brillantes,
+       Lune, planètes visibles. Refresh 60s. Calcul astronomique pur. -->
+  <div class="sky-map-widget" id="sky-map-widget">
+    <div class="sky-map-header">
+      <div class="sky-map-title-block">
+        <span class="sky-map-title">{% if lang == 'en' %}LIVE SKY · TLEMCEN TONIGHT{% else %}CIEL EN DIRECT · TLEMCEN CE SOIR{% endif %}</span>
+        <span class="sky-map-subtitle" id="sky-map-time">—</span>
+      </div>
+      <div class="sky-map-status" id="sky-map-status">—</div>
+    </div>
+    <div class="sky-map-canvas-wrap">
+      <svg class="sky-map-svg" id="sky-map-svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
+        <!-- background, horizon, altitude rings, cardinal points and objects all drawn by JS -->
+      </svg>
+      <div class="sky-map-legend">
+        <div class="legend-item"><span class="lg-dot lg-star"></span>{% if lang == 'en' %}Star{% else %}Étoile{% endif %}</div>
+        <div class="legend-item"><span class="lg-dot lg-planet"></span>{% if lang == 'en' %}Planet{% else %}Planète{% endif %}</div>
+        <div class="legend-item"><span class="lg-dot lg-moon"></span>{% if lang == 'en' %}Moon{% else %}Lune{% endif %}</div>
+      </div>
+    </div>
+    <div class="sky-map-footer">
+      {% if lang == 'en' %}Stereographic projection · 30 brightest stars + Moon + visible planets · Computed locally · Refresh 60s{% else %}Projection stéréographique · 30 étoiles les plus brillantes + Lune + planètes visibles · Calcul local · Refresh 60s{% endif %}
     </div>
   </div>
 
@@ -2465,6 +2641,358 @@ function loadEphemerides(){
   } else {
     refreshAll();
     setInterval(refreshAll, 30000);
+  }
+})();
+</script>
+
+<script>
+/* PASS UI O-G (2026-05-07) — Live Sky Map for Tlemcen.
+   100% client-side astronomical calculation. No external API.
+   Stereographic projection. 30 brightest stars + Moon + planets + Sun status.
+   Refresh every 60 seconds. */
+(function(){
+  var LAT_DEG = 34.87;
+  var LON_DEG = -1.32;
+  var LAT = LAT_DEG * Math.PI / 180;
+  var DEG = Math.PI / 180;
+  var R = 280;
+  var CX = 300, CY = 300;
+
+  var STARS = [
+    {n:'Sirius',ra:6.7525,dec:-16.7161,m:-1.46,c:'#a8c8ff'},
+    {n:'Canopus',ra:6.3992,dec:-52.6957,m:-0.74,c:'#fff5e6'},
+    {n:'Arcturus',ra:14.2610,dec:19.1825,m:-0.05,c:'#ffd9a0'},
+    {n:'Vega',ra:18.6156,dec:38.7837,m:0.03,c:'#cce6ff'},
+    {n:'Capella',ra:5.2782,dec:45.9981,m:0.08,c:'#fff0c8'},
+    {n:'Rigel',ra:5.2423,dec:-8.2017,m:0.13,c:'#cce6ff'},
+    {n:'Procyon',ra:7.6551,dec:5.2250,m:0.34,c:'#ffffff'},
+    {n:'Achernar',ra:1.6286,dec:-57.2367,m:0.46,c:'#cce6ff'},
+    {n:'Betelgeuse',ra:5.9195,dec:7.4071,m:0.50,c:'#ff7766'},
+    {n:'Hadar',ra:14.0637,dec:-60.3729,m:0.61,c:'#cce6ff'},
+    {n:'Altair',ra:19.8463,dec:8.8683,m:0.77,c:'#ffffff'},
+    {n:'Acrux',ra:12.4433,dec:-63.0991,m:0.77,c:'#cce6ff'},
+    {n:'Aldebaran',ra:4.5987,dec:16.5093,m:0.85,c:'#ffaa66'},
+    {n:'Antares',ra:16.4901,dec:-26.4320,m:1.09,c:'#ff5544'},
+    {n:'Spica',ra:13.4199,dec:-11.1614,m:1.04,c:'#cce6ff'},
+    {n:'Pollux',ra:7.7553,dec:28.0262,m:1.14,c:'#ffd9a0'},
+    {n:'Fomalhaut',ra:22.9608,dec:-29.6222,m:1.16,c:'#ffffff'},
+    {n:'Deneb',ra:20.6905,dec:45.2803,m:1.25,c:'#ffffff'},
+    {n:'Mimosa',ra:12.7953,dec:-59.6886,m:1.25,c:'#cce6ff'},
+    {n:'Regulus',ra:10.1395,dec:11.9672,m:1.40,c:'#ffffff'},
+    {n:'Adhara',ra:6.9771,dec:-28.9721,m:1.50,c:'#cce6ff'},
+    {n:'Castor',ra:7.5766,dec:31.8884,m:1.57,c:'#ffffff'},
+    {n:'Shaula',ra:17.5601,dec:-37.1038,m:1.62,c:'#cce6ff'},
+    {n:'Bellatrix',ra:5.4188,dec:6.3497,m:1.64,c:'#cce6ff'},
+    {n:'Elnath',ra:5.4382,dec:28.6075,m:1.65,c:'#ffffff'},
+    {n:'Alnilam',ra:5.6036,dec:-1.2019,m:1.69,c:'#cce6ff'},
+    {n:'Alnitak',ra:5.6793,dec:-1.9425,m:1.74,c:'#cce6ff'},
+    {n:'Mintaka',ra:5.5334,dec:-0.2991,m:1.85,c:'#cce6ff'},
+    {n:'Polaris',ra:2.5301,dec:89.2641,m:1.97,c:'#fff5d6'},
+    {n:'Dubhe',ra:11.0621,dec:61.7510,m:1.79,c:'#fff0c8'}
+  ];
+
+  var PLANETS = [
+    {n:'Mercure',a:0.387,e:0.2056,i:7.005,L0:252.250,peri:77.456,asc:48.331,period:0.241,c:'#aaaaaa'},
+    {n:'Vénus',a:0.723,e:0.0068,i:3.395,L0:181.979,peri:131.602,asc:76.680,period:0.615,c:'#ffeecc'},
+    {n:'Mars',a:1.524,e:0.0934,i:1.850,L0:355.433,peri:336.041,asc:49.578,period:1.881,c:'#ff6644'},
+    {n:'Jupiter',a:5.203,e:0.0484,i:1.305,L0:34.351,peri:14.753,asc:100.464,period:11.862,c:'#e8d4a8'},
+    {n:'Saturne',a:9.537,e:0.0542,i:2.485,L0:50.078,peri:92.432,asc:113.665,period:29.457,c:'#f0d9a0'}
+  ];
+  var EARTH = {a:1.0,e:0.0167,i:0,L0:100.466,peri:102.937,asc:0,period:1.0};
+
+  function julianDay(date){ return date.getTime() / 86400000 + 2440587.5; }
+
+  function gmst(jd){
+    var T = (jd - 2451545.0) / 36525;
+    var t = 280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * T * T;
+    return ((t % 360) + 360) % 360;
+  }
+
+  function lst(jd){ return ((gmst(jd) + LON_DEG) % 360 + 360) % 360; }
+
+  function eqToHorizontal(raHours, decDeg, lstDeg){
+    var ra = raHours * 15 * DEG;
+    var dec = decDeg * DEG;
+    var ha = (lstDeg * DEG) - ra;
+    var sinAlt = Math.sin(dec)*Math.sin(LAT) + Math.cos(dec)*Math.cos(LAT)*Math.cos(ha);
+    var alt = Math.asin(sinAlt);
+    var sinAz = -Math.cos(dec) * Math.sin(ha);
+    var cosAz = Math.sin(dec) - Math.sin(alt) * Math.sin(LAT);
+    var az = Math.atan2(sinAz, cosAz);
+    return { alt: alt / DEG, az: ((az / DEG) + 360) % 360 };
+  }
+
+  function project(alt, az){
+    if (alt < 0) return null;
+    var r = R * Math.tan((90 - alt) * DEG / 2);
+    var azR = az * DEG;
+    return { x: CX + r * Math.sin(azR), y: CY - r * Math.cos(azR) };
+  }
+
+  function sunRaDec(jd){
+    var n = jd - 2451545.0;
+    var L = (280.460 + 0.9856474 * n) % 360;
+    var g = ((357.528 + 0.9856003 * n) % 360) * DEG;
+    var lambda = (L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * DEG;
+    var eps = (23.439 - 0.0000004 * n) * DEG;
+    var ra = Math.atan2(Math.cos(eps) * Math.sin(lambda), Math.cos(lambda)) / DEG / 15;
+    if (ra < 0) ra += 24;
+    var dec = Math.asin(Math.sin(eps) * Math.sin(lambda)) / DEG;
+    return { ra: ra, dec: dec };
+  }
+
+  function moonRaDec(jd){
+    var d = jd - 2451545.0;
+    var L = ((218.316 + 13.176396 * d) % 360 + 360) % 360;
+    var M = (((134.963 + 13.064993 * d) % 360 + 360) % 360) * DEG;
+    var F = (((93.272 + 13.229350 * d) % 360 + 360) % 360) * DEG;
+    var lambda = (L + 6.289 * Math.sin(M)) * DEG;
+    var beta = 5.128 * Math.sin(F) * DEG;
+    var eps = 23.439 * DEG;
+    var ra = Math.atan2(Math.sin(lambda) * Math.cos(eps) - Math.tan(beta) * Math.sin(eps), Math.cos(lambda)) / DEG / 15;
+    if (ra < 0) ra += 24;
+    var dec = Math.asin(Math.sin(beta) * Math.cos(eps) + Math.cos(beta) * Math.sin(eps) * Math.sin(lambda)) / DEG;
+    return { ra: ra, dec: dec };
+  }
+
+  function moonPhaseEmoji(jd){
+    var SYNODIC = 29.53058867;
+    var refNew = 2451550.1;
+    var phase = ((jd - refNew) % SYNODIC + SYNODIC) % SYNODIC;
+    var f = phase / SYNODIC;
+    if (f < 0.0625 || f >= 0.9375) return '🌑';
+    if (f < 0.1875) return '🌒';
+    if (f < 0.3125) return '🌓';
+    if (f < 0.4375) return '🌔';
+    if (f < 0.5625) return '🌕';
+    if (f < 0.6875) return '🌖';
+    if (f < 0.8125) return '🌗';
+    return '🌘';
+  }
+
+  function solveKepler(M, e){
+    var E = M;
+    for (var i = 0; i < 12; i++) {
+      E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    }
+    return E;
+  }
+
+  function planetHelio(p, daysSinceJ2000){
+    var n = 360 / (p.period * 365.25);
+    var M = ((p.L0 - p.peri) + n * daysSinceJ2000) % 360;
+    if (M < 0) M += 360;
+    var Mr = M * DEG;
+    var E = solveKepler(Mr, p.e);
+    var x = p.a * (Math.cos(E) - p.e);
+    var y = p.a * Math.sqrt(1 - p.e * p.e) * Math.sin(E);
+    var w = (p.peri - (p.asc || 0)) * DEG;
+    var asc = (p.asc || 0) * DEG;
+    var inc = (p.i || 0) * DEG;
+    var x1 = x * Math.cos(w) - y * Math.sin(w);
+    var y1 = x * Math.sin(w) + y * Math.cos(w);
+    var x2 = x1;
+    var y2 = y1 * Math.cos(inc);
+    var z2 = y1 * Math.sin(inc);
+    var x3 = x2 * Math.cos(asc) - y2 * Math.sin(asc);
+    var y3 = x2 * Math.sin(asc) + y2 * Math.cos(asc);
+    return { x: x3, y: y3, z: z2 };
+  }
+
+  function planetRaDec(planet, jd){
+    var d = jd - 2451545.0;
+    var ph = planetHelio(planet, d);
+    var eh = planetHelio(EARTH, d);
+    var dx = ph.x - eh.x, dy = ph.y - eh.y, dz = ph.z - eh.z;
+    var eps = 23.439 * DEG;
+    var xe = dx;
+    var ye = dy * Math.cos(eps) - dz * Math.sin(eps);
+    var ze = dy * Math.sin(eps) + dz * Math.cos(eps);
+    var ra = Math.atan2(ye, xe) / DEG / 15;
+    if (ra < 0) ra += 24;
+    var rdist = Math.sqrt(xe * xe + ye * ye + ze * ze);
+    var dec = Math.asin(ze / rdist) / DEG;
+    return { ra: ra, dec: dec };
+  }
+
+  function el(NS, tag, attrs){
+    var n = document.createElementNS(NS, tag);
+    if (attrs) for (var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+
+  function buildSvg(){
+    var svg = document.getElementById('sky-map-svg');
+    if (!svg) return;
+    var date = new Date();
+    var jd = julianDay(date);
+    var localLst = lst(jd);
+    var NS = 'http://www.w3.org/2000/svg';
+
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    var defs = el(NS, 'defs');
+    defs.innerHTML =
+      '<radialGradient id="skyGrad" cx="50%" cy="50%" r="50%">' +
+        '<stop offset="0%" stop-color="rgba(0,12,28,0.95)"/>' +
+        '<stop offset="70%" stop-color="rgba(0,4,12,0.97)"/>' +
+        '<stop offset="100%" stop-color="rgba(0,0,4,1)"/>' +
+      '</radialGradient>';
+    svg.appendChild(defs);
+
+    svg.appendChild(el(NS, 'circle', { cx: CX, cy: CY, r: R, fill: 'url(#skyGrad)' }));
+
+    [60, 30].forEach(function(altDeg){
+      var rr = R * Math.tan((90 - altDeg) * DEG / 2);
+      svg.appendChild(el(NS, 'circle', { cx: CX, cy: CY, r: rr, 'class': 'sky-altring' }));
+    });
+
+    svg.appendChild(el(NS, 'circle', { cx: CX, cy: CY, r: R, 'class': 'sky-horizon' }));
+
+    [['N',0],['E',90],['S',180],['O',270]].forEach(function(c){
+      var azR = c[1] * DEG;
+      var x = CX + (R + 14) * Math.sin(azR);
+      var y = CY - (R + 14) * Math.cos(azR) + 4;
+      var t = el(NS, 'text', { x: x, y: y, 'text-anchor': 'middle', 'class': 'sky-cardinal' });
+      t.textContent = c[0];
+      svg.appendChild(t);
+    });
+
+    var sun = sunRaDec(jd);
+    var sunPos = eqToHorizontal(sun.ra, sun.dec, localLst);
+    var dayMode = sunPos.alt > 0;
+
+    STARS.forEach(function(s){
+      var pos = eqToHorizontal(s.ra, s.dec, localLst);
+      var p = project(pos.alt, pos.az);
+      if (!p) return;
+      var size = Math.max(1.2, 4.5 - s.m * 1.1);
+      var star = el(NS, 'circle', {
+        cx: p.x, cy: p.y, r: size, fill: s.c, 'class': 'sky-star',
+        opacity: dayMode ? 0.15 : Math.max(0.55, 1 - s.m * 0.12)
+      });
+      var title = el(NS, 'title');
+      title.textContent = s.n + ' (mag ' + s.m + ' · alt ' + pos.alt.toFixed(1) + '°)';
+      star.appendChild(title);
+      svg.appendChild(star);
+
+      if (s.m < 0.5 && !dayMode) {
+        var lbl = el(NS, 'text', {
+          x: p.x + size + 4, y: p.y + 3,
+          'font-family': 'Share Tech Mono, monospace', 'font-size': 9,
+          fill: s.c, opacity: 0.7
+        });
+        lbl.textContent = s.n;
+        svg.appendChild(lbl);
+      }
+    });
+
+    var moon = moonRaDec(jd);
+    var moonHorizontal = eqToHorizontal(moon.ra, moon.dec, localLst);
+    var moonProj = project(moonHorizontal.alt, moonHorizontal.az);
+    if (moonProj) {
+      var g = el(NS, 'g');
+      g.appendChild(el(NS, 'circle', {
+        cx: moonProj.x, cy: moonProj.y, r: 16,
+        fill: 'rgba(255,248,216,0.18)'
+      }));
+      var moonText = el(NS, 'text', {
+        x: moonProj.x, y: moonProj.y + 6,
+        'text-anchor': 'middle', 'font-size': 18
+      });
+      moonText.textContent = moonPhaseEmoji(jd);
+      g.appendChild(moonText);
+      var mt = el(NS, 'title');
+      mt.textContent = 'Lune · alt ' + moonHorizontal.alt.toFixed(1) + '° · az ' + moonHorizontal.az.toFixed(0) + '°';
+      g.appendChild(mt);
+      svg.appendChild(g);
+    }
+
+    PLANETS.forEach(function(pl){
+      try {
+        var rd = planetRaDec(pl, jd);
+        var ph = eqToHorizontal(rd.ra, rd.dec, localLst);
+        var pp = project(ph.alt, ph.az);
+        if (!pp) return;
+        var pCircle = el(NS, 'circle', {
+          cx: pp.x, cy: pp.y, r: 4.2, fill: pl.c, 'class': 'sky-planet',
+          opacity: dayMode ? 0.4 : 1
+        });
+        pCircle.style.color = pl.c;
+        var pTitle = el(NS, 'title');
+        pTitle.textContent = pl.n + ' · alt ' + ph.alt.toFixed(1) + '° · az ' + ph.az.toFixed(0) + '°';
+        pCircle.appendChild(pTitle);
+        svg.appendChild(pCircle);
+
+        var pLabel = el(NS, 'text', {
+          x: pp.x + 8, y: pp.y + 3,
+          'font-family': 'Share Tech Mono, monospace', 'font-size': 10,
+          fill: pl.c, opacity: dayMode ? 0.4 : 0.9
+        });
+        pLabel.textContent = pl.n;
+        svg.appendChild(pLabel);
+      } catch(e) {}
+    });
+
+    var timeEl = document.getElementById('sky-map-time');
+    var statusEl = document.getElementById('sky-map-status');
+    if (timeEl) {
+      timeEl.textContent = date.toLocaleString('fr-FR', {
+        weekday: 'short', day: '2-digit', month: 'short',
+        hour: '2-digit', minute: '2-digit'
+      }).toUpperCase() + ' · TLEMCEN';
+    }
+    if (statusEl) {
+      var label, color;
+      if (sunPos.alt > 0)        { label = '☀ JOUR · ciel non visible'; color = '#ffcc66'; }
+      else if (sunPos.alt > -6)  { label = '◐ CRÉPUSCULE CIVIL';        color = '#ff9966'; }
+      else if (sunPos.alt > -12) { label = '◑ CRÉPUSCULE NAUTIQUE';     color = '#ff7799'; }
+      else if (sunPos.alt > -18) { label = '◒ CRÉPUSCULE ASTRO';        color = '#aa77ff'; }
+      else                       { label = '● NUIT ASTRONOMIQUE';       color = '#00ff9c'; }
+      statusEl.textContent = label;
+      statusEl.style.color = color;
+      statusEl.style.borderColor = color + '4d';
+      statusEl.style.background = color + '0d';
+    }
+
+    if (!dayMode && Math.random() < 0.35) launchShootingStar(svg);
+  }
+
+  function launchShootingStar(svg){
+    var NS = 'http://www.w3.org/2000/svg';
+    var startAngle = Math.random() * 2 * Math.PI;
+    var endAngle = startAngle + (Math.random() * 0.8 + 0.2);
+    var startR = R * 0.85, endR = R * 0.5;
+    var x1 = CX + startR * Math.cos(startAngle);
+    var y1 = CY + startR * Math.sin(startAngle);
+    var x2 = CX + endR * Math.cos(endAngle);
+    var y2 = CY + endR * Math.sin(endAngle);
+    var line = document.createElementNS(NS, 'line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x1); line.setAttribute('y2', y1);
+    line.setAttribute('class', 'sky-shooting');
+    svg.appendChild(line);
+    var t0 = performance.now(), DUR = 800;
+    function tick(t){
+      var k = (t - t0) / DUR;
+      if (k >= 1) { line.remove(); return; }
+      line.setAttribute('x2', x1 + (x2 - x1) * k);
+      line.setAttribute('y2', y1 + (y2 - y1) * k);
+      line.setAttribute('opacity', k < 0.7 ? 0.9 : 0.9 * (1 - (k - 0.7) / 0.3));
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function init(){
+    buildSvg();
+    setInterval(buildSvg, 60000);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 })();
 </script>
