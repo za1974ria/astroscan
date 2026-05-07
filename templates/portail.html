@@ -1091,9 +1091,14 @@ hr{
 }
 /* ═══ END ═══ */
 
-/* ═══ PASS UI A FIX 3 (2026-05-07) — SIDEBAR 7 GROUPES COLLAPSIBLES ═══ */
+/* ═══ PASS UI A FIX 3 + PASS UI B FIX 3 — SIDEBAR 7 GROUPES COLLAPSIBLES ═══ */
 .sidebar-group {
-  margin: 2px 0;
+  margin: 0;
+}
+/* PASS UI B FIX 3 : hauteur uniforme 44px sur top-level + group-header */
+.sidebar > .sidebar-section .nav-item,
+.sidebar-group-header {
+  min-height: 44px;
 }
 .sidebar-group-header {
   display: flex; align-items: center; gap: 10px;
@@ -1114,12 +1119,29 @@ hr{
 .sidebar-group-header:focus { outline: none; }
 .sidebar-group-header .nav-label {
   font-family: var(--font);
-  font-size:0.6rem; letter-spacing:0.16em; text-transform:uppercase;
+  font-size:0.55rem; letter-spacing:0.14em; text-transform:uppercase;
   color:var(--text); flex:1;
+  /* PASS UI B FIX 3 : ellipsis si label > 1 ligne (ex. "MÉTÉO & AURORES") */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
 }
 .sidebar-group-header .nav-icon { color: var(--cyan); }
+/* PASS UI B FIX 3 : icône uniforme — SVG 14×14 dans conteneur 20×20 (vs 22 avant) */
+.sidebar .nav-icon {
+  width:20px;
+  min-width:20px;
+  height:20px;
+  padding:3px;
+}
+.sidebar .nav-icon svg {
+  width: 14px; height: 14px;
+}
 .sidebar-group .chevron {
   display:flex; align-items:center; justify-content:center;
+  width: 16px; min-width: 16px;
+  margin-left: auto;
   color: var(--text-dim);
   transition: transform 0.2s ease;
 }
@@ -1134,8 +1156,10 @@ hr{
 .sidebar-group.collapsed .sidebar-group-content {
   max-height: 0;
 }
+/* PASS UI B FIX 3 : sub-items légèrement plus courts (36px) pour hiérarchie visuelle */
 .nav-item.nav-sub {
-  padding-left: 36px;
+  padding: 7px 16px 7px 36px;
+  min-height: 32px;
   border-left: 2px solid transparent;
 }
 .nav-item.nav-sub:hover {
@@ -1148,15 +1172,20 @@ hr{
   font-size: 0.55rem;
   letter-spacing: 0.1em;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .nav-link {
   text-decoration: none;
   color: inherit;
 }
 .nav-link:visited { color: inherit; }
+/* PASS UI B FIX 3 : À propos top-level — même padding que les autres top-level,
+   plus de margin-top ni border-top distincts (intégré au flux). */
 .nav-toplevel {
-  margin-top: 8px;
-  border-top: 1px solid rgba(0,180,255,0.08);
+  margin-top: 0;
+  border-top: 0;
 }
 /* Surcharge : annule le chip flottant historique #nav-iss-tracker (display:none, position:fixed) lorsqu'il est dans la sidebar */
 .sidebar #nav-iss-tracker {
