@@ -87,10 +87,13 @@ font-size: 10px;
 
 /* ── LAYOUT ── */
 /* Une seule piste : la sidebar est fixed — évite une 2e colonne grille vide entre sidebar et contenu. */
+/* PASS UI A FIX 2 (2026-05-07) : grid-template-rows passe de 100px à auto pour
+   éliminer le gap ~62px au-dessus du topbar (la 1re rangée est dimensionnée
+   automatiquement par le topbar lui-même + le primary-nav fixed). */
 .shell {
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: 100px 1fr;
+  grid-template-rows: auto 1fr;
   width: 100%;
   min-height: 100vh;
 }
@@ -183,6 +186,8 @@ font-size: 10px;
 .hamburger-btn:focus { outline: none; }
 
 /* ── TOP BAR ── */
+/* PASS UI A FIX 2 (2026-05-07) : position relative → sticky top:0 pour rester
+   en haut du viewport au scroll. Le topbar n'a plus de marge fantôme au-dessus. */
 .topbar {
   grid-column: 1/-1;
   display: flex; align-items: center; justify-content: space-between;
@@ -191,7 +196,7 @@ font-size: 10px;
   padding: 3px 10px;
   background: rgba(1,4,8,0.99);
   border-bottom: 1px solid var(--border-bright);
-  position: relative; z-index: 1000;
+  position: sticky; top: 0; z-index: 1000;
 }
 .topbar::after {
   content:'';
