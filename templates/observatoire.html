@@ -555,6 +555,15 @@ body.embed-mode main {
 .sky-star {
   filter: drop-shadow(0 0 2px rgba(255,255,255,0.6));
 }
+/* PASS UI O-H FIX 1 (2026-05-07) — Star twinkle for bright stars only.
+   Réaliste : seules les étoiles mag<1.5 scintillent à l'œil nu. */
+@keyframes skyStarTwinkle {
+  0%, 100% { opacity: var(--twinkle-base, 0.85); }
+  50% { opacity: 1; filter: drop-shadow(0 0 4px currentColor); }
+}
+.sky-star-bright {
+  animation: skyStarTwinkle 3.5s ease-in-out infinite;
+}
 .sky-planet {
   filter: drop-shadow(0 0 4px currentColor);
   stroke: rgba(255, 255, 255, 0.6);
@@ -2867,10 +2876,20 @@ function loadEphemerides(){
       var p = project(pos.alt, pos.az);
       if (!p) return;
       var size = Math.max(1.2, 4.5 - s.m * 1.1);
+      var baseOpacity = dayMode ? 0.15 : Math.max(0.55, 1 - s.m * 0.12);
       var star = el(NS, 'circle', {
-        cx: p.x, cy: p.y, r: size, fill: s.c, 'class': 'sky-star',
-        opacity: dayMode ? 0.15 : Math.max(0.55, 1 - s.m * 0.12)
+        cx: p.x, cy: p.y, r: size, fill: s.c,
+        opacity: baseOpacity
       });
+      /* PASS UI O-H FIX 1 (2026-05-07) — twinkle réaliste : seules
+         les étoiles mag<1.5 scintillent à l'œil nu. */
+      if (s.m < 1.5) {
+        star.setAttribute('class', 'sky-star sky-star-bright');
+        star.style.animationDelay = (Math.random() * 3).toFixed(2) + 's';
+        star.style.setProperty('--twinkle-base', baseOpacity.toFixed(2));
+      } else {
+        star.setAttribute('class', 'sky-star');
+      }
       var title = el(NS, 'title');
       title.textContent = s.n + ' (mag ' + s.m + ' · alt ' + pos.alt.toFixed(1) + '°)';
       star.appendChild(title);
