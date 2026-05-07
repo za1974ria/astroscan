@@ -53,14 +53,24 @@ html, body {
   font-family: var(--mono);
 }
 
-/* ── STARS ── */
-#stars { position:fixed; inset:0; z-index:0; pointer-events:none; }
-.star {
-  position:absolute; border-radius:50%; background:#fff;
-  animation: tw var(--d,4s) ease-in-out infinite;
-  animation-delay: var(--dl,0s); opacity:var(--op,.4);
+/* ── STARS (PASS UI C FIX 1 — Canvas starfield) ── */
+/* Le canvas remplace l'ancien stars-as-divs. Position fixed full-viewport,
+   z-index -1 pour rester en arrière-plan absolu. Background radial pour
+   un dégradé "deep space" sur lequel les étoiles brillent. */
+#starfield-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center,
+    #020615 0%, #000409 70%, #000000 100%);
 }
-@keyframes tw { 0%,100%{opacity:var(--op)} 50%{opacity:calc(var(--op)*.15)} }
+/* Legacy #stars container retiré du DOM mais sélecteur conservé en
+   no-op au cas où d'autres scripts l'inspecteraient. */
+#stars { display: none; }
 
 .astro-btn {
 padding: 8px 14px;
@@ -1204,7 +1214,7 @@ hr{
 </head>
 <body>
 
-<div id="stars"></div>
+<canvas id="starfield-bg" aria-hidden="true"></canvas>
 
 <div class="shell">
 
@@ -1960,17 +1970,10 @@ hr{
     close();
   })();
 
-  // ── Stars ──
-  (function(){
-    var s = document.getElementById('stars');
-    for (var i = 0; i < 120; i++) {
-      var el = document.createElement('div');
-      el.className = 'star';
-      var sz = Math.random() < 0.88 ? Math.random() * 0.9 + 0.2 : Math.random() * 1.5 + 0.6;
-      el.style.cssText = 'left:' + Math.random() * 100 + '%;top:' + Math.random() * 100 + '%;width:' + sz + 'px;height:' + sz + 'px;--d:' + (3 + Math.random() * 5) + 's;--dl:' + (-Math.random() * 5) + 's;--op:' + (0.1 + Math.random() * 0.4);
-      s.appendChild(el);
-    }
-  })();
+  // ── Stars (PASS UI C FIX 1) ──
+  // L'ancienne génération div-based (120 .star avec @keyframes tw) est
+  // remplacée par /static/js/starfield.js (Canvas, requestAnimationFrame,
+  // 350-500 étoiles + parallax + shooting stars). Voir bas du <body>.
 
   // ── Clock ──
   function tick() {
@@ -2551,5 +2554,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 </script>
+<!-- PASS UI C FIX 1 (2026-05-07) : starfield Canvas en arrière-plan -->
+<script defer src="/static/js/starfield.js"></script>
 </body>
 </html>
