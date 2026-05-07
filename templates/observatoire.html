@@ -221,6 +221,22 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
   .grid{display:flex;flex-direction:column;}
   .topbar{flex-wrap:wrap;}
 }
+
+/* PASS UI O-C FIX 2 RÉEL (2026-05-07) — mode embarqué dans iframe portail.
+   Quand observatoire est chargé via ?embed=1 par le portail (iframe),
+   on cache la sidebar (déjà présente sur le portail parent) et le breadcrumb
+   (inutile dans une iframe). La page reste fonctionnelle, juste épurée. */
+body.embed-mode .sidebar,
+body.embed-mode aside.sidebar,
+body.embed-mode #sidebar,
+body.embed-mode .breadcrumb-nav,
+body.embed-mode header > .logo {
+  display: none !important;
+}
+body.embed-mode main {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
 </style>
 <style id="mob">
 /* ===== OBSERVATOIRE — MOBILE FULL PARITY ===== */
@@ -2208,5 +2224,16 @@ function loadEphemerides(){
 <script src="/static/js/astro_notifications.js"></script>
 <script src="/static/js/aegis_chat_widget.js"></script>
 <script defer src="/static/js/starfield.js"></script>
+<script>
+/* PASS UI O-C FIX 2 RÉEL — détection mode embarqué */
+(function(){
+  try {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('embed') === '1' || window.self !== window.top) {
+      document.body.classList.add('embed-mode');
+    }
+  } catch(e) { console.warn('embed detect failed', e); }
+})();
+</script>
 </body>
 </html>
