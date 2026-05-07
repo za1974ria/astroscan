@@ -426,6 +426,52 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
   background: rgba(0, 212, 255, 0.06) !important;
   opacity: 0.7;
 }
+
+/* PASS UI O-B FIX 3 (2026-05-07) — breadcrumb retour portail.
+   Discret, fixed top-left, cyan dim. Au-dessus de tout (z 1010) sauf modals. */
+.breadcrumb-nav {
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  z-index: 1010;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+.breadcrumb-link {
+  color: var(--cyan);
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 4px;
+  background: rgba(0, 12, 24, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: all 0.18s ease;
+}
+.breadcrumb-link:hover {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+  color: #cce4ff;
+}
+.breadcrumb-sep {
+  color: #3a5868;
+}
+.breadcrumb-current {
+  color: #7a9ab0;
+  letter-spacing: 0.2em;
+}
+@media (max-width: 768px) {
+  .breadcrumb-nav { font-size: 0.5rem; top: 8px; left: 8px; gap: 6px; }
+  .breadcrumb-link { padding: 3px 8px; }
+  .breadcrumb-current { display: none; }
+}
 </style>
 <!-- Google Analytics GA4 -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
@@ -441,6 +487,13 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
 </head>
 <body>
 <canvas id="starfield-bg" aria-hidden="true"></canvas>
+<!-- PASS UI O-B FIX 3 (2026-05-07) : breadcrumb retour portail.
+     Position fixed top-left, z-index 1010 (au-dessus du header relative). -->
+<nav class="breadcrumb-nav" aria-label="{% if lang == 'en' %}Navigation{% else %}Navigation{% endif %}">
+  <a href="/portail" class="breadcrumb-link">◄ {% if lang == 'en' %}HOME{% else %}PORTAIL{% endif %}</a>
+  <span class="breadcrumb-sep">·</span>
+  <span class="breadcrumb-current">{% if lang == 'en' %}OBSERVATORY{% else %}OBSERVATOIRE{% endif %}</span>
+</nav>
 <div id="stars"></div>
 <div class="nebula"></div>
 <header>
