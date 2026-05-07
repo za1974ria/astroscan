@@ -164,8 +164,8 @@ font-size: 10px;
   #splash { overflow: visible !important; }
   #pcg, .portal-cards-grid { max-height: none !important; overflow: visible !important; }
   #astro-notif-bell, .notif-bell { position: fixed !important; top: 6px !important; right: 8px !important; z-index: 1002 !important; }
-  .primary-nav { left: 0 !important; top: 32px !important; padding: 0 6px !important; overflow-x: auto !important; white-space: nowrap !important; gap: 3px !important; }
-  .content-area { padding-top: 62px !important; }
+  /* PASS UI B FIX 2 : .primary-nav mobile-override retirée (bloc HTML supprimé) */
+  .content-area { padding-top: 16px !important; }
 }
 
 .hamburger-btn {
@@ -264,36 +264,7 @@ font-size: 10px;
 .topbar-right {
   display:flex; align-items:center; gap:16px;
 }
-.primary-nav {
-  position: fixed;
-  top: 66px;
-  left: 220px;
-  right: 0;
-  z-index: 9;
-  display: flex;
-  gap: 3px;
-  padding: 0 8px;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  border-bottom: 1px solid rgba(0, 255, 224, 0.3);
-}
-.primary-nav a {
-  text-decoration: none;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 0 8px;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  line-height: 1.0;
-}
-.primary-nav a:hover {
-  color: var(--cyan);
-  border-color: #00ffe0;
-  background: rgba(0, 212, 255, 0.14);
-  box-shadow: 0 0 8px rgba(0, 255, 224, 0.28);
-}
+/* PASS UI B FIX 2 (2026-05-07) : règles .primary-nav retirées — bloc HTML supprimé. */
 #top-clock {
   font-family: var(--font);
   font-size:0.7rem; font-weight:600;
@@ -519,6 +490,8 @@ font-size: 10px;
 .sb-val { color:var(--text); }
 
 /* ── CONTENT AREA ── */
+/* PASS UI B FIX 2 : padding-top 58px → 16px (la primary-nav fixed à 66px
+   est supprimée — plus besoin de réserver 58px pour la chevaucher). */
 .content-area {
   grid-column: 1;
   grid-row: 2;
@@ -526,7 +499,7 @@ font-size: 10px;
   margin-left: 220px;
   width: auto;
   min-width: 0;
-  padding: 58px 40px 40px 20px;
+  padding: 16px 40px 40px 20px;
   overflow: auto;
   margin-right: 0;
 }
@@ -1245,13 +1218,11 @@ hr{
       <div id="top-clock">--:--:--</div>
     </div>
   </div>
-  <nav class="primary-nav" aria-label="Primary navigation">
-    <a href="/">Home</a>
-    <a href="/iss-tracker">ISS</a>
-    <a href="#passes-brief">Passes</a>
-    <a href="/apod/view">APOD</a>
-    <a href="/technical">Technical</a>
-  </nav>
+  <!-- PASS UI B FIX 2 (2026-05-07) : <nav class="primary-nav"> retiré entièrement —
+       il chevauchait la zone centrale et son border-bottom cyan créait une ligne
+       fantôme avec le texte "HOME ISS PASSES APOD TECHNICAL" visible derrière le hero.
+       Toutes ces destinations restent accessibles via la sidebar (Accueil, ISS,
+       APOD, Technical via /technical en lien direct si nécessaire). -->
 
   <div class="sidebar">
 
