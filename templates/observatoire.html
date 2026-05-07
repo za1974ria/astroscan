@@ -962,7 +962,24 @@ const se=document.getElementById('stars');
 for(let i=0;i<180;i++){const s=document.createElement('div');s.className='star';const z=Math.random()*2.2+0.3;s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${z}px;height:${z}px;opacity:${Math.random()*.7+.1};animation:twinkle ${2+Math.random()*5}s ease-in-out infinite;animation-delay:${Math.random()*5}s`;se.appendChild(s);}
 
 // CLOCK
-function disconnectObservatory(){ if(window.location.pathname!=='/portail') window.location.href='/portail'; else window.location.href='/'; }
+function disconnectObservatory(){
+  /* PASS UI O-F FIX 2 (2026-05-07) — utiliser window.top pour sortir
+     de l'iframe portail si on est embarqué. Sinon naviguer normalement
+     en top-level. Évite l'effet "portail dans portail" (sidebar fantôme). */
+  try {
+    if (window.top !== window.self) {
+      window.top.location.href = '/portail';
+      return;
+    }
+  } catch(e) {
+    /* Cross-origin — pas dans notre iframe, on tombe en standalone. */
+  }
+  if (window.location.pathname !== '/portail') {
+    window.location.href = '/portail';
+  } else {
+    window.location.href = '/';
+  }
+}
 function updateClock(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleTimeString('fr-FR');document.getElementById('clock-utc').textContent='UTC '+n.toUTCString().split(' ')[4];}
 setInterval(updateClock,1000);updateClock();
 
