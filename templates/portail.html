@@ -328,9 +328,12 @@ font-size: 10px;
   border-left-color: rgba(0,212,255,0.5);
   transition: all 0.18s ease;
 }
+/* PASS UI C FIX 3 : active state adouci — ancien glow trop intense
+   sur Accueil. Cyan halo discret, label/icône colorés cyan. */
 .nav-item.active {
-  background: rgba(0,212,255,0.07);
+  background: rgba(0,212,255,0.05);
   border-left-color: var(--cyan);
+  box-shadow: inset 0 0 8px rgba(0,212,255,0.06);
 }
 .nav-item.active .nav-label { color:var(--cyan); }
 .nav-item.active .nav-icon { color:var(--cyan); }
@@ -1476,11 +1479,15 @@ hr{
       </a>
     </div>
 
-    <div style="border-top:none;padding:8px;margin-top:8px;background:rgba(0,20,40,0.5);display:block !important;visibility:visible !important">
-      <div style="font-family:monospace;font-size:9px;color:#00d4ff;letter-spacing:2px;margin-bottom:6px">🔭 {% if lang == 'en' %}GLOBAL OBSERVATORY — NASA IMAGE FEED{% else %}OBSERVATOIRE GLOBAL — FLUX D'IMAGES NASA{% endif %}</div>
+    <!-- PASS UI C FIX 3 : panneau OBSERVATOIRE GLOBAL harmonisé sur la
+         palette cyan/dark. Header text-dim au lieu de cyan vif, image
+         encadrée en cyan transparent (au lieu du vert résiduel), texte
+         de chargement var(--text-dim) au lieu de #00ff88 vert. -->
+    <div style="padding:10px 16px;margin-top:8px;background:rgba(2,12,24,0.6);border-top:1px solid var(--border);">
+      <div style="font-family:var(--font);font-size:0.45rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">🔭 {% if lang == 'en' %}NASA Image Feed{% else %}Flux NASA{% endif %}</div>
       <div id="sidebar-hubble" style="min-height:60px;display:block !important">
-        <img src="https://cdn.spacetelescope.org/archives/images/publicationjpg/heic1509a.jpg" alt="Hubble test" style="width:100%;height:60px;object-fit:cover;border-radius:4px;border:1px solid rgba(0,255,136,0.2)" onerror="this.style.display='none'">
-        <div style="color:#00ff88;font-size:9px;text-align:center;padding:8px">⟳ {% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
+        <img src="https://cdn.spacetelescope.org/archives/images/publicationjpg/heic1509a.jpg" alt="Hubble test" style="width:100%;height:60px;object-fit:cover;border-radius:4px;border:1px solid var(--border);" onerror="this.style.display='none'">
+        <div style="color:var(--text-dim);font-size:0.5rem;text-align:center;padding:6px;letter-spacing:0.05em;">⟳ {% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
       </div>
     </div>
 
