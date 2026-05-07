@@ -583,7 +583,8 @@ body.embed-mode main {
   <button class="tab" onclick="window.open('/scientific','_blank')" style="background:rgba(0,212,255,0.1);border-color:#00d4ff">⚗️ {% if lang == 'en' %}SCIENTIFIC MODE{% else %}MODE SCIENTIFIQUE{% endif %}</button>
   <button class="tab" onclick="window.open('/overlord_live','_blank')" style="background:rgba(0,170,255,0.08);border-color:#00aaff">🛡️ OVERLORD LIVE</button>
   <button class="tab" data-tab="lab" onclick="switchTab('lab',this)">🔬 {% if lang == 'en' %}LABORATORY{% else %}LABORATOIRE{% endif %}</button>
-  <button class="tab" onclick="window.location.href='/a-propos'" style="background:rgba(0,212,255,0.05);border-color:rgba(0,212,255,0.25);margin-left:auto">ℹ {% if lang == 'en' %}ABOUT{% else %}À PROPOS{% endif %}</button>
+  <!-- PASS UI O-D FIX 2 (2026-05-07) : bouton "ℹ À PROPOS" top-right
+       supprimé (doublon — le sidebar gauche contient déjà l'entrée). -->
   </nav>
 <main>
 <div class="content">
