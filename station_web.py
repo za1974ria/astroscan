@@ -1846,43 +1846,6 @@ def get_user_lang():
     accept = request.headers.get("Accept-Language", "")
     return "en" if accept.lower().startswith("en") else "fr"
 
-# MIGRATED TO i18n_bp 2026-05-02 (B-RECYCLE R1) — see app/blueprints/i18n/__init__.py
-# @app.route("/set-lang/<lang>")
-# def set_lang(lang):
-#     """Enregistre la préférence de langue dans un cookie 1 an."""
-#     if lang not in SUPPORTED_LANGS:
-#         lang = "fr"
-#     resp = make_response(redirect(request.referrer or "/portail"))
-#     resp.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, samesite="Lax")
-#     return resp
-
-# MIGRATED TO main_bp 2026-05-02 (B-RECYCLE R3) — see app/blueprints/main/__init__.py
-# @app.route("/en/portail")
-# @app.route("/en/")
-# @app.route("/en")
-# def portail_en():
-#     """Version anglaise du portail — pose le cookie lang=en."""
-#     resp = make_response(render_template("portail.html", lang="en"))
-#     resp.set_cookie("lang", "en", max_age=60 * 60 * 24 * 365, samesite="Lax")
-#     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-#     resp.headers["Pragma"] = "no-cache"
-#     resp.headers["Expires"] = "0"
-#     return resp
-
-# ─── EXPORT DONNÉES PUBLIQUES ────────────────────────────────────────────────
-# MIGRATED TO export_bp PASS 4 — see app/blueprints/export/__init__.py
-# @app.route("/api/export/visitors.csv")
-# @app.route("/api/export/visitors.json")
-# @app.route("/api/export/ephemerides.json")
-# @app.route("/api/export/observations.json")
-# @app.route("/api/export/apod-history.json")
-
-# MIGRATED TO main_bp 2026-05-02 (B-RECYCLE R3) — see app/blueprints/main/__init__.py
-# @app.route("/data")
-# def page_data():
-#     """Open Data Portal — AstroScan-Chohra."""
-#     return render_template("data_export.html")
-
 # ─── API PUBLIQUE — DOCUMENTATION ──────────────────────────────────────────
 API_SPEC = {
     "openapi": "3.0.0",
@@ -2054,18 +2017,6 @@ API_SPEC = {
     ]
 }
 
-# MIGRATED TO api_bp 2026-05-02 (B-RECYCLE R2) — see app/blueprints/api/__init__.py
-# @app.route("/api/docs")
-# def api_docs():
-#     """Page documentation API publique — Swagger UI."""
-#     return render_template("api_docs.html")
-
-# MIGRATED TO api_bp 2026-05-02 (B-RECYCLE R2) — see app/blueprints/api/__init__.py
-# @app.route("/api/spec.json")
-# def api_spec_json():
-#     """Spécification OpenAPI 3.0 en JSON."""
-#     return jsonify(API_SPEC)
-
 # ────────────────────────────────────────────────────────────────────────────
 
 
@@ -2075,11 +2026,6 @@ API_SPEC = {
 
 
 
-
-# MIGRATED TO system_bp PASS 4 — see app/blueprints/system/__init__.py
-# @app.route('/health', methods=['GET'])          → health_check()
-# @app.route('/selftest', methods=['GET'])         → selftest()
-# @app.route('/api/tle/refresh', methods=['POST']) → api_tle_refresh()
 
 
 # ══════════════════════════════════════════════════════════════
@@ -2249,11 +2195,6 @@ def get_geo_from_ip(ip):
 # MIGRATED TO pages_bp PASS 5 — /galerie → see app/blueprints/pages/__init__.py (galerie)
 # MIGRATED TO pages_bp PASS 5 — /observatoire → see app/blueprints/pages/__init__.py (observatoire)
 
-# MIGRATED TO pages_bp 2026-05-02 (B-RECYCLE R2) — see app/blueprints/pages/__init__.py
-# @app.route('/vision')
-# def vision():
-#     return render_template('vision.html')
-
 
 # MIGRATED TO pages_bp PASS 5 — /vision-2026 → see app/blueprints/pages/__init__.py (vision_2026)
 # MIGRATED TO pages_bp PASS 5 — /sondes → see app/blueprints/pages/__init__.py (sondes)
@@ -2272,77 +2213,10 @@ def get_geo_from_ip(ip):
 
 
 
-# MIGRATED TO pages_bp 2026-05-02 (B-RECYCLE R2) — see app/blueprints/pages/__init__.py
-# @app.route('/scientific')
-# def scientific():
-#     return render_template('scientific.html')
-
 # ══════════════════════════════════════════════════════════════
 # API — DONNÉES PRINCIPALES
 # ══════════════════════════════════════════════════════════════
 
-# @app.route('/api/latest')
-# def api_latest():
-#     lang = request.args.get('lang', 'fr').lower()
-#     try:
-#         conn = get_db()
-#         cur  = conn.cursor()
-#         total     = cur.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
-#         anomalies = cur.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
-#         sources   = cur.execute("SELECT COUNT(DISTINCT source) FROM observations").fetchone()[0]
-#         try:
-#             req_j = cur.execute(
-#                 "SELECT COUNT(*) FROM observations WHERE date(timestamp)=date('now')"
-#             ).fetchone()[0]
-#         except:
-#             req_j = 0
-# 
-#         try:
-#             limit_arg = request.args.get('limit', '20')
-#             limit = min(200, max(1, int(limit_arg))) if str(limit_arg).isdigit() else 20
-#         except Exception:
-#             limit = 20
-# 
-#         try:
-#             rows = cur.execute(
-#                 "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
-#                 "COALESCE(rapport_fr,'') as rapport_fr, objets_detectes, anomalie, "
-#                 "COALESCE(title,'') as title, COALESCE(objets_detectes,'') as type_objet, "
-#                 "COALESCE(score_confiance,0.0) as confidence "
-#                 "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
-#             ).fetchall()
-#         except Exception:
-#             rows = cur.execute(
-#                 "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
-#                 "'' as rapport_fr, objets_detectes, anomalie, "
-#                 "'' as title, '' as type_objet, 0.0 as confidence "
-#                 "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
-#             ).fetchall()
-#         conn.close()
-# 
-#         obs_list = []
-#         for row in rows:
-#             r = dict(row)
-#             raw = r.get('rapport_gemini') or r.get('analyse_gemini') or ''
-#             if lang == 'fr':
-#                 fr = (r.get('rapport_fr') or '').strip()
-#                 r['rapport_gemini'] = fr if fr else raw
-#             else:
-#                 r['rapport_gemini'] = raw
-#             r['rapport_display'] = r['rapport_gemini']
-#             obs_list.append(r)
-# 
-#         return jsonify({
-#             'ok': True, 'total': total, 'anomalies': anomalies,
-#             'sources': sources, 'telescopes': 9, 'req_jour': req_j,
-#             'observations': obs_list,
-#             'notice': 'Analyses AEGIS',
-#         })
-#     except Exception as e:
-#         log.error(f"api_latest: {e}")
-#         return jsonify({'ok': False, 'error': str(e), 'total': 0, 'observations': []})
-# 
-# Cache images par source — FICHIERS séparés (évite que tout affiche la même image)
 _IMAGE_CACHE_TTL = 300  # 5 min — APOD/Hubble/archive changent peu
 def _source_path(s):
     return Path(f'{STATION}/telescope_live/source_{s}.jpg')
@@ -2551,24 +2425,6 @@ def _get_iss_tle_from_cache():
 
 
 
-# @app.route('/api/accuracy/export.csv')
-# def api_accuracy_export_csv():
-#     rows = get_accuracy_history()
-#     lines = ["ts,distance_km"]
-#     for row in rows:
-#         ts = row.get("ts", "")
-#         distance = row.get("distance_km", "")
-#         lines.append(f"{ts},{distance}")
-#     csv_payload = "\n".join(lines) + "\n"
-#     return Response(
-#         csv_payload,
-#         mimetype="text/csv",
-#         headers={
-#             "Content-Disposition": 'attachment; filename="accuracy_history.csv"'
-#         },
-#     )
-# 
-
 def _get_satellite_tle_by_name(target_name):
     target_upper = str(target_name or "").upper()
     canonical = get_satellite_tle_name_map().get(target_upper, target_upper)
@@ -2596,32 +2452,6 @@ def _get_satellite_tle_by_name(target_name):
 # MIGRATED TO satellites_bp PASS 14 — /api/satellite/<name> → see app/blueprints/satellites/__init__.py (api_satellite)
 
 
-# MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
-# @app.route("/api/tle/sample")
-# def tle_sample():
-#     satellites = [
-#         {"name": "Hubble",
-#          "tle1": "1 20580U 90037B   24100.47588426  .00000856  00000+0  43078-4 0  9993",
-#          "tle2": "2 20580  28.4694  45.2957 0002837  48.3533 311.7862 15.09100244430766"},
-#         {"name": "NOAA 19",
-#          "tle1": "1 33591U 09005A   24100.17364847  .00000077  00000+0  66203-4 0  9996",
-#          "tle2": "2 33591  99.1954  60.9022 0014193 183.3210 176.7778 14.12414904786721"}
-#     ]
-#     return jsonify({"satellites": satellites})
-
-
-# MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
-# @app.route("/api/tle/catalog")
-# def tle_catalog():
-#     satellites = [
-#         {"name": "Hubble",
-#          "tle1": "1 20580U 90037B   24100.47588426  .00000856  00000+0  43078-4 0  9993",
-#          "tle2": "2 20580  28.4694  45.2957 0002837  48.3533 311.7862 15.09100244430766"},
-#         {"name": "NOAA 19",
-#          "tle1": "1 33591U 09005A   24100.17364847  .00000077  00000+0  66203-4 0  9996",
-#          "tle2": "2 33591  99.1954  60.9022 0014193 183.3210 176.7778 14.12414904786721"}
-#     ]
-#     return jsonify({"satellites": satellites})
 
 
 # MIGRATED TO weather_bp PASS 7 — /api/meteo-spatiale → see app/blueprints/weather/__init__.py (api_meteo_spatiale)
@@ -2717,25 +2547,6 @@ def _guess_region(lat, lon):
 # API — SDR
 # ══════════════════════════════════════════════════════════════
 
-# MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
-# @app.route('/api/sdr/status')
-# def api_sdr_status():
-#     if Path(SDR_F).exists():
-#         try:
-#             return jsonify(json.load(open(SDR_F)))
-#         except: pass
-#     return jsonify({'ok': True, 'status': 'standby', 'last_capture': None})
-
-# MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
-# @app.route('/api/sdr/stations')
-# def api_sdr_stations():
-#     return jsonify({'ok': True, 'stations': [
-#         {'name':'Univ. Twente','country':'Pays-Bas','flag':'🇳🇱','status':'online','freq':'137MHz'},
-#         {'name':'Rome IK0SMG','country':'Italie','flag':'🇮🇹','status':'online','freq':'137MHz'},
-#         {'name':'Bordeaux F5SWN','country':'France','flag':'🇫🇷','status':'online','freq':'137MHz'},
-#         {'name':'Madrid EA4RCU','country':'Espagne','flag':'🇪🇸','status':'online','freq':'137MHz'},
-#     ]})
-
 # MIGRATED TO sdr_bp PASS 14 — /api/sdr/captures → see app/blueprints/sdr/routes.py (api_sdr_captures)
 
 # ══════════════════════════════════════════════════════════════
@@ -2803,16 +2614,6 @@ FETES_ISLAMIQUES = [
 
 
 
-# MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
-# @app.route('/orbital-radio')
-# def orbital_radio():
-#     return render_template('orbital_radio.html')
-
-
-# MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
-# @app.route('/iss-tracker')
-# def iss_tracker_page():
-#     return render_template('iss_tracker.html')
 
 
 # MIGRATED TO cameras_bp PASS 6 — /visiteurs-live → see app/blueprints/cameras/__init__.py (visiteurs_live_page)
@@ -3187,20 +2988,6 @@ def _telescope_nightly_tlemcen():
 
 # MIGRATED TO feeds_bp PASS 8 — /api/news → see app/blueprints/feeds/__init__.py (api_news)
 
-# ── API SDR Passes (prédictions NOAA, TLE CelesTrak, cache 2h, Tlemcen) ──
-# MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
-# @app.route('/api/sdr/passes')
-# def api_sdr_passes():
-#     return api_sdr_passes_impl(
-#         jsonify=jsonify,
-#         STATION=STATION,
-#         Path=Path,
-#         json_module=json,
-#         time_module=time,
-#         subprocess_module=subprocess,
-#         log=log,
-#     )
-
 # ══════════════════════════════════════════════════════════════
 # FLUX SPATIAUX — Voyager JPL, NEO, Vent solaire, Mars, APOD, Alertes solaires (curl)
 # Toutes les requêtes passent par _curl_get (urllib bloqué serveur Tlemcen).
@@ -3419,63 +3206,6 @@ def _fetch_apod_hd():
 # MIGRATED TO feeds_bp PASS 8 — /api/sondes → see app/blueprints/feeds/__init__.py (api_sondes)
 # MIGRATED TO feeds_bp PASS 8 — /api/feeds/apod_hd → see app/blueprints/feeds/__init__.py (api_feeds_apod_hd)
 # MIGRATED TO feeds_bp PASS 8 — /api/feeds/all → see app/blueprints/feeds/__init__.py (api_feeds_all)
-
-# ── Health check ──
-# @app.route('/api/health')
-# def api_health():
-#     total, anom, sources = 0, 0, []
-#     uptime_str = '—'
-#     try:
-#         conn = sqlite3.connect('/root/astro_scan/data/archive_stellaire.db', timeout=10.0)
-#         total = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
-#         anom  = conn.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
-#         rows  = conn.execute("SELECT DISTINCT source FROM observations WHERE timestamp > datetime('now','-7 days')").fetchall()
-#         sources = [r[0] for r in rows]
-#         last  = conn.execute("SELECT COALESCE(title,objets_detectes,'') as t, timestamp FROM observations ORDER BY id DESC LIMIT 1").fetchone()
-#         conn.close()
-#     except: pass
-#     try:
-#         uptime_str = open('/proc/uptime').read().split()[0]
-#         s = int(float(uptime_str))
-#         uptime_str = f"{s//3600}h {(s%3600)//60}m"
-#     except: pass
-#     import os
-#     payload = {
-#         'ok': True, 'station': 'ORBITAL-CHOHRA',
-#         'ip': '5.78.153.17', 'location': 'Tlemcen, Algérie',
-#         'director': 'Zakaria Chohra — Tlemcen, Algérie',
-#         'time_utc': datetime.now(timezone.utc).isoformat(),
-#         'uptime': uptime_str,
-#         'db': {'total': total, 'anomalies': anom, 'sources': sources},
-#         'services': {
-#             'gemini': 'active' if os.environ.get('GEMINI_API_KEY') else 'missing',
-#             'grok':   'inactive',
-#             'groq':   'active' if os.environ.get('GROQ_API_KEY')   else 'missing',
-#             'nasa':   'active' if os.environ.get('NASA_API_KEY')    else 'missing',
-#             'aegis': 'active', 'sdr': 'active', 'iss': 'active'
-#         },
-#         'coordinates': {'lat': 34.87, 'lon': 1.32, 'alt_m': 800, 'timezone': 'Africa/Algiers'}
-#     }
-#     # Champs opérationnels additifs (monitoring / V2) — ne modifient pas les clés historiques ci-dessus
-#     try:
-#         if _core_status_engine is not None:
-#             payload['operational'] = _core_status_engine.build_operational_health(
-#                 STATION,
-#                 DB_PATH,
-#                 TLE_CACHE,
-#                 TLE_CACHE_FILE,
-#                 ws_present=True,
-#                 sse_present=True,
-#             )
-#             payload['data_credibility'] = _core_status_engine.data_credibility_stub(TLE_CACHE, TLE_CACHE_FILE)
-#     except Exception as ex:
-#         log.debug("api_health operational: %s", ex)
-#         try:
-#             payload['operational'] = {'status': 'unknown', 'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'), 'error': 'probe_partial'}
-#         except Exception:
-#             pass
-#     return jsonify(payload)
-# 
 
 
 
@@ -3793,44 +3523,6 @@ def build_status_snapshot_dict():
         return payload
 
 
-# @app.route('/status')
-# def api_status():
-#     """
-#     GET /status
-#     Snapshot JSON stable pour badges UI / monitoring (pas d'appels réseau bloquants).
-#     """
-#     return jsonify(build_status_snapshot_dict())
-# 
-
-# @app.route("/stream/status")
-# def stream_status_sse():
-#     """
-#     Flux SSE additif : même snapshot que /status, toutes les ~3 s.
-#     Alternative stable au WebSocket pour Gunicorn multi-workers (pas de retrait de /ws/status).
-#     """
-#     def _gen():
-#         while True:
-#             try:
-#                 snap = build_status_snapshot_dict()
-#                 yield "data: " + json.dumps(snap, default=str) + "\n\n"
-#             except Exception as ex:
-#                 try:
-#                     yield "data: " + json.dumps({"error": str(ex)[:200], "stream": "status"}) + "\n\n"
-#                 except Exception:
-#                     pass
-#             time.sleep(3)
-# 
-#     return Response(
-#         stream_with_context(_gen()),
-#         mimetype="text/event-stream",
-#         headers={
-#             "Cache-Control": "no-cache",
-#             "Connection": "keep-alive",
-#             "X-Accel-Buffering": "no",
-#         },
-#     )
-# 
-
 try:
     from flask_sock import Sock
 
@@ -3976,22 +3668,7 @@ def _fetch_hubble():
 # MIGRATED TO feeds_bp PASS 8 — /api/nasa/apod → see app/blueprints/feeds/__init__.py (api_nasa_apod)
 
 
-# MIGRATED TO apod_bp 2026-05-02 — see app/blueprints/apod/routes.py
-# @app.route("/apod")
-# def apod_fr_json():
-#     return apod_fr_json_impl(jsonify=jsonify, log=log)
 
-
-# MIGRATED TO apod_bp 2026-05-02 — see app/blueprints/apod/routes.py
-# @app.route("/apod/view")
-# def apod_fr_view():
-#     return apod_fr_view_impl(render_template=render_template, log=log)
-
-
-# MIGRATED TO apod_bp 2026-05-02 — see app/blueprints/apod/routes.py
-# @app.route("/nasa-apod")
-# def page_nasa_apod():
-#     return render_template("nasa_apod.html")
 
 
 # MIGRATED TO feeds_bp PASS 8 — /api/nasa/neo → see app/blueprints/feeds/__init__.py (api_nasa_neo)
@@ -4863,11 +4540,6 @@ def _elevation_above_observer(lat, lon, jd, fr, obs_teme, obs_norm, sat_teme):
 # Carte orbitale mondiale — positions satellites live
 # ══════════════════════════════════════════════════════════════
 
-# MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
-# @app.route('/orbital-map')
-# def orbital_map_page():
-#     return render_template('orbital_map.html', cesium_token=CESIUM_TOKEN)
-
 
 # MIGRATED TO pages_bp PASS 5 — /demo → see app/blueprints/pages/__init__.py (astroscan_demo_page)
 
@@ -4913,12 +4585,6 @@ def _elevation_above_observer(lat, lon, jd, fr, obs_teme, obs_norm, sat_teme):
 
 # MIGRATED TO main_bp PASS 5 — /favicon.ico → see app/blueprints/main/__init__.py (favicon)
 
-
-# MIGRATED TO main_bp 2026-05-02 (B-RECYCLE R3) — see app/blueprints/main/__init__.py
-# @app.route('/about')
-# @app.route('/a-propos')
-# def about():
-#     return render_template('a_propos.html')
 
 
 # ═══ TÉLESCOPE NASA SKYVIEW ═══════════════════════════════════
@@ -5036,11 +4702,6 @@ def _astroscan_session_cookie_and_time_script(response):
 # MIGRATED TO astro_bp PASS 15 — /api/hilal → see app/blueprints/astro/__init__.py (api_hilal)
 # Helpers _hilal_compute, _hilal_compute_calendar, _HIJRI_MONTHS extraits → app/services/hilal_compute.py
 
-
-# MIGRATED TO iss_bp 2026-05-02 (B3b) — see app/blueprints/iss/routes.py
-# @app.route('/orbital')
-# def orbital_dashboard():
-#     return render_template('orbital_dashboard.html')
 
 
 # MIGRATED TO weather_bp PASS 7 — /api/meteo/reel → see app/blueprints/weather/__init__.py (meteo_reel)
