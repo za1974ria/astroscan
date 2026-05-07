@@ -1229,6 +1229,46 @@ hr{
 
 <canvas id="starfield-bg" aria-hidden="true"></canvas>
 
+<script>
+/* Phase O-E (2026-05-07) — Garde-fou anti-doublons.
+   Si une extension Chrome ou un script tiers tente d'injecter un .sidebar,
+   .topbar ou .shell additionnel, on supprime les doublons immédiatement.
+   Le HTML serveur est garanti propre (1 de chaque) ; toute occurrence > 1
+   est forcément externe. */
+(function () {
+  function purgeDup(sel) {
+    var nodes = document.querySelectorAll(sel);
+    if (nodes.length <= 1) return 0;
+    var removed = 0;
+    for (var i = 1; i < nodes.length; i++) {
+      try { nodes[i].remove(); removed++; } catch (e) {}
+    }
+    return removed;
+  }
+  function purgeAll() {
+    var n = purgeDup('.shell') + purgeDup('.sidebar') + purgeDup('.topbar');
+    if (n > 0) console.warn('[O-E] doublons UI supprimés:', n);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', purgeAll, { once: true });
+  } else {
+    purgeAll();
+  }
+  document.addEventListener('readystatechange', function () {
+    if (document.readyState === 'complete') purgeAll();
+  });
+  if (typeof MutationObserver !== 'undefined') {
+    var obs = new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) {
+        if (muts[i].addedNodes && muts[i].addedNodes.length) { purgeAll(); break; }
+      }
+    });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(function () { try { obs.disconnect(); } catch (e) {} }, 10000);
+  }
+})();
+</script>
+
 <div class="shell">
 
   <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
