@@ -274,7 +274,8 @@ def force_skyview_sync():
 # ── Upload + analyse via JSON (pipeline complet) ─────────────────────
 @bp.route("/api/lab/upload", methods=["POST"])
 def api_lab_upload():
-    from station_web import LAB_UPLOADS, MAX_LAB_IMAGE_BYTES, _api_rate_limit_allow
+    from app.services.security import _api_rate_limit_allow
+    from station_web import LAB_UPLOADS, MAX_LAB_IMAGE_BYTES
     try:
         ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown")
         ip = ip.split(",")[0].strip()
@@ -303,9 +304,12 @@ def api_lab_upload():
 
 @bp.route("/api/lab/analyze", methods=["POST"])
 def api_lab_analyze():
+    from app.services.security import _api_rate_limit_allow
     from station_web import (
-        LAB_UPLOADS, RAW_IMAGES, MAX_LAB_IMAGE_BYTES,
-        _api_rate_limit_allow, _lab_last_report,
+        LAB_UPLOADS,
+        RAW_IMAGES,
+        MAX_LAB_IMAGE_BYTES,
+        _lab_last_report,
     )
     try:
         ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown")

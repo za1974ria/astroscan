@@ -20,6 +20,7 @@ import time
 
 from flask import g, request
 
+from app.services.security import _client_ip_from_request
 from services.utils import _is_bot_user_agent
 
 
@@ -132,18 +133,6 @@ def _compute_human_score(ua: str, page_count: int = 1, session_sec: int = 0,
     return min(100, score)
 
 
-def _client_ip_from_request_local(req):
-    """Helper interne : extrait l'IP client depuis une requête Flask.
-
-    Copie locale de `station_web._client_ip_from_request` pour éviter une
-    dépendance lazy ; le re-export du symbole public reste dans station_web
-    pour la compat des BPs (Cat 5 le déplacera vers `app/services/security.py`).
-    """
-    ip = req.headers.get("X-Forwarded-For", req.remote_addr or "")
-    ip = (ip or "").split(",")[0].strip()
-    return ip
-
-
 def _register_unique_visit_from_request(path_override=None):
     """Insère 1 visite par session (IP+session_id), page_views pour chaque vue de page.
     - Détecte is_owner, calcule human_score initial
@@ -153,7 +142,7 @@ def _register_unique_visit_from_request(path_override=None):
     # cache_service). Sera extrait dans une session future.
     from station_web import get_geo_from_ip
     try:
-        ip = _client_ip_from_request_local(request)
+        ip = _client_ip_from_request(request)
         if ip in ("", "0.0.0.0", "127.0.0.1", "::1"):
             return False
         ua = (request.headers.get("User-Agent") or "")[:200]

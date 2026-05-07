@@ -92,7 +92,7 @@ def contact_form():
     import datetime as _dt
     import logging as _logging
     from flask import request
-    from station_web import _api_rate_limit_allow, _client_ip_from_request
+    from app.services.security import _api_rate_limit_allow, _client_ip_from_request
     log = _logging.getLogger(__name__)
 
     allowed, _ = _api_rate_limit_allow(

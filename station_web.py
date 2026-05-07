@@ -66,6 +66,11 @@ from app.services.tle import (  # noqa: F401 — re-export pour BPs + station_we
     _parse_tle_file,
     _TLE_FOR_PASSES,
 )
+# PASS 2D Cat 5 (2026-05-07) : extraction security → app/services/security.py
+from app.services.security import (  # noqa: F401 — re-export pour BPs (compat legacy)
+    _api_rate_limit_allow,
+    _client_ip_from_request,
+)
 # api_iss_impl : iss_bp l'importe directement depuis app.routes.iss (PASS 16),
 # plus besoin du re-export ici.
 # MIGRATED TO sdr_bp 2026-05-02 — see app/blueprints/sdr/routes.py
@@ -709,36 +714,6 @@ def _http_request_log_allow() -> bool:
         return True
 
 
-_API_RATE_LOCK = threading.Lock()
-_API_RATE_HITS: dict[str, list[float]] = {}
-
-
-def _api_rate_limit_allow(key: str, limit: int, window_sec: int) -> tuple[bool, int]:
-    """
-    Fenêtre glissante simple anti-abus.
-    Retourne (allowed, retry_after_sec).
-    """
-    now = time.time()
-    try:
-        with _API_RATE_LOCK:
-            hits = _API_RATE_HITS.get(key, [])
-            cutoff = now - float(window_sec)
-            hits = [t for t in hits if t >= cutoff]
-            if len(hits) >= int(limit):
-                retry_after = max(1, int(window_sec - (now - hits[0])))
-                _API_RATE_HITS[key] = hits
-                return False, retry_after
-            hits.append(now)
-            _API_RATE_HITS[key] = hits
-            # Garde-fou mémoire (rare)
-            if len(_API_RATE_HITS) > 8000:
-                for k in list(_API_RATE_HITS.keys())[:1500]:
-                    arr = _API_RATE_HITS.get(k) or []
-                    if not arr or arr[-1] < now - 3600:
-                        _API_RATE_HITS.pop(k, None)
-            return True, 0
-    except Exception:
-        return True, 0
 
 
 def struct_log(level: int, **fields) -> None:
@@ -1685,12 +1660,6 @@ PAGE_PATHS = {
     '/visiteurs-live', '/guide-stellaire', '/oracle-cosmique', '/meteo-spatiale',
     '/aurores', '/orbital-map',
 }
-
-def _client_ip_from_request(req):
-    ip = req.headers.get("X-Forwarded-For", req.remote_addr or "")
-    ip = (ip or "").split(",")[0].strip()
-    return ip
-
 
 # ── Owner IPs : cache in-memory rechargé toutes les 5 min ───────────────────
 
