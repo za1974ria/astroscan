@@ -605,3 +605,32 @@ systemctl restart astroscan && sleep 15 && curl -I https://astroscan.space/
 **🎯 Bascule create_app prête. Aucune route migrée ce PASS — pure infrastructure switch. Cap stable à 97%.**  
 *PASS 19 — 2026-05-03 — Cleanup post-bascule : nettoyage chirurgical du monolithe après bascule create_app() validée prod. Imports retirés (top of file) : flask {redirect, send_file, abort, make_response, stream_with_context, Response}, werkzeug.secure_filename, hashlib, glob, base64, doublons os/sys, services.{stats_service.{get_top_countries, get_today_visitors, get_distinct_countries}, weather_service.{interpretWeatherCode, normalize_weather, compute_weather_reliability, validate_data, compute_risk, _internal_weather_fallback, _derive_weather_condition, _safe_kp_value, _kp_premium_profile, _build_local_weather_payload, get_weather_snapshot, get_kp_index, get_aurora_data, get_space_weather}, nasa_service.{*}, orbital_service.{get_iss_position, get_iss_orbit, load_tle_data, compute_satellite_track}, cache_service.{ANALYTICS_CACHE, cache_cleanup, invalidate_cache, invalidate_all, cache_status}, ephemeris_service.{*}, db.get_db_ctx, circuit_breaker.{CB_NASA, CB_N2YO, CB_NOAA, CB_ISS, CB_METEO, CB_GROQ, all_status}, config as _cfg, utils._detect_lang}, app.routes.iss.api_iss_impl, skyview imports. Helpers locaux supprimés (extraits aux PASSes précédents) : ORACLE_COSMIQUE_SYSTEM + _oracle_* (~165L PASS 17), _hilal_compute + _hilal_compute_calendar + _HIJRI_MONTHS (~384L PASS 15), _load_analytics_readonly + _analytics_empty_payload (~296L PASS 16), _fetch_microobservatory_images (~145L PASS 15), _CAM_* + _cam_* + _get_latest_epic_url (~102L PASS 15), _compute_iss_passes_* + _compute_iss_ground_track + _az_to_direction (~170L PASS 14), _fetch_jwst_live_images + _JWST_STATIC + _fetch_jwst (~134L PASS 10), _gemini_translate (~84L PASS 10), AI block {_get_best_key, _call_gemini, _call_claude, _call_groq, _call_xai_grok, _translate_to_french, _english_score, _enforce_french, _call_ai, _chat_cache, _key_usage} (~304L PASS 10). 1 fix : translate_worker thread utilise désormais `from app.services.ai_translate import _call_gemini` (import lazy). Symboles re-exportés pour BPs maintenus avec `# noqa: F401` (propagate_tle_debug, SATELLITES, list_satellites, get_accuracy_history, get_accuracy_stats, get_global_stats). station_web.py −1 781 lignes (7 247 → 5 466). Factory create_app() toujours OK 262 routes.*  
 **🎯 Cleanup PASS 19 : −1 781 lignes monolithe, factory toujours OK, 0 régression. station_web.py désormais 5 466 lignes (−24% vs PASS 18).**
+
+---
+
+## ✅ PHASE 2C — COMPLETION CONFIRMÉE (2026-05-07)
+
+Audit final effectué sur la branche `migration/phase-2c` :
+
+| Métrique | Valeur |
+|---|---|
+| **Routes Blueprints actives** | **291 routes / 29 BPs** (vs 262/21 à PASS 17) |
+| **`@app.route` dans station_web.py** | **0** (PASS 17 a éliminé la dernière route métier ; `/static/<path>` est un override Flask interne, pas une `@app.route`) |
+| **station_web.py** | **5 314 lignes** (vs 11 918 initial → **−55%**) |
+| **Hooks app-level** | **8/8 dans `app/hooks.py`** (PASS 24), `register_hooks(app)` appelé après les BPs |
+| **Services extraits** | **26 modules** (`app/services/`, **3 405 lignes**) |
+| **Symboles partagés station_web → app/** | 52 symboles, 15 fichiers consommateurs (lazy-import — voir `SHARED_DEPS.md`) |
+| **Smoke test (233 GET sans params)** | **214 OK / 19 fail attendus** (404 routes paramétrées, 502 NASA, 000 timeouts heavy) — **0 code 500** |
+| **Service systemd** | `astroscan.service` (Gunicorn 4w/4t @ 127.0.0.1:5003) — actif |
+| **Chemin live** | `gunicorn wsgi:app` → `app.create_app("production")` |
+| **Fallback monolithe** | Conservé via `ASTROSCAN_FORCE_MONOLITH=1` (filet de sécurité) |
+
+**Conclusion :** la migration **monolithe → factory + Blueprints** est **structurellement complète**. Le cleanup résiduel (extraction des 52 helpers partagés vers `app/services/`) reste possible mais à valeur ajoutée faible — le pattern lazy-import est stable.
+
+Livrables produits ce jour :
+- `AUDIT_PHASE_2C.md` — inventaire complet 291 routes / 29 BPs
+- `SHARED_DEPS.md` — taxonomie des 52 symboles `station_web → app/`
+- `scripts/smoke_test_phase2c.sh` — smoke automatisé
+- `SMOKE_TEST_REPORT.md` — résultat 91.8% OK / 0 régression
+- `PHASE_2C_COMPLETION_REPORT.md` — rapport final
+

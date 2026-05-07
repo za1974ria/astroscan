@@ -38,7 +38,7 @@
 | **Top regions** | 🇺🇸 USA · 🇩🇿 Algeria · 🇨🇳 China · 🇳🇱 Netherlands · 🇸🇬 Singapore · 🇩🇪 Germany · 🇬🇧 UK |
 | **External data sources** | 8 (NASA JPL Horizons · NOAA SWPC · NASA APOD · N2YO · CelesTrak · Open-Notify · Harvard MicroObservatory · Skyfield) |
 | **Languages** | 🇫🇷 French · 🇬🇧 English (cookie-persistent + hreflang sitemap) |
-| **Architecture** | 266 routes · 25 blueprints · 13 services · Phase 2C complete |
+| **Architecture** | 291 routes · 29 blueprints · 26 services · Phase 2C complete |
 
 *Live counter updates daily on [astroscan.space](https://astroscan.space).*
 
@@ -80,7 +80,7 @@
 - Hijri calendar synchronization
 
 ### 🌐 Production-Grade Infrastructure
-- **25 Flask blueprints**, **266 routes**, **13 service modules**
+- **29 Flask blueprints**, **291 routes**, **26 service modules**
 - **Server-side proxy** for all external API keys (zero frontend exposure)
 - **Bilingual FR/EN** with cookie persistence + hreflang sitemap
 - **Schema.org Observatory** structured data for SEO
@@ -104,7 +104,7 @@
                       │
      ┌────────────────▼─────────────────┐
      │  Flask Factory  create_app()     │
-     │  25 blueprints · 266 routes      │
+     │  29 blueprints · 291 routes      │
      │  app/hooks.py · 8 hooks          │
      │  app/bootstrap.py · 5 threads    │
      └─┬───────────────┬────────────────┬┘
