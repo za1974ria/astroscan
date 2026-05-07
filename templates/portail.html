@@ -868,11 +868,12 @@ main,
   display: block;
 }
 
+/* PASS UI D FIX 3 (2026-05-07) : hero compacté ~35% — h1 cyan glow
+   préservé (iconique), seulement les marges et l'intro réduites. */
 .portal-hero {
   display: block;
   text-align: center;
-  margin: 28px auto 24px auto;
-  margin-bottom: 52px;
+  margin: 12px auto 16px auto;
 }
 
 .portal-hero h1 {
@@ -880,12 +881,13 @@ main,
   font-size: 34px;
   color: var(--cyan);
   text-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
-  margin: 0 0 10px 0;
+  margin: 0 0 6px 0;
 }
 
 .portal-hero p {
-  font-size: 17px;
+  font-size: 15px;
   color: var(--text);
+  margin: 0 0 8px 0;
 }
 /* PASS UI D FIX 2 (2026-05-07) : compaction des 3 cards SUIVI/PRÉDICTION/APOD.
    Marges et padding réduits ~45%, texte plus dense, status line dimmer. */
