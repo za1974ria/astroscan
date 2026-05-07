@@ -1229,7 +1229,7 @@ hr{
     <div class="topbar-center">
       <div class="tbar-visits" id="tbar-visits" title="Visites">
         <span style="margin-right:4px">👁️</span>
-        <span id="tbar-visits-val">000 000</span>
+        <span id="tbar-visits-val">{% set _vc_raw = visitor_count|default(none) %}{% if _vc_raw is not none and _vc_raw is number %}{% set _vc = '%06d' % (_vc_raw|int) %}{{ _vc[:3] }} {{ _vc[3:] }}{% else %}<span style="opacity:0.55">•••</span>{% endif %}</span>
       </div>
       <div class="tbar-stat"><div class="tbar-dot green"></div><span data-i18n="aegis_active">AEGIS ACTIF</span></div>
       <div class="tbar-stat"><div class="tbar-dot green"></div><span data-i18n="web_online">WEB EN LIGNE</span></div>

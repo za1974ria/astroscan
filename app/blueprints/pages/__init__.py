@@ -59,7 +59,20 @@ def index():
 
 @bp.route("/portail")
 def portail():
-    response = make_response(render_template("portail.html", lang=get_lang()))
+    # PASS UI A FIX 4 (2026-05-07) : SSR du compteur visiteurs pour éviter
+    # le flash "000 000" à l'arrivée. Le JS continue de rafraîchir la valeur
+    # côté client après chargement.
+    visitor_count = None
+    try:
+        from app.services.db_visitors import _get_visits_count
+        visitor_count = _get_visits_count()
+    except Exception:
+        visitor_count = None
+    response = make_response(render_template(
+        "portail.html",
+        lang=get_lang(),
+        visitor_count=visitor_count,
+    ))
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
