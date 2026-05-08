@@ -302,10 +302,9 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 # instance kept for backward compatibility (PASS 25.4 will remove it).
 
 
-@app.context_processor
-def _inject_seo_site_description():
-    """Expose la meta description globale (une seule source : SEO_HOME_DESCRIPTION)."""
-    return {'seo_site_description': SEO_HOME_DESCRIPTION}
+# PASS 26.2 (2026-05-08) — @app.context_processor _inject_seo_site_description supprimé.
+# Source de vérité : app/hooks.py (registered via app/__init__.py:_register_hooks
+# et station_web.py PASS 25.5 fallback safety).
 
 
 # PASS 2D fix (2026-05-07) — ensure logs directory exists before FileHandler
@@ -332,18 +331,9 @@ log.info("Claude configured: %s", bool(os.environ.get("ANTHROPIC_API_KEY")))
 # et station_web.py PASS 25.5 fallback safety).
 
 
-@app.errorhandler(500)
-def _astroscan_500(e):
-    try:
-        log.error("500 Internal Error on %s: %s", request.path, e, exc_info=True)
-    except Exception:
-        pass
-    if request.path.startswith('/api/'):
-        return jsonify(error='internal_error'), 500
-    try:
-        return render_template('500.html'), 500
-    except Exception:
-        return '<h1>500 — Erreur interne</h1>', 500
+# PASS 26.2 (2026-05-08) — @app.errorhandler(500) _astroscan_500 supprimé.
+# Source de vérité : app/hooks.py (registered via app/__init__.py:_register_hooks
+# et station_web.py PASS 25.5 fallback safety).
 # ────────────────────────────────────────────────────────────────────────────
 
 # ── Noyau additif V2 (répertoires data_core + helpers santé) — échec silencieux si absent
@@ -1271,30 +1261,9 @@ PAGE_PATHS = {
 # ── Owner IPs : cache in-memory rechargé toutes les 5 min ───────────────────
 
 
-@app.before_request
-def _astroscan_request_timing_start():
-    """Timing start pour TOUTES les requêtes + trace route lourde (début)."""
-    try:
-        g._astroscan_req_start = time.time()
-        p = request.path or ""
-        heavy_prefixes = (
-            "/api/microobservatory/preview/",
-            "/api/iss",
-            "/api/tle",
-            "/api/meteo",
-            "/galerie",
-            "/module/galerie",
-        )
-        if any(p.startswith(x) for x in heavy_prefixes):
-            _emit_diag_json(
-                {
-                    "event": "route_trace_start",
-                    "path": p,
-                    "method": request.method,
-                }
-            )
-    except Exception:
-        pass
+# PASS 26.2 (2026-05-08) — @app.before_request _astroscan_request_timing_start supprimé.
+# Source de vérité : app/hooks.py (registered via app/__init__.py:_register_hooks
+# et station_web.py PASS 25.5 fallback safety).
 
 
 # PASS 26.1 (2026-05-08) — @app.before_request _astroscan_visitor_session_before supprimé.
@@ -1302,21 +1271,9 @@ def _astroscan_request_timing_start():
 # et station_web.py PASS 25.5 fallback safety).
 
 
-@app.before_request
-def _maybe_increment_visits():
-    """
-    Enregistre les visites de pages HTML (pas les API, static, etc.).
-    - page_views : chaque chargement de page (toutes sessions)
-    - visitor_log : une entrée par session (IP+session_id unique)
-    S'exécute APRÈS _astroscan_visitor_session_before (g._astroscan_sid déjà défini).
-    """
-    try:
-        g._astroscan_req_start = time.time()
-    except Exception:
-        pass
-    if request.path not in PAGE_PATHS:
-        return
-    _register_unique_visit_from_request(path_override=request.path)
+# PASS 26.2 (2026-05-08) — @app.before_request _maybe_increment_visits supprimé.
+# Source de vérité : app/hooks.py (registered via app/__init__.py:_register_hooks
+# et station_web.py PASS 25.5 fallback safety).
 
 
 @app.after_request
@@ -3811,38 +3768,9 @@ _SESSION_TIME_SNIPPET = (
 # MIGRATED TO analytics_bp PASS 12 — /track-time POST → see app/blueprints/analytics/__init__.py (track_time_endpoint)
 
 
-@app.after_request
-def _astroscan_session_cookie_and_time_script(response):
-    """Pose le cookie astroscan_sid + injecte le script de durée de page (HTML uniquement)."""
-    try:
-        p = request.path or ""
-        if p.startswith("/static"):
-            return response
-        secure = bool(request.is_secure) or (
-            (request.headers.get("X-Forwarded-Proto") or "").lower() == "https"
-        )
-        # Rafraîchit le cookie à chaque page HTML : session = 30 min d'inactivité.
-        # Si inactif > 30 min → cookie expire → prochaine visite = nouvelle session.
-        if getattr(g, "_astroscan_sid", None):
-            response.set_cookie(
-                "astroscan_sid",
-                g._astroscan_sid,
-                max_age=60 * 30,  # 30 minutes d'inactivité = nouvelle session
-                samesite="Lax",
-                path="/",
-                secure=secure,
-            )
-        ct = (response.headers.get("Content-Type") or "").lower()
-        if response.status_code >= 400 or "text/html" not in ct:
-            return response
-        data = response.get_data(as_text=True)
-        if "astroscan-session-time" in data or "</body>" not in data:
-            return response
-        data = data.replace("</body>", _SESSION_TIME_SNIPPET + "\n</body>", 1)
-        response.set_data(data)
-    except Exception:
-        pass
-    return response
+# PASS 26.2 (2026-05-08) — @app.after_request _astroscan_session_cookie_and_time_script supprimé.
+# Source de vérité : app/hooks.py (registered via app/__init__.py:_register_hooks
+# et station_web.py PASS 25.5 fallback safety).
 
 
 # ══════════════════════════════════════════════════════════════
