@@ -509,3 +509,52 @@ def meteo_page():
 @bp.route("/meteo")
 def control():
     return render_template("orbital_control_center.html")
+
+
+# ─────────────────────────────────────────────────────────────────
+# BONUS PASS (2026-05-08) — Weather archive public routes
+# Expose le dataset Tlemcen archivé sur disque (data/weather_archive/)
+# pour Chemin B (hyperlocal scientific data exposure).
+# ─────────────────────────────────────────────────────────────────
+@bp.route("/api/weather/archive", methods=["GET"])
+def api_weather_archive_list():
+    """List all available weather archive dates (JSON files in WEATHER_ARCHIVE_DIR)."""
+    from app.services.weather_db import WEATHER_ARCHIVE_DIR
+    import os as _os
+    try:
+        if not _os.path.isdir(WEATHER_ARCHIVE_DIR):
+            return jsonify({"ok": False, "error": "archive_dir_missing", "dates": []}), 200
+        files = sorted([
+            f.replace(".json", "")
+            for f in _os.listdir(WEATHER_ARCHIVE_DIR)
+            if f.endswith(".json")
+        ], reverse=True)
+        return jsonify({
+            "ok": True,
+            "count": len(files),
+            "dates": files,
+            "directory": WEATHER_ARCHIVE_DIR,
+        }), 200
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@bp.route("/api/weather/archive/<date>", methods=["GET"])
+def api_weather_archive_get(date):
+    """Return weather archive content for specific date (YYYY-MM-DD)."""
+    from app.services.weather_db import WEATHER_ARCHIVE_DIR
+    import os as _os
+    import json as _json
+    import re as _re
+    # Path traversal protection: strict date format YYYY-MM-DD
+    if not _re.match(r'^\d{4}-\d{2}-\d{2}$', date):
+        return jsonify({"ok": False, "error": "invalid_date_format"}), 400
+    try:
+        file_path = _os.path.join(WEATHER_ARCHIVE_DIR, f"{date}.json")
+        if not _os.path.isfile(file_path):
+            return jsonify({"ok": False, "error": "not_found", "date": date}), 404
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = _json.load(f)
+        return jsonify({"ok": True, "date": date, "data": data}), 200
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
