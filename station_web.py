@@ -3794,12 +3794,21 @@ def _fetch_swpc_alerts():
 # ══════════════════════════════════════════════════════════════
 # DIGITAL LAB — Image analysis pipeline (new module)
 # ══════════════════════════════════════════════════════════════
-LAB_UPLOADS = f'{STATION}/data/lab_uploads'
-# Structure du laboratoire d'images
-RAW_IMAGES = os.path.join(STATION, "data", "images_espace", "raw")
-ANALYSED_IMAGES = os.path.join(STATION, "data", "analysed")
-MAX_LAB_IMAGE_BYTES = 25 * 1024 * 1024  # 25 MB guardrail
-METADATA_DB = os.path.join(STATION, "data", "metadata")
+# PASS 20.3 (2026-05-08) — Lab/Skyview helpers extracted to app/services/lab_helpers.py
+# Shim re-exports for backward compatibility (lab_bp + research_bp utilisent
+# `from station_web import LAB_UPLOADS` etc. via lazy imports).
+from app.services.lab_helpers import (  # noqa: E402,F401
+    _lab_last_report,
+    LAB_UPLOADS,
+    MAX_LAB_IMAGE_BYTES,
+    RAW_IMAGES,
+    ANALYSED_IMAGES,
+    SPACE_IMAGE_DB,
+    METADATA_DB,
+    _sync_skyview_to_lab,
+)
+# LAB_LOGS_DIR + makedirs side-effects + SKYVIEW_DIR conservés ici (init disque
+# au load du monolith ; non extraits car ne font pas partie du périmètre PASS 20.3).
 LAB_LOGS_DIR = os.path.join(STATION, "data", "images_espace", "logs")
 os.makedirs(RAW_IMAGES, exist_ok=True)
 os.makedirs(ANALYSED_IMAGES, exist_ok=True)
@@ -3808,9 +3817,6 @@ os.makedirs(LAB_LOGS_DIR, exist_ok=True)
 # Dossier SkyView — captures alimentent le lab via _sync_skyview_to_lab()
 SKYVIEW_DIR = os.path.join(STATION, "data", "skyview")
 os.makedirs(SKYVIEW_DIR, exist_ok=True)
-# Espace d'images utilisé par le Lab (compatibilité avec code existant)
-SPACE_IMAGE_DB = RAW_IMAGES
-_lab_last_report = {}
 
 
 def log_rejected_image(metadata, reason):
@@ -4038,36 +4044,10 @@ def _download_esa_images():
         log.info("Lab: saved agency-slot images %s", saved)
 
 
-def _sync_skyview_to_lab():
-    """Copie les images du dossier SkyView vers RAW_IMAGES et crée les métadonnées lab."""
-    import shutil
-    try:
-        HEALTH_STATE["collector_status"]["skyview_sync"] = "running"
-    except Exception:
-        pass
-    for file in os.listdir(SKYVIEW_DIR):
-        src = os.path.join(SKYVIEW_DIR, file)
-        dst = os.path.join(RAW_IMAGES, file)
-        if os.path.isfile(src) and not os.path.exists(dst):
-            try:
-                shutil.copy2(src, dst)
-                meta = {
-                    "source": "SKYVIEW",
-                    "telescope": "SkyView Observatory",
-                    "filename": file,
-                    "date": datetime.utcnow().isoformat() + "Z",
-                }
-                meta_path = os.path.join(METADATA_DB, file + ".json")
-                with open(meta_path, "w", encoding="utf-8") as f:
-                    json.dump(meta, f, indent=2)
-            except Exception as e:
-                log.warning("SkyView sync error %s", e)
-                _health_set_error("skyview_sync", e, "warn")
-    try:
-        HEALTH_STATE["collector_status"]["skyview_sync"] = "ok"
-        HEALTH_STATE["skyview_status"] = "ok"
-    except Exception:
-        pass
+# PASS 20.3 (2026-05-08) — _sync_skyview_to_lab() extrait vers
+# app/services/lab_helpers.py. Le nom est ré-importé via le shim de section
+# DIGITAL LAB ci-dessus. Les usages internes (e.g. _start_skyview_sync below)
+# continuent de fonctionner via la liaison du shim au namespace de ce module.
 
 
 def _start_skyview_sync():
