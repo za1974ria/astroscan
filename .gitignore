@@ -50,3 +50,5 @@ de421.bsp
 .vscode/
 .idea/
 *.iml
+.archive/
+RESUME_REPRISE_*.md
