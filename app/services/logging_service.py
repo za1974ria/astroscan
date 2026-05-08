@@ -33,6 +33,8 @@ import logging
 import threading
 import time
 
+log = logging.getLogger(__name__)
+
 # ── HTTP request log throttling (token bucket anti-spam) ─────────────
 # Jeton : limite le volume de logs JSON "http_request" sous fort trafic
 # (stabilité I/O). Réassignés au runtime → restent dans CE module.
@@ -98,7 +100,7 @@ def _health_log_error(component: str, message: str, severity: str = "warn") -> N
     # Au moment où cette fonction est appelée (post-init), ils sont disponibles.
     try:
         from datetime import datetime, timezone
-        from station_web import HEALTH_STATE, log
+        from station_web import HEALTH_STATE
 
         sev = (severity or "warn").lower()
         sev = sev if sev in ("info", "warn", "error", "critical") else "warn"

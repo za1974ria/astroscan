@@ -20,9 +20,12 @@ Note importante sur ``_sync_skyview_to_lab`` :
 """
 from __future__ import annotations
 
+import logging
 import os
 
 from app.services.station_state import STATION
+
+log = logging.getLogger(__name__)
 
 # ── Constantes / chemins disques ──────────────────────────────────────
 LAB_UPLOADS: str = f'{STATION}/data/lab_uploads'
@@ -50,7 +53,7 @@ def _sync_skyview_to_lab() -> None:
     # Lazy imports pour éviter le cycle station_web ↔ lab_helpers au load.
     # Au moment de l'APPEL (typiquement par un thread après le load complet),
     # station_web est entièrement chargé donc ces noms sont disponibles.
-    from station_web import HEALTH_STATE, SKYVIEW_DIR, _health_set_error, log
+    from station_web import HEALTH_STATE, SKYVIEW_DIR, _health_set_error
 
     try:
         HEALTH_STATE["collector_status"]["skyview_sync"] = "running"

@@ -20,8 +20,11 @@ Dépendances inverses :
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 import time
+
+log = logging.getLogger(__name__)
 
 
 def translate_worker() -> None:
@@ -34,7 +37,7 @@ def translate_worker() -> None:
     # app.workers.translate_worker au load. Au moment du premier tour,
     # station_web est entièrement chargé (le worker est démarré
     # post-bootstrap).
-    from station_web import DB_PATH, log
+    from station_web import DB_PATH
     # PASS 19 : _call_gemini extrait → app/services/ai_translate.py
     from app.services.ai_translate import _call_gemini
 

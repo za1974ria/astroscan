@@ -54,10 +54,13 @@ worker au load.
 from __future__ import annotations
 
 import fcntl
+import logging
 import os
 import threading
 import time
 from datetime import datetime, timezone
+
+log = logging.getLogger(__name__)
 
 
 # ── Constantes du collector (déplacées depuis station_web.py:3982-3984) ──
@@ -112,8 +115,6 @@ def _aegis_collector_mark_run() -> None:
 
 def run_collector_safe(run_func):
     """Wrapper avec lock + cooldown qui exécute run_func de manière sécurisée."""
-    from station_web import log
-
     lock = _aegis_collector_acquire_lock()
     if not lock:
         log.info('[AEGIS] Collector skipped (already running)')

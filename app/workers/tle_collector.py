@@ -31,17 +31,19 @@ tle_collector au load (les fonctions sont appelées post-bootstrap).
 """
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time
 import urllib.request
 from datetime import datetime, timezone
 
+log = logging.getLogger(__name__)
+
 
 def download_tle_now():
     """Download Celestrak active TLE at startup so /api/satellites/tle has real data."""
     from app.services.tle_cache import TLE_ACTIVE_PATH
-    from station_web import log
 
     url = "https://live.ariss.org/iss.txt"
     try:
@@ -77,7 +79,7 @@ def refresh_tle_from_amsat():
     4) If success, expose LIVE mode/state
     """
     from app.services.tle_cache import TLE_ACTIVE_PATH, TLE_CACHE, _parse_tle_file
-    from station_web import HEALTH_STATE, log
+    from station_web import HEALTH_STATE
 
     def _read_url_text(url, timeout=8):
         req = urllib.request.Request(url, headers={"User-Agent": "AstroScan/1.0"})
@@ -181,7 +183,6 @@ def refresh_tle_from_amsat():
 def _download_tle_catalog():
     """Télécharge le catalogue TLE actif depuis Celestrak vers data/tle/active.tle."""
     from app.services.tle_cache import TLE_ACTIVE_PATH
-    from station_web import log
 
     try:
         url = "https://live.ariss.org/iss.txt"

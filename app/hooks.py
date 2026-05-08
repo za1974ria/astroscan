@@ -31,6 +31,8 @@ import time
 
 from flask import Flask, g, jsonify, render_template, request
 
+log = logging.getLogger(__name__)
+
 
 # ─── @context_processor ───────────────────────────────────────────────────────
 def _inject_seo_site_description():
@@ -51,7 +53,6 @@ def _astroscan_404(e):
 
 # ─── @errorhandler(500) ───────────────────────────────────────────────────────
 def _astroscan_500(e):
-    from station_web import log
     try:
         log.error("500 Internal Error on %s: %s", request.path, e, exc_info=True)
     except Exception:
