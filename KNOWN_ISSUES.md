@@ -57,3 +57,35 @@ Ces issues sont **archivées volontairement** pour permettre la concentration su
 3. Validation scientifique (CRAAG, AstroPy, laboratoires Maghreb)
 
 La perfection est l'ennemi du livrable. — Zakaria Chohra, 2026
+
+
+## NASA APOD API timeout depuis Hetzner Hillsboro (2026-05-08)
+
+**Symptôme** : `/api/apod` retourne 502 "circuit ouvert" pendant que NASA api.nasa.gov est inaccessible depuis le serveur Hetzner Hillsboro Oregon US-West.
+
+**Diagnostic** :
+- Test direct depuis serveur : `curl https://api.nasa.gov/planetary/apod` → status 000 timeout 15s
+- Code APOD fonctionne quand testé directement (`get_nasa_apod()` retourne 1151 chars)
+- Circuit breaker `CB_NASA` (failure_threshold=3, recovery_timeout=300s) protège correctement
+- Cache local présent et valide :
+  - `/root/astro_scan/telescope_live/apod_meta.json` (4.1 KB, daté 2026-05-07)
+  - `/root/astro_scan/telescope_live/apod_hd.jpg` (39 MB)
+
+**Cause racine probable** : 
+- NASA API rate limit ou maintenance temporaire côté US-West
+- Possible soft-ban après séries de retries
+- Routing dégradé Hetzner Hillsboro ↔ NASA East Coast à certaines heures
+
+**Workaround actuel** : 
+- La page `/apod` (web) répond 200 en utilisant le cache (latence 10s)
+- L'API `/api/apod` (JSON) retourne 502 jusqu'au reset CB
+
+**Solution future (mini-PASS prévu)** : 
+Implémenter un fallback cache dans la route `/api/apod` :
+- Si CB ouvert ou timeout NASA → retourner `apod_meta.json` avec marker `degraded=true`
+- Status HTTP 200 (cache valide) au lieu de 502
+- Pattern standard "graceful degradation" production-grade
+
+**Priorité** : Moyenne (bug externe, pas critique, cache existe, fallback simple à coder)
+**Date détection** : 2026-05-08 ~02h00 UTC
+**Branche** : ui/portail-refactor-phase-a (suite PASS 23.3)
