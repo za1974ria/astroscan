@@ -327,14 +327,9 @@ log.info(
 log.info("Claude configured: %s", bool(os.environ.get("ANTHROPIC_API_KEY")))
 
 # ── Error handlers — ADDED 2026-05-02 (BUG 3) ─────────────────────────────
-@app.errorhandler(404)
-def _astroscan_404(e):
-    if request.path.startswith('/api/'):
-        return jsonify(error='not_found', path=request.path), 404
-    try:
-        return render_template('404.html', path=request.path), 404
-    except Exception:
-        return '<h1>404 — Page introuvable</h1>', 404
+# PASS 26.1 (2026-05-08) — @app.errorhandler(404) _astroscan_404 supprimé.
+# Source de vérité : app/hooks.py (registered via app/__init__.py:_register_hooks
+# et station_web.py PASS 25.5 fallback safety).
 
 
 @app.errorhandler(500)
@@ -1302,26 +1297,9 @@ def _astroscan_request_timing_start():
         pass
 
 
-@app.before_request
-def _astroscan_visitor_session_before():
-    """Cookie astroscan_sid (identifiant de session navigateur) pour corrélation visitor_log / session_time.
-    DOIT s'exécuter AVANT _maybe_increment_visits pour que g._astroscan_sid soit disponible."""
-    try:
-        if (request.path or "").startswith("/static"):
-            return
-        sid = request.cookies.get("astroscan_sid")
-        if sid:
-            g._astroscan_sid = sid
-            g._astroscan_sid_new = False
-        else:
-            g._astroscan_sid = secrets.token_urlsafe(24)
-            g._astroscan_sid_new = True
-    except Exception:
-        try:
-            g._astroscan_sid = secrets.token_urlsafe(24)
-            g._astroscan_sid_new = True
-        except Exception:
-            pass
+# PASS 26.1 (2026-05-08) — @app.before_request _astroscan_visitor_session_before supprimé.
+# Source de vérité : app/hooks.py (registered via app/__init__.py:_register_hooks
+# et station_web.py PASS 25.5 fallback safety).
 
 
 @app.before_request
