@@ -117,20 +117,18 @@ from services.circuit_breaker import CB_TLE
 _REQ_ORIGINAL_REQUEST = requests.sessions.Session.request
 
 
-def _emit_diag_json(payload):
-    """Émet un JSON diagnostique en stdout + logger."""
-    try:
-        msg = json.dumps(payload, ensure_ascii=False)
-    except Exception:
-        msg = json.dumps({"event": "diag_encode_failed"}, ensure_ascii=False)
-    try:
-        print(msg, flush=True)
-    except Exception:
-        pass
-    try:
-        log.info(msg)
-    except Exception:
-        pass
+# PASS 23.3 (2026-05-08) — HTTP helpers extracted to app/services/http_helpers.py
+# Shim re-exports for backward compatibility (app/hooks.py utilise _emit_diag_json).
+# NOTE: _requests_instrumented_request (monkey-patch) STAYS in station_web
+# car il modifie requests.sessions.Session.request au module load.
+# _curl_get/_curl_post/_curl_post_json étaient dupliqués (1221-1280) — PASS 23.3
+# unifie via http_helpers qui ré-exporte depuis http_client (single source of truth).
+from app.services.http_helpers import (  # noqa: E402,F401
+    _emit_diag_json,
+    _curl_get,
+    _curl_post,
+    _curl_post_json,
+)
 
 
 def _requests_instrumented_request(self, method, url, **kwargs):
@@ -1218,42 +1216,9 @@ _init_session_tracking_db()
 _init_visits_table()
 
 
-def _curl_get(url, timeout=15):
-    """GET via curl — contourne restrictions réseau urllib (Tlemcen)."""
-    try:
-        r = subprocess.run(
-            ['curl', '-s', '-L', '--max-time', str(timeout),
-             '-H', 'User-Agent: ORBITAL-CHOHRA/1.0', url],
-            capture_output=True, text=True, timeout=timeout + 2
-        )
-        return (r.stdout or "").strip()
-    except Exception as e:
-        log.warning(f"curl_get {url[:60]}: {e}")
-        return ""
-
-
-def _curl_post(url, post_data, timeout=15, headers=None):
-    """POST via curl (JSON body). Optionnel: headers dict (ex. x-api-key, anthropic-version)."""
-    try:
-        cmd = ['curl', '-s', '-L', '--max-time', str(timeout),
-               '-H', 'User-Agent: ORBITAL-CHOHRA/1.0',
-               '-H', 'Content-Type: application/json', '-X', 'POST', '-d', post_data]
-        if headers:
-            for k, v in headers.items():
-                if v is not None and str(v).strip() != '':
-                    cmd.extend(['-H', f'{k}: {v}'])
-        cmd.append(url)
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 2)
-        return (r.stdout or '').strip()
-    except Exception as e:
-        log.warning(f"curl_post {url[:60]}: {e}")
-        return None
-
-
-def _curl_post_json(url, payload_dict, extra_headers=None, timeout=15):
-    """POST JSON body (dict) avec en-têtes optionnels."""
-    body = json.dumps(payload_dict) if isinstance(payload_dict, dict) else payload_dict
-    return _curl_post(url, body, timeout=timeout, headers=extra_headers)
+# PASS 23.3 — _curl_get, _curl_post, _curl_post_json déplacés vers
+# app/services/http_helpers.py (façade) qui ré-exporte depuis le module
+# canonique app/services/http_client.py (PASS 8). Duplication résolue.
 
 
 # DUPLICATE REMOVED 2026-05-02 — fusionnée dans la V2 ci-dessous (L.4718~)
