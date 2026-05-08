@@ -452,102 +452,27 @@ class _AstroScanJsonLogFormatter(logging.Formatter):
             )
 
 
-# ── Métriques in-memory pour /status (léger, pas de DB) ─────────────────────
-# Fenêtres glissantes : timestamps en time.time(). Lock courte pour limiter la
-# contention ; rognage périodique + plafond de taille → O(window) borné, pas de fuite mémoire.
-_METRICS_LOCK = threading.Lock()
-_METRICS_REQUEST_TIMES: list[float] = []
-_METRICS_ERROR_TIMES: list[float] = []
-_METRICS_MAX_REQ_BUFFER = 12000
+# PASS 23.2 (2026-05-08) — Logging helpers extracted to app/services/logging_service.py
+# Shim re-exports for backward compatibility (app/blueprints/health utilise
+# _sw.struct_log ; app/services/lab_helpers utilise _health_set_error via lazy import.)
+from app.services.logging_service import (  # noqa: E402,F401
+    _http_request_log_allow,
+    struct_log,
+    system_log,
+    _health_log_error,
+    _health_set_error,
+)
 
+# PASS 23.2 (2026-05-08) — Metrics helpers extracted to app/services/metrics_service.py
+# Shim re-exports for backward compatibility.
+from app.services.metrics_service import (  # noqa: E402,F401
+    _metrics_trim_list,
+    metrics_record_request,
+    metrics_record_struct_error,
+    metrics_status_fields,
+)
 
-def _metrics_trim_list(ts_list: list[float], horizon_sec: float) -> None:
-    cutoff = time.time() - horizon_sec
-    ts_list[:] = [t for t in ts_list if t >= cutoff]
-
-
-def metrics_record_request() -> None:
-    """Enregistre une requête HTTP (appelé depuis after_request, hors /static)."""
-    try:
-        t = time.time()
-        with _METRICS_LOCK:
-            _METRICS_REQUEST_TIMES.append(t)
-            _metrics_trim_list(_METRICS_REQUEST_TIMES, 360)
-            if len(_METRICS_REQUEST_TIMES) > _METRICS_MAX_REQ_BUFFER:
-                del _METRICS_REQUEST_TIMES[: len(_METRICS_REQUEST_TIMES) - _METRICS_MAX_REQ_BUFFER + 2000]
-    except Exception:
-        pass
-
-
-def metrics_record_struct_error() -> None:
-    """Compte les événements struct_log au niveau ERROR (observabilité /status)."""
-    try:
-        t = time.time()
-        with _METRICS_LOCK:
-            _METRICS_ERROR_TIMES.append(t)
-            _metrics_trim_list(_METRICS_ERROR_TIMES, 360)
-            if len(_METRICS_ERROR_TIMES) > 4000:
-                del _METRICS_ERROR_TIMES[: len(_METRICS_ERROR_TIMES) - 3000]
-    except Exception:
-        pass
-
-
-def metrics_status_fields() -> dict:
-    """
-    Champs additionnels pour /status : erreurs struct_log (niveau ERROR) sur 5 min,
-    requêtes non-static sur la dernière minute glissante (débit observé).
-    Deux passes sur des listes déjà rognées → coût prévisible même sous charge.
-    """
-    now = time.time()
-    with _METRICS_LOCK:
-        e5 = sum(1 for x in _METRICS_ERROR_TIMES if x >= now - 300)
-        r60 = sum(1 for x in _METRICS_REQUEST_TIMES if x >= now - 60)
-    return {"errors_last_5min": int(e5), "requests_per_min": int(r60)}
-
-
-# Jeton : limite le volume de logs JSON "http_request" sous fort trafic (stabilité I/O).
-_HTTP_LOG_LOCK = threading.Lock()
-_HTTP_LOG_TOKENS = 5.0
-_HTTP_LOG_MAX = 8.0
-_HTTP_LOG_REFILL_PER_SEC = 3.0
-_HTTP_LOG_LAST_MONO = time.monotonic()
-
-
-def _http_request_log_allow() -> bool:
-    """True si on peut émettre un struct_log pour une requête 2xx/3xx (anti-spam)."""
-    try:
-        with _HTTP_LOG_LOCK:
-            global _HTTP_LOG_TOKENS, _HTTP_LOG_LAST_MONO
-            m = time.monotonic()
-            dt = max(0.0, m - _HTTP_LOG_LAST_MONO)
-            _HTTP_LOG_LAST_MONO = m
-            _HTTP_LOG_TOKENS = min(_HTTP_LOG_MAX, _HTTP_LOG_TOKENS + dt * _HTTP_LOG_REFILL_PER_SEC)
-            if _HTTP_LOG_TOKENS >= 1.0:
-                _HTTP_LOG_TOKENS -= 1.0
-                return True
-            return False
-    except Exception:
-        return True
-
-
-
-
-def struct_log(level: int, **fields) -> None:
-    """
-    Écrit une ligne structurée dans astroscan_structured.log (via logger racine).
-    Utiliser category/event pour filtrer (api, tle, error, ...).
-    Les ERROR alimentent errors_last_5min pour /status.
-    """
-    try:
-        if level >= logging.ERROR:
-            metrics_record_struct_error()
-        lg = logging.getLogger("astroscan")
-        msg = str(fields.get("event") or fields.get("msg") or "event")
-        lg.log(level, msg, extra={"astroscan_extra": dict(fields)})
-    except Exception:
-        pass
-
-
+# Init handler structured log (conservé en place car attaché au logger racine au boot) :
 _structured_json_handler = RotatingFileHandler(
     f"{STATION}/logs/astroscan_structured.log",
     maxBytes=10 * 1024 * 1024,
@@ -556,10 +481,6 @@ _structured_json_handler = RotatingFileHandler(
 )
 _structured_json_handler.setFormatter(_AstroScanJsonLogFormatter())
 logging.getLogger().addHandler(_structured_json_handler)
-
-
-def system_log(message):
-    _orbital_log.info(message)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -610,56 +531,8 @@ HEALTH_STATE = {
 STALE_DATA_THRESHOLD_SEC = 86400   # 24 hours
 AGING_DATA_THRESHOLD_SEC = 43200  # 12 hours
 
-def _health_log_error(component: str, message: str, severity: str = "warn") -> None:
-    """
-    Structured health error logger.
-    - component: short identifier
-    - message: human readable
-    - severity: info|warn|error|critical
-    Maintains a last_error snapshot for /status.
-    """
-    try:
-        sev = (severity or "warn").lower()
-        sev = sev if sev in ("info", "warn", "error", "critical") else "warn"
-        err = {
-            "ts": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "component": component,
-            "message": str(message),
-            "severity": sev,
-        }
-        HEALTH_STATE["last_error"] = err
-        # log using python logging levels (best effort)
-        try:
-            if sev in ("error", "critical"):
-                log.error("HEALTH[%s] %s: %s", component, sev, message)
-            elif sev == "warn":
-                log.warning("HEALTH[%s] %s: %s", component, sev, message)
-            else:
-                log.info("HEALTH[%s] %s: %s", component, sev, message)
-        except Exception:
-            pass
-        try:
-            lvl = (
-                logging.ERROR
-                if sev in ("error", "critical")
-                else (logging.WARNING if sev == "warn" else logging.INFO)
-            )
-            struct_log(
-                lvl,
-                category="health",
-                event="health_signal",
-                component=component,
-                severity=sev,
-                message=str(message)[:800],
-            )
-        except Exception:
-            pass
-    except Exception:
-        pass
-
-def _health_set_error(component: str, message: str, severity: str = "warn") -> None:
-    # Backward-compatible alias for earlier calls
-    _health_log_error(component, message, severity)
+# PASS 23.2 — _health_log_error + _health_set_error déplacés vers
+# app/services/logging_service.py (ré-importés via le shim plus haut).
 
 def load_stellarium_data():
     """
