@@ -175,7 +175,19 @@ TRANSLATION_CACHE = {}
 MAX_CACHE_SIZE = 500
 
 
-START_TIME = time.time()
+# PASS 20.4 (2026-05-08) — System/Accuracy helpers extracted to app/services/system_helpers.py
+# Shim re-exports for backward compatibility (api_bp, health_bp, export_bp utilisent
+# `from station_web import STATION, START_TIME, get_accuracy_history, get_accuracy_stats`
+# via lazy imports.)
+# Note : `server_ready` (bool mutable top-level réassigné False→True après boot)
+# n'est PAS migré — la sémantique de réassignation ne survivrait pas à
+# l'extraction sans changer l'API. Conservé in-place ci-dessous.
+from app.services.system_helpers import (  # noqa: E402,F401
+    STATION,
+    START_TIME,
+    get_accuracy_history,
+    get_accuracy_stats,
+)
 # Passe à True en fin de chargement du module (après routes + init TLE) — utilisé par GET /ready.
 server_ready = False
 
@@ -2830,103 +2842,12 @@ def _mo_fits_to_jpg(fits_bytes, save_path):
     return captured_hdr
 
 
-def _telescope_nightly_tlemcen():
-    """
-    Pipeline nocturne complet :
-    1. Scan répertoire Harvard MicroObservatory
-    2. Sélection 3 objets visibles depuis Tlemcen (altitude > 20° à 23h00 UTC)
-    3. Téléchargement FITS + conversion JPG
-    4. Sauvegarde métadonnées nightly_meta.json
-    """
-    import urllib.request
-    from datetime import timedelta
-
-    log.info('telescope_nightly: démarrage pipeline — Tlemcen 34.87°N 1.32°E')
-
-    try:
-        mo_catalog = _mo_fetch_catalog_today()
-    except Exception as e:
-        log.error('telescope_nightly: catalog error: %s', e)
-        mo_catalog = {}
-
-    try:
-        visible = _mo_visible_tonight()
-        log.info('telescope_nightly: %d objets visibles', len(visible))
-    except Exception as e:
-        log.error('telescope_nightly: visibility error: %s', e)
-        visible = []
-
-    results = []
-    used_labels = set()
-
-    for obj in visible:
-        if len(results) >= 3:
-            break
-        label = obj['label']
-        if label in used_labels:
-            continue
-
-        entries = mo_catalog.get(obj['prefix'], [])
-        if not entries:
-            log.debug('telescope_nightly: %s — aucun FITS MO disponible', obj['prefix'])
-            continue
-
-        entry = entries[0]  # Le plus récent
-        fits_url = entry['url']
-        captured_at = entry['captured_at']
-
-        try:
-            req = urllib.request.Request(fits_url, headers={'User-Agent': 'AstroScan-Chohra/2.0'})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                fits_bytes = r.read()
-            if len(fits_bytes) < 2880:  # FITS minimum = 1 bloc de 2880 octets
-                log.warning('telescope_nightly: %s FITS trop petit (%d o)', obj['prefix'], len(fits_bytes))
-                continue
-
-            safe_stem = re.sub(r'[^\w]', '_', os.path.splitext(entry['filename'])[0])
-            jpg_name  = f"nightly_{safe_stem}.jpg"
-            jpg_path  = os.path.join(STATION, 'telescope_live', jpg_name)
-
-            hdr_date = _mo_fits_to_jpg(fits_bytes, jpg_path)
-
-            results.append({
-                'object_label':       obj['label'],
-                'object_type':        obj['type'],
-                'object_prefix':      obj['prefix'],
-                'altitude_deg':       obj['alt'],
-                'filename_fits':      entry['filename'],
-                'jpg':                jpg_name,
-                'fits_url':           fits_url,
-                'captured_at_utc':    captured_at.isoformat(),
-                'captured_at_display': captured_at.strftime('%d/%m/%Y %H:%M UTC'),
-                'obs_date_header':    hdr_date or '',
-                'source':             'Harvard MicroObservatory · CfA · Cambridge MA',
-                'telescope_aperture': '6 pouces (152 mm)',
-                'fetched_at':         datetime.now(timezone.utc).isoformat(),
-            })
-            used_labels.add(label)
-            log.info('telescope_nightly: ✓ %s — alt=%.1f° — capturé %s',
-                     obj['label'], obj['alt'], captured_at.strftime('%d/%m/%Y %H:%M UTC'))
-
-        except Exception as e:
-            log.warning('telescope_nightly: %s → skipped: %s', obj['prefix'], e)
-
-    meta = {
-        'run_at':       datetime.now(timezone.utc).isoformat(),
-        'run_date':     datetime.now(timezone.utc).strftime('%Y-%m-%d'),
-        'location':     {'city': 'Tlemcen', 'lat': 34.87, 'lon': 1.32, 'alt_m': 816},
-        'source':       'Harvard MicroObservatory — waps.cfa.harvard.edu',
-        'note':         'FITS originaux · Télescopes robotiques CCD 6" · Pipeline automatique AstroScan',
-        'total_visible_tonight': len(visible),
-        'images':       results,
-    }
-    meta_path = os.path.join(STATION, 'telescope_live', 'nightly_meta.json')
-    with open(meta_path, 'w', encoding='utf-8') as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2, default=str)
-
-    cache_set('mo_catalog_today', None)
-    log.info('telescope_nightly: terminé — %d image(s) collectée(s)', len(results))
-    return meta
+# PASS 20.4 (2026-05-08) — Telescope helpers extracted to app/services/telescope_helpers.py
+# Shim re-export for backward compatibility (telescope_bp utilise
+# `from station_web import _telescope_nightly_tlemcen` via lazy import.)
+# Le corps original (97 lignes) a été déplacé verbatim vers telescope_helpers.py
+# avec lazy imports inside pour log/_mo_*/cache_set (cycle-safe).
+from app.services.telescope_helpers import _telescope_nightly_tlemcen  # noqa: E402,F401
 
 
 # MIGRATED TO telescope_bp PASS 9 — /api/telescope/nightly → see app/blueprints/telescope/__init__.py (api_telescope_nightly)
