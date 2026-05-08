@@ -112,9 +112,8 @@ from services.circuit_breaker import CB_TLE
 # services.config as _cfg retiré (non utilisé).
 
 # ── Instrumentation légère des appels externes requests (timeout + logs JSON) ──
-_REQ_DEFAULT_TIMEOUT = 10
-_REQ_SLOW_MS = 1500
-_REQ_VERY_SLOW_MS = 5000
+# PASS 22.2 (2026-05-08) — _REQ_* timeouts déplacés vers app/services/db_init.py
+# Re-importés via le shim consolidé après l'import de STATION (plus bas).
 _REQ_ORIGINAL_REQUEST = requests.sessions.Session.request
 
 
@@ -172,7 +171,7 @@ TRANSLATE_TTL_SECONDS = 3600
 TRANSLATE_LAST_REQUEST_TS = 0.0
 
 TRANSLATION_CACHE = {}
-MAX_CACHE_SIZE = 500
+# PASS 22.2 — MAX_CACHE_SIZE déplacé vers app/services/db_init.py (shim plus bas).
 
 
 # PASS 20.4 (2026-05-08) — System/Accuracy helpers extracted to app/services/system_helpers.py
@@ -192,7 +191,7 @@ from app.services.system_helpers import (  # noqa: E402,F401
 server_ready = False
 
 CLAUDE_CALL_COUNT = 0
-CLAUDE_MAX_CALLS = 100
+# PASS 22.2 — CLAUDE_MAX_CALLS déplacé vers app/services/db_init.py (shim plus bas).
 CLAUDE_80_WARNING_SENT = False
 GROQ_CALL_COUNT = 0
 COLLECTOR_LAST_RUN = 0
@@ -200,7 +199,23 @@ COLLECTOR_LAST_RUN = 0
 # ── Config ──────────────────────────────────────────────────
 # PASS 23 — moved to app/services/station_state.py
 from app.services.station_state import STATION  # noqa: F401 (re-export)
-DB_PATH   = f'{STATION}/data/archive_stellaire.db'
+# PASS 22.2 (2026-05-08) — DB inits + config constants extracted to app/services/db_init.py
+# Shim re-exports for backward compatibility.
+# NOTE: STATION, START_TIME, CLAUDE_CALL_COUNT, GROQ_CALL_COUNT, TRANSLATE_CACHE
+# et autres globals mutables restent dans station_web (sémantique de mutation
+# top-level préservée dans le namespace monolith).
+from app.services.db_init import (  # noqa: E402,F401
+    _REQ_DEFAULT_TIMEOUT,
+    _REQ_SLOW_MS,
+    _REQ_VERY_SLOW_MS,
+    MAX_CACHE_SIZE,
+    CLAUDE_MAX_CALLS,
+    DB_PATH,
+    IMG_PATH,
+    _init_sqlite_wal,
+    _init_visits_table,
+    _init_session_tracking_db,
+)
 # FIXED 2026-05-02 — chemin relatif → absolu via STATION (BUG 2)
 
 # PASS 22.1 (2026-05-08) — Weather DB helpers extracted to app/services/weather_db.py
@@ -224,19 +239,8 @@ from app.services.weather_db import (  # noqa: E402,F401
 )
 
 # ─── SQLite WAL mode (performance) ──────────────────────────────────────────
-def _init_sqlite_wal():
-    """Active WAL mode sur toutes les DB SQLite au démarrage."""
-    import sqlite3 as _sq
-    for _db in [DB_PATH]:
-        try:
-            _c = _sq.connect(_db)
-            _c.execute("PRAGMA journal_mode=WAL")
-            _c.execute("PRAGMA synchronous=NORMAL")
-            _c.execute("PRAGMA cache_size=10000")
-            _c.commit()
-            _c.close()
-        except Exception as _e:
-            print(f"[WAL] {_db}: {_e}")
+# PASS 22.2 — def _init_sqlite_wal déplacée vers app/services/db_init.py
+# (ré-importée via le shim plus haut). L'appel synchrone au boot reste ici :
 _init_sqlite_wal()
 init_all_wal()   # WAL + busy_timeout sur TOUTES les bases via services/db.py
 # ─────────────────────────────────────────────────────────────────────────────
@@ -250,7 +254,7 @@ init_weather_db()
 _init_weather_history_dir()
 _init_weather_archive_dir()
 # ─────────────────────────────────────────────────────────────────────────────
-IMG_PATH  = f'{STATION}/telescope_live/current_live.jpg'
+# PASS 22.2 — IMG_PATH déplacé vers app/services/db_init.py (shim ci-dessus).
 TITLE_F   = f'{STATION}/telescope_live/current_title.txt'
 REPORT_F  = f'{STATION}/telescope_live/live_report.txt'
 SHIELD_F  = f'{STATION}/data/shield_status.json'
@@ -1334,86 +1338,9 @@ def get_db():
     return conn
 
 
-def _init_visits_table():
-    """Crée la table visits et insère la ligne initiale si besoin."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS visits (id INTEGER PRIMARY KEY, count INTEGER DEFAULT 0)
-    """)
-    conn.execute("INSERT OR IGNORE INTO visits (id, count) VALUES (1, 0)")
-    conn.commit()
-    conn.close()
-
-
-def _init_session_tracking_db():
-    """Colonne session_id sur visitor_log + table session_time (sans perte de données)."""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
-        cols = [r[1] for r in cur.execute("PRAGMA table_info(visitor_log)").fetchall()]
-        if cols and "session_id" not in cols:
-            cur.execute("ALTER TABLE visitor_log ADD COLUMN session_id TEXT")
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS session_time (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT,
-                path TEXT,
-                duration INTEGER,
-                created_at TEXT
-            )
-            """
-        )
-        # Index légers: accélère stats live, agrégations session et tri temporel.
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_visitor_log_ip ON visitor_log(ip)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_visitor_log_session_id ON visitor_log(session_id)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_visitor_log_visited_at ON visitor_log(visited_at)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_visitor_log_country_code ON visitor_log(country_code)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_session_time_session_id ON session_time(session_id)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_session_time_created_at ON session_time(created_at)")
-        # Index UNIQUE sur (ip, session_id) : empêche les doublons entre workers Gunicorn.
-        cur.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_visitor_log_ip_session "
-            "ON visitor_log(ip, COALESCE(session_id, ''))"
-        )
-        # Nouvelles colonnes visitor_log (ajout sans perte si absentes)
-        existing_cols = [r[1] for r in cur.execute("PRAGMA table_info(visitor_log)").fetchall()]
-        for col, typedef in [
-            ("isp", "TEXT DEFAULT ''"),
-            ("human_score", "INTEGER DEFAULT -1"),
-            ("is_owner", "INTEGER DEFAULT 0"),
-        ]:
-            if col not in existing_cols:
-                cur.execute(f"ALTER TABLE visitor_log ADD COLUMN {col} {typedef}")
-        # Table page_views : chaque vue de page (N par session)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS page_views (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
-                ip TEXT NOT NULL,
-                path TEXT NOT NULL,
-                visited_at TEXT NOT NULL DEFAULT (datetime('now')),
-                referrer TEXT DEFAULT ''
-            )
-        """)
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_page_views_session ON page_views(session_id)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_page_views_path ON page_views(path)")
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_page_views_visited_at ON page_views(visited_at)")
-        # Table owner_ips : IPs du propriétaire
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS owner_ips (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ip TEXT NOT NULL UNIQUE,
-                label TEXT DEFAULT '',
-                added_at TEXT DEFAULT (datetime('now'))
-            )
-        """)
-        conn.commit()
-        conn.close()
-    except Exception:
-        pass
-
-
+# PASS 22.2 — def _init_visits_table + def _init_session_tracking_db déplacées
+# vers app/services/db_init.py (ré-importées via le shim en début de fichier).
+# Les appels synchrones au boot restent ici pour préserver l'ordre d'init :
 _init_session_tracking_db()
 _init_visits_table()
 
