@@ -194,3 +194,30 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(flight_radar_bp)
     app.register_blueprint(hilal_bp)
     log.info("[Blueprints] 29 blueprints + 8 hooks enregistrés (sync station_web.py + hilal)")
+
+
+def register_all_for_fallback(app: Flask) -> None:
+    """Enregistre TOUS les blueprints + hooks sur une instance Flask externe.
+
+    Conçu pour le mode FALLBACK de wsgi.py (ASTROSCAN_FORCE_MONOLITH=1
+    ou create_app() failure). Permet à station_web.app de servir le site
+    si la factory create_app() devient inutilisable (régression silencieuse,
+    config manquante, etc.).
+
+    Réutilise les fonctions internes _register_blueprints + _register_hooks
+    pour garantir la SYNCHRONISATION avec le mode normal (single source
+    of truth). Toute évolution future des BPs sera automatiquement propagée
+    au mode fallback.
+
+    Voir wsgi.py pour le mécanisme complet du strangler fig pattern.
+    Voir PASS 25.5 (2026-05-08) pour la justification de cette restauration.
+
+    Args:
+        app: Instance Flask externe (typiquement station_web.app)
+    """
+    _register_blueprints(app)
+    _register_hooks(app)
+    log.info(
+        "[fallback-safety] %d routes registered on external Flask app",
+        len(list(app.url_map.iter_rules())),
+    )

@@ -3904,6 +3904,32 @@ def _astroscan_session_cookie_and_time_script(response):
 # MIGRATED TO feeds_bp PASS 14 — /api/flights → see app/blueprints/feeds/__init__.py (api_flights)
 
 
+# ══════════════════════════════════════════════════════════════
+# PASS 25.5 — FALLBACK SAFETY (Strangler Fig Pattern Restoration)
+# ══════════════════════════════════════════════════════════════
+# Restauration du filet de sécurité retiré par PASS 25.3 (commit 4cebf53).
+# wsgi.py documente un fallback automatique : si create_app() échoue
+# au boot, le service retombe sur station_web.app. Ce bloc garantit
+# que station_web.app a bien tous les BPs/hooks registered pour servir
+# l'application en mode dégradé.
+#
+# Single source of truth : app/__init__.py:_register_blueprints + _register_hooks
+# (synchronisation automatique en cas d'ajout/retrait de BPs).
+#
+# Coût mémoire : ~5-10 MB par worker (29 BPs × 2 instances Flask).
+# Coût démarrage : +50-150 ms par worker.
+# Bénéfice : rollback instantané via ASTROSCAN_FORCE_MONOLITH=1.
+try:
+    from app import register_all_for_fallback
+    register_all_for_fallback(app)
+except Exception as _fallback_exc:
+    log.warning(
+        "[fallback-safety] station_web.app cannot register BPs: %s "
+        "(ASTROSCAN_FORCE_MONOLITH=1 will serve a degraded site)",
+        _fallback_exc,
+    )
+
+
 if __name__ == '__main__':
     os.makedirs(f'{STATION}/logs', exist_ok=True)
     os.makedirs(f'{STATION}/data', exist_ok=True)
