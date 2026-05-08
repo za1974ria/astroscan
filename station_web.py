@@ -3971,15 +3971,12 @@ def _download_esa_images():
 # continuent de fonctionner via la liaison du shim au namespace de ce module.
 
 
-def _start_skyview_sync():
-    """Boucle de sync SkyView → Lab toutes les 60 secondes."""
-    import threading
-    def loop():
-        while True:
-            _sync_skyview_to_lab()
-            time.sleep(60)
-    t = threading.Thread(target=loop, daemon=True)
-    t.start()
+# PASS 21.3 (2026-05-08) — Skyview sync thread extracted to app/workers/skyview_sync.py
+# Shim re-export for backward compatibility (app/bootstrap.py:52 imports
+# `from station_web import _start_skyview_sync` to start the thread.)
+# La fonction _sync_skyview_to_lab() consommée par la boucle est
+# fournie par app/services/lab_helpers.py (PASS 20.3).
+from app.workers.skyview_sync import _start_skyview_sync  # noqa: E402,F401
 
 
 LOCK_FILE = '/tmp/aegis_collector.lock'
