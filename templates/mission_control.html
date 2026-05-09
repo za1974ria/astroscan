@@ -206,6 +206,24 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
     }
   }));
 
+  // 13. NASA Black Marble 2024 - Version récente haute définition
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'NASA Black Marble 2024',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blackMarble.png'),
+    tooltip: 'NASA Black Marble 2024 - Lights at night version la plus récente (VIIRS NOAA-20)',
+    creationFunction: function() {
+      return new Cesium.WebMapTileServiceImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/VIIRS_NOAA20_DayNightBand_AT_Sensor_Radiance/default/2024-01-01/500m/{TileMatrix}/{TileRow}/{TileCol}.jpg',
+        layer: 'VIIRS_NOAA20_DayNightBand_AT_Sensor_Radiance',
+        style: 'default',
+        format: 'image/jpeg',
+        tileMatrixSetID: '500m',
+        maximumLevel: 8,
+        credit: 'NASA EOSDIS GIBS · VIIRS NOAA-20 · Black Marble 2024'
+      });
+    }
+  }));
+
   // Création du viewer avec sélecteur custom (pas de defaults Cesium ion cassés)
   const viewer = new Cesium.Viewer('cesiumContainer', {
     timeline: true,
