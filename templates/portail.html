@@ -1,9 +1,28 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ lang | default('fr') }}">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=0.45, minimum-scale=0.1, maximum-scale=5.0, user-scalable=yes">
-<title>AstroScan-Chohra - Portail · ORBITAL-CHOHRA</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>ORBITAL-CHOHRA — Portail</title>
+<meta name="description" content="{% if lang == 'en' %}Astronomy dashboard — live ISS position, NOAA alerts, James Webb imagery, satellite passes and space weather from Tlemcen.{% else %}Tableau de bord astronomique — position ISS en direct, alertes NOAA, images James Webb, passages satellites et météo spatiale depuis Tlemcen.{% endif %}">
+<meta name="keywords" content="{% if lang == 'en' %}astronomy dashboard, live ISS, James Webb, NOAA, satellites, Tlemcen, Algeria, space{% else %}tableau de bord astronomique, ISS live, James Webb, NOAA, satellites, Tlemcen, Algérie, espace{% endif %}">
+<meta property="og:title" content="{% if lang == 'en' %}ORBITAL-CHOHRA — Astronomy Portal{% else %}ORBITAL-CHOHRA — Portail Astronomique{% endif %}">
+<meta property="og:description" content="{% if lang == 'en' %}Astronomy dashboard — live ISS position, NOAA alerts, James Webb imagery, satellite passes.{% else %}Tableau de bord astronomique — position ISS live, alertes NOAA, images James Webb, passages satellites.{% endif %}">
+<meta property="og:url" content="https://astroscan.space/portail">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{% if lang == 'en' %}ORBITAL-CHOHRA — Astronomy Portal{% else %}ORBITAL-CHOHRA — Portail Astronomique{% endif %}">
+<meta name="twitter:description" content="{% if lang == 'en' %}Astronomy dashboard — live ISS, NOAA alerts, James Webb, satellite passes.{% else %}Tableau de bord astronomique — ISS live, alertes NOAA, James Webb, passages satellites.{% endif %}">
+<meta name="twitter:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
+<meta name="author" content="Zakaria Chohra — ORBITAL-CHOHRA">
+<meta name="robots" content="index, follow">
+<meta property="og:site_name" content="ORBITAL-CHOHRA">
+<meta property="og:locale" content="{{ 'en_US' if lang == 'en' else 'fr_FR' }}">
+<link rel="canonical" href="https://astroscan.space/portail">
+<link rel="alternate" hreflang="fr" href="https://astroscan.space/portail">
+<link rel="alternate" hreflang="en" href="https://astroscan.space/en/portail">
+<link rel="alternate" hreflang="x-default" href="https://astroscan.space/portail">
 <link rel="icon" href="/static/favicon.ico?v=2">
 <link rel="shortcut icon" href="/static/favicon.ico?v=2">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -30,31 +49,77 @@ html, body {
   width: 100%;
   min-height: 100vh;
   overflow: hidden;
-  background: var(--void);
+  /* PASS UI C STARFIELD FIX (2026-05-07) : background transparent
+     pour laisser le canvas #starfield-bg (z-index: -1) visible.
+     Le canvas a son propre radial-gradient deep-space. */
+  background: transparent;
   font-family: var(--mono);
 }
 
-/* ── STARS ── */
-#stars { position:fixed; inset:0; z-index:0; pointer-events:none; }
-.star {
-  position:absolute; border-radius:50%; background:#fff;
-  animation: tw var(--d,4s) ease-in-out infinite;
-  animation-delay: var(--dl,0s); opacity:var(--op,.4);
+/* ── STARS (PASS UI C FIX 1 — Canvas starfield) ── */
+/* Le canvas remplace l'ancien stars-as-divs. Position fixed full-viewport,
+   z-index -1 pour rester en arrière-plan absolu. Background radial pour
+   un dégradé "deep space" sur lequel les étoiles brillent. */
+#starfield-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center,
+    #020615 0%, #000409 70%, #000000 100%);
 }
-@keyframes tw { 0%,100%{opacity:var(--op)} 50%{opacity:calc(var(--op)*.15)} }
+/* Legacy #stars container retiré du DOM mais sélecteur conservé en
+   no-op au cas où d'autres scripts l'inspecteraient. */
+#stars { display: none; }
+
+.astro-btn {
+padding: 8px 14px;
+border-radius: 8px;
+border: 1px solid #00f0ff55;
+background: rgba(0, 20, 30, 0.6);
+color: #00f0ff;
+font-size: 12px;
+letter-spacing: 1px;
+text-decoration: none;
+cursor: pointer;
+transition: all 0.2s ease;
+}
+
+.astro-btn:hover {
+background: rgba(0, 240, 255, 0.1);
+box-shadow: 0 0 8px #00f0ff;
+}
+
+.astro-btn.small {
+padding: 4px 10px;
+font-size: 10px;
+}
 
 /* ── LAYOUT ── */
+/* Une seule piste : la sidebar est fixed — évite une 2e colonne grille vide entre sidebar et contenu. */
+/* PASS UI A FIX 2 (2026-05-07) : grid-template-rows passe de 100px à auto pour
+   éliminer le gap ~62px au-dessus du topbar (la 1re rangée est dimensionnée
+   automatiquement par le topbar lui-même + le primary-nav fixed). */
 .shell {
   display: grid;
-  grid-template-columns: 220px 1fr;
-  grid-template-rows: 48px 1fr;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr;
   width: 100%;
   min-height: 100vh;
+}
+
+/* Overlay menu mobile uniquement — hors flux desktop (pas de cellule grille fantôme). */
+.sidebar-overlay {
+  display: none;
 }
 
 /* Android : échelle sync-parfaite + menu tiroir (sidebar hors flux, pas de colonne fantôme). */
 @media (max-width: 900px) {
   body { overflow: hidden; }
+  .shell { grid-template-rows: 48px 1fr; }
   .shell.sync-scale {
     width: 900px;
     min-width: 900px;
@@ -72,6 +137,8 @@ html, body {
     overflow-y: auto !important;
     transition: left 0.28s ease !important;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5) !important;
+    /* Topbar + primary-nav (pleine largeur) : marge tiroir alignée contenu principal */
+    padding-top: 68px !important;
   }
   .sidebar.open { left: 0 !important; }
   .sidebar-overlay {
@@ -100,7 +167,7 @@ html, body {
     -webkit-overflow-scrolling: touch !important;
   }
   .hamburger-btn { display: flex !important; position: fixed !important; top: 6px !important; left: 6px !important; z-index: 1001 !important; }
-  .topbar { padding: 0 8px 0 52px !important; min-height: 40px !important; gap: 4px !important; }
+  .topbar { padding: 3px 8px 3px 52px !important; min-height: 32px !important; gap: 3px !important; }
   .topbar-center { display: none !important; }
   .brand { font-size: 0.7rem !important; letter-spacing: 0.05em !important; }
   .brand-sub { display: none !important; }
@@ -110,6 +177,8 @@ html, body {
   #splash { overflow: visible !important; }
   #pcg, .portal-cards-grid { max-height: none !important; overflow: visible !important; }
   #astro-notif-bell, .notif-bell { position: fixed !important; top: 6px !important; right: 8px !important; z-index: 1002 !important; }
+  /* PASS UI B FIX 2 : .primary-nav mobile-override retirée (bloc HTML supprimé) */
+  .content-area { padding-top: 16px !important; }
 }
 
 .hamburger-btn {
@@ -130,14 +199,17 @@ html, body {
 .hamburger-btn:focus { outline: none; }
 
 /* ── TOP BAR ── */
+/* PASS UI A FIX 2 (2026-05-07) : position relative → sticky top:0 pour rester
+   en haut du viewport au scroll. Le topbar n'a plus de marge fantôme au-dessus. */
 .topbar {
   grid-column: 1/-1;
   display: flex; align-items: center; justify-content: space-between;
-  height: 40px;
-  padding: 0 20px;
+  min-height: 32px;
+  height: auto;
+  padding: 3px 10px;
   background: rgba(1,4,8,0.99);
   border-bottom: 1px solid var(--border-bright);
-  position: relative; z-index: 10;
+  position: sticky; top: 0; z-index: 1000;
 }
 .topbar::after {
   content:'';
@@ -175,6 +247,12 @@ html, body {
 .tbar-dot.green { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
 .tbar-dot.amber { background:var(--amber); box-shadow:0 0 5px var(--amber); }
 .tbar-visits { display:flex; align-items:center; font-family:var(--font); font-size:0.6rem; letter-spacing:0.12em; color:var(--cyan); padding:4px 10px; background:rgba(0,255,136,0.08); border:1px solid rgba(0,212,255,0.3); border-radius:4px; }
+.header-counter-pulse { animation: counterFlash 0.4s ease-out; display:inline-block; }
+@keyframes counterFlash {
+  0%   { transform: scale(1); color: inherit; text-shadow: none; }
+  35%  { transform: scale(1.08); color: #00DCFF; text-shadow: 0 0 8px rgba(0, 220, 255, 0.8); }
+  100% { transform: scale(1); color: inherit; text-shadow: none; }
+}
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
 /* Langue FR/EN */
@@ -199,6 +277,7 @@ html, body {
 .topbar-right {
   display:flex; align-items:center; gap:16px;
 }
+/* PASS UI B FIX 2 (2026-05-07) : règles .primary-nav retirées — bloc HTML supprimé. */
 #top-clock {
   font-family: var(--font);
   font-size:0.7rem; font-weight:600;
@@ -218,6 +297,8 @@ html, body {
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
+  /* PASS UI C STARFIELD FIX : padding-top réduit 82→56px (topbar 48px + 8px de marge) */
+  padding-top: 56px;
 }
 
 .main-content {
@@ -226,6 +307,10 @@ html, body {
 
 .sidebar-section {
   padding: 12px 0 4px;
+}
+/* PASS UI C STARFIELD FIX : respiration réduite 28→8px */
+.sidebar > .sidebar-section:first-of-type {
+  padding-top: 8px;
 }
 .sidebar-label {
   font-size:0.45rem; letter-spacing:0.3em; text-transform:uppercase;
@@ -242,17 +327,39 @@ html, body {
   user-select: none;
 }
 .nav-item:hover {
-  background: rgba(0,212,255,0.04);
-  border-left-color: rgba(0,212,255,0.3);
+  background: rgba(0,212,255,0.06);
+  border-left-color: rgba(0,212,255,0.5);
+  transition: all 0.18s ease;
 }
+/* PASS UI C FIX 3 : active state adouci — ancien glow trop intense
+   sur Accueil. Cyan halo discret, label/icône colorés cyan. */
 .nav-item.active {
-  background: rgba(0,212,255,0.07);
+  background: rgba(0,212,255,0.05);
   border-left-color: var(--cyan);
+  box-shadow: inset 0 0 8px rgba(0,212,255,0.06);
 }
 .nav-item.active .nav-label { color:var(--cyan); }
 .nav-item.active .nav-icon { color:var(--cyan); }
 
-.nav-icon { font-size:0.9rem; width:18px; text-align:center; color:var(--text-dim); transition:color 0.2s; }
+.nav-icon {
+  font-size:14px;
+  width:22px;
+  min-width:22px;
+  height:22px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:4px;
+  text-align:center;
+  color:var(--text-dim);
+  background:rgba(0, 255, 200, 0.05);
+  border:1px solid rgba(0,255,200,0.2);
+  border-radius:6px;
+  transition:all 0.2s;
+}
+.nav-item:hover .nav-icon {
+  background:rgba(0,255,200,0.15);
+}
 .nav-label {
   font-family: var(--font);
   font-size:0.55rem; letter-spacing:0.12em; text-transform:uppercase;
@@ -270,6 +377,28 @@ html, body {
 .nav-badge.iss-live-red {
   background:#e01818; color:#fff; font-size:7px; padding:2px 7px; border-radius:3px; letter-spacing:1px; font-weight:800;
   animation:issLiveBlink 1s ease-in-out infinite; box-shadow:0 0 8px rgba(255,40,40,0.55);
+}
+#nav-iss-tracker {
+  position: fixed;
+  top: 110px;
+  right: 20px;
+  z-index: 900;
+  margin-top: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 70, 70, 0.35);
+  border-radius: 8px;
+  background: rgba(20, 4, 6, 0.72);
+  box-shadow: 0 0 10px rgba(255, 40, 40, 0.25);
+  display: none;
+}
+#nav-iss-tracker .nav-icon {
+  font-size: 16px;
+}
+#nav-iss-tracker .nav-badge.iss-live-red {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid rgba(255, 120, 120, 0.45);
+  box-shadow: 0 0 8px rgba(255, 50, 50, 0.45);
 }
 @keyframes issLiveBlink { 0%,100%{opacity:1} 50%{opacity:0.55} }
 
@@ -378,11 +507,16 @@ html, body {
 .sb-val { color:var(--text); }
 
 /* ── CONTENT AREA ── */
+/* PASS UI B FIX 2 : padding-top 58px → 16px (la primary-nav fixed à 66px
+   est supprimée — plus besoin de réserver 58px pour la chevaucher). */
 .content-area {
-  grid-column: 2;
+  grid-column: 1;
   grid-row: 2;
   position: relative;
-  padding: 40px 40px 40px 20px;
+  margin-left: 220px;
+  width: auto;
+  min-width: 0;
+  padding: 16px 40px 40px 20px;
   overflow: auto;
   margin-right: 0;
 }
@@ -649,7 +783,7 @@ html, body {
   max-width: 1300px !important;
 }
 
-/* ── Diagnostic CSS AstroScan-Chohra (correctifs finaux) ── */
+/* ── Diagnostic CSS ORBITAL-CHOHRA (correctifs finaux) ── */
 .splash-title {
   font-size: 30px !important;
   margin-top: -10px !important;
@@ -702,7 +836,7 @@ main,
 }
 /* ensure header does not hide elements */
 .topbar {
-  z-index: 5 !important;
+  z-index: 1000 !important;
 }
 /* radar above splash */
 .splash-logo,
@@ -726,7 +860,7 @@ main,
   top: 20px !important;
 }
 
-/* AstroScan-Chohra PORTAL LAYOUT STABLE (règles uniques, sans conflit) */
+/* ORBITAL-CHOHRA PORTAL LAYOUT STABLE (règles uniques, sans conflit) */
 #splash {
   position: relative;
   width: 100%;
@@ -734,11 +868,12 @@ main,
   display: block;
 }
 
+/* PASS UI D FIX 3 (2026-05-07) : hero compacté ~35% — h1 cyan glow
+   préservé (iconique), seulement les marges et l'intro réduites. */
 .portal-hero {
   display: block;
   text-align: center;
-  margin: 20px auto 20px auto;
-  margin-bottom: 40px;
+  margin: 12px auto 16px auto;
 }
 
 .portal-hero h1 {
@@ -746,12 +881,47 @@ main,
   font-size: 34px;
   color: var(--cyan);
   text-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
-  margin: 0 0 10px 0;
+  margin: 0 0 6px 0;
 }
 
 .portal-hero p {
-  font-size: 18px;
+  font-size: 15px;
   color: var(--text);
+  margin: 0 0 8px 0;
+}
+/* PASS UI D FIX 2 (2026-05-07) : compaction des 3 cards SUIVI/PRÉDICTION/APOD.
+   Marges et padding réduits ~45%, texte plus dense, status line dimmer. */
+/* PASS UI D FIX 4 (2026-05-07) : élargissement cards 820→1100px
+   Sur grand écran (>=1400px), 820px laissait 48% de l'espace vide
+   → contenu paraissait "amoindri" face à la sidebar 220px.
+   1100px donne un meilleur équilibre visuel sans étirer trop. */
+.brief-block {
+  margin: 8px auto 0;
+  max-width: 1100px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 20, 40, 0.35);
+  padding: 10px 18px;
+}
+.brief-title {
+  color: var(--cyan);
+  font-family: var(--font);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  margin-bottom: 3px;
+}
+/* PASS UI D FIX 4 : font-size remonté 0.72→0.82rem pour lisibilité grand écran */
+.brief-desc {
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.meta-note {
+  margin-top: 4px;
+  color: var(--text-dim);
+  font-size: 0.55rem;
+  letter-spacing: 0.05em;
 }
 
 .portal-content{
@@ -817,7 +987,7 @@ hr{
   display:none !important;
 }
 
-/* Scrollbar style AstroScan-Chohra */
+/* Scrollbar style ORBITAL-CHOHRA */
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -833,11 +1003,271 @@ hr{
 }
 
 /* Fix ligne bleue */
+
+/* ── DESIGN V2 POLISH ── */
+/* Card glow on hover */
+.portal-cards-grid .card:hover {
+  background: rgba(0,212,255,0.08) !important;
+  border-color: rgba(0,212,255,0.45) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 22px rgba(0,212,255,0.1) !important;
+}
+.portal-cards-grid .card-title {
+  font-family: var(--font) !important;
+  letter-spacing: 0.15em !important;
+  text-transform: uppercase !important;
+}
+/* Refined scrollbar */
+::-webkit-scrollbar { width: 3px !important; }
+::-webkit-scrollbar-track { background: #010408 !important; }
+::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.25) !important; border-radius: 0 !important; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.45) !important; }
+
+/* Nav item hover glow */
+.nav-item:hover .nav-icon { color: var(--cyan) !important; }
+.nav-item.active { box-shadow: inset 0 0 12px rgba(0,212,255,0.04) !important; }
+
+/* Sidebar top section divider glow */
+.s-divider { background: linear-gradient(90deg,transparent,rgba(0,212,255,0.15),transparent) !important; }
+
+/* Topbar glowing line */
+.topbar::after { opacity: 0.6 !important; }
+
+/* Splash button polish */
+.splash-btn:hover { box-shadow: 0 0 20px rgba(0,212,255,0.25) !important; }
+
+/* Stats bar in sidebar */
+.stats-bar-row .val { text-shadow: 0 0 8px currentColor; }
+
+#nav-iss-tracker {
+    position: fixed !important;
+    top: auto !important;
+    right: 22px !important;
+    bottom: 72px !important;
+    z-index: 1200 !important;
+    display: none !important;
+}
+
+#nav-iss-tracker .nav-badge,
+#nav-iss-tracker .iss-live-red {
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+    line-height: 1 !important;
+}
+
+#iss-floating-toggle {
+    position: fixed;
+    bottom: 140px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(0, 20, 30, 0.9);
+    border: 1px solid #00ffc8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 9999;
+    box-shadow: 0 0 12px rgba(0,255,200,0.4);
+    transition: all 0.2s ease;
+}
+
+#iss-floating-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(0,255,200,0.8);
+}
+
+#iss-floating-panel {
+    position: fixed;
+    bottom: 200px;
+    right: 20px;
+    width: 260px;
+    padding: 12px;
+    background: rgba(0, 10, 20, 0.95);
+    border: 1px solid #00ffc8;
+    border-radius: 8px;
+    color: #00ffc8;
+    font-size: 12px;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 0 20px rgba(0,255,200,0.3);
+}
+
+/* ═══ PASS UI D FIX 1 (2026-05-07) — CAMOUFLAGE RETIRÉ ═══
+   Ancien mask body::after (310px × 100vh, fond #07090d) qui couvrait
+   la zone "fantôme" entre la sidebar (left:220px) et le contenu.
+   Avec le starfield Canvas (#starfield-bg z-index:-1), ce mask cachait
+   les étoiles dans toute cette bande, créant une dead-zone visible.
+   Retiré entièrement — la zone est désormais transparente, le canvas
+   y rayonne. .content-area garde z-index:200 pour rester au-dessus. */
+@media (min-width: 901px) {
+  .content-area {
+    position: relative !important;
+    z-index: 200 !important;
+  }
+}
+/* ═══ END ═══ */
+
+/* ═══ PASS UI A FIX 3 + PASS UI B FIX 3 — SIDEBAR 7 GROUPES COLLAPSIBLES ═══ */
+.sidebar-group {
+  margin: 0;
+}
+/* PASS UI B FIX 3 : hauteur uniforme 44px sur top-level + group-header */
+.sidebar > .sidebar-section .nav-item,
+.sidebar-group-header {
+  min-height: 44px;
+}
+.sidebar-group-header {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 9px 16px;
+  background: transparent;
+  border: 0; border-left: 2px solid transparent;
+  cursor: pointer;
+  font-family: var(--mono);
+  text-align: left;
+  transition: all 0.2s;
+  user-select: none;
+}
+.sidebar-group-header:hover {
+  background: rgba(0,212,255,0.06);
+  border-left-color: rgba(0,212,255,0.5);
+  transition: all 0.18s ease;
+}
+.sidebar-group-header:focus { outline: none; }
+.sidebar-group-header .nav-label {
+  font-family: var(--font);
+  font-size:0.55rem; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--text); flex:1;
+  /* PASS UI B/C FIX : ellipsis si label trop long. max-width relevé à 152px
+     (Phase C) pour accueillir "MÉTÉO & AURORES" sans troncature. Labels
+     trop longs raccourcis dans le HTML directement (DONNÉES, IA OUTILS). */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 152px;
+}
+.sidebar-group-header .nav-icon { color: var(--cyan); }
+/* PASS UI B FIX 3 : icône uniforme — SVG 14×14 dans conteneur 20×20 (vs 22 avant) */
+.sidebar .nav-icon {
+  width:20px;
+  min-width:20px;
+  height:20px;
+  padding:3px;
+}
+.sidebar .nav-icon svg {
+  width: 14px; height: 14px;
+}
+.sidebar-group .chevron {
+  display:flex; align-items:center; justify-content:center;
+  width: 16px; min-width: 16px;
+  margin-left: auto;
+  color: var(--text-dim);
+  transition: transform 0.2s ease;
+}
+.sidebar-group.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+.sidebar-group-content {
+  overflow: hidden;
+  max-height: 1000px;
+  transition: max-height 0.25s ease;
+}
+.sidebar-group.collapsed .sidebar-group-content {
+  max-height: 0;
+}
+/* PASS UI B FIX 3 : sub-items légèrement plus courts (36px) pour hiérarchie visuelle */
+.nav-item.nav-sub {
+  padding: 7px 16px 7px 36px;
+  min-height: 32px;
+  border-left: 2px solid transparent;
+}
+.nav-item.nav-sub:hover {
+  background: rgba(0,212,255,0.04);
+  border-left-color: rgba(0,212,255,0.35);
+  transition: all 0.18s ease;
+}
+.nav-item.nav-sub.active {
+  border-left-color: var(--cyan);
+}
+.nav-item.nav-sub .nav-label {
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-link {
+  text-decoration: none;
+  color: inherit;
+}
+.nav-link:visited { color: inherit; }
+/* PASS UI B FIX 3 : À propos top-level — même padding que les autres top-level,
+   plus de margin-top ni border-top distincts (intégré au flux). */
+.nav-toplevel {
+  margin-top: 0;
+  border-top: 0;
+}
+/* Surcharge : annule le chip flottant historique #nav-iss-tracker (display:none, position:fixed) lorsqu'il est dans la sidebar */
+.sidebar #nav-iss-tracker {
+  position: static !important;
+  display: flex !important;
+  top: auto; right: auto;
+  background: transparent;
+  border: 0; border-left: 2px solid transparent;
+  box-shadow: none;
+}
+/* ═══ END FIX 3 ═══ */
 </style>
+  <link rel="stylesheet" href="/static/css/design_tokens.css">
+  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/fixes.css">
 </head>
 <body>
 
-<div id="stars"></div>
+<canvas id="starfield-bg" aria-hidden="true"></canvas>
+
+<script>
+/* Phase O-E (2026-05-07) — Garde-fou anti-doublons.
+   Si une extension Chrome ou un script tiers tente d'injecter un .sidebar,
+   .topbar ou .shell additionnel, on supprime les doublons immédiatement.
+   Le HTML serveur est garanti propre (1 de chaque) ; toute occurrence > 1
+   est forcément externe. */
+(function () {
+  function purgeDup(sel) {
+    var nodes = document.querySelectorAll(sel);
+    if (nodes.length <= 1) return 0;
+    var removed = 0;
+    for (var i = 1; i < nodes.length; i++) {
+      try { nodes[i].remove(); removed++; } catch (e) {}
+    }
+    return removed;
+  }
+  function purgeAll() {
+    var n = purgeDup('.shell') + purgeDup('.sidebar') + purgeDup('.topbar');
+    if (n > 0) console.warn('[O-E] doublons UI supprimés:', n);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', purgeAll, { once: true });
+  } else {
+    purgeAll();
+  }
+  document.addEventListener('readystatechange', function () {
+    if (document.readyState === 'complete') purgeAll();
+  });
+  if (typeof MutationObserver !== 'undefined') {
+    var obs = new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) {
+        if (muts[i].addedNodes && muts[i].addedNodes.length) { purgeAll(); break; }
+      }
+    });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(function () { try { obs.disconnect(); } catch (e) {} }, 10000);
+  }
+})();
+</script>
 
 <div class="shell">
 
@@ -858,20 +1288,18 @@ hr{
           <circle cx="14" cy="5" r="1.5" fill="#ff8c00"/>
         </svg>
       </div>
-      <span class="brand-name">AstroScan-Chohra</span>
-      <span class="brand-sep">·</span>
-      <span class="brand-sub">ORBITAL-CHOHRA</span>
+      <span class="brand-name">ORBITAL-CHOHRA</span>
     </div>
 
     <div class="topbar-center">
       <div class="tbar-visits" id="tbar-visits" title="Visites">
         <span style="margin-right:4px">👁️</span>
-        <span id="tbar-visits-val">000 000</span>
+        <span id="tbar-visits-val">{% set _vc_raw = visitor_count|default(none) %}{% if _vc_raw is not none and _vc_raw is number and _vc_raw > 0 %}{% set _vc = '%06d' % (_vc_raw|int) %}{{ _vc[:3] }} {{ _vc[3:] }}{% else %}<span style="opacity:0.55">•••</span>{% endif %}</span>
       </div>
       <div class="tbar-stat"><div class="tbar-dot green"></div><span data-i18n="aegis_active">AEGIS ACTIF</span></div>
-      <div class="tbar-stat"><div class="tbar-dot green"></div><span data-i18n="web_online">WEB ONLINE</span></div>
+      <div class="tbar-stat"><div class="tbar-dot green"></div><span data-i18n="web_online">WEB EN LIGNE</span></div>
       <div class="tbar-stat" id="nasa-sync-wrap" title="TLE / orbites satellite (CelesTrak)">
-        <div class="tbar-dot amber" id="nasa-sync-dot"></div><span data-i18n="nasa_sync">NASA SYNC</span></div>
+        <div class="tbar-dot amber" id="nasa-sync-dot"></div><span data-i18n="nasa_sync">NASA SYNCHRO</span></div>
       <div class="lang-toggle" id="lang-toggle" title="FR / EN">
         <span class="active" data-lang="fr">FR</span><span data-lang="en">EN</span>
       </div>
@@ -882,148 +1310,228 @@ hr{
       <div id="top-clock">--:--:--</div>
     </div>
   </div>
+  <!-- PASS UI B FIX 2 (2026-05-07) : <nav class="primary-nav"> retiré entièrement —
+       il chevauchait la zone centrale et son border-bottom cyan créait une ligne
+       fantôme avec le texte "HOME ISS PASSES APOD TECHNICAL" visible derrière le hero.
+       Toutes ces destinations restent accessibles via la sidebar (Accueil, ISS,
+       APOD, Technical via /technical en lien direct si nécessaire). -->
 
   <div class="sidebar">
 
     <div class="sidebar-section">
       <div class="sidebar-label" data-i18n="nav_label">Navigation</div>
 
+      <!-- 1. Accueil (single, always visible) -->
       <div class="nav-item active" id="nav-home" onclick="navigate('home')">
-        <span class="nav-icon">⌂</span>
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </span>
         <span class="nav-label" data-i18n="nav_home">Accueil</span>
       </div>
 
-      <div class="nav-item" id="nav-dashboard" onclick="navigate('dashboard')">
-        <span class="nav-icon">◈</span>
-        <span class="nav-label" data-i18n="nav_dashboard">Dashboard QG</span>
-        <span class="nav-badge live">Live</span>
+      <!-- 2. Espace Live -->
+      <div class="sidebar-group" data-group="espace_live">
+        <button type="button" class="sidebar-group-header" onclick="toggleSidebarGroup('espace_live')">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M13 7 9 3 5 7l4 4"/><path d="m17 11 4 4-4 4-4-4"/><path d="m8 12 4 4 6-6-4-4Z"/><path d="m16 8 3-3"/><path d="M9 21a6 6 0 0 0-6-6"/></svg>
+          </span>
+          <span class="nav-label">{% if lang == 'en' %}Live Space{% else %}Espace Live{% endif %}</span>
+          <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="sidebar-group-content">
+          <div class="nav-item nav-sub" id="nav-iss-tracker" onclick="navigate('iss-tracker')" data-page="iss-tracker">
+            <span class="nav-label" data-i18n="nav_iss">ISS en direct</span>
+            <span class="nav-badge iss-live-red">DIRECT</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-orbital" onclick="navigate('orbital')">
+            <span class="nav-label">Orbital Live</span>
+            <span class="nav-badge live">LIVE</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-orbital-map" onclick="navigate('orbital-map')">
+            <span class="nav-label" data-i18n="nav_orbital_map">Carte orbitale</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-telemetrie-sondes" onclick="navigate('telemetrie-sondes')" data-page="telemetrie-sondes">
+            <span class="nav-label" data-i18n="nav_sondes">Sondes en direct</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-mission-control" onclick="navigate('mission-control')">
+            <span class="nav-label" data-i18n="nav_mission">Contrôle Mission</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-overlord" onclick="navigate('overlord')">
+            <span class="nav-label" data-i18n="nav_overlord">Contrôle Overlord</span>
+          </div>
+        </div>
       </div>
 
-      <div class="nav-item" id="nav-overlord" onclick="navigate('overlord')">
-        <span class="nav-icon">⬡</span>
-        <span class="nav-label" data-i18n="nav_overlord">Overlord Live</span>
-        <span class="nav-badge live">●</span>
+      <!-- 3. Observation -->
+      <div class="sidebar-group" data-group="observation">
+        <button type="button" class="sidebar-group-header" onclick="toggleSidebarGroup('observation')">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m10.065 12.493-6.18 1.318a.934.934 0 0 1-1.108-.702l-.537-2.15a1.07 1.07 0 0 1 .691-1.265l13.504-4.44"/><path d="m13.56 11.747 4.332-.924"/><path d="m16 21-3.105-6.21"/><path d="M16.485 5.94a2 2 0 0 1 1.455-2.425l1.09-.272a1 1 0 0 1 1.212.727l1.515 6.06a1 1 0 0 1-.727 1.213l-1.09.272a2 2 0 0 1-2.425-1.455z"/><path d="m6.158 8.633 1.114 4.456"/><path d="m8 21 3.105-6.21"/><circle cx="12" cy="13" r="2"/></svg>
+          </span>
+          <span class="nav-label">Observation</span>
+          <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="sidebar-group-content">
+          <div class="nav-item nav-sub" id="nav-observatoire" onclick="window.location.href='/observatoire'">
+            <span class="nav-label" data-i18n="nav_observatoire">Observatoire</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-telescope" onclick="navigate('telescope')">
+            <span class="nav-label" data-i18n="nav_telescope">Télescope</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-nasa-apod" onclick="navigate('nasa-apod')">
+            <span class="nav-label">{% if lang == 'en' %}NASA Picture of the Day{% else %}NASA Image du Jour{% endif %}</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-aladin" onclick="navigate('aladin')">
+            <span class="nav-label" data-i18n="nav_sky_map">Carte du Ciel</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-ce_soir" onclick="navigate('ce_soir')" data-page="ce_soir">
+            <span class="nav-label" data-i18n="nav_ce_soir">Ce soir</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-ephemerides" onclick="navigate('ephemerides')">
+            <span class="nav-label">{% if lang == 'en' %}Ephemeris{% else %}Éphémérides{% endif %}</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-sky-camera" onclick="navigate('sky-camera')" data-page="sky-camera">
+            <span class="nav-label" data-i18n="nav_sky_cam">Caméra Ciel</span>
+          </div>
+        </div>
       </div>
 
-      <div class="nav-item" id="nav-galerie" onclick="navigate('galerie')">
-        <span class="nav-icon">◫</span>
-        <span class="nav-label" data-i18n="nav_galerie">Archive Stellaire</span>
+      <!-- 4. Météo & Aurores -->
+      <div class="sidebar-group" data-group="meteo">
+        <button type="button" class="sidebar-group-header" onclick="toggleSidebarGroup('meteo')">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </span>
+          <span class="nav-label">{% if lang == 'en' %}Weather{% else %}Météo &amp; Aurores{% endif %}</span>
+          <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="sidebar-group-content">
+          <div class="nav-item nav-sub" id="nav-meteo-spatiale" onclick="navigate('meteo-spatiale')" data-page="meteo-spatiale">
+            <span class="nav-label" data-i18n="nav_meteo">Météo Spatiale</span>
+            <span class="nav-badge iss-live-red">DIRECT</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-aurores" onclick="navigate('aurores')" data-page="aurores">
+            <span class="nav-label" data-i18n="nav_aurores">Aurores Boréales</span>
+            <span class="nav-badge iss-live-red">DIRECT</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-control" onclick="navigate('control')">
+            <span class="nav-label">{% if lang == 'en' %}Local Weather{% else %}Météo Locale{% endif %}</span>
+          </div>
+        </div>
       </div>
 
-      <div class="nav-item" id="nav-observatoire" onclick="navigate('observatoire')">
-        <span class="nav-icon">◎</span>
-        <span class="nav-label" data-i18n="nav_observatoire">Observatoire</span>
+      <!-- 5. Live Terre -->
+      <div class="sidebar-group" data-group="live_terre">
+        <button type="button" class="sidebar-group-header" onclick="toggleSidebarGroup('live_terre')">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+          </span>
+          <span class="nav-label">{% if lang == 'en' %}Earth Live{% else %}Live Terre{% endif %}</span>
+          <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="sidebar-group-content">
+          <div class="nav-item nav-sub" id="nav-europe-live" onclick="navigate('europe-live')" data-page="europe-live">
+            <span class="nav-label">Europe Live</span>
+          </div>
+          <a href="/flight-radar" class="nav-item nav-sub nav-link">
+            <span class="nav-label">{% if lang == 'en' %}Air Traffic{% else %}Trafic Aérien{% endif %}</span>
+          </a>
+          <a href="/scan-signal" class="nav-item nav-sub nav-link">
+            <span class="nav-label">{% if lang == 'en' %}Vessel Tracker{% else %}Navires AIS{% endif %}</span>
+          </a>
+          <a href="/ground-assets" class="nav-item nav-sub nav-link">
+            <span class="nav-label">{% if lang == 'en' %}Ground Assets{% else %}Assets Sol{% endif %}</span>
+          </a>
+          <div class="nav-item nav-sub" id="nav-visiteurs-live" onclick="navigate('visiteurs-live')" data-page="visiteurs-live">
+            <span class="nav-label" data-i18n="nav_visitors">Visiteurs Live</span>
+          </div>
+        </div>
       </div>
 
-      <div class="nav-item" id="nav-ce_soir" onclick="navigate('ce_soir')" data-page="ce_soir">
-        <span class="nav-icon">🌙</span>
-        <span class="nav-label" data-i18n="nav_ce_soir">CE SOIR</span>
-        <span class="nav-badge live-badge" data-i18n="badge_direct">DIRECT</span>
+      <!-- 6. IA & Outils -->
+      <div class="sidebar-group" data-group="ia">
+        <button type="button" class="sidebar-group-header" onclick="toggleSidebarGroup('ia')">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+          </span>
+          <span class="nav-label">{% if lang == 'en' %}AI Tools{% else %}IA &amp; Outils{% endif %}</span>
+          <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="sidebar-group-content">
+          <div class="nav-item nav-sub" id="nav-oracle-cosmique" onclick="navigate('oracle-cosmique')" data-page="oracle-cosmique">
+            <span class="nav-label" data-i18n="nav_oracle">Oracle Cosmique</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-guide_stellaire" onclick="navigate('guide_stellaire')" data-page="guide_stellaire">
+            <span class="nav-label" data-i18n="nav_guide">Guide Stellaire</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-orbital_radio" onclick="navigate('orbital_radio')" data-page="orbital_radio">
+            <span class="nav-label" data-i18n="nav_orbital_radio">Orbital Radio</span>
+          </div>
+          <a href="/lab" target="_blank" class="nav-item nav-sub nav-link">
+            <span class="nav-label">Digital Lab</span>
+          </a>
+          <a href="/scientific" target="_blank" class="nav-item nav-sub nav-link">
+            <span class="nav-label">{% if lang == 'en' %}Scientific Mode{% else %}Mode Scientifique{% endif %}</span>
+          </a>
+        </div>
       </div>
 
-      <div class="nav-item" id="nav-orbital_radio" onclick="navigate('orbital_radio')" data-page="orbital_radio">
-        <span class="nav-icon">🔊</span>
-        <span class="nav-label">ORBITAL-RADIO</span>
-        <span class="nav-badge" style="background:#ff3366;color:white;font-size:7px;padding:1px 5px;border-radius:3px;letter-spacing:1px">LIVE</span>
+      <!-- 7. Données & Recherche -->
+      <div class="sidebar-group" data-group="data">
+        <button type="button" class="sidebar-group-header" onclick="toggleSidebarGroup('data')">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+          </span>
+          <span class="nav-label">{% if lang == 'en' %}Data{% else %}Données{% endif %}</span>
+          <span class="chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="m6 9 6 6 6-6"/></svg></span>
+        </button>
+        <div class="sidebar-group-content">
+          <div class="nav-item nav-sub" id="nav-dashboard" onclick="navigate('dashboard')">
+            <span class="nav-label" data-i18n="nav_dashboard">Dashboard QG</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-analytics" onclick="navigate('analytics')" data-page="analytics">
+            <span class="nav-label" data-i18n="nav_analytics">Analytics</span>
+          </div>
+          <div class="nav-item nav-sub" id="nav-galerie" onclick="navigate('galerie')">
+            <span class="nav-label" data-i18n="nav_galerie">Archive Stellaire</span>
+          </div>
+          <a href="/research-center" target="_blank" class="nav-item nav-sub nav-link">
+            <span class="nav-label">Research Center</span>
+          </a>
+          <a href="/research" target="_blank" class="nav-item nav-sub nav-link">
+            <span class="nav-label">Research Dashboard</span>
+          </a>
+          <a href="/api/archive/reports" target="_blank" class="nav-item nav-sub nav-link">
+            <span class="nav-label">Science Archive</span>
+          </a>
+          <div class="nav-item nav-sub" id="nav-vision" onclick="navigate('vision')">
+            <span class="nav-label" data-i18n="nav_vision">Vision 2026</span>
+            <span class="nav-badge new">2026</span>
+          </div>
+          <a href="/space" target="_blank" class="nav-item nav-sub nav-link">
+            <span class="nav-label">Space Intelligence</span>
+          </a>
+        </div>
       </div>
 
-      <div class="nav-item" id="nav-guide_stellaire" onclick="navigate('guide_stellaire')" data-page="guide_stellaire">
-        <span class="nav-icon">🌟</span>
-        <span class="nav-label">GUIDE STELLAIRE</span>
-        <span class="nav-badge" style="background:linear-gradient(90deg,#b8860b,#e6c200);color:#0a0a0a;font-size:7px;padding:1px 6px;border-radius:3px;letter-spacing:1px;font-weight:700">IA</span>
-      </div>
-
-      <div class="nav-item" id="nav-oracle-cosmique" onclick="navigate('oracle-cosmique')" data-page="oracle-cosmique">
-        <span class="nav-icon">🔮</span>
-        <span class="nav-label">ORACLE COSMIQUE</span>
-        <span class="nav-badge" style="background:linear-gradient(90deg,#6b2fff,#b366ff);color:#fff;font-size:7px;padding:1px 6px;border-radius:3px;letter-spacing:1px;font-weight:700">IA</span>
-      </div>
-
-      <div class="nav-item" id="nav-meteo-spatiale" onclick="navigate('meteo-spatiale')" data-page="meteo-spatiale">
-        <span class="nav-icon">⚡</span>
-        <span class="nav-label">MÉTÉO SPATIALE</span>
-        <span class="nav-badge" style="background:linear-gradient(90deg,#ff6600,#ff3300);color:#fff;font-size:7px;padding:1px 6px;border-radius:3px;letter-spacing:1px;font-weight:800;animation:pulse 1.5s ease-in-out infinite">LIVE</span>
-      </div>
-
-      <div class="nav-item" id="nav-visiteurs-live" onclick="navigate('visiteurs-live')" data-page="visiteurs-live">
-        <span class="nav-icon">🌍</span>
-        <span class="nav-label">VISITEURS LIVE</span>
-        <span class="nav-badge" style="background:linear-gradient(90deg,#00d8ff,#5a7dff);color:#001220;font-size:7px;padding:1px 6px;border-radius:3px;letter-spacing:1px;font-weight:800">LIVE</span>
-      </div>
-
-      <div class="nav-item" onclick="navigate('aurores')" data-page="aurores">
-        <span class="nav-icon">🌌</span>
-        <span class="nav-label">AURORES</span>
-        <span class="nav-badge" style="background:linear-gradient(90deg,#7700ff,#00ff88);color:white;font-size:7px;padding:1px 5px;border-radius:3px;letter-spacing:1px">LIVE</span>
-      </div>
-
-      <div class="nav-item" id="nav-vision" onclick="navigate('vision')">
-        <span class="nav-icon">◇</span>
-        <span class="nav-label" data-i18n="nav_vision">Vision 2026</span>
-        <span class="nav-badge new">2026</span>
-      </div>
-
-      <div class="nav-item" id="nav-mission-control" onclick="navigate('mission-control')">
-        <span class="nav-icon">🛰</span>
-        <span class="nav-label">Mission Control</span>
-      </div>
-
-      <div class="nav-item" id="nav-iss-tracker" onclick="navigate('iss-tracker')" data-page="iss-tracker">
-        <span class="nav-icon">🔴</span>
-        <span class="nav-label">ISS LIVE</span>
-        <span class="nav-badge iss-live-red">LIVE</span>
-      </div>
-
-      <div class="nav-item" id="nav-telemetrie-sondes" onclick="navigate('telemetrie-sondes')" data-page="telemetrie-sondes">
-        <span class="nav-icon">📡</span>
-        <span class="nav-label">SONDES LIVE</span>
-        <span class="nav-badge" style="background:#ffd060;color:#000">LIVE</span>
-      </div>
-
-      <div class="nav-item" id="nav-sky-camera" onclick="navigate('sky-camera')" data-page="sky-camera">
-        <span class="nav-icon">🔭</span>
-        <span class="nav-label">SKY CAMERA</span>
-        <span class="nav-badge" style="background:#00d8ff;color:#000">LIVE</span>
-      </div>
-
-      <div class="nav-item" id="nav-orbital-map" onclick="navigate('orbital-map')">
-        <span class="nav-icon">🌍</span>
-        <span class="nav-label">Orbital Map</span>
-      </div>
-
-      <div class="nav-item" id="nav-analytics" onclick="navigate('analytics')" data-page="analytics">
-        <span class="nav-icon">📊</span>
-        <span class="nav-label">ANALYTICS</span>
-        <span class="nav-badge" style="background:#7c3aed;color:#fff;font-size:7px;padding:1px 6px;border-radius:3px;letter-spacing:1px;font-weight:700">STATS</span>
-      </div>
-
-      <a href="/scientific" target="_blank"
-style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;text-decoration:none;font-family:monospace;font-size:11px;letter-spacing:1px;border-top:1px solid #00ff8822;margin-top:4px">
-⚗️ MODE SCIENTIFIQUE
-<span style="background:#00ff88;color:#000;font-size:8px;padding:1px 6px;border-radius:10px;margin-left:auto">PRO</span>
-</a>
-      <a href="/lab" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
-🔬 DIGITAL LAB
-</a>
-      <a href="/research-center" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
-📊 RESEARCH CENTER
-</a>
-      <a href="/research" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
-📋 RESEARCH DASHBOARD
-</a>
-      <a href="/space" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
-🛰 SPACE INTELLIGENCE
-</a>
-      <a href="/api/archive/reports" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--text);text-decoration:none;font-family:monospace;font-size:10px;letter-spacing:1px;border-top:none">
-📁 SCIENCE ARCHIVE
-</a>
+      <!-- 8. À propos (single) -->
+      <a href="/a-propos" class="nav-item nav-link nav-toplevel">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        </span>
+        <span class="nav-label" data-i18n="nav_a_propos">À propos</span>
+      </a>
     </div>
 
-    <div style="border-top:none;padding:8px;margin-top:8px;background:rgba(0,20,40,0.5);display:block !important;visibility:visible !important">
-      <div style="font-family:monospace;font-size:9px;color:#00d4ff;letter-spacing:2px;margin-bottom:6px">🔭 OBSERVATOIRE GLOBAL — FLUX D'IMAGES NASA</div>
+    <!-- PASS UI C FIX 3 : panneau OBSERVATOIRE GLOBAL harmonisé sur la
+         palette cyan/dark. Header text-dim au lieu de cyan vif, image
+         encadrée en cyan transparent (au lieu du vert résiduel), texte
+         de chargement var(--text-dim) au lieu de #00ff88 vert. -->
+    <div style="padding:10px 16px;margin-top:8px;background:rgba(2,12,24,0.6);border-top:1px solid var(--border);">
+      <div style="font-family:var(--font);font-size:0.45rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">🔭 {% if lang == 'en' %}NASA Image Feed{% else %}Flux NASA{% endif %}</div>
       <div id="sidebar-hubble" style="min-height:60px;display:block !important">
-        <img src="https://cdn.spacetelescope.org/archives/images/publicationjpg/heic1509a.jpg" alt="Hubble test" style="width:100%;height:60px;object-fit:cover;border-radius:4px;border:1px solid rgba(0,255,136,0.2)" onerror="this.style.display='none'">
-        <div style="color:#00ff88;font-size:9px;text-align:center;padding:8px">⟳ Chargement...</div>
+        <img src="https://cdn.spacetelescope.org/archives/images/publicationjpg/heic1509a.jpg" alt="Hubble test" style="width:100%;height:60px;object-fit:cover;border-radius:4px;border:1px solid var(--border);" onerror="this.style.display='none'">
+        <div style="color:var(--text-dim);font-size:0.5rem;text-align:center;padding:6px;letter-spacing:0.05em;">⟳ {% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
       </div>
     </div>
 
@@ -1031,7 +1539,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
 
     <!-- ISS Live -->
     <div class="iss-panel">
-      <div class="iss-panel-title">🛰 ISS LIVE</div>
+      <div class="iss-panel-title">🛰 {% if lang == 'en' %}ISS LIVE{% else %}ISS EN DIRECT{% endif %}</div>
       <div id="iss-status" style="font-size:0.65rem;color:var(--amber);text-align:center;margin:4px 0;min-height:1em;line-height:1.3"></div>
       <div class="iss-globe-wrap">
         <canvas id="iss-globe" width="180" height="180"></canvas>
@@ -1040,7 +1548,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
         <span data-i18n="iss_lat">Lat</span><span class="val" id="iss-lat">—</span>
         <span data-i18n="iss_lon">Lon</span><span class="val" id="iss-lon">—</span>
         <span>Alt (km)</span><span class="val" id="iss-alt">—</span>
-        <span>Speed</span><span class="val" id="iss-speed">—</span>
+        <span data-i18n="iss_speed">Vitesse</span><span class="val" id="iss-speed">—</span>
         <span data-i18n="iss_crew">Équipage</span><span class="val" id="iss-crew">—</span>
       </div>
       <div class="iss-region" id="iss-region">—</div>
@@ -1050,10 +1558,10 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
 
     <!-- Widget Radio SDR : countdown prochain passage, fréquence, indicateur capture -->
     <div class="radio-widget iss-panel">
-      <div class="iss-panel-title">📡 RADIO SDR</div>
+      <div class="iss-panel-title" data-i18n="radio_spatiale">📡 RADIO SPATIALE</div>
       <div class="iss-stats">
         <span data-i18n="sdr_next">Prochain</span><span class="val" id="pw-next-sat">—</span>
-        <span>Freq</span><span class="val" id="pw-freq">—</span>
+        <span data-i18n="sdr_freq">Freq</span><span class="val" id="pw-freq">—</span>
         <span data-i18n="sdr_countdown">Countdown</span><span class="val" id="pw-countdown">—</span>
       </div>
       <div class="iss-region" id="pw-capture-indicator" style="font-size:0.5rem">—</div>
@@ -1062,9 +1570,9 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     <div class="s-divider"></div>
 
     <div class="card" style="border: 1px solid var(--amber); background: rgba(255, 193, 7, 0.05); padding: 20px;">
-      <div class="section-title" style="margin-bottom: 20px;">📡 TÉLÉMÉTRIE INTERSTELLAIRE (RÉSEAU DSN)</div>
+      <div class="section-title" style="margin-bottom: 20px;">📡 {% if lang == 'en' %}INTERSTELLAR TELEMETRY (DSN NETWORK){% else %}TÉLÉMÉTRIE INTERSTELLAIRE (RÉSEAU DSN){% endif %}</div>
       <div id="voyager-live-container" style="font-family: monospace; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center;">
-        <span style="color: var(--amber);">[ ÉTABLISSEMENT DE LA LIAISON DSN... ]</span>
+        <span style="color: var(--amber);">[ {% if lang == 'en' %}ESTABLISHING DSN LINK...{% else %}ÉTABLISSEMENT DE LA LIAISON DSN...{% endif %} ]</span>
       </div>
     </div>
 
@@ -1106,8 +1614,8 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     </div>
 
     <div id="system-health" class="sidebar-section" style="margin-top:12px;padding:10px 16px;background:rgba(0,20,40,0.5);border:1px solid var(--border);clip-path:polygon(4px 0%,100% 0%,100% calc(100% - 4px),calc(100% - 4px) 100%,0% 100%,0% 4px);">
-      <div class="sidebar-label" style="margin-bottom:6px;">SYSTEM HEALTH</div>
-      <div id="system-health-status" style="font-size:0.5rem;line-height:1.5;color:var(--text);letter-spacing:0.06em;">Loading...</div>
+      <div class="sidebar-label" style="margin-bottom:6px;">{% if lang == 'en' %}SYSTEM STATUS{% else %}ÉTAT DU SYSTÈME{% endif %}</div>
+      <div id="system-health-status" style="font-size:0.5rem;line-height:1.5;color:var(--text);letter-spacing:0.06em;">{% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
       <div id="system-diagnostics" style="font-size:0.5rem;line-height:1.5;color:var(--text-dim);letter-spacing:0.06em;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);"></div>
     </div>
 
@@ -1116,7 +1624,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
         <div>Station <span class="sb-val">Hillsboro</span></div>
         <div>IP <span class="sb-val">5.78.153.17</span></div>
         <div>Dir. <span class="sb-val">Zakaria Chohra</span></div>
-        <div style="margin-top:4px">AstroScan-Chohra · v2.0</div>
+        <div style="margin-top:4px">ORBITAL-CHOHRA · v2.0</div>
       </div>
     </div>
 
@@ -1128,8 +1636,23 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     <div class="portal-hero">
       <h1>ORBITAL-CHOHRA</h1>
       <p style="color:#7ddcff;font-family:monospace;font-size:18px">
-        Observatoire spatial – Portail AstroScan-Chohra opérationnel.
+        {% if lang == 'en' %}Real-time space observation and prediction platform.{% else %}Plateforme d'observation et de prédiction spatiale en temps réel.{% endif %}
       </p>
+      <div class="brief-block">
+        <div class="brief-title">{% if lang == 'en' %}LIVE ISS TRACKING{% else %}SUIVI EN DIRECT DE L'ISS{% endif %}</div>
+        <div class="brief-desc">{% if lang == 'en' %}Real-time position via SGP4 orbital model.{% else %}Position en temps réel grâce au modèle orbital SGP4.{% endif %}</div>
+        <div class="meta-note" id="iss-meta-note">{% if lang == 'en' %}Loading data...{% else %}Chargement des données...{% endif %}</div>
+      </div>
+      <div class="brief-block" id="passes-brief">
+        <div class="brief-title">{% if lang == 'en' %}SATELLITE PASS PREDICTION{% else %}PRÉDICTION DU PASSAGE DU SATELLITE{% endif %}</div>
+        <div class="brief-desc">{% if lang == 'en' %}Accurate satellite visibility forecasts.{% else %}Prévisions précises de la visibilité par satellite.{% endif %}</div>
+        <div class="meta-note" id="passes-meta-note">{% if lang == 'en' %}Loading data...{% else %}Chargement des données...{% endif %}</div>
+      </div>
+      <div class="brief-block">
+        <div class="brief-title">{% if lang == 'en' %}ASTRONOMY PICTURE OF THE DAY{% else %}IMAGE ASTRONOMIQUE DU JOUR{% endif %}</div>
+        <div class="brief-desc">{% if lang == 'en' %}Daily curated astronomical content.{% else %}Contenu astronomique quotidien sélectionné avec soin.{% endif %}</div>
+        <div class="meta-note" id="apod-meta-note">{% if lang == 'en' %}Loading data...{% else %}Chargement des données...{% endif %}</div>
+      </div>
     </div>
 
     <div id="splash">
@@ -1162,7 +1685,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
         </div>
         <div class="splash-btn" onclick="navigate('overlord')">
           <div class="splash-btn-icon">⬡</div>
-          <div class="splash-btn-name" data-i18n="nav_overlord">Overlord Live</div>
+          <div class="splash-btn-name" data-i18n="nav_overlord">Overlord Contrôle</div>
           <div class="splash-btn-desc" data-i18n="splash_overlord_desc">Centre de contrôle</div>
         </div>
         <div class="splash-btn" onclick="navigate('galerie')">
@@ -1170,7 +1693,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
           <div class="splash-btn-name" data-i18n="nav_galerie">Archive Stellaire</div>
           <div class="splash-btn-desc" data-i18n="splash_galerie_desc">Catalogue observations</div>
         </div>
-        <div class="splash-btn" onclick="navigate('observatoire')">
+        <div class="splash-btn" onclick="window.location.href='/observatoire'">
           <div class="splash-btn-icon">◎</div>
           <div class="splash-btn-name" data-i18n="nav_observatoire">Observatoire</div>
           <div class="splash-btn-desc" data-i18n="splash_obs_desc">Télescopes mondiaux</div>
@@ -1183,7 +1706,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
         <div class="splash-btn" onclick="navigate('mission-control')">
           <div class="splash-btn-icon">🛰</div>
           <div class="splash-btn-name">Mission Control</div>
-          <div class="splash-btn-desc">Terre 3D · ISS · Vue spatiale</div>
+          <div class="splash-btn-desc">{% if lang == 'en' %}Earth 3D · ISS · Space view{% else %}Terre 3D · ISS · Vue spatiale{% endif %}</div>
         </div>
         <div class="splash-btn" onclick="window.open('/scientific','_blank')">
           <div class="splash-btn-icon">⚗️</div>
@@ -1192,55 +1715,55 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
         </div>
         <div class="splash-btn" onclick="window.open('http://5.78.153.17:5000','_blank')">
           <div class="splash-btn-icon">🔗</div>
-          <div class="splash-btn-name">OUVRIR DIRECT</div>
-          <div class="splash-btn-desc">Onglet séparé</div>
+          <div class="splash-btn-name">{% if lang == 'en' %}OPEN LIVE{% else %}OUVRIR DIRECT{% endif %}</div>
+          <div class="splash-btn-desc">{% if lang == 'en' %}Separate tab{% else %}Onglet séparé{% endif %}</div>
         </div>
       </div>
 
       <div class="portal-cards-grid">
         <a href="/orbital-map" class="portal-card card">
-          <div class="card-title">CARTE ORBITALE</div>
-          <div class="card-desc">ISS et satellites en direct sur la planète</div>
+          <div class="card-title">{% if lang == 'en' %}ORBITAL MAP{% else %}CARTE ORBITALE{% endif %}</div>
+          <div class="card-desc">{% if lang == 'en' %}ISS and satellites live on the planet{% else %}ISS et satellites en direct sur la planète{% endif %}</div>
           <span class="card-link">→ /orbital-map</span>
         </a>
         <a href="/space-weather" class="portal-card card">
-          <div class="card-title">MÉTÉO SPATIALE</div>
-          <div class="card-desc">Activité solaire, vent solaire, indice Kp</div>
+          <div class="card-title">{% if lang == 'en' %}SPACE WEATHER{% else %}MÉTÉO SPATIALE{% endif %}</div>
+          <div class="card-desc">{% if lang == 'en' %}Solar activity, solar wind, Kp index{% else %}Activité solaire, vent solaire, indice Kp{% endif %}</div>
           <span class="card-link">→ /space-weather</span>
         </a>
         <a href="/module/observatoire" class="portal-card card">
-          <div class="card-title">OBSERVATOIRE</div>
-          <div class="card-desc">Télescopes mondiaux et observations</div>
+          <div class="card-title">{% if lang == 'en' %}OBSERVATORY{% else %}OBSERVATOIRE{% endif %}</div>
+          <div class="card-desc">{% if lang == 'en' %}World telescopes and observations{% else %}Télescopes mondiaux et observations{% endif %}</div>
           <span class="card-link">→ /module/observatoire</span>
         </a>
         <a href="/module/vision" class="portal-card card">
           <div class="card-title">VISION 2026</div>
-          <div class="card-desc">Roadmap du projet</div>
+          <div class="card-desc">{% if lang == 'en' %}Project roadmap{% else %}Roadmap du projet{% endif %}</div>
           <span class="card-link">→ /module/vision</span>
         </a>
         <a href="/module/scientific" class="portal-card card">
-          <div class="card-title">MODE SCIENTIFIQUE</div>
-          <div class="card-desc">ISS, Lune, catalogue, météo solaire</div>
+          <div class="card-title">{% if lang == 'en' %}SCIENTIFIC MODE{% else %}MODE SCIENTIFIQUE{% endif %}</div>
+          <div class="card-desc">{% if lang == 'en' %}ISS, Moon, catalog, solar weather{% else %}ISS, Lune, catalogue, météo solaire{% endif %}</div>
           <span class="card-link">→ /module/scientific</span>
         </a>
         <a href="/module/lab" class="portal-card card">
           <div class="card-title">DIGITAL LAB</div>
-          <div class="card-desc">Analyse scientifique des images spatiales</div>
+          <div class="card-desc">{% if lang == 'en' %}Scientific analysis of space images{% else %}Analyse scientifique des images spatiales{% endif %}</div>
           <span class="card-link">→ /module/lab</span>
         </a>
         <a href="/mission-control" class="portal-card card">
           <div class="card-title">MISSION CONTROL</div>
-          <div class="card-desc">État ISS, Voyager, NOAA, alertes</div>
+          <div class="card-desc">{% if lang == 'en' %}ISS status, Voyager, NOAA, alerts{% else %}État ISS, Voyager, NOAA, alertes{% endif %}</div>
           <span class="card-link">→ /mission-control</span>
         </a>
         <a href="/space-intelligence-page" class="portal-card card">
           <div class="card-title">SPACE INTELLIGENCE</div>
-          <div class="card-desc">Alertes, événements, niveau de risque</div>
+          <div class="card-desc">{% if lang == 'en' %}Alerts, events, risk level{% else %}Alertes, événements, niveau de risque{% endif %}</div>
           <span class="card-link">→ /space-intelligence-page</span>
         </a>
         <a href="/module/galerie" class="portal-card card">
-          <div class="card-title">ARCHIVE STELLAIRE</div>
-          <div class="card-desc">Catalogue observations</div>
+          <div class="card-title">{% if lang == 'en' %}STELLAR ARCHIVE{% else %}ARCHIVE STELLAIRE{% endif %}</div>
+          <div class="card-desc">{% if lang == 'en' %}Observations catalog{% else %}Catalogue observations{% endif %}</div>
           <span class="card-link">→ /module/galerie</span>
         </a>
       </div>
@@ -1253,7 +1776,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
       <iframe id="frame-dashboard" class="page-frame" data-src="/dashboard"></iframe>
       <iframe id="frame-overlord" class="page-frame" data-src="/overlord_live"></iframe>
       <iframe id="frame-galerie" class="page-frame" data-src="/galerie"></iframe>
-      <iframe id="frame-observatoire" class="page-frame" data-src="/observatoire"></iframe>
+      <iframe id="frame-observatoire" class="page-frame" data-src="/observatoire?embed=1"></iframe>
       <iframe id="frame-ce_soir" class="page-frame" data-src="/ce_soir?embed=1"></iframe>
       <iframe id="frame-orbital_radio" class="page-frame" data-src="/orbital-radio"></iframe>
       <iframe id="frame-guide_stellaire" class="page-frame" data-src="/guide-stellaire"></iframe>
@@ -1268,11 +1791,18 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
       <iframe id="frame-sky-camera" class="page-frame" data-src="/sky-camera"></iframe>
       <iframe id="frame-orbital-map" class="page-frame" data-src="/orbital-map"></iframe>
       <iframe id="frame-analytics" class="page-frame" data-src="/analytics"></iframe>
+      <iframe id="frame-orbital" class="page-frame" data-src="/orbital?embed=1"></iframe>
+      <iframe id="frame-telescope" class="page-frame" data-src="/telescope?embed=1"></iframe>
+      <iframe id="frame-aladin" class="page-frame" data-src="/aladin?embed=1"></iframe>
+      <iframe id="frame-ephemerides" class="page-frame" data-src="/ephemerides?embed=1"></iframe>
+      <iframe id="frame-nasa-apod" class="page-frame" data-src="/nasa-apod?embed=1"></iframe>
+      <iframe id="frame-control" class="page-frame" data-src="/control?embed=1"></iframe>
+      <iframe id="frame-europe-live" class="page-frame" data-src="/europe-live?embed=1"></iframe>
     </div>
 
     <div class="frame-loader done" id="frame-loader">
       <div class="loader-spin"></div>
-      <div class="loader-text" id="loader-text">Chargement...</div>
+      <div class="loader-text" id="loader-text">{% if lang == 'en' %}Loading...{% else %}Chargement...{% endif %}</div>
     </div>
 
   </div>
@@ -1300,12 +1830,12 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
   var T = {
     fr: {
       aegis_active: 'AEGIS ACTIF',
-      web_online: 'WEB ONLINE',
-      nasa_sync: 'NASA SYNC',
+      web_online: 'WEB EN LIGNE',
+      nasa_sync: 'NASA SYNCHRO',
       nav_label: 'Navigation',
       nav_home: 'Accueil',
       nav_dashboard: 'Dashboard QG',
-      nav_overlord: 'Overlord Live',
+      nav_overlord: 'Overlord Contrôle',
       nav_galerie: 'Archive Stellaire',
       nav_observatoire: 'Observatoire',
       nav_ce_soir: 'Ce soir',
@@ -1315,22 +1845,49 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
       iss_lon: 'Lon',
       iss_crew: 'Équipage',
       sdr_next: 'Prochain',
-      sdr_countdown: 'Countdown',
-      stats_live: 'Stats Live',
+      sdr_countdown: 'Décompte',
+      stats_live: 'Statistiques',
       obs: 'Observations',
       anomalies: 'Anomalies',
       sources: 'Sources',
       aegis_actif: 'ACTIF',
       req_jour: 'REQ/JOUR',
-      splash_sub: "Station d'Analyse Astronomique · Hillsboro · En Ligne",
-      splash_dash_desc: "Vue d'ensemble live",
+      splash_sub: "Station d'Observation Spatiale · Tlemcen · En Ligne",
+      splash_dash_desc: "Vue d'ensemble en direct",
       splash_overlord_desc: 'Centre de contrôle',
       splash_galerie_desc: 'Catalogue observations',
       splash_obs_desc: 'Télescopes mondiaux',
       splash_vision_desc: 'Roadmap du projet',
       open_direct: 'Ouvrir Direct',
       open_direct_desc: 'Onglet séparé',
-      loading: 'Chargement...'
+      loading: 'Chargement...',
+      nav_telescope: 'TÉLESCOPE',
+      nav_sky_map: 'CARTE DU CIEL',
+      nav_orbital_radio: 'ORBITAL-RADIO',
+      nav_guide: 'GUIDE STELLAIRE',
+      nav_oracle: 'ORACLE COSMIQUE',
+      nav_meteo: 'MÉTÉO SPATIALE',
+      nav_visitors: 'VISITEURS EN DIRECT',
+      nav_aurores: 'AURORES',
+      nav_mission: 'Contrôle Mission',
+      nav_iss: 'ISS EN DIRECT',
+      nav_sondes: 'SONDES EN DIRECT',
+      nav_sky_cam: 'CAMÉRA CIEL',
+      nav_orbital_map: 'Carte Orbitale',
+      nav_analytics: 'ANALYTICS',
+      nav_a_propos: 'À PROPOS',
+      iss_speed: 'Vitesse',
+      sdr_freq: 'Freq',
+      radio_spatiale: '📡 RADIO SPATIALE',
+      top_pays: 'Top pays',
+      derniers_visiteurs: 'Derniers visiteurs',
+      actualiser: 'Actualiser',
+      inconnu: 'Inconnu',
+      visites: 'visites',
+      uniques: 'uniques',
+      pays: 'pays',
+      nav_scientific: 'MODE SCIENTIFIQUE',
+      splash_scientific_desc: 'ISS, Lune, catalogue, météo solaire'
     },
     en: {
       aegis_active: 'AEGIS ACTIVE',
@@ -1356,7 +1913,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
       sources: 'Sources',
       aegis_actif: 'ACTIVE',
       req_jour: 'REQ/DAY',
-      splash_sub: 'Astronomical Analysis Station · Hillsboro · Online',
+      splash_sub: 'Space Observation Station · Tlemcen · Online',
       splash_dash_desc: 'Live overview',
       splash_overlord_desc: 'Control center',
       splash_galerie_desc: 'Observations catalog',
@@ -1364,15 +1921,47 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
       splash_vision_desc: 'Project roadmap',
       open_direct: 'Open Direct',
       open_direct_desc: 'New tab',
-      loading: 'Loading...'
+      loading: 'Loading...',
+      nav_telescope: 'TELESCOPE',
+      nav_sky_map: 'SKY MAP',
+      nav_orbital_radio: 'ORBITAL-RADIO',
+      nav_guide: 'STELLAR GUIDE',
+      nav_oracle: 'COSMIC ORACLE',
+      nav_meteo: 'SPACE WEATHER',
+      nav_visitors: 'LIVE VISITORS',
+      nav_aurores: 'AURORAS',
+      nav_mission: 'Mission Control',
+      nav_iss: 'ISS LIVE',
+      nav_sondes: 'PROBES LIVE',
+      nav_sky_cam: 'SKY CAMERA',
+      nav_orbital_map: 'Orbital Map',
+      nav_analytics: 'ANALYTICS',
+      nav_a_propos: 'ABOUT',
+      iss_speed: 'Speed',
+      sdr_freq: 'Freq',
+      radio_spatiale: '📡 SPACE RADIO',
+      top_pays: 'Top countries',
+      derniers_visiteurs: 'Latest visitors',
+      actualiser: 'Refresh',
+      inconnu: 'Unknown',
+      visites: 'visits',
+      uniques: 'unique',
+      pays: 'countries',
+      nav_scientific: 'SCIENTIFIC MODE',
+      splash_scientific_desc: 'ISS, Moon, catalog, solar weather'
     }
   };
 
-  var currentLang = localStorage.getItem('portail_lang') || 'fr';
+  /* PASS 30 — server-set lang takes priority over localStorage so cookie/?lang= flow wins */
+  var SERVER_LANG = '{{ lang | default("fr") }}';
+  var currentLang = SERVER_LANG || localStorage.getItem('portail_lang') || 'fr';
 
   function applyLang(lang) {
     currentLang = lang;
     localStorage.setItem('portail_lang', lang);
+    /* Persist to server-readable cookie so refresh/other tabs honor the choice */
+    try { document.cookie = 'lang=' + lang + ';path=/;max-age=31536000;samesite=Lax'; } catch (e) {}
+    document.documentElement.setAttribute('lang', lang);
     document.querySelectorAll('[data-i18n]').forEach(function(el) {
       var key = el.getAttribute('data-i18n');
       if (T[lang] && T[lang][key] !== undefined) el.textContent = T[lang][key];
@@ -1383,8 +1972,18 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
   }
 
   document.getElementById('lang-toggle').addEventListener('click', function() {
-    currentLang = currentLang === 'fr' ? 'en' : 'fr';
-    applyLang(currentLang);
+    var next = currentLang === 'fr' ? 'en' : 'fr';
+    /* Persist cookie before reload so server-side Jinja conditionals render in the new lang */
+    try { document.cookie = 'lang=' + next + ';path=/;max-age=31536000;samesite=Lax'; } catch (e) {}
+    try { localStorage.setItem('portail_lang', next); } catch (e) {}
+    /* Strip any ?lang= from the URL so cookie wins on reload, then reload */
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.delete('lang');
+      window.location.replace(url.toString());
+    } catch (e) {
+      window.location.reload();
+    }
   });
   applyLang(currentLang);
 
@@ -1428,17 +2027,10 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     close();
   })();
 
-  // ── Stars ──
-  (function(){
-    var s = document.getElementById('stars');
-    for (var i = 0; i < 120; i++) {
-      var el = document.createElement('div');
-      el.className = 'star';
-      var sz = Math.random() < 0.88 ? Math.random() * 0.9 + 0.2 : Math.random() * 1.5 + 0.6;
-      el.style.cssText = 'left:' + Math.random() * 100 + '%;top:' + Math.random() * 100 + '%;width:' + sz + 'px;height:' + sz + 'px;--d:' + (3 + Math.random() * 5) + 's;--dl:' + (-Math.random() * 5) + 's;--op:' + (0.1 + Math.random() * 0.4);
-      s.appendChild(el);
-    }
-  })();
+  // ── Stars (PASS UI C FIX 1) ──
+  // L'ancienne génération div-based (120 .star avec @keyframes tw) est
+  // remplacée par /static/js/starfield.js (Canvas, requestAnimationFrame,
+  // 350-500 étoiles + parallax + shooting stars). Voir bas du <body>.
 
   // ── Clock ──
   function tick() {
@@ -1573,10 +2165,12 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
 
   function fetchIss() {
     fetch('/api/iss').then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+      var metaEl = document.getElementById('iss-meta-note');
       if (!d) return;
       var st = document.getElementById('iss-status');
       if (d.ok === false) {
-        if (st) st.textContent = 'Données temporairement indisponibles';
+        if (st) st.textContent = currentLang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API';
+        if (metaEl) metaEl.textContent = currentLang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API';
         return;
       }
       if (st) st.textContent = '';
@@ -1593,6 +2187,14 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
       if ((el = document.getElementById('iss-speed'))) el.textContent = Math.round(d.speed).toLocaleString('fr-FR') + ' km/h';
       if ((el = document.getElementById('iss-region'))) el.textContent = d.region || '—';
       if ((el = document.getElementById('iss-crew'))) el.textContent = issData.crew;
+      if (metaEl) {
+        var m = d.meta || {};
+        if (m.source || m.status || m.last_updated) {
+          metaEl.textContent = 'Source: ' + (m.source || '—') + ' | Status: ' + (m.status || '—') + ' | Updated: ' + (m.last_updated || '—');
+        } else {
+          metaEl.textContent = '';
+        }
+      }
     }).catch(function() {});
   }
   fetchIss();
@@ -1600,7 +2202,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
 
   // Compteur visites (format "000 123")
   function fmtVisits(n){var s=String(Math.max(0,n));var p=('000000'+s).slice(-6);return p.slice(0,3)+' '+p.slice(3);}
-  function loadVisitsPortail(){fetch('/api/visits').then(function(r){return r.ok?r.json():null;}).then(function(d){var el=document.getElementById('tbar-visits-val');if(el&&d)el.textContent=fmtVisits(d.count||0);}).catch(function(){});}
+  function loadVisitsPortail(){fetch('/api/visits').then(function(r){return r.ok?r.json():null;}).then(function(d){var el=document.getElementById('tbar-visits-val');if(!el||!d)return;var n=Number(d.count||0);if(n<=0){return;/* PHASE B1: pas d'overwrite SSR si count<=0 */}var newVal=fmtVisits(n);if(el.textContent!==newVal){el.textContent=newVal;el.classList.remove('header-counter-pulse');void el.offsetWidth;el.classList.add('header-counter-pulse');setTimeout(function(){el.classList.remove('header-counter-pulse');},450);}}).catch(function(){});}
   loadVisitsPortail();
   setInterval(loadVisitsPortail, API_INTERVALS.visits);
 
@@ -1625,7 +2227,16 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
   }
   function fetchRadioWidget() {
     fetch('/api/sdr/passes').then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+      var metaEl = document.getElementById('passes-meta-note');
       if (d && d.passes) radioPassesCache.passes = d.passes;
+      if (metaEl) {
+        var m = (d && d.meta) || {};
+        if (m.source || m.status || m.last_updated) {
+          metaEl.textContent = 'Source: ' + (m.source || '—') + ' | Status: ' + (m.status || '—') + ' | Updated: ' + (m.last_updated || '—');
+        } else {
+          metaEl.textContent = d ? '' : (currentLang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API');
+        }
+      }
       updateRadioWidget();
     }).catch(function() {});
     fetch('/api/sdr/status').then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
@@ -1644,6 +2255,24 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
   fetchRadioWidget();
   setInterval(fetchRadioWidget, API_INTERVALS.sdr);
   setInterval(updateRadioWidget, 1000);
+
+  function fetchApodMeta() {
+    var metaEl = document.getElementById('apod-meta-note');
+    if (!metaEl) return;
+    fetch('/apod').then(function(r) { return r.ok ? r.json() : null; }).then(function(d) {
+      if (!d) { metaEl.textContent = currentLang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API'; return; }
+      var m = d.meta || {};
+      if (m.source || m.status || m.last_updated) {
+        metaEl.textContent = 'Source: ' + (m.source || '—') + ' | Status: ' + (m.status || '—') + ' | Updated: ' + (m.last_updated || '—');
+      } else {
+        metaEl.textContent = '';
+      }
+    }).catch(function() {
+      metaEl.textContent = currentLang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API';
+    });
+  }
+  fetchApodMeta();
+  setInterval(fetchApodMeta, 60000);
 
   function loadSidebarHubble(){
     fetch('/api/hubble/images')
@@ -1675,7 +2304,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
   // ── Navigation & lazy iframes ──
   var PAGES = {
     dashboard:    { frame: 'frame-dashboard',    label: 'Dashboard QG' },
-    overlord:     { frame: 'frame-overlord',     label: 'Overlord Live' },
+    overlord:     { frame: 'frame-overlord',     label: 'Overlord Contrôle' },
     galerie:      { frame: 'frame-galerie',      label: 'Archive Stellaire' },
     observatoire: { frame: 'frame-observatoire', label: 'Observatoire Mondial' },
     ce_soir:      { frame: 'frame-ce_soir',      label: 'Ce soir' },
@@ -1684,14 +2313,21 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     'oracle-cosmique': { frame: 'frame-oracle-cosmique', label: 'Oracle cosmique' },
     aurores:      { frame: 'frame-aurores',      label: 'Aurores Boréales' },
     vision:       { frame: 'frame-vision',       label: 'Vision 2026' },
-    'mission-control': { frame: 'frame-mission-control', label: 'Mission Control' },
-    'iss-tracker': { frame: 'frame-iss-tracker', label: 'ISS Tracker' },
+    'mission-control': { frame: 'frame-mission-control', label: 'Contrôle Mission' },
+    'iss-tracker': { frame: 'frame-iss-tracker', label: 'Suivi ISS' },
     'meteo-spatiale': { frame: 'frame-meteo-spatiale', label: 'Météo spatiale' },
-    'visiteurs-live': { frame: 'frame-visiteurs-live', label: 'Visiteurs live' },
-    'telemetrie-sondes': { frame: 'frame-telemetrie-sondes', label: 'Sondes Live' },
-    'sky-camera': { frame: 'frame-sky-camera', label: 'Sky Camera' },
-    'orbital-map': { frame: 'frame-orbital-map', label: 'Orbital Map' },
-    'analytics': { frame: 'frame-analytics', label: 'Analytics' }
+    'visiteurs-live': { frame: 'frame-visiteurs-live', label: 'Visiteurs en direct' },
+    'telemetrie-sondes': { frame: 'frame-telemetrie-sondes', label: 'Sondes En Direct' },
+    'sky-camera': { frame: 'frame-sky-camera', label: 'Caméra Ciel' },
+    'orbital-map': { frame: 'frame-orbital-map', label: 'Carte Orbitale' },
+    'analytics':   { frame: 'frame-analytics',   label: 'Analytiques' },
+    'orbital':     { frame: 'frame-orbital',     label: 'Orbital Live' },
+    'telescope':   { frame: 'frame-telescope',   label: 'Télescope' },
+    'aladin':      { frame: 'frame-aladin',      label: 'Carte du Ciel' },
+    'ephemerides': { frame: 'frame-ephemerides', label: 'Éphémérides' },
+    'nasa-apod':   { frame: 'frame-nasa-apod',   label: 'NASA Image du Jour' },
+    'control':      { frame: 'frame-control',      label: 'Météo' },
+    'europe-live':  { frame: 'frame-europe-live',  label: 'Europe Live' }
   };
   var current = 'home';
   var loaded = {};
@@ -1719,7 +2355,7 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
       return;
     }
     var ds = frame.dataset.src || "";
-    var needSrc = !frame.src || frame.src === "about:blank";
+    var needSrc = !frame.src || frame.src === "about:blank" || frame.src === window.location.href.replace(/\/[^/]*$/, "/") || frame.src === "";
     /* Ce soir : recharger si l’iframe date d’avant ?embed=1 (évite double navigation). */
     if (page === "ce_soir" && ds.indexOf("embed=1") !== -1 && frame.src && frame.src.indexOf("embed=1") === -1) {
       needSrc = true;
@@ -1737,6 +2373,43 @@ style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:#00ff88;t
     }
   }
   window.navigate = navigate;
+
+  // ── PASS UI A FIX 3 (2026-05-07) — Sidebar groupes collapsibles + localStorage ──
+  var SIDEBAR_GROUPS_KEY = 'astroscan.sidebarGroups.v1';
+  function _loadSidebarGroupsState() {
+    try {
+      var raw = localStorage.getItem(SIDEBAR_GROUPS_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) { return null; }
+  }
+  function _saveSidebarGroupsState(state) {
+    try { localStorage.setItem(SIDEBAR_GROUPS_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+  function toggleSidebarGroup(name) {
+    var el = document.querySelector('.sidebar-group[data-group="' + name + '"]');
+    if (!el) return;
+    el.classList.toggle('collapsed');
+    var state = _loadSidebarGroupsState() || {};
+    state[name] = !el.classList.contains('collapsed'); // true = expanded
+    _saveSidebarGroupsState(state);
+  }
+  window.toggleSidebarGroup = toggleSidebarGroup;
+  function _initSidebarGroups() {
+    var state = _loadSidebarGroupsState();
+    var groups = document.querySelectorAll('.sidebar-group');
+    groups.forEach(function (g) {
+      var name = g.getAttribute('data-group');
+      // Default : all groups collapsed (only Accueil visible at top-level)
+      var expanded = state && state[name] === true;
+      if (!expanded) g.classList.add('collapsed');
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _initSidebarGroups);
+  } else {
+    _initSidebarGroups();
+  }
 
   // ── Stats ──
   function loadStats() {
@@ -1823,9 +2496,9 @@ async function loadSystemHealth() {
     var d = await r.json();
     var el = document.getElementById("system-health-status");
     if (el) {
-      el.innerHTML = "🟢 " + (d.system || "Orbital-Chohra") + " ONLINE<br>" +
-        "Modules: " + (d.modules != null ? d.modules : "—") + "<br>" +
-        "APIs: " + (d.apis != null ? d.apis : "—");
+      el.innerHTML = "🟢 " + (d.system || "Orbital-Chohra") + " EN LIGNE<br>" +
+        "Modules : " + (d.modules != null ? d.modules : "—") + "<br>" +
+        "APIs : " + (d.apis != null ? d.apis : "—");
     }
   } catch (e) {
     var el = document.getElementById("system-health-status");
@@ -1870,5 +2543,75 @@ async function refreshNasaSyncIndicator() {
 refreshNasaSyncIndicator();
 setInterval(refreshNasaSyncIndicator, 45000);
 </script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    const moveISS = () => {
+        const el = document.querySelector("#nav-iss-tracker");
+
+        if (!el) return;
+
+        el.style.position = "fixed";
+        el.style.top = "auto";
+        el.style.right = "20px";
+        el.style.bottom = "80px";
+        el.style.zIndex = "9999";
+        el.style.transform = "none";
+    };
+
+    // exécution immédiate
+    moveISS();
+
+    // sécurité (si un script Cesium ou autre le replace)
+    setInterval(moveISS, 1000);
+});
+</script>
+<div id="iss-floating-toggle">📡</div>
+
+<div id="iss-floating-panel">
+    <div>🛰️ ISS LIVE</div>
+    <div id="iss-mini-lat">Lat: --</div>
+    <div id="iss-mini-lon">Lon: --</div>
+    <div id="iss-mini-alt">Alt: --</div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+    // 🔥 1. CACHER LE BADGE QUI BLOQUE
+    const old = document.querySelector("#nav-iss-tracker");
+    if (old) old.style.display = "none";
+
+    // 🔥 2. TOGGLE PANEL
+    const toggle = document.getElementById("iss-floating-toggle");
+    const panel = document.getElementById("iss-floating-panel");
+
+    toggle.addEventListener("click", () => {
+        panel.style.display = panel.style.display === "none" ? "block" : "none";
+    });
+
+    // 🔥 3. MINI DATA LIVE
+    async function updateMiniISS() {
+        try {
+            const res = await fetch("/api/iss");
+            const data = await res.json();
+
+            if (!data.ok) return;
+
+            document.getElementById("iss-mini-lat").innerText = "Lat: " + data.lat.toFixed(2);
+            document.getElementById("iss-mini-lon").innerText = "Lon: " + data.lon.toFixed(2);
+            document.getElementById("iss-mini-alt").innerText = "Alt: " + data.alt.toFixed(0) + " km";
+
+        } catch(e) {
+            console.warn("mini iss error", e);
+        }
+    }
+
+    updateMiniISS();
+    setInterval(updateMiniISS, 5000);
+
+});
+</script>
+<!-- PASS UI C FIX 1 (2026-05-07) : starfield Canvas en arrière-plan -->
+<script defer src="/static/js/starfield.js"></script>
 </body>
 </html>

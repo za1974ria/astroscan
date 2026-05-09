@@ -69,7 +69,7 @@ def get_next_passes():
         return {"error":"TLE indisponible","passes":[]}
     sat = Satrec.twoline2rv(tle1, tle2)
     lat,lon = math.radians(LAT),math.radians(LON)
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     passes=[]; in_pass=False; pass_start=None; pass_max=0; pass_max_t=None
     for i in range(int(2*86400/30)):
         t = now + datetime.timedelta(seconds=i*30)

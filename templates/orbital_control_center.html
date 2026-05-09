@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+{% set weather_data = weather_data or {} %}
+{% set iss_data = iss_data or {} %}
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<script>(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>AstroScan — Météo Center</title>
+<link rel="icon" href="/static/favicon.ico?v=2">
+<style>
+html.embed-portail .topbar{display:none!important}
+html.embed-portail .shell{grid-template-rows:0 1fr!important}
+html.embed-portail body{padding-top:0!important}
+:root{--sw:220px;--th:48px;--void:#010408;--border:rgba(0,180,255,.13);--border-bright:rgba(0,212,255,.4);--cyan:#00d4ff;--amber:#ff8c00;--green:#00ff88;--text:#7a9ab0;--text-bright:#d0e8f0;--text-dim:#3a5868;--font:'Orbitron',monospace;--mono:'Share Tech Mono',monospace}
+*,*::before,*::after{box-sizing:border-box}
+.shell{display:grid;grid-template-columns:1fr;grid-template-rows:var(--th) 1fr;min-height:100vh;position:relative;z-index:1}
+.topbar{grid-column:1/-1;grid-row:1;display:flex;align-items:center;justify-content:space-between;height:var(--th);padding:0 20px;background:rgba(1,4,8,.99);border-bottom:1px solid var(--border-bright);position:sticky;top:0;z-index:100}
+.topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.5;pointer-events:none}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand-name{font-family:var(--font);font-size:.75rem;font-weight:900;letter-spacing:.2em;color:var(--cyan);text-shadow:0 0 15px rgba(0,212,255,.5)}
+.brand-sep{color:var(--text-dim);margin:0 3px}
+.brand-sub{font-size:.5rem;letter-spacing:.18em;color:var(--text-dim)}
+.tbar-badge{display:flex;align-items:center;gap:6px;padding:3px 9px;border:1px solid rgba(0,212,255,.18);border-radius:3px;background:rgba(0,212,255,.04)}
+.tbar-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 6px var(--amber);animation:tb-pulse 2s infinite}
+.tbar-badge-txt{font-family:var(--font);font-size:.42rem;letter-spacing:.18em;color:var(--amber)}
+.tbar-right{display:flex;align-items:center;gap:14px}
+.tbar-clock{font-family:var(--font);font-size:.7rem;font-weight:600;letter-spacing:.08em;color:var(--text-bright)}
+.tbar-utc{font-size:.4rem;letter-spacing:.12em;color:var(--text-dim);text-align:right}
+.hamburger-btn{display:none;align-items:center;justify-content:center;width:36px;height:36px;background:transparent;border:none;cursor:pointer;color:var(--cyan);font-size:1.1rem;border-radius:4px}
+.hamburger-btn:hover{background:rgba(0,212,255,.1)}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:199;opacity:0;pointer-events:none;transition:opacity .3s}
+.sidebar{grid-column:1;grid-row:2;display:flex;flex-direction:column;background:rgba(1,5,12,.98);border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden;position:sticky;top:var(--th);height:calc(100vh - var(--th));scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.sidebar::-webkit-scrollbar{width:2px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border)}
+.s-lbl{font-size:.4rem;letter-spacing:.3em;text-transform:uppercase;color:var(--text-dim);padding:14px 16px 5px;display:block;font-family:var(--font)}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;transition:all .2s;border-left:2px solid transparent;text-decoration:none;color:inherit}
+.nav-item:hover{background:rgba(0,212,255,.04);border-left-color:rgba(0,212,255,.3)}
+.nav-item.active{background:rgba(0,212,255,.07);border-left-color:var(--cyan)}
+.nav-item.active .nav-label{color:var(--cyan)}
+.nav-item.active .nav-icon{color:var(--cyan)}
+.nav-icon{font-size:.85rem;width:17px;text-align:center;color:var(--text-dim)}
+.nav-label{font-family:var(--font);font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);flex:1}
+.nav-badge{font-size:.42rem;letter-spacing:.1em;padding:1px 5px;border:1px solid currentColor;text-transform:uppercase;border-radius:2px}
+.nav-badge.live{color:var(--green);border-color:rgba(0,255,136,.4);animation:tb-pulse 2s infinite}
+.nav-badge.nb{color:var(--amber);border-color:rgba(255,140,0,.4)}
+.s-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(0,180,255,.12),transparent);margin:6px 0}
+.s-bottom{padding:10px 14px;margin-top:auto}
+.s-bottom-txt{font-size:.4rem;letter-spacing:.08em;color:var(--text-dim);line-height:1.7}
+.content-area{grid-column:1;grid-row:2;overflow-y:auto;overflow-x:hidden;min-height:calc(100vh - var(--th))}
+@keyframes tb-pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media(max-width:900px){
+  .shell{grid-template-columns:1fr;grid-template-rows:var(--th) 1fr}
+  .sidebar{position:fixed;left:-240px;top:0;bottom:0;width:240px;z-index:200;height:100vh;transition:left .3s ease}
+  .sidebar.open{left:0}
+  .sidebar-overlay{display:block !important}
+  .sidebar-overlay.open{opacity:1;pointer-events:all}
+  .content-area{grid-column:1;grid-row:2}
+  .hamburger-btn{display:flex}
+  .topbar{padding:0 10px 0 52px}
+  .brand-sub{display:none}
+}
+/* Adapt existing content for shell context */
+#control-center{padding:28px !important;min-height:auto !important}
+.header-container{margin:0 -28px 28px !important}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<div class="topbar">
+  <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="/portail">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="9" stroke="rgba(0,212,255,0.35)" stroke-width="1"/><circle cx="11" cy="11" r="5" stroke="rgba(0,212,255,0.55)" stroke-width="1"/><circle cx="11" cy="11" r="2" fill="#00d4ff"/></svg>
+    <span class="brand-name">ASTRO-SCAN</span><span class="brand-sep">·</span><span class="brand-sub">MÉTÉO CENTER</span>
+  </a>
+  <div class="tbar-badge"><div class="tbar-dot"></div><span class="tbar-badge-txt">DONNÉES WINDY · LIVE</span></div>
+  <div class="tbar-right">
+    <div><div class="tbar-clock" id="shell-clock">--:--:--</div><div class="tbar-utc" id="shell-utc">UTC</div></div>
+  </div>
+</div>
+
+<div class="content-area">
+
+<div id="control-center">
+
+  <div class="header-container">
+    <h1 class="astroscan-title">🌦 ASTROSCAN MÉTÉO CENTER</h1>
+    <div class="astro-controls">
+      <a href="/portail" class="astro-btn">
+        ⬅ PORTAIL
+      </a>
+      <button onclick="location.reload()" class="astro-btn">
+        ⟳ ACTUALISER
+      </button>
+    </div>
+  </div>
+
+  <!-- ── ANALYSE ATMOSPHÉRIQUE ── -->
+  <div class="astro-card">
+    <div class="card-header">🌍 ANALYSE ATMOSPHÉRIQUE — TERRE</div>
+    <div class="card-content">
+      <div class="grid-meteo">
+        <div class="stat-box">🌡 Température<strong id="hud-temp">--</strong></div>
+        <div class="stat-box">💨 Vent<strong id="hud-wind">--</strong></div>
+        <div class="stat-box">💧 Humidité<strong id="hud-humidity">--</strong></div>
+        <div class="stat-box">☁️ Condition<strong id="hud-condition">--</strong></div>
+      </div>
+      <div class="meteo-extra">
+        <div class="stat-line">🌪 Pression : <span id="hud-pressure">-- hPa</span></div>
+        <div class="stat-line">⚡ Risque météo : <span id="hud-risk">--</span></div>
+        <div class="stat-line">🧭 Direction vent : <span id="hud-direction">--</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="astro-card weather-module">
+    <div class="card-header">🌍 CARTES MÉTÉO SATELLITE — TEMPS RÉEL</div>
+    <div class="weather-hud">
+      <div>🌡 Température: <span id="hud-temp-live">--</span></div>
+      <div>💨 Vent: <span id="hud-wind-live">--</span></div>
+      <div>💧 Humidité: <span id="hud-humidity-live">--</span></div>
+      <div>⚡ Risque météo: <span id="hud-risk-live">--</span></div>
+    </div>
+    <div class="weather-section">
+      <div class="weather-grid">
+        <div class="weather-card">
+        <div class="skeleton"></div>
+        <div class="weather-card-title">🛰 SATELLITE TERRE (NUAGES)</div>
+          <iframe
+            data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&detailLat=36.75&detailLon=3.06&width=650&height=400&zoom=5&level=surface&overlay=clouds"
+            loading="lazy"
+            title="Satellite Terre - Nuages">
+          </iframe>
+        </div>
+
+        <div class="weather-card">
+        <div class="skeleton"></div>
+        <div class="weather-card-title">⚡ ORAGES (ACTIVITÉ)</div>
+          <iframe
+            data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&detailLat=36.75&detailLon=3.06&width=650&height=400&zoom=5&level=surface&overlay=thunder"
+            loading="lazy"
+            title="Orages - Activite">
+          </iframe>
+        </div>
+      </div>
+    </div>
+
+    <div class="weather-section">
+      <div class="weather-grid">
+        <div class="weather-card">
+        <div class="skeleton"></div>
+        <h3 class="weather-card-title">🌧 RADAR PLUIE — TEMPS RÉEL</h3>
+          <iframe
+            data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&zoom=5&level=surface&overlay=rain&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=36.75&detailLon=3.06&metricWind=km%2Fh&metricTemp=%C2%B0C"
+            frameborder="0"
+            loading="lazy"
+            title="Radar pluie - Temps reel">
+          </iframe>
+        <p class="weather-source-small">Source : Windy / radar pluie / données météo temps réel</p>
+        </div>
+
+        <div class="weather-card">
+          <div class="skeleton"></div>
+          <p style="font-size:12px;opacity:0.6;">Vue globale optimisée (Europe / Afrique / Atlantique)</p>
+          <h3 class="weather-card-title">🌍 MÉTÉO MONDIALE (PRÉCIPITATIONS)</h3>
+            <iframe
+              data-src="https://embed.windy.com/embed2.html?lat=20&lon=10&zoom=3&level=surface&overlay=rain&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=20&detailLon=10&metricWind=km%2Fh&metricTemp=%C2%B0C"
+              frameborder="0"
+              loading="lazy"
+              title="Meteo mondiale - Precipitations">
+            </iframe>
+        </div>
+      </div>
+    </div>
+
+    <div class="weather-section">
+      <div class="weather-grid">
+        <div class="weather-card">
+          <div class="skeleton"></div>
+          <h3 class="weather-card-title">💨 VENT (DYNAMIQUE GLOBALE)</h3>
+            <iframe
+              data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&zoom=5&level=surface&overlay=wind&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=36.75&detailLon=3.06&metricWind=km%2Fh"
+              frameborder="0"
+              loading="lazy"
+              title="Vent - Dynamique globale">
+            </iframe>
+        </div>
+
+        <div class="weather-card">
+        <div class="skeleton"></div>
+        <h3 class="weather-card-title">🌡 TEMPÉRATURE (THERMIQUE)</h3>
+          <iframe
+            data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&zoom=5&level=surface&overlay=temp&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=36.75&detailLon=3.06&metricTemp=%C2%B0C"
+            frameborder="0"
+            loading="lazy"
+            title="Temperature - Thermique">
+          </iframe>
+        </div>
+      </div>
+    </div>
+
+    <div class="weather-advanced-section">
+      <h3>🧠 MODULE AVANCÉ — ANALYSE MÉTÉO</h3>
+
+      <div class="weather-advanced-grid">
+        <div class="advanced-card">
+          <h4>📊 SCORE MÉTÉO GLOBAL</h4>
+          <div id="weather-score">--</div>
+        </div>
+
+        <div class="advanced-card">
+          <h4>⚠️ STATUT SYSTÈME</h4>
+          <div id="weather-status">--</div>
+          <div id="weather-alert" style="margin-top:10px; font-size:14px;"></div>
+          <div id="weather-reliability" style="margin-top:10px; font-size:14px;">Fiabilité : --%</div>
+          <div id="weather-variation" style="margin-top:6px; font-size:13px; color:#a9f4e6;">Variation température : ±--°C · Variation vent : ±-- km/h</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="weather-bulletin bulletin-container">
+      <h3>📜 BULLETIN MÉTÉOROLOGIQUE ARCHIVÉ</h3>
+      <p id="weather-bulletin-text">Analyse en cours...</p>
+      <form method="get" action="/control" id="bulletin-toolbar-form" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input type="date" name="date" id="bulletin-date" value="{{ bulletin_date|default('', true) }}">
+        <button type="submit" class="astro-btn">Générer bulletin</button>
+        <button type="submit" class="astro-btn" formaction="/control/bulletin-meteo.pdf" formmethod="get">Exporter PDF</button>
+      </form>
+    </div>
+
+    <div class="weather-source">🌐 Source: Windy / NOAA / ECMWF</div>
+    <div class="weather-source" style="margin-top:8px; font-size:12px; opacity:0.75;">
+      Ce système fournit une estimation basée sur des données publiques. Usage professionnel sous responsabilité de l'utilisateur.
+    </div>
+  </div>
+
+</div><!-- /control-center -->
+
+<!-- ── SCRIPTS ── -->
+<script>
+const SERVER_WEATHER_DATA = {{ (weather_data|default({}, true))|tojson|safe }};
+const SERVER_ISS_DATA = {{ (iss_data|default({}, true))|tojson|safe }};
+const SERVER_BULLETIN_DATE = "{{ bulletin_date|default('') }}";
+if (window.__ASTRO_INIT__) {
+  console.warn("ASTRO INIT BLOCKED — duplicate load prevented");
+} else {
+window.__ASTRO_INIT__ = true;
+
+let windyInitialized = false;
+
+function initWindy() {
+  if (windyInitialized) return;
+  windyInitialized = true;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    initWindy();
+
+    console.log("DOM READY");
+    document.querySelectorAll("iframe").forEach(frame => {
+      frame.dataset.locked = "true";
+    });
+
+    function updateUI(data) {
+      if (!data.ok) return;
+
+      if (
+        typeof data.temp !== "number" ||
+        typeof data.wind !== "number" ||
+        typeof data.humidity !== "number"
+      ) {
+        console.warn("Invalid weather data", data);
+        return;
+      }
+
+      const temp = document.getElementById("hud-temp");
+      const wind = document.getElementById("hud-wind");
+      const humidity = document.getElementById("hud-humidity");
+      const risk = document.getElementById("hud-risk");
+      const tempLive = document.getElementById("hud-temp-live");
+      const windLive = document.getElementById("hud-wind-live");
+      const humidityLive = document.getElementById("hud-humidity-live");
+      const riskLive = document.getElementById("hud-risk-live");
+
+      if (temp) temp.textContent = data.temp + "°C";
+      if (wind) wind.textContent = data.wind + " km/h";
+      if (humidity) humidity.textContent = data.humidity + "%";
+      if (risk) risk.textContent = data.risk || "FAIBLE";
+
+      if (tempLive) tempLive.textContent = data.temp + "°C";
+      if (windLive) windLive.textContent = data.wind + " km/h";
+      if (humidityLive) humidityLive.textContent = data.humidity + "%";
+      if (riskLive) riskLive.textContent = data.risk || "FAIBLE";
+
+      document.getElementById("hud-pressure").textContent =
+        (typeof data.pressure === "number")
+          ? data.pressure + " hPa"
+          : "-- hPa";
+
+      document.getElementById("hud-direction").textContent =
+        (typeof data.wind_direction === "number")
+          ? getWindDirection(data.wind_direction)
+          : "--";
+
+      document.getElementById("hud-condition").textContent =
+        data.condition || "--";
+
+      if (data.archive && typeof data.archive.bulletin === "string" && data.archive.bulletin.trim()) {
+        const bulletinText = document.getElementById("weather-bulletin-text");
+        if (bulletinText) bulletinText.textContent = data.archive.bulletin;
+      }
+      if (data.archive && typeof data.archive.reliability_score === "number") {
+        const rel = document.getElementById("weather-reliability");
+        if (rel) rel.textContent = "Fiabilité : " + data.archive.reliability_score + "%";
+      }
+      if (data.archive && typeof data.archive.temp_variation === "number" && typeof data.archive.wind_variation === "number") {
+        const varEl = document.getElementById("weather-variation");
+        if (varEl) {
+          varEl.textContent =
+            "Variation température : ±" + Number(data.archive.temp_variation).toFixed(1) + "°C · " +
+            "Variation vent : ±" + Number(data.archive.wind_variation).toFixed(1) + " km/h";
+        }
+      }
+    }
+
+    function getWindDirection(deg) {
+      const dirs = ["N","NE","E","SE","S","SW","W","NW"];
+      return dirs[Math.round(deg / 45) % 8];
+    }
+
+    function generateWeatherBulletin(data, score, status) {
+      let bulletin = "";
+
+      bulletin += "Situation actuelle : ";
+      bulletin += "température de " + data.temp + "°C, ";
+      bulletin += "vent de " + data.wind + " km/h ";
+      bulletin += "orienté " + getWindDirection(data.wind_direction) + ", ";
+      bulletin += "humidité de " + data.humidity + "%, ";
+      bulletin += "pression atmosphérique de " + data.pressure + " hPa. ";
+
+      if (data.risk === "FAIBLE") {
+        bulletin += "Les conditions météo sont globalement stables. ";
+      } else if (data.risk === "MOYEN") {
+        bulletin += "Une vigilance modérée est recommandée. ";
+      } else {
+        bulletin += "Une vigilance renforcée est recommandée. ";
+      }
+
+      bulletin += "Score météo global : " + score + "/100. ";
+      bulletin += "Statut système : " + status.replace(/[🟢🔵🟠🔴]/g, "").trim() + ".";
+
+      if (typeof data.rain === "number") {
+        bulletin += " 🌧 Pluie : " + data.rain + " mm.";
+      }
+      if (typeof data.snowfall === "number") {
+        bulletin += " ❄️ Neige : " + data.snowfall + " cm.";
+      }
+      if (data.hail_possible === true) {
+        bulletin += " 🧊 Grêle : risque possible.";
+      }
+      if (typeof data.visibility === "number") {
+        bulletin += " 🌫 Visibilité : " + Math.round(data.visibility / 1000) + " km.";
+      }
+      if (typeof data.cloud_cover === "number") {
+        bulletin += " ☁️ Nuages : " + Math.round(data.cloud_cover) + "%.";
+      }
+      if (typeof data.wind_gust === "number") {
+        bulletin += " 💨 Rafales : " + data.wind_gust + " km/h.";
+      }
+
+      const bulletinEl = document.getElementById("weather-bulletin-text");
+      if (bulletinEl) bulletinEl.innerText = bulletin;
+      return bulletin;
+    }
+
+    function generateBulletinText(data, selectedDate) {
+      if (!data || !data.ok) return;
+      const score = data.archive && typeof data.archive.score === "number" ? data.archive.score : 100;
+      let status = data.archive && typeof data.archive.status === "string" ? data.archive.status : "STABLE";
+      if (!/🟢|🔵|🟠|🔴/.test(status)) {
+        if (status === "OPTIMAL") status = "🟢 OPTIMAL";
+        else if (status === "STABLE") status = "🔵 STABLE";
+        else if (status === "INSTABLE") status = "🟠 INSTABLE";
+        else status = "🔴 CRITIQUE";
+      }
+      const txt = generateWeatherBulletin(data, score, status);
+      const el = document.getElementById("weather-bulletin-text");
+      if (el && selectedDate) el.textContent = "[Date " + selectedDate + "] " + txt;
+    }
+
+    function updateWeatherSystem(data) {
+      if (
+        !data ||
+        typeof data.temp !== "number" ||
+        typeof data.wind !== "number" ||
+        typeof data.humidity !== "number"
+      ) {
+        return;
+      }
+
+      const temp = data.temp;
+      const wind = data.wind;
+      const humidity = data.humidity;
+      const risk = typeof data.risk === "string" ? data.risk : "FAIBLE";
+      let score = 100;
+
+      if (temp < 10 || temp > 35) score -= 20;
+      else if (temp < 18 || temp > 28) score -= 10;
+
+      if (wind > 50) score -= 25;
+      else if (wind > 25) score -= 15;
+      else if (wind > 15) score -= 5;
+
+      if (humidity > 85) score -= 15;
+      else if (humidity > 70) score -= 10;
+
+      if (risk.includes("ÉLEVÉ")) score -= 25;
+      if (risk.includes("MOYEN")) score -= 10;
+
+      score = Math.max(0, score);
+
+      const scoreEl = document.getElementById("weather-score");
+      const statusEl = document.getElementById("weather-status");
+      const alertEl = document.getElementById("weather-alert");
+      if (scoreEl) scoreEl.textContent = score + "/100";
+      if (!statusEl || !alertEl) return;
+
+      let status = "🟢 OPTIMAL";
+      let color = "#00ffc8";
+      if (score < 80) { status = "🔵 STABLE"; color = "#00d4ff"; }
+      if (score < 60) { status = "🟠 INSTABLE"; color = "#ffb300"; }
+      if (score < 40) { status = "🔴 CRITIQUE"; color = "#ff3b3b"; }
+      statusEl.textContent = status;
+      statusEl.style.color = color;
+
+      let alert = "Aucune alerte";
+      let alertColor = "#00ffc8";
+      if (score < 40) {
+        alert = "🚨 Conditions météo dangereuses";
+        alertColor = "#ff3b3b";
+      } else if (score < 60) {
+        alert = "⚠️ Conditions instables";
+        alertColor = "#ffb300";
+      }
+      if (risk.includes("ÉLEVÉ")) {
+        alert = "⛈ Risque d’orage élevé";
+        alertColor = "#ff3b3b";
+      }
+      if (wind > 40) {
+        alert = "🌪 Vent fort détecté";
+        alertColor = "#ffb300";
+      }
+      alertEl.textContent = alert;
+      alertEl.style.color = alertColor;
+
+      generateWeatherBulletin(data, score, status);
+    }
+
+    // Helper : fetch live data from /api/weather/local
+    function fetchAndUpdateWeather() {
+      fetch('/api/weather/local')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data && data.ok) {
+            updateUI(data);
+            updateWeatherSystem(data);
+            if (SERVER_BULLETIN_DATE) {
+              const dateInput = document.getElementById("bulletin-date");
+              if (dateInput) dateInput.value = SERVER_BULLETIN_DATE;
+              generateBulletinText(data, SERVER_BULLETIN_DATE);
+            }
+            console.log("Weather UI updated from /api/weather/local — temp=" + data.temp + "°C");
+          } else {
+            console.warn("Weather fetch returned no usable data", data);
+          }
+        })
+        .catch(function(err) { console.error("Weather fetch failed:", err); });
+    }
+
+    // Si le serveur a déjà passé les données dans le contexte Jinja, les utiliser ;
+    // sinon (cas par défaut depuis migration Phase 2C), fetch live.
+    if (SERVER_WEATHER_DATA && typeof SERVER_WEATHER_DATA === "object" &&
+        typeof SERVER_WEATHER_DATA.temp === "number") {
+      updateUI(SERVER_WEATHER_DATA);
+      updateWeatherSystem(SERVER_WEATHER_DATA);
+      if (SERVER_BULLETIN_DATE) {
+        const dateInput = document.getElementById("bulletin-date");
+        if (dateInput) dateInput.value = SERVER_BULLETIN_DATE;
+        generateBulletinText(SERVER_WEATHER_DATA, SERVER_BULLETIN_DATE);
+      }
+    } else {
+      fetchAndUpdateWeather();
+      // Auto-refresh toutes les 5 minutes
+      setInterval(fetchAndUpdateWeather, 5 * 60 * 1000);
+    }
+
+    // Iframe lifecycle — single consolidated handler, no duplicate listeners
+    document.querySelectorAll(".weather-card").forEach(function(card) {
+      var frame = card.querySelector("iframe");
+      if (!frame) return;
+      card.classList.add("iframe-loading");
+      var markLoaded = function() {
+        frame.classList.add("iframe-ready");
+        frame.style.opacity = "1";
+        card.classList.remove("iframe-loading");
+        card.classList.add("iframe-loaded");
+        var sk = card.querySelector(".skeleton");
+        if (sk) sk.style.display = "none";
+      };
+      frame.addEventListener("load", markLoaded, { once: true });
+      setTimeout(function() {
+        if (!frame.classList.contains("iframe-ready")) markLoaded();
+      }, 2500);
+    });
+
+    // ── IntersectionObserver lazy-loader (WebGL concurrency guard) ──
+    (function() {
+      var MAX_CONCURRENT = 2;
+      var active = 0;
+      var queue = [];
+
+      function activateIframe(iframe) {
+        if (active >= MAX_CONCURRENT) { queue.push(iframe); return; }
+        active++;
+        iframe.src = iframe.dataset.src;
+        delete iframe.dataset.src;
+        iframe.addEventListener('load', function() {
+          active--;
+          if (queue.length) activateIframe(queue.shift());
+        }, { once: true });
+        // fallback: release slot after 12s if load event never fires
+        setTimeout(function() {
+          if (iframe.dataset.src === undefined && active > 0) {
+            active--;
+            if (queue.length) activateIframe(queue.shift());
+          }
+        }, 12000);
+      }
+
+      var io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (!entry.isIntersecting) return;
+          var el = entry.target;
+          io.unobserve(el);
+          activateIframe(el);
+        });
+      }, { threshold: 0.05, rootMargin: '150px 0px' });
+
+      document.querySelectorAll('iframe[data-src]').forEach(function(iframe) {
+        io.observe(iframe);
+      });
+    })();
+
+});
+} // end __ASTRO_INIT__
+
+</script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&display=swap');
+
+html,body{margin:0;min-height:100%;background:radial-gradient(circle at center,#020412 0%,#000 100%);color:#00ffc3;font-family:'Orbitron','Share Tech Mono',monospace}
+img{display:block}
+
+#control-center{position:relative;min-height:100vh;padding:56px 28px;color:#00ffc3;overflow:hidden}
+#control-center::before{content:'';position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(rgba(255,255,255,.35) 1px,transparent 1px),radial-gradient(rgba(255,255,255,.2) 1px,transparent 1px);background-size:42px 42px,64px 64px;background-position:0 0,18px 12px;opacity:.35;z-index:0}
+#control-center h1{position:relative;z-index:1;text-align:center;margin:0}
+
+.astro-card{position:relative;z-index:1;border:1px solid #00ffc3;padding:20px;border-radius:12px;background:rgba(0,20,30,.6);box-shadow:0 0 20px rgba(0,255,195,.2);margin-bottom:20px}
+.card-header{color:#00ffc8;letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:16px;text-shadow:0 0 10px rgba(0,255,200,.45)}
+.card-content{position:relative}
+
+.grid-meteo{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
+.stat-box{background:rgba(0,255,200,.05);border:1px solid rgba(0,255,200,.2);border-radius:10px;padding:15px;text-align:center;color:#00ffc8;font-size:.9rem;letter-spacing:.02em}
+.stat-box strong{display:block;font-size:1.1rem;color:#00ffc8;text-shadow:0 0 12px rgba(0,255,200,.45);margin-top:8px}
+.meteo-extra{margin-top:14px;display:grid;gap:8px}
+.stat-line{background:rgba(0,255,200,.04);border:1px solid rgba(0,255,200,.18);border-radius:8px;padding:10px 12px;color:#00ffc8;letter-spacing:.04em}
+.stat-line span{color:#b9ffe9}
+
+.weather-module{background:rgba(0,12,24,.72);box-shadow:0 0 26px rgba(0,255,195,.18)}
+.weather-hud{display:flex;justify-content:space-around;background:rgba(0,255,200,0.05);border:1px solid rgba(0,255,200,0.2);padding:10px;margin-bottom:15px;border-radius:10px;font-size:14px}
+.weather-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.weather-card{background:rgba(0,255,200,.04);border:1px solid rgba(0,255,200,.2);border-radius:12px;padding:12px;box-shadow:inset 0 0 18px rgba(0,255,200,.05)}
+.weather-card-title{color:#9afce5;letter-spacing:.08em;font-size:.78rem;margin:0 0 14px 0;line-height:1.2;text-transform:uppercase}
+.weather-card iframe{width:100%;height:380px;border-radius:12px;border:none;background:#000}
+.weather-source{margin-top:12px;font-size:.75rem;color:#8cc9bd;letter-spacing:.05em;text-transform:uppercase}
+.weather-source-small{font-size:12px;opacity:.7;margin-top:8px}
+
+@media(max-width:900px){ #control-center{padding:36px 16px}.grid-meteo{grid-template-columns:1fr 1fr}.weather-hud{flex-direction:column;gap:8px}.weather-grid{grid-template-columns:1fr}}
+@media(max-width:560px){ .grid-meteo{grid-template-columns:1fr}.wmap-panel{height:300px}}
+
+.weather-advanced-section {
+  margin-top: 30px;
+  padding: 15px;
+  border: 1px solid rgba(0,255,200,0.2);
+  border-radius: 12px;
+}
+
+.weather-advanced-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.weather-bulletin {
+  margin-top: 25px;
+  padding: 18px;
+  border: 1px solid rgba(0,255,200,0.25);
+  border-radius: 14px;
+  background: rgba(0,255,200,0.04);
+  color: #d8fff7;
+  line-height: 1.7;
+}
+
+.weather-bulletin h3 {
+  margin-bottom: 10px;
+  color: #00ffc8;
+}
+
+#weather-bulletin-text {
+  color: #d8fff7;
+}
+
+.advanced-card {
+  background: rgba(0,255,200,0.05);
+  padding: 15px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+#weather-score {
+  font-size: 24px;
+  color: #00ffc8;
+}
+
+#weather-status {
+  font-size: 18px;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════
+   SPACE ATMOSPHERE — CSS ONLY — ZERO LAYOUT IMPACT
+   GPU-composited : transform + opacity uniquement
+   ══════════════════════════════════════════════════════ */
+
+/* Aura haute — respiration cyan sur html::before (aucun HTML requis) */
+html::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 50vh;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 85% 70% at 50% -8%,
+      rgba(0,175,255,.055) 0%,
+      rgba(0,80,180,.025) 50%,
+      transparent 72%);
+  animation: aura-breathe 26s ease-in-out infinite;
+  will-change: opacity;
+}
+@keyframes aura-breathe {
+  0%, 100% { opacity: .45; }
+  50%       { opacity: 1;   }
+}
+
+/* Couche 1 — étoiles distantes : 1px, tile 700px, 100s */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at  7% 11%, rgba(255,255,255,.22), transparent),
+    radial-gradient(1px 1px at 18% 38%, rgba(200,225,255,.18), transparent),
+    radial-gradient(1px 1px at 29% 67%, rgba(255,255,255,.20), transparent),
+    radial-gradient(1px 1px at 41% 22%, rgba(255,255,255,.15), transparent),
+    radial-gradient(1px 1px at 52% 84%, rgba(200,225,255,.22), transparent),
+    radial-gradient(1px 1px at 61% 46%, rgba(255,255,255,.18), transparent),
+    radial-gradient(1px 1px at 73% 29%, rgba(200,225,255,.20), transparent),
+    radial-gradient(1px 1px at 79% 63%, rgba(255,255,255,.15), transparent),
+    radial-gradient(1px 1px at 88% 88%, rgba(255,255,255,.22), transparent),
+    radial-gradient(1px 1px at 93% 16%, rgba(200,225,255,.18), transparent),
+    radial-gradient(1px 1px at 12% 53%, rgba(255,255,255,.15), transparent),
+    radial-gradient(1px 1px at 24% 91%, rgba(255,255,255,.20), transparent),
+    radial-gradient(1px 1px at 38% 44%, rgba(200,225,255,.18), transparent),
+    radial-gradient(1px 1px at 65% 74%, rgba(255,255,255,.22), transparent),
+    radial-gradient(1px 1px at 83% 35%, rgba(255,255,255,.15), transparent),
+    radial-gradient(1px 1px at 95% 57%, rgba(200,225,255,.20), transparent),
+    radial-gradient(1px 1px at  4% 78%, rgba(255,255,255,.18), transparent),
+    radial-gradient(1px 1px at 47% 19%, rgba(255,255,255,.22), transparent),
+    radial-gradient(1px 1px at 57% 93%, rgba(200,225,255,.15), transparent),
+    radial-gradient(1px 1px at 76%  6%, rgba(255,255,255,.20), transparent);
+  background-size: 700px 700px;
+  animation: space-drift-1 100s linear infinite;
+  will-change: transform;
+}
+@keyframes space-drift-1 {
+  from { transform: translateY(0);      }
+  to   { transform: translateY(-700px); }
+}
+
+/* Couche 2 — étoiles proches : 1.5px, tile 900px, 68s (parallaxe) */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 14% 24%, rgba(255,255,255,.20), transparent),
+    radial-gradient(1.5px 1.5px at 33% 58%, rgba(180,215,255,.17), transparent),
+    radial-gradient(1.5px 1.5px at 51% 38%, rgba(255,255,255,.22), transparent),
+    radial-gradient(1.5px 1.5px at 68% 14%, rgba(180,215,255,.15), transparent),
+    radial-gradient(1.5px 1.5px at 86% 70%, rgba(255,255,255,.20), transparent),
+    radial-gradient(1.5px 1.5px at 22% 83%, rgba(255,255,255,.18), transparent),
+    radial-gradient(1.5px 1.5px at 44%  8%, rgba(180,215,255,.22), transparent),
+    radial-gradient(1.5px 1.5px at 60% 52%, rgba(255,255,255,.15), transparent),
+    radial-gradient(1.5px 1.5px at 77% 32%, rgba(180,215,255,.20), transparent),
+    radial-gradient(1.5px 1.5px at 91% 90%, rgba(255,255,255,.18), transparent);
+  background-size: 900px 900px;
+  animation: space-drift-2 68s linear infinite;
+  will-change: transform;
+}
+@keyframes space-drift-2 {
+  from { transform: translateY(0);      }
+  to   { transform: translateY(-900px); }
+}
+
+/* Couche 3 — étoiles scintillantes : 2px, tile 550px, opacité irrégulière */
+html::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at  9% 17%, rgba(180,230,255,.35), transparent),
+    radial-gradient(2px 2px at 26% 44%, rgba(255,255,255,.28), transparent),
+    radial-gradient(2px 2px at 43% 81%, rgba(140,210,255,.32), transparent),
+    radial-gradient(2px 2px at 58% 28%, rgba(255,255,255,.30), transparent),
+    radial-gradient(2px 2px at 71% 62%, rgba(180,230,255,.26), transparent),
+    radial-gradient(2px 2px at 85% 39%, rgba(255,255,255,.34), transparent),
+    radial-gradient(2px 2px at 16% 73%, rgba(140,210,255,.28), transparent),
+    radial-gradient(2px 2px at 91% 86%, rgba(255,255,255,.32), transparent);
+  background-size: 550px 550px;
+  animation: twinkle-layer 6s ease-in-out infinite;
+  will-change: opacity;
+}
+@keyframes twinkle-layer {
+  0%   { opacity: .25; }
+  18%  { opacity: .95; }
+  35%  { opacity: .40; }
+  55%  { opacity: 1;   }
+  72%  { opacity: .30; }
+  88%  { opacity: .80; }
+  100% { opacity: .25; }
+}
+
+/* Réduit le pattern grille existant (#control-center::before) pour équilibre */
+#control-center::before { opacity: .10 !important; }
+
+/* ===== UX Polish Premium (discret, perf-safe) ===== */
+.weather-card{
+  transition:transform .25s ease, box-shadow .25s ease, opacity .25s ease;
+  will-change:transform, opacity;
+}
+.weather-card:hover{
+  transform:translateY(-3px);
+  box-shadow:0 10px 24px rgba(0, 8, 20, .35), inset 0 0 18px rgba(0,255,200,.08);
+}
+.weather-card::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:12px;
+  pointer-events:none;
+  background:linear-gradient(180deg, rgba(0,212,255,.08), rgba(0,255,180,0));
+  opacity:0;
+  transition:opacity .25s ease;
+}
+.weather-card:hover::after{opacity:.4}
+
+.weather-card-title{
+  transition:transform .25s ease, opacity .25s ease;
+  will-change:transform, opacity;
+}
+.weather-card:hover .weather-card-title{
+  transform:translateY(-1px);
+  opacity:.96;
+}
+
+/* Fade-in iframe + skeleton shimmer ultra léger */
+.weather-card iframe{
+  opacity:0;
+  transition:opacity .3s ease;
+  will-change:opacity;
+}
+.weather-card iframe.iframe-ready{opacity:1}
+.weather-card.iframe-loading::before{
+  content:"";
+  position:absolute;
+  left:12px; right:12px;
+  top:48px; bottom:12px;
+  border-radius:12px;
+  pointer-events:none;
+  background:linear-gradient(110deg, rgba(255,255,255,.02) 8%, rgba(255,255,255,.08) 18%, rgba(255,255,255,.02) 33%);
+  background-size:220% 100%;
+  animation:weather-shimmer 1.8s linear infinite;
+  opacity:.4;
+}
+.weather-card.iframe-loaded::before{display:none}
+
+/* Badges/statuts */
+#weather-status,#weather-alert,#weather-reliability,#weather-variation,.weather-source,.weather-source-small{
+  transition:transform .25s ease, opacity .25s ease, text-shadow .25s ease;
+  will-change:transform, opacity;
+}
+#weather-status:hover,#weather-alert:hover,#weather-reliability:hover,#weather-variation:hover,.weather-source:hover,.weather-source-small:hover{
+  transform:translateY(-1px);
+  text-shadow:0 0 10px rgba(0,212,255,.22);
+}
+
+/* Tooltip CSS-only si data-tip présent */
+[data-tip]{position:relative}
+[data-tip]::after{
+  content:attr(data-tip);
+  position:absolute;
+  left:50%;
+  bottom:calc(100% + 8px);
+  transform:translateX(-50%) translateY(2px);
+  opacity:0;
+  pointer-events:none;
+  white-space:nowrap;
+  font-size:11px;
+  color:#d8fff7;
+  background:rgba(1,10,18,.92);
+  border:1px solid rgba(0,212,255,.28);
+  border-radius:6px;
+  padding:4px 8px;
+  transition:opacity .2s ease, transform .2s ease;
+  z-index:20;
+}
+[data-tip]:hover::after{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+@keyframes weather-shimmer{
+  0%{background-position:120% 0}
+  100%{background-position:-120% 0}
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weather-card,
+  .weather-card-title,
+  #weather-status,#weather-alert,#weather-reliability,#weather-variation,
+  .weather-source,.weather-source-small,
+  [data-tip]::after{
+    transition:none !important;
+  }
+  .weather-card.iframe-loading::before{
+    animation:none !important;
+    opacity:.15;
+  }
+}
+
+.weather-card {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform;
+}
+
+.weather-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+}
+
+.weather-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at top, rgba(0,255,200,0.15), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.weather-card:hover::after {
+  opacity: 1;
+}
+
+.weather-card h3 {
+  transition: all 0.25s ease;
+}
+
+.weather-card:hover h3 {
+  transform: translateY(-2px);
+  opacity: 1;
+}
+
+.weather-card iframe {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.skeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    rgba(255,255,255,0.03) 8%,
+    rgba(255,255,255,0.08) 18%,
+    rgba(255,255,255,0.03) 33%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 14px;
+  z-index: 1;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.weather-card iframe {
+  position: relative;
+  z-index: 2;
+}
+
+.weather-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.weather-card iframe {
+  width: 100%;
+  height: 420px;
+  border: none;
+  display: block;
+}
+
+/* === PREMIUM HEADER === */
+@keyframes glowPulse {
+  0%,100% { opacity: .9; }
+  50%     { opacity: 1;  }
+}
+
+.header-container {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 18px 28px 14px;
+  margin: -56px -28px 28px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: rgba(0,20,30,.6);
+  border-bottom: 1px solid rgba(0,255,200,.2);
+}
+
+.astroscan-title {
+  display: inline-block;
+  margin: 0;
+  font-size: clamp(1.35rem,3vw,2rem);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #00ffe0;
+  text-shadow:
+    0 0 6px  rgba(0,255,200,.6),
+    0 0 12px rgba(0,255,200,.4),
+    0 0 20px rgba(0,255,200,.2);
+  animation: glowPulse 3s ease-in-out infinite;
+  will-change: transform, opacity;
+  cursor: default;
+}
+
+.astroscan-title:hover {
+  transform: translateY(-1px);
+  transition: transform .2s ease;
+}
+
+.astro-controls {
+position: absolute;
+top: 20px;
+right: 30px;
+display: flex;
+gap: 12px;
+z-index: 10;
+}
+
+.astro-btn {
+padding: 8px 14px;
+border-radius: 8px;
+border: 1px solid #00f0ff55;
+background: rgba(0, 20, 30, 0.6);
+color: #00f0ff;
+font-size: 12px;
+letter-spacing: 1px;
+text-decoration: none;
+cursor: pointer;
+transition: all 0.2s ease;
+}
+
+.astro-btn:hover {
+background: rgba(0, 240, 255, 0.1);
+box-shadow: 0 0 8px #00f0ff;
+}
+
+.astro-btn.small {
+padding: 4px 10px;
+font-size: 10px;
+}
+
+/* === LAYOUT UNIFORM PATCH — flex-based, zero conflict === */
+
+/* normalize box model across all layout elements */
+.weather-section,
+.weather-grid,
+.weather-card,
+.weather-card * { box-sizing: border-box !important; }
+
+/* symmetric 2-col grid, cards stretch to same row height */
+.weather-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 20px !important;
+    align-items: start !important;
+}
+
+/* card: strict fixed height, flex column, no overflow */
+.weather-card {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 420px !important;
+    min-height: 420px !important;
+    max-height: 420px !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+    position: relative !important;
+    contain: layout paint style !important;
+}
+
+/* skeleton: absolute so it never affects flex flow */
+.weather-card .skeleton {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 1 !important;
+    pointer-events: none !important;
+}
+
+/* title: shrink-proof header row */
+.weather-card h3,
+.weather-card .card-title,
+.weather-card-title {
+    flex: 0 0 auto !important;
+    margin: 0 0 8px 0 !important;
+    padding: 0 !important;
+    line-height: 1.3 !important;
+    width: 100% !important;
+}
+
+/* iframe: flex-grow fills all remaining height */
+.weather-card iframe {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    border: none !important;
+    border-radius: 10px !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+/* decorative <p> labels: float to bottom, out of flex flow */
+.weather-card > p {
+    position: absolute !important;
+    bottom: 6px !important;
+    left: 12px !important;
+    right: 12px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 3 !important;
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+    pointer-events: none !important;
+}
+</style>
+
+</div><!-- /content-area -->
+</div><!-- /shell -->
+
+<script>
+(function(){
+  var btn = document.getElementById('hamburger-btn');
+  var sb  = document.getElementById('sidebar');
+  var ov  = document.getElementById('sidebar-overlay');
+  if (btn && sb && ov) {
+    btn.addEventListener('click', function(){ sb.classList.toggle('open'); ov.classList.toggle('open'); });
+    ov.addEventListener('click',  function(){ sb.classList.remove('open');  ov.classList.remove('open');  });
+  }
+  function tick() {
+    var now = new Date();
+    var cl = document.getElementById('shell-clock');
+    var ut = document.getElementById('shell-utc');
+    if (cl) cl.textContent = now.toLocaleTimeString('fr-FR');
+    if (ut) ut.textContent = 'UTC ' + now.toUTCString().slice(17, 25);
+  }
+  tick(); setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Météo Live</title>
+
+<style>
+body {
+    background:#020611;
+    color:#00eaff;
+    font-family:sans-serif;
+    text-align:center;
+}
+
+.card {
+    margin:100px auto;
+    width:300px;
+    padding:20px;
+    border:1px solid rgba(0,255,255,0.2);
+    border-radius:10px;
+}
+
+.big {
+    font-size:40px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+    <h2 id="city">...</h2>
+    <div class="big" id="temp">--°C</div>
+    <p id="desc"></p>
+    <p>💧 <span id="humidity"></span>%</p>
+    <p>💨 <span id="wind"></span> km/h</p>
+</div>
+
+<script>
+async function loadMeteo(){
+    const r = await fetch('/api/meteo/reel');
+    const d = await r.json();
+
+    if(!d.ok) return;
+
+    document.getElementById('city').innerText = d.city;
+    document.getElementById('temp').innerText = d.temp + "°C";
+    document.getElementById('desc').innerText = d.desc;
+    document.getElementById('humidity').innerText = d.humidity;
+    document.getElementById('wind').innerText = d.wind;
+}
+
+loadMeteo();
+setInterval(loadMeteo, 60000);
+</script>
+
+</body>
+</html>

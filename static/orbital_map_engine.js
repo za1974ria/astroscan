@@ -109,8 +109,8 @@
   var viewer = new Cesium.Viewer("orbitalMap", {
     timeline: true,
     animation: true,
-    baseLayerPicker: false,
-    geocoder: false,
+    baseLayerPicker: false /* DÉSACTIVÉ - remplacé par toolbar custom .om-cesium-toolbar (Cesium Ion token vide cause crash) */,
+    geocoder: false /* DÉSACTIVÉ - remplacé par modal #om-modal-search avec Nominatim */,
     infoBox: true,
     shouldAnimate: true,
     terrainProvider: new Cesium.EllipsoidTerrainProvider(),

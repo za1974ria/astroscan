@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ apod.title_fr }} — APOD · AstroScan</title>
+<meta name="description" content="Image Astronomique du Jour NASA traduite en français — APOD quotidien avec titre et description en français pour le public algérien et francophone.">
+<meta name="keywords" content="APOD, image astronomique jour, NASA, français, astronomie, espace, Algérie, francophone">
+<meta property="og:title" content="{{ apod.title_fr }} — APOD · AstroScan">
+<meta property="og:description" content="Image Astronomique du Jour NASA traduite en français — APOD quotidien.">
+<meta property="og:url" content="https://astroscan.space/apod">
+<meta property="og:type" content="website">
+{% if apod.url %}<meta property="og:image" content="{{ apod.url }}">{% else %}<meta property="og:image" content="https://astroscan.space/static/img/og-astroscan.jpg">{% endif %}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ apod.title_fr }} — APOD · AstroScan">
+<meta name="twitter:description" content="Image Astronomique du Jour NASA traduite en français.">
+<link rel="canonical" href="https://astroscan.space/apod">
+<style>
+  :root { --bg:#050810; --fg:#c8dce8; --accent:#00d4ff; --muted:#6a8aa0; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif; line-height:1.55; }
+  .wrap { max-width:880px; margin:0 auto; padding:24px 18px 48px; }
+  h1 { font-size:1.55rem; color:var(--accent); font-weight:600; margin:0 0 8px; }
+  .meta { font-size:.85rem; color:var(--muted); margin-bottom:20px; }
+  .intro { margin: 0 0 14px; padding: 10px 12px; border: 1px solid rgba(0,212,255,.2); border-radius: 8px; background: rgba(0,212,255,.04); }
+  .intro strong { display: block; color: var(--accent); margin-bottom: 4px; letter-spacing: .04em; }
+  .intro p { margin: 0; color: #9eb4c2; font-size: .92rem; }
+  .meta-note { margin-top: 6px; font-size: .78rem; color: var(--muted); }
+  .media { margin:20px 0; border-radius:8px; overflow:hidden; border:1px solid rgba(0,212,255,.25); background:#000; }
+  .media img, .media iframe { display:block; width:100%; height:auto; min-height:200px; border:0; }
+  .explanation { font-size:1rem; margin-top:18px; white-space:pre-wrap; }
+  a.nasa { display:inline-block; margin-top:28px; font-size:.88rem; color:var(--muted); }
+  a.nasa:hover { color:var(--accent); }
+</style>
+<style>
+.fab-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
+.fab-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(1,4,8,0.95);border:1px solid rgba(0,212,255,0.3);color:#00d4ff;font-family:'Orbitron',monospace;font-size:0.45rem;letter-spacing:0.15em;text-decoration:none;cursor:pointer;transition:all 0.2s;border-radius:3px;white-space:nowrap;}
+.fab-btn:hover{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.6);box-shadow:0 0 14px rgba(0,212,255,0.2);}
+@media(max-width:600px){.fab-btn{font-size:0.38rem;padding:6px 10px;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="intro">
+    <strong>Astronomy Picture of the Day</strong>
+    <p>Curated daily astronomy content.</p>
+    {% if meta and (meta.source or meta.status or meta.last_updated) %}
+    <div class="meta-note">Source: {{ meta.source }} | Status: {{ meta.status }} | Updated: {{ meta.last_updated }}</div>
+    {% endif %}
+  </div>
+  <h1>{{ apod.title_fr }}</h1>
+  <div class="meta">NASA APOD · {{ apod.date }}{% if apod.translation_failed %} · <span style="color:#ffb020">Traduction automatique indisponible (texte NASA d’origine affiché)</span>{% endif %}</div>
+  <div class="media">
+    {% if apod.media_type == 'video' and apod.thumbnail_url %}
+      <a href="{{ apod.url }}" target="_blank" rel="noopener noreferrer">
+        <img src="{{ apod.thumbnail_url }}" alt="Miniature vidéo APOD">
+      </a>
+    {% elif apod.hdurl %}
+      <img src="{{ apod.hdurl }}" alt="{{ apod.title_fr }}">
+    {% elif apod.url %}
+      <img src="{{ apod.url }}" alt="{{ apod.title_fr }}">
+    {% else %}
+      <p style="padding:16px;color:var(--muted)">Aucune image disponible.</p>
+    {% endif %}
+  </div>
+  <div class="explanation">{{ apod.explanation_fr }}</div>
+  <a class="nasa" href="https://apod.nasa.gov/apod/astropix.html" target="_blank" rel="noopener noreferrer">Version originale NASA (APOD)</a>
+</div>
+<script>
+(function(){
+  try {
+    fetch('/api/visitors/log', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({path: window.location.pathname})
+    });
+  } catch(e) {}
+})();
+</script>
+<div class="fab-wrap">
+  <a class="fab-btn" href="/portail">&#8962; Portail</a>
+  <button class="fab-btn" onclick="location.reload()">&#8635; Actualiser</button>
+</div>
+</body>
+</html>

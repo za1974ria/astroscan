@@ -2,7 +2,7 @@
 
 Extrait de station_web.py. Aucune dépendance sur les globals du monolithe.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Blueprint, Response
 
 seo_bp = Blueprint('seo', __name__)
@@ -35,14 +35,25 @@ def robots_txt():
     return Response(content, mimetype='text/plain')
 
 
+def _alt_url(loc: str, lang: str) -> str:
+    """Return URL for the requested language. EN reached via ?lang=en
+    (cookie-persisted thereafter by the i18n blueprint)."""
+    if lang == "fr":
+        return loc
+    sep = "&" if "?" in loc else "?"
+    return f"{loc}{sep}lang={lang}"
+
+
 @seo_bp.route('/sitemap.xml')
 def sitemap_xml():
-    """Sitemap SEO dynamique — lastmod = date du jour."""
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+    """Sitemap SEO dynamique — lastmod = date du jour.
+
+    PASS 30 — multilingual: each URL declares xhtml:link rel=alternate
+    hreflang fr/en + x-default for international SEO."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     URLS = [
         ("https://astroscan.space/",               "1.0", "daily"),
         ("https://astroscan.space/portail",         "1.0", "daily"),
-        ("https://astroscan.space/en/portail",      "0.8", "daily"),
         ("https://astroscan.space/observatoire",    "0.9", "weekly"),
         ("https://astroscan.space/ephemerides",     "0.9", "hourly"),
         ("https://astroscan.space/ce_soir",         "0.9", "hourly"),
@@ -72,12 +83,19 @@ def sitemap_xml():
     ]
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
+        ' xmlns:xhtml="http://www.w3.org/1999/xhtml">',
     ]
     for loc, pri, freq in URLS:
+        fr_url = _alt_url(loc, 'fr')
+        en_url = _alt_url(loc, 'en')
         parts.append(
-            f'  <url>\n    <loc>{loc}</loc>\n    <lastmod>{today}</lastmod>'
-            f'\n    <changefreq>{freq}</changefreq>\n    <priority>{pri}</priority>\n  </url>'
+            f'  <url>\n    <loc>{fr_url}</loc>\n    <lastmod>{today}</lastmod>'
+            f'\n    <changefreq>{freq}</changefreq>\n    <priority>{pri}</priority>'
+            f'\n    <xhtml:link rel="alternate" hreflang="fr" href="{fr_url}"/>'
+            f'\n    <xhtml:link rel="alternate" hreflang="en" href="{en_url}"/>'
+            f'\n    <xhtml:link rel="alternate" hreflang="x-default" href="{fr_url}"/>'
+            f'\n  </url>'
         )
     parts.append('</urlset>')
     return Response('\n'.join(parts), mimetype='application/xml')

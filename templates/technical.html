@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Technical Overview · AstroScan</title>
+  <style>
+    :root { --bg:#050910; --fg:#cfe1eb; --muted:#7f9aab; --accent:#00d4ff; --border:rgba(0,212,255,0.22); }
+    body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,sans-serif; }
+    .wrap { max-width:860px; margin:0 auto; padding:30px 18px 50px; }
+    h1 { margin:0 0 12px; color:var(--accent); font-size:1.7rem; }
+    .lead { color:var(--muted); margin:0 0 20px; }
+    .section { border:1px solid var(--border); border-radius:10px; background:rgba(0,212,255,0.04); padding:12px 14px; margin-bottom:12px; }
+    h2 { margin:0 0 6px; font-size:0.92rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); }
+    ul { margin:0; padding-left:1rem; }
+    li { padding:4px 0; color:var(--fg); }
+    a { color:var(--accent); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .accuracy-card {
+      background: #0b1620;
+      border: 1px solid #112433;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .accuracy-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      gap: 12px;
+    }
+    .accuracy-header h3 {
+      margin: 0;
+      color: #fff;
+      font-size: 16px;
+    }
+    .accuracy-sub {
+      margin: 4px 0 0;
+      color: #6f8ca3;
+      font-size: 12px;
+    }
+    .accuracy-metrics {
+      display: flex;
+      gap: 16px;
+    }
+    .metric {
+      text-align: right;
+    }
+    .metric span {
+      display: block;
+      font-size: 11px;
+      color: #6f8ca3;
+    }
+    .metric strong {
+      color: #00d4ff;
+      font-size: 14px;
+    }
+    .accuracy-footer {
+      margin-top: 12px;
+      text-align: right;
+    }
+    .accuracy-footer a {
+      color: #00d4ff;
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .accuracy-footer a:hover {
+      text-decoration: underline;
+    }
+    .accuracy-card canvas {
+      width: 100%;
+      height: 220px;
+    }
+  </style>
+<style>
+.fab-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
+.fab-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(1,4,8,0.95);border:1px solid rgba(0,212,255,0.3);color:#00d4ff;font-family:'Orbitron',monospace;font-size:0.45rem;letter-spacing:0.15em;text-decoration:none;cursor:pointer;transition:all 0.2s;border-radius:3px;white-space:nowrap;}
+.fab-btn:hover{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.6);box-shadow:0 0 14px rgba(0,212,255,0.2);}
+@media(max-width:600px){.fab-btn{font-size:0.38rem;padding:6px 10px;}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Technical Overview</h1>
+    <p class="lead">Core production stack and reliability model.</p>
+
+    <div class="section">
+      <h2>Backend</h2>
+      <ul><li>Flask + Gunicorn</li></ul>
+    </div>
+
+    <div class="section">
+      <h2>Infrastructure</h2>
+      <ul><li>Nginx reverse proxy</li></ul>
+    </div>
+
+    <div class="section">
+      <h2>Data Sources</h2>
+      <ul>
+        <li>NASA</li>
+        <li>TLE</li>
+        <li>ISS</li>
+        <li>SGP4</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Performance</h2>
+      <ul>
+        <li>caching</li>
+        <li>timeout handling</li>
+        <li>fallback logic</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Deployment</h2>
+      <ul><li>production-ready environment with monitoring</li></ul>
+    </div>
+
+    <div class="section">
+      <h2>Technical Metrics &amp; Environment</h2>
+      <p style="color:#888; margin-top:6px;">
+        Production-ready backend system with real-time orbital computation (SGP4) and resilient architecture.
+      </p>
+
+      <h3 style="margin-top:10px">Metrics</h3>
+      <ul>
+        <li>Average API latency: ~150-300 ms (estimated)</li>
+        <li>p95 latency: ~400-800 ms (estimated)</li>
+        <li>Cache hit rate: ~70-90% (estimated)</li>
+        <li>Uptime: &gt;99% (service monitored via systemd)</li>
+        <li>API availability: 200 OK on critical routes (/api/iss, /api/sdr/passes)</li>
+        <li>Visitors: internal logs available (no public analytics yet)</li>
+        <li>SGP4 precision: real-time orbital propagation using NORAD TLE data</li>
+        <li>Estimated daily API calls: ~1k–5k (based on internal logs)</li>
+        <li>Satellite passes computed per day: several hundreds (depending on usage)</li>
+      </ul>
+
+      <h3 style="margin-top:10px">Technologies &amp; Versions</h3>
+      <ul>
+        <li>Python 3.12</li>
+        <li>Flask (backend framework)</li>
+        <li>Gunicorn (WSGI server)</li>
+        <li>Nginx (reverse proxy)</li>
+        <li>sgp4 (orbital computation)</li>
+        <li>Jinja2 (templating)</li>
+      </ul>
+
+      <h3 style="margin-top:10px">Infrastructure</h3>
+      <ul>
+        <li>Hosting: Hetzner Cloud VPS</li>
+        <li>OS: Ubuntu 24.04 LTS</li>
+        <li>CPU/RAM: Standard VPS (Hetzner Cloud)</li>
+        <li>Deployment: manual systemd service</li>
+        <li>No containerization (direct Linux deployment)</li>
+      </ul>
+
+      <h3 style="margin-top:10px">Testing &amp; Validation</h3>
+      <ul>
+        <li>Syntax validation: python -m py_compile</li>
+        <li>Smoke tests: curl on critical endpoints</li>
+        <li>Manual production validation after each deployment</li>
+        <li>No CI/CD pipeline yet (planned)</li>
+      </ul>
+
+      <h3 style="margin-top:10px">Security</h3>
+      <ul>
+        <li>HTTPS enabled (SSL certificate)</li>
+        <li>Reverse proxy isolation (Nginx -&gt; Gunicorn)</li>
+        <li>Input handling via Flask</li>
+        <li>API timeout &amp; fallback mechanisms</li>
+        <li>Rate limiting: planned</li>
+        <li>Secrets managed at server level (environment variables)</li>
+      </ul>
+
+      <h3 style="margin-top:10px">Roadmap</h3>
+      <ul>
+        <li>Multi-satellite tracking (beyond ISS)</li>
+        <li>Skyfield integration for advanced observation geometry</li>
+        <li>User authentication &amp; personalized tracking</li>
+        <li>API monetization / SaaS model</li>
+        <li>Improved real-time dashboards and user-facing analytics</li>
+        <li>Integration of business-oriented features (usage tracking, API access tiers)</li>
+      </ul>
+      <p style="color:#6f8ca3; margin-top:8px;">
+        Designed to evolve from a technical platform into a production-ready data service.
+      </p>
+    </div>
+
+    <div class="section">
+      <h2>Accuracy History</h2>
+      <div class="accuracy-card">
+        <div class="accuracy-header">
+          <div>
+            <h3>Orbital Accuracy Monitoring</h3>
+            <p class="accuracy-sub">
+              Real-time comparison between SGP4 propagation and external reference.
+            </p>
+          </div>
+          <div class="accuracy-metrics">
+            <div class="metric">
+              <span>Samples</span>
+              <strong id="acc-samples">--</strong>
+            </div>
+            <div class="metric">
+              <span>Avg error</span>
+              <strong id="acc-avg">-- km</strong>
+            </div>
+          </div>
+        </div>
+        <p id="accuracy-status" style="color:#888; margin:0 0 10px;">Loading accuracy validation...</p>
+        <canvas id="accuracy-chart" width="760" height="220" style="border:1px solid var(--border);border-radius:8px;background:rgba(0,0,0,0.15);"></canvas>
+        <div class="accuracy-footer">
+          <a href="/api/accuracy/export.csv">Export CSV</a>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top:16px"><a href="/portail">Back to portal</a></p>
+  </div>
+  <script>
+    (function () {
+      var statusEl = document.getElementById("accuracy-status");
+      var canvas = document.getElementById("accuracy-chart");
+      if (!statusEl || !canvas) return;
+      var ctx = canvas.getContext("2d");
+
+      function drawChart(items, stats) {
+        var values = items
+          .map(function (it) { return Number(it.distance_km); })
+          .filter(function (v) { return !isNaN(v); });
+
+        var width = canvas.width;
+        var height = canvas.height;
+        var pad = 40;
+        var left = pad;
+        var right = width - pad;
+        var top = pad * 0.55;
+        var bottom = height - pad;
+
+        ctx.clearRect(0, 0, width, height);
+
+        if (!values.length) {
+          statusEl.textContent = "Accuracy validation is warming up.";
+          return;
+        }
+
+        var maxVal = Math.max.apply(null, values);
+        var minVal = Math.min.apply(null, values);
+        var range = Math.max(0.01, maxVal - minVal);
+        var avg = values.reduce(function (a, b) { return a + b; }, 0) / values.length;
+
+        function toY(v) {
+          return bottom - ((v - minVal) / range) * (bottom - top);
+        }
+
+        function toX(i) {
+          if (values.length === 1) return (left + right) / 2;
+          return left + (i * (right - left)) / (values.length - 1);
+        }
+
+        // Axes
+        ctx.strokeStyle = "#222";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(left, top);
+        ctx.lineTo(left, bottom);
+        ctx.lineTo(right, bottom);
+        ctx.stroke();
+
+        // Average dashed line
+        var avgY = toY(avg);
+        ctx.save();
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = "#888";
+        ctx.beginPath();
+        ctx.moveTo(left, avgY);
+        ctx.lineTo(right, avgY);
+        ctx.stroke();
+        ctx.restore();
+
+        // Main line with gradient
+        var grad = ctx.createLinearGradient(left, top, right, bottom);
+        grad.addColorStop(0, "#8fe8ff");
+        grad.addColorStop(1, "#00d4ff");
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        values.forEach(function (v, i) {
+          var x = toX(i);
+          var y = toY(v);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Points
+        values.forEach(function (v, i) {
+          var x = toX(i);
+          var y = toY(v);
+          ctx.beginPath();
+          ctx.fillStyle = "#00d4ff";
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Labels
+        ctx.fillStyle = "#8aa4b5";
+        ctx.font = "12px system-ui, sans-serif";
+        ctx.fillText("km", 8, top + 4);
+        ctx.fillText("samples: " + values.length, left, height - 10);
+        ctx.fillText("avg " + avg.toFixed(2) + " km", right - 90, avgY - 6);
+
+        var sampleCount = (stats && stats.count) || values.length;
+        var avgLabel = (stats && stats.avg_km != null) ? stats.avg_km : avg.toFixed(2);
+        statusEl.textContent = "Samples: " + sampleCount + " | Avg error: " + avgLabel + " km";
+      }
+
+      fetch("/api/accuracy/history", { credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+        .then(function (data) {
+          var items = (data && data.items) || [];
+          var stats = data.stats || {};
+          var samplesEl = document.getElementById("acc-samples");
+          var avgEl = document.getElementById("acc-avg");
+          if (samplesEl) samplesEl.textContent = stats.count || items.length;
+          if (avgEl) avgEl.textContent = stats.avg_km != null ? stats.avg_km + " km" : "-- km";
+          drawChart(items, stats);
+        })
+        .catch(function () {
+          statusEl.textContent = "Accuracy validation is warming up.";
+        });
+    })();
+  </script>
+<div class="fab-wrap">
+  <a class="fab-btn" href="/portail">&#8962; Portail</a>
+  <button class="fab-btn" onclick="location.reload()">&#8635; Actualiser</button>
+</div>
+</body>
+</html>

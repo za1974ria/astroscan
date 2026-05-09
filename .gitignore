@@ -3,3 +3,52 @@ data_core/
 *.json
 *.tle
 telescope_live/
+
+# Backups horodatés (refactor 2026-05-02 et suivants)
+*.bak_*
+station_web.py.bak*
+*.pre_restore_*
+*.AVANT_RESTAURATION
+*.REPETE_ERREUR
+
+# PASS 26.A — Environment files protection (NEVER commit secrets)
+.env
+.env.save
+.env.local
+.env.bak*
+.env.*.bak
+!.env.example
+
+# Backups timestamped format .bak.YYYYMMDD_HHMMSS (session 4-6 mai 2026)
+*.bak.*
+*.bak
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor swap files
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Exports temporaires
+exports/
+
+# Données binaires lourdes (ephémérides, etc.)
+de421.bsp
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.archive/
+RESUME_REPRISE_*.md

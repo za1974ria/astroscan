@@ -1,0 +1,88 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, migration/phase-2c]
+  pull_request:
+    branches: [main, migration/phase-2c]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install production dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run smoke tests (no external deps)
+        env:
+          TESTING: "1"
+          SECRET_KEY: "ci-test-key-not-for-prod"
+          SENTRY_DSN: ""
+        run: |
+          pytest tests/smoke/ -m "not integration" --tb=short
+
+      - name: Run unit tests
+        env:
+          TESTING: "1"
+          SECRET_KEY: "ci-test-key-not-for-prod"
+          SENTRY_DSN: ""
+        run: |
+          pytest tests/unit/ --tb=short
+
+      # Integration tests require DB / network and are not run in CI.
+      # They can be invoked locally with: make test-integration
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Generate coverage report
+        env:
+          TESTING: "1"
+          SECRET_KEY: "ci-test-key-not-for-prod"
+          SENTRY_DSN: ""
+        run: |
+          pytest tests/smoke/ tests/unit/ \
+            --cov=app --cov=services \
+            --cov-report=xml --cov-report=term \
+            --tb=short
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 14

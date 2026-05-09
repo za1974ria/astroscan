@@ -8,7 +8,7 @@ pour la page /ce_soir (panneau ACTUALITÉS).
 Pour un premier déploiement on utilise une liste statique,
 sans dépendance externe ni token.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def _article(source, title, summary, url=None, image=None):
@@ -18,7 +18,7 @@ def _article(source, title, summary, url=None, image=None):
         "summary": summary,
         "url": url,
         "image": image,
-        "date": datetime.utcnow().strftime("%Y-%m-%d"),
+        "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     }
 
 

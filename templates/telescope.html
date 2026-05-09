@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<script>(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>Télescope — NASA SkyView · Archives Astronomiques · AstroScan</title>
+<meta name="description" content="Télescope virtuel ASTRO-SCAN — images réelles des archives NASA SkyView. Nébuleuse d'Orion, Galaxie d'Andromède, optique, infrarouge, UV et rayons X depuis Tlemcen.">
+<meta name="keywords" content="NASA SkyView, télescope virtuel, images astronomiques, Tlemcen, nébuleuse, galaxie, infrarouge, GALEX, DSS">
+<meta property="og:title" content="Télescope — NASA SkyView · ASTRO-SCAN">
+<meta property="og:description" content="Images réelles des archives NASA SkyView — optique, infrarouge, UV, rayons X.">
+<meta property="og:url" content="https://astroscan.space/telescope">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://astroscan.space/telescope">
+<link rel="icon" href="/static/favicon.ico?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+html.embed-portail .topbar{display:none!important}
+html.embed-portail body{padding-top:0!important}
+:root{--void:#010408;--panel:rgba(3,10,20,0.97);--border:rgba(0,180,255,0.13);--border-bright:rgba(0,212,255,0.4);--cyan:#00d4ff;--amber:#ff8c00;--green:#00ff88;--red:#ff3355;--text:#7a9ab0;--text-bright:#d0e8f0;--text-dim:#3a5868;--font:'Orbitron',monospace;--mono:'Share Tech Mono',monospace;--sw:220px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--void);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden}
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+.star{position:absolute;border-radius:50%;background:#fff;animation:tw var(--d,4s) ease-in-out infinite var(--dl,0s);opacity:var(--op,.4)}
+@keyframes tw{0%,100%{opacity:var(--op)}50%{opacity:calc(var(--op)*.12)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes scan{0%{top:-100%}100%{top:200%}}
+
+.shell{display:grid;grid-template-columns:var(--sw) 1fr;grid-template-rows:48px 1fr;min-height:100vh;position:relative;z-index:1}
+
+/* TOPBAR */
+.topbar{grid-column:1/-1;grid-row:1;display:flex;align-items:center;justify-content:space-between;height:48px;padding:0 20px;background:rgba(1,4,8,0.99);border-bottom:1px solid var(--border-bright);position:sticky;top:0;z-index:100}
+.topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.5;pointer-events:none}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand-name{font-family:var(--font);font-size:.75rem;font-weight:900;letter-spacing:.2em;color:var(--cyan);text-shadow:0 0 15px rgba(0,212,255,.5)}
+.brand-sep{color:var(--text-dim);margin:0 3px}
+.brand-sub{font-size:.5rem;letter-spacing:.18em;color:var(--text-dim)}
+.tbar-badge{display:flex;align-items:center;gap:6px;padding:3px 9px;border:1px solid rgba(0,255,136,.2);border-radius:3px;background:rgba(0,255,136,.04)}
+.tbar-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
+.tbar-badge-txt{font-family:var(--font);font-size:.42rem;letter-spacing:.18em;color:var(--green)}
+.tbar-right{display:flex;align-items:center;gap:14px}
+.tbar-clock{font-family:var(--font);font-size:.7rem;font-weight:600;letter-spacing:.08em;color:var(--text-bright)}
+.tbar-utc{font-size:.4rem;letter-spacing:.12em;color:var(--text-dim);text-align:right}
+.hamburger-btn{display:none;align-items:center;justify-content:center;width:36px;height:36px;background:transparent;border:none;cursor:pointer;color:var(--cyan);font-size:1.1rem;border-radius:4px}
+
+/* SIDEBAR */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:199;opacity:0;pointer-events:none;transition:opacity .3s}
+.sidebar{grid-column:1;grid-row:2;background:rgba(1,5,12,.98);border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden;position:sticky;top:48px;height:calc(100vh - 48px);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.sidebar::-webkit-scrollbar{width:2px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border)}
+.s-lbl{font-size:.4rem;letter-spacing:.3em;text-transform:uppercase;color:var(--text-dim);padding:14px 16px 5px;display:block;font-family:var(--font)}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;transition:all .2s;border-left:2px solid transparent;text-decoration:none;color:inherit}
+.nav-item:hover{background:rgba(0,212,255,.04);border-left-color:rgba(0,212,255,.3)}
+.nav-item.active{background:rgba(0,212,255,.07);border-left-color:var(--cyan)}
+.nav-item.active .nav-label{color:var(--cyan)}
+.nav-icon{font-size:.85rem;width:17px;text-align:center;color:var(--text-dim)}
+.nav-label{font-family:var(--font);font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);flex:1}
+.nav-badge{font-size:.42rem;letter-spacing:.1em;padding:1px 5px;border:1px solid currentColor;text-transform:uppercase;border-radius:2px}
+.nav-badge.live{color:var(--green);border-color:rgba(0,255,136,.4);animation:pulse 2s infinite}
+.s-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(0,180,255,.12),transparent);margin:6px 0}
+.s-bottom{padding:10px 14px;margin-top:auto}
+.s-bottom-txt{font-size:.4rem;letter-spacing:.08em;color:var(--text-dim);line-height:1.7}
+
+/* CONTENT */
+.content-area{grid-column:2;grid-row:2;overflow-y:auto;overflow-x:hidden;padding:24px 28px 48px}
+
+/* PAGE HEADER */
+.page-hdr{margin-bottom:20px}
+.page-title{font-family:var(--font);font-size:1rem;font-weight:900;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);text-shadow:0 0 20px rgba(0,212,255,.3);margin-bottom:4px}
+.page-sub{font-size:.52rem;letter-spacing:.18em;color:var(--text-dim);text-transform:uppercase}
+
+/* CONTROLS */
+.controls-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:center}
+.ctrl-group{display:flex;flex-direction:column;gap:4px}
+.ctrl-label{font-size:.42rem;letter-spacing:.2em;color:var(--text-dim);text-transform:uppercase;font-family:var(--font)}
+.ctrl-select{background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.2);color:var(--text-bright);font-family:var(--mono);font-size:.58rem;padding:6px 10px;border-radius:2px;cursor:pointer;min-width:180px;letter-spacing:.04em}
+.ctrl-select:focus{outline:none;border-color:var(--cyan)}
+.ctrl-select option{background:#020810;color:var(--text-bright)}
+.btn-load{font-family:var(--font);font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;padding:8px 18px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);color:var(--cyan);cursor:pointer;border-radius:2px;transition:all .2s;clip-path:polygon(4px 0%,100% 0%,100% calc(100% - 4px),calc(100% - 4px) 100%,0% 100%,0% 4px)}
+.btn-load:hover{background:rgba(0,212,255,.15);box-shadow:0 0 14px rgba(0,212,255,.2)}
+
+/* MAIN IMAGE PANEL */
+.telescope-layout{display:grid;grid-template-columns:1fr 300px;gap:16px;margin-bottom:20px}
+.img-panel{background:var(--panel);border:1px solid var(--border);overflow:hidden;position:relative;clip-path:polygon(8px 0%,100% 0%,100% calc(100% - 8px),calc(100% - 8px) 100%,0% 100%,0% 8px)}
+.img-panel::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,212,255,.03) 0%,transparent 60%);pointer-events:none;z-index:1}
+.img-container{position:relative;width:100%;padding-top:75%;background:#000}
+.img-container img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .4s ease}
+.img-container img.loading{opacity:0}
+.img-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(0,212,255,.6),transparent);animation:scan 3s linear infinite;z-index:2;pointer-events:none}
+.img-corner{position:absolute;width:16px;height:16px;z-index:3}
+.img-corner.tl{top:8px;left:8px;border-top:1px solid var(--cyan);border-left:1px solid var(--cyan)}
+.img-corner.tr{top:8px;right:8px;border-top:1px solid var(--cyan);border-right:1px solid var(--cyan)}
+.img-corner.bl{bottom:8px;left:8px;border-bottom:1px solid var(--cyan);border-left:1px solid var(--cyan)}
+.img-corner.br{bottom:8px;right:8px;border-bottom:1px solid var(--cyan);border-right:1px solid var(--cyan)}
+.img-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,8,16,.85);z-index:5;transition:opacity .3s}
+.img-overlay.hidden{opacity:0;pointer-events:none}
+.img-loader-txt{font-family:var(--font);font-size:.55rem;letter-spacing:.25em;color:var(--cyan);text-align:center;text-shadow:0 0 12px rgba(0,212,255,.5)}
+.img-loader-dot{display:inline-block;animation:pulse 1s infinite}
+
+/* INFO PANEL */
+.info-panel{background:var(--panel);border:1px solid var(--border);padding:18px;display:flex;flex-direction:column;gap:14px}
+.info-title{font-family:var(--font);font-size:.7rem;font-weight:900;letter-spacing:.2em;color:var(--cyan);text-shadow:0 0 10px rgba(0,212,255,.3)}
+.info-row{display:flex;flex-direction:column;gap:2px;padding:7px 0;border-bottom:1px solid rgba(0,180,255,.07)}
+.info-row:last-of-type{border-bottom:none}
+.info-key{font-size:.4rem;letter-spacing:.2em;color:var(--text-dim);text-transform:uppercase;font-family:var(--font)}
+.info-val{font-family:var(--mono);font-size:.54rem;color:var(--text-bright);letter-spacing:.06em}
+.info-val.cyan{color:var(--cyan)}
+.credit-block{margin-top:auto;padding-top:10px;border-top:1px solid rgba(0,180,255,.1)}
+.credit-txt{font-size:.42rem;color:var(--text-dim);line-height:1.6;letter-spacing:.04em}
+.credit-txt a{color:var(--cyan);text-decoration:none}
+.credit-txt a:hover{text-decoration:underline}
+
+/* WAVELENGTH TABS */
+.wave-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.wave-tab{font-family:var(--font);font-size:.44rem;letter-spacing:.15em;padding:5px 11px;background:rgba(0,212,255,.03);border:1px solid rgba(0,212,255,.15);color:var(--text-dim);cursor:pointer;transition:all .2s;border-radius:2px}
+.wave-tab:hover{background:rgba(0,212,255,.07);color:var(--text-bright)}
+.wave-tab.active{background:rgba(0,212,255,.12);border-color:var(--cyan);color:var(--cyan)}
+
+/* THUMBNAILS GRID */
+.section-title{font-family:var(--font);font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:var(--cyan);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(0,212,255,.2),transparent)}
+.thumb-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.thumb-card{background:var(--panel);border:1px solid var(--border);cursor:pointer;transition:all .22s;overflow:hidden;position:relative}
+.thumb-card:hover{border-color:rgba(0,212,255,.4);box-shadow:0 0 14px rgba(0,212,255,.1);transform:translateY(-1px)}
+.thumb-card.active{border-color:var(--cyan);box-shadow:0 0 16px rgba(0,212,255,.2)}
+.thumb-img-wrap{width:100%;padding-top:80%;position:relative;background:#000810;overflow:hidden}
+.thumb-img-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .4s}
+.thumb-img-wrap img.loading{opacity:0}
+.thumb-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.4rem}
+.thumb-info{padding:6px 8px}
+.thumb-id{font-family:var(--font);font-size:.42rem;letter-spacing:.18em;color:var(--cyan);text-transform:uppercase}
+.thumb-nom{font-size:.44rem;color:var(--text);line-height:1.3;margin-top:2px}
+
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:#010408}
+::-webkit-scrollbar-thumb{background:rgba(0,212,255,.22)}
+
+@media(max-width:1100px){
+  .telescope-layout{grid-template-columns:1fr}
+  .info-panel{flex-direction:row;flex-wrap:wrap;gap:10px;padding:12px}
+  .info-panel .info-row{flex:1 1 140px}
+  .info-panel .credit-block{flex:1 1 100%}
+  .info-panel .info-title{flex:1 1 100%}
+}
+@media(max-width:900px){
+  .shell{grid-template-columns:1fr;grid-template-rows:48px 1fr}
+  .sidebar{position:fixed;left:-240px;top:0;bottom:0;width:240px;z-index:200;height:100vh;transition:left .3s;box-shadow:4px 0 20px rgba(0,255,136,.12)}
+  .sidebar.open{left:0}
+  .sidebar-overlay{display:block !important}
+  .sidebar-overlay.open{opacity:1;pointer-events:all}
+  .content-area{grid-column:1;grid-row:2}
+  .hamburger-btn{display:flex}
+  .topbar{padding:0 10px 0 52px}
+  .brand-sub{display:none}
+  .thumb-grid{grid-template-columns:repeat(3,1fr)}
+  .content-area{padding:14px 12px 40px}
+}
+@media(max-width:540px){
+  .thumb-grid{grid-template-columns:repeat(2,1fr)}
+  .controls-bar{flex-direction:column;align-items:stretch}
+  .ctrl-select{min-width:unset;width:100%}
+}
+</style>
+<style>
+.fab-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
+.fab-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(1,4,8,0.95);border:1px solid rgba(0,212,255,0.3);color:#00d4ff;font-family:'Orbitron',monospace;font-size:0.45rem;letter-spacing:0.15em;text-decoration:none;cursor:pointer;transition:all 0.2s;border-radius:3px;white-space:nowrap;}
+.fab-btn:hover{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.6);box-shadow:0 0 14px rgba(0,212,255,0.2);}
+@media(max-width:600px){.fab-btn{font-size:0.38rem;padding:6px 10px;}}
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<div class="shell">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">☰</button>
+  <a class="brand" href="/portail">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="9" stroke="rgba(0,212,255,0.35)" stroke-width="1"/><circle cx="11" cy="11" r="5" stroke="rgba(0,212,255,0.55)" stroke-width="1"/><circle cx="11" cy="11" r="2" fill="#00d4ff"/><line x1="11" y1="2" x2="11" y2="5" stroke="rgba(0,212,255,0.45)" stroke-width="1"/><line x1="11" y1="17" x2="11" y2="20" stroke="rgba(0,212,255,0.45)" stroke-width="1"/></svg>
+    <span class="brand-name">ASTRO-SCAN</span><span class="brand-sep">·</span><span class="brand-sub">TÉLESCOPE NASA SKYVIEW</span>
+  </a>
+  <div class="tbar-badge"><div class="tbar-dot"></div><span class="tbar-badge-txt">IMAGES RÉELLES · Archives NASA/STScI</span></div>
+  <div class="tbar-right">
+    <div><div class="tbar-clock" id="top-clock">--:--:--</div><div class="tbar-utc" id="top-utc">UTC --:--:--</div></div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+
+
+
+<!-- CONTENT -->
+<div class="content-area">
+
+  <div class="page-hdr">
+    <div class="page-title">🔭 Télescope — NASA SkyView</div>
+    <div class="page-sub">Archives Astronomiques · Images Réelles · Optique · IR · UV · Rayons X</div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-bar">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Objet</span>
+      <select id="sel-objet" class="ctrl-select">
+        {% for o in objets %}
+        <option value="{{ o.id }}" {% if o.id == 'M42' %}selected{% endif %}>{{ o.id }} — {{ o.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Longueur d'onde</span>
+      <select id="sel-survey" class="ctrl-select">
+        {% for key, val in surveys.items() %}
+        <option value="{{ val }}" {% if key == 'optique' %}selected{% endif %}>{{ key|capitalize }} — {{ val }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn-load" id="btn-charger" onclick="chargerImage()">▶ Charger</button>
+  </div>
+
+  <!-- Wavelength quick tabs -->
+  <div class="wave-tabs" id="wave-tabs">
+    {% for key, val in surveys.items() %}
+    <button class="wave-tab {% if key == 'optique' %}active{% endif %}"
+            data-survey="{{ val }}" onclick="selectWave(this)">
+      {% if key == 'optique' %}🔍 Optique
+      {% elif key == 'infrarouge' %}🌡 Infrarouge
+      {% elif key == 'ultraviolet' %}💜 Ultraviolet
+      {% else %}⚡ Rayons X{% endif %}
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- Main layout -->
+  <div class="telescope-layout">
+
+    <!-- Image principale -->
+    <div class="img-panel">
+      <div class="img-container">
+        <div class="img-corner tl"></div>
+        <div class="img-corner tr"></div>
+        <div class="img-corner bl"></div>
+        <div class="img-corner br"></div>
+        <div class="img-scan" id="img-scan"></div>
+        <img id="main-img" src="" alt="" loading="lazy">
+        <div class="img-overlay" id="img-overlay">
+          <div class="img-loader-txt">
+            Chargement depuis les archives NASA<span class="img-loader-dot">...</span><br>
+            <span style="font-size:.42rem;color:var(--text-dim);margin-top:8px;display:block">NASA SkyView · STScI DSS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Infos objet -->
+    <div class="info-panel" id="info-panel">
+      <div class="info-title" id="info-nom">—</div>
+      <div class="info-row">
+        <span class="info-key">Identifiant</span>
+        <span class="info-val cyan" id="info-id">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Ascension droite</span>
+        <span class="info-val" id="info-ra">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Déclinaison</span>
+        <span class="info-val" id="info-dec">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Survey</span>
+        <span class="info-val cyan" id="info-survey">—</span>
+      </div>
+      <div class="info-row">
+        <span class="info-key">Source</span>
+        <span class="info-val">NASA SkyView</span>
+      </div>
+      <div class="credit-block">
+        <div class="credit-txt">
+          Crédit : <a href="https://skyview.gsfc.nasa.gov" target="_blank" rel="noopener">NASA SkyView</a> / STScI DSS<br>
+          Données archivées — résolution 600×600 px<br>
+          Projection J2000 · Scaling logarithmique
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grille vignettes -->
+  <div class="section-title">Catalogue — 10 objets · Tlemcen 34.87°N</div>
+  <div class="thumb-grid" id="thumb-grid">
+    {% for o in objets %}
+    <div class="thumb-card" id="thumb-{{ o.id }}" onclick="selectObjet('{{ o.id }}')">
+      <div class="thumb-img-wrap">
+        <div class="thumb-placeholder">🌌</div>
+        <img id="timg-{{ o.id }}" src="" alt="{{ o.nom }}" loading="lazy">
+      </div>
+      <div class="thumb-info">
+        <div class="thumb-id">{{ o.id }}</div>
+        <div class="thumb-nom">{{ o.nom }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div><!-- .content-area -->
+</div><!-- .shell -->
+
+<script>
+(function(){
+  /* ── Clock ── */
+  function tick(){var n=new Date();var c=document.getElementById('top-clock');var u=document.getElementById('top-utc');if(c)c.textContent=n.toLocaleTimeString('fr-FR');if(u)u.textContent='UTC '+n.toUTCString().split(' ')[4];}
+  tick();setInterval(tick,1000);
+
+  /* ── Hamburger ── */
+  var hb=document.getElementById('hamburger-btn'),sb=document.getElementById('sidebar'),ov=document.getElementById('sidebar-overlay');
+  if(hb&&sb&&ov){hb.onclick=function(){sb.classList.toggle('open');ov.classList.toggle('open');};ov.onclick=function(){sb.classList.remove('open');ov.classList.remove('open');};}
+
+  /* ── Stars ── */
+  var stEl=document.getElementById('stars');
+  if(stEl){for(var i=0;i<120;i++){var d=document.createElement('div');d.className='star';d.style.cssText='left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;width:'+(Math.random()*2+.5)+'px;height:'+(Math.random()*2+.5)+'px;--d:'+(Math.random()*5+3)+'s;--dl:'+(-Math.random()*5)+'s;--op:'+(Math.random()*.5+.1);stEl.appendChild(d);}}
+
+  /* ── Cache images vignettes ── */
+  var thumbCache = {};
+
+  /* ── État courant ── */
+  var currentObjet  = 'M42';
+  var currentSurvey = 'DSS2 Red';
+
+  /* ── Charger image principale ── */
+  window.chargerImage = function() {
+    var objet  = document.getElementById('sel-objet').value;
+    var survey = document.getElementById('sel-survey').value;
+    currentObjet  = objet;
+    currentSurvey = survey;
+    _loadMain(objet, survey);
+    _highlightThumb(objet);
+  };
+
+  function _loadMain(objet, survey) {
+    var overlay = document.getElementById('img-overlay');
+    var img     = document.getElementById('main-img');
+    var scan    = document.getElementById('img-scan');
+
+    overlay.classList.remove('hidden');
+    img.classList.add('loading');
+    if(scan) scan.style.display = 'none';
+
+    fetch('/api/telescope/image?objet='+encodeURIComponent(objet)+'&survey='+encodeURIComponent(survey))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        img.onload = function(){
+          overlay.classList.add('hidden');
+          img.classList.remove('loading');
+          if(scan) scan.style.display = 'block';
+        };
+        img.onerror = function(){
+          overlay.classList.add('hidden');
+          img.classList.remove('loading');
+          document.querySelector('.img-loader-txt').textContent = 'Image non disponible';
+        };
+        img.src = '/api/telescope/proxy-image?objet='+encodeURIComponent(objet)+'&survey='+encodeURIComponent(survey);
+        img.alt = d.nom;
+        document.getElementById('info-nom').textContent    = d.nom;
+        document.getElementById('info-id').textContent     = d.id;
+        document.getElementById('info-ra').textContent     = d.ra ? d.ra + '°' : '—';
+        document.getElementById('info-dec').textContent    = d.dec ? d.dec + '°' : '—';
+        document.getElementById('info-survey').textContent = d.survey;
+      })
+      .catch(function(){
+        overlay.classList.add('hidden');
+      });
+  }
+
+  /* ── Sélection depuis vignette ── */
+  window.selectObjet = function(id) {
+    document.getElementById('sel-objet').value = id;
+    currentObjet = id;
+    _loadMain(id, currentSurvey);
+    _highlightThumb(id);
+    _loadThumb(id, currentSurvey);
+  };
+
+  function _highlightThumb(id) {
+    document.querySelectorAll('.thumb-card').forEach(function(c){c.classList.remove('active');});
+    var t = document.getElementById('thumb-'+id);
+    if(t) t.classList.add('active');
+  }
+
+  /* ── Chargement vignettes ── */
+  function _loadThumb(id, survey) {
+    var cacheKey = id + '|' + survey;
+    var img = document.getElementById('timg-'+id);
+    if(!img) return;
+    if(thumbCache[cacheKey]){img.src=thumbCache[cacheKey];img.classList.remove('loading');return;}
+    img.classList.add('loading');
+    var url = '/api/telescope/proxy-image?objet='+encodeURIComponent(id)+'&survey='+encodeURIComponent(survey)+'&pixels=120&size=0.8';
+    thumbCache[cacheKey] = url;
+    img.onload = function(){img.classList.remove('loading');};
+    img.onerror = function(){img.classList.remove('loading');};
+    img.src = url;
+  }
+
+  /* ── Tabs longueur d'onde ── */
+  window.selectWave = function(btn) {
+    document.querySelectorAll('.wave-tab').forEach(function(b){b.classList.remove('active');});
+    btn.classList.add('active');
+    var survey = btn.getAttribute('data-survey');
+    document.getElementById('sel-survey').value = survey;
+    currentSurvey = survey;
+    _loadMain(currentObjet, survey);
+    thumbCache = {};
+    _loadAllThumbs(survey);
+  };
+
+  /* ── Charger toutes les vignettes en différé ── */
+  function _loadAllThumbs(survey) {
+    var objets = {{ objets | tojson }};
+    var delay  = 0;
+    objets.forEach(function(o){
+      setTimeout(function(){ _loadThumb(o.id, survey); }, delay);
+      delay += 200;
+    });
+  }
+
+  /* ── Initialisation ── */
+  _loadMain('M42', 'DSS2 Red');
+  _highlightThumb('M42');
+  setTimeout(function(){ _loadAllThumbs('DSS2 Red'); }, 500);
+
+})();
+</script>
+<div class="fab-wrap">
+  <a class="fab-btn" href="/portail">&#8962; Portail</a>
+  <button class="fab-btn" onclick="location.reload()">&#8635; Actualiser</button>
+</div>
+</body>
+</html>

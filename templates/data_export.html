@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Data Portal — AstroScan-Chohra | Scientific Data</title>
+  <meta name="description" content="Free scientific datasets from AstroScan-Chohra space observatory: visitor statistics (38 countries), Tlemcen ephemerides, stellar observations (1500+ entries), NASA APOD. CSV and JSON. CC BY 4.0.">
+  <meta name="keywords" content="open data, astronomy dataset, ephemerides Tlemcen, stellar observations, space observatory data, Algeria astronomy, CC BY 4.0, scientific data">
+  <meta name="author" content="Zakaria Chohra — AstroScan">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://astroscan.space/data">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Open Data Portal — AstroScan-Chohra">
+  <meta property="og:description" content="Free scientific datasets: visitor stats (38 countries), Tlemcen ephemerides, 1500+ stellar observations, NASA APOD. CC BY 4.0.">
+  <meta property="og:url" content="https://astroscan.space/data">
+  <meta property="og:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
+  <meta property="og:site_name" content="AstroScan-Chohra">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Open Data Portal — AstroScan-Chohra">
+  <meta name="twitter:description" content="Free scientific datasets from AstroScan space observatory. CC BY 4.0.">
+  <link rel="icon" href="/static/favicon.ico?v=2">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Share Tech Mono','Courier New',monospace;background:#000810;color:#c8d8e8;min-height:100vh}
+    a{color:inherit;text-decoration:none}
+
+    .hdr{background:rgba(0,8,20,0.97);border-bottom:1px solid rgba(0,180,255,0.2);padding:15px 32px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+    .hdr-logo{font-family:'Orbitron',monospace;color:#00d4ff;font-size:14px;font-weight:700;letter-spacing:3px}
+    .hdr-logo span{color:#fff}
+    .hdr-badge{background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);border-radius:12px;padding:3px 10px;font-size:10px;color:#00d4ff;letter-spacing:1px}
+    .hdr nav{margin-left:auto;display:flex;gap:20px}
+    .hdr nav a{color:#556677;font-size:11px;letter-spacing:1px;transition:color .2s}
+    .hdr nav a:hover{color:#00d4ff}
+
+    .hero{padding:72px 32px 52px;text-align:center;border-bottom:1px solid rgba(0,180,255,0.1);position:relative;overflow:hidden}
+    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(0,180,255,0.06),transparent);pointer-events:none}
+    .hero-label{font-size:10px;letter-spacing:4px;color:#00d4ff;opacity:.7;margin-bottom:14px}
+    .hero h1{font-family:'Orbitron',monospace;font-size:2.2em;color:#ffffff;letter-spacing:4px;margin-bottom:12px;text-shadow:0 0 30px rgba(0,212,255,0.25)}
+    .hero h1 span{color:#00d4ff}
+    .hero p{color:#7a93a8;max-width:680px;margin:0 auto 28px;line-height:1.9;font-size:12px}
+    .badge{display:inline-block;background:rgba(0,212,255,0.07);border:1px solid rgba(0,212,255,0.2);border-radius:16px;padding:4px 14px;font-size:10px;color:#5599bb;letter-spacing:1px;margin:3px}
+
+    .container{max-width:1000px;margin:0 auto;padding:56px 32px}
+    .section-title{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;color:#00d4ff;border-left:2px solid #00d4ff;padding-left:12px;margin-bottom:24px;text-transform:uppercase}
+
+    .stats-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:52px}
+    .stat-mini{background:rgba(0,180,255,0.05);border:1px solid rgba(0,180,255,0.15);border-radius:8px;padding:18px 22px;text-align:center;flex:1;min-width:130px}
+    .stat-mini .num{font-family:'Orbitron',monospace;font-size:1.7em;color:#00d4ff;font-weight:700}
+    .stat-mini .lbl{font-size:9px;color:#445566;letter-spacing:2px;margin-top:5px;text-transform:uppercase}
+
+    .dataset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:18px;margin-bottom:52px}
+    .dataset-card{background:rgba(0,15,32,0.8);border:1px solid rgba(0,180,255,0.13);border-radius:10px;padding:24px;transition:border-color .25s,transform .2s}
+    .dataset-card:hover{border-color:rgba(0,180,255,0.35);transform:translateY(-2px)}
+    .ds-icon{font-size:22px;margin-bottom:10px}
+    .ds-title{font-family:'Orbitron',monospace;color:#00d4ff;font-size:10px;letter-spacing:2px;margin-bottom:10px}
+    .ds-desc{color:#7a93a8;font-size:11px;line-height:1.8;margin-bottom:14px}
+    .ds-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+    .ds-tag{background:rgba(0,180,255,0.06);border:1px solid rgba(0,180,255,0.14);border-radius:4px;padding:2px 8px;font-size:9px;color:#4477aa;letter-spacing:1px}
+    .ds-count{font-size:11px;color:#334455;margin-bottom:14px}
+    .ds-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn-dl{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:5px;font-size:10px;letter-spacing:1px;font-family:inherit;transition:all .2s;cursor:pointer;border:1px solid}
+    .btn-json{background:rgba(0,212,255,0.08);border-color:rgba(0,212,255,0.28);color:#00d4ff}
+    .btn-json:hover{background:rgba(0,212,255,0.18)}
+    .btn-csv{background:rgba(0,255,136,0.07);border-color:rgba(0,255,136,0.25);color:#00ff88}
+    .btn-csv:hover{background:rgba(0,255,136,0.15)}
+    .btn-api{background:rgba(170,100,255,0.07);border-color:rgba(170,100,255,0.25);color:#bb77ff}
+    .btn-api:hover{background:rgba(170,100,255,0.15)}
+
+    .cite-box{background:rgba(0,15,30,0.7);border:1px solid rgba(0,180,255,0.13);border-radius:8px;padding:20px;margin-bottom:20px}
+    .cite-box .cite-title{color:#00d4ff;font-size:10px;letter-spacing:2px;margin-bottom:12px}
+    .cite-box pre{font-size:11px;color:#7a93a8;line-height:1.8;white-space:pre-wrap;font-family:'Share Tech Mono',monospace}
+
+    .rg-box{background:linear-gradient(135deg,rgba(0,180,255,0.04),rgba(100,0,255,0.04));border:1px solid rgba(0,180,255,0.18);border-radius:10px;padding:28px;margin-bottom:32px}
+    .rg-box h3{font-family:'Orbitron',monospace;color:#00d4ff;font-size:10px;letter-spacing:2px;margin-bottom:14px}
+    .rg-box p{color:#7a93a8;font-size:12px;line-height:1.9}
+    .rg-box a{color:#00d4ff}
+    .rg-box strong{color:#c8d8e8}
+
+    footer{border-top:1px solid rgba(0,180,255,0.08);padding:28px;text-align:center;color:#334455;font-size:11px;letter-spacing:1px;line-height:2}
+    footer a{color:#3a5060;transition:color .2s}
+    footer a:hover{color:#00d4ff}
+
+    @media(max-width:600px){.container{padding:32px 16px}.hero h1{font-size:1.5em}.hdr{padding:12px 16px}}
+  </style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-logo">⟨ ASTRO<span>SCAN</span> ⟩</div>
+  <span class="hdr-badge">OPEN DATA</span>
+  <span class="hdr-badge">CC BY 4.0</span>
+  <nav>
+    <a href="/api/docs">API Docs</a>
+    <a href="/a-propos">About</a>
+    <a href="/observatoire">Observatory</a>
+    <a href="/portail">Portal</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="hero-label">ASTROSCAN-CHOHRA · TLEMCEN · ALGERIA</div>
+  <h1>OPEN <span>DATA</span> PORTAL</h1>
+  <p>
+    Scientific datasets from AstroScan-Chohra Space Observatory — freely available
+    for research, education, and academic publications.
+    All datasets include citation metadata and are updated in real-time.
+  </p>
+  <div>
+    <span class="badge">🔓 FREE ACCESS</span>
+    <span class="badge">📡 REAL-TIME</span>
+    <span class="badge">🌍 38 COUNTRIES</span>
+    <span class="badge">📊 CSV + JSON</span>
+    <span class="badge">🔬 CC BY 4.0</span>
+    <span class="badge">🤖 AI ANALYSIS</span>
+  </div>
+</section>
+
+<div class="container">
+
+  <div class="stats-row">
+    <div class="stat-mini"><div class="num" id="s-total">—</div><div class="lbl">Total Visits</div></div>
+    <div class="stat-mini"><div class="num" id="s-countries">38</div><div class="lbl">Countries</div></div>
+    <div class="stat-mini"><div class="num">1 500+</div><div class="lbl">Observations</div></div>
+    <div class="stat-mini"><div class="num">5</div><div class="lbl">Datasets</div></div>
+    <div class="stat-mini"><div class="num">24/7</div><div class="lbl">Live Data</div></div>
+  </div>
+
+  <div class="section-title">Available Datasets</div>
+  <div class="dataset-grid">
+
+    <div class="dataset-card">
+      <div class="ds-icon">🌅</div>
+      <div class="ds-title">TLEMCEN EPHEMERIDES</div>
+      <div class="ds-desc">Real-time astronomical data for Tlemcen, Algeria (34.88°N, 1.32°E, 800m): sun rise/set times, moon phase & illumination, visible planets, astronomical night window. Computed with astropy 7.2.</div>
+      <div class="ds-meta"><span class="ds-tag">REAL-TIME</span><span class="ds-tag">ASTROPY 7.2</span><span class="ds-tag">NORTH AFRICA</span></div>
+      <div class="ds-actions">
+        <a href="/api/export/ephemerides.json" class="btn-dl btn-json">⬇ JSON</a>
+        <a href="/api/ephemerides/tlemcen" target="_blank" class="btn-dl btn-api">🔗 Live API</a>
+      </div>
+    </div>
+
+    <div class="dataset-card">
+      <div class="ds-icon">🔭</div>
+      <div class="ds-title">STELLAR OBSERVATIONS ARCHIVE</div>
+      <div class="ds-desc">1,500+ astronomical observations with AI analysis: detected celestial objects, anomalies, confidence scores, AI descriptions (Claude/Gemini). From telescope images and sky surveys.</div>
+      <div class="ds-meta"><span class="ds-tag">1 500+ ENTRIES</span><span class="ds-tag">AI ANALYSIS</span><span class="ds-tag">ARCHIVE</span></div>
+      <div class="ds-count" id="obs-count"></div>
+      <div class="ds-actions">
+        <a href="/api/export/observations.json" class="btn-dl btn-json">⬇ JSON (500 latest)</a>
+      </div>
+    </div>
+
+    <div class="dataset-card">
+      <div class="ds-icon">🌍</div>
+      <div class="ds-title">GLOBAL VISITOR STATISTICS</div>
+      <div class="ds-desc">Aggregated visitor data by country: visits, first/last visit dates, geographic distribution across 38 countries. Anonymized — no personal data, no IP addresses.</div>
+      <div class="ds-meta"><span class="ds-tag">ANONYMIZED</span><span class="ds-tag">38 COUNTRIES</span><span class="ds-tag">GEO-IP</span></div>
+      <div class="ds-actions">
+        <a href="/api/export/visitors.json" class="btn-dl btn-json">⬇ JSON</a>
+        <a href="/api/export/visitors.csv" class="btn-dl btn-csv">⬇ CSV</a>
+      </div>
+    </div>
+
+    <div class="dataset-card">
+      <div class="ds-icon">🛸</div>
+      <div class="ds-title">ISS REAL-TIME POSITION</div>
+      <div class="ds-desc">International Space Station live position: latitude, longitude, altitude, velocity, overflown country. Updated every 5 seconds via SGP4 propagation from NORAD TLE data.</div>
+      <div class="ds-meta"><span class="ds-tag">LIVE</span><span class="ds-tag">SGP4</span><span class="ds-tag">NORAD TLE</span></div>
+      <div class="ds-actions">
+        <a href="/api/iss" class="btn-dl btn-json">⬇ JSON Live</a>
+        <a href="/api/docs" target="_blank" class="btn-dl btn-api">📖 API Docs</a>
+      </div>
+    </div>
+
+    <div class="dataset-card">
+      <div class="ds-icon">🌌</div>
+      <div class="ds-title">NASA APOD — FRENCH TRANSLATIONS</div>
+      <div class="ds-desc">NASA Astronomy Picture of the Day cache with automatic French translations powered by Claude AI. Includes original English title, explanation, and French version.</div>
+      <div class="ds-meta"><span class="ds-tag">NASA</span><span class="ds-tag">AI TRANSLATED</span><span class="ds-tag">FRENCH/EN</span></div>
+      <div class="ds-actions">
+        <a href="/api/export/apod-history.json" class="btn-dl btn-json">⬇ JSON</a>
+        <a href="/api/apod" target="_blank" class="btn-dl btn-api">🔗 Live API</a>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-title">How to Cite</div>
+  <div class="cite-box">
+    <div class="cite-title">📝 APA CITATION</div>
+    <pre>Chohra, Z. (2026). AstroScan-Chohra: Real-time Space Observatory Platform [Data set].
+Tlemcen, Algeria. Retrieved from https://astroscan.space/data</pre>
+  </div>
+  <div class="cite-box">
+    <div class="cite-title">📝 BIBTEX</div>
+    <pre>@misc{chohra2026astroscan,
+  author    = {Chohra, Zakaria},
+  title     = {AstroScan-Chohra: Real-time Space Observatory Platform},
+  year      = {2026},
+  publisher = {AstroScan},
+  url       = {https://astroscan.space/data},
+  note      = {Tlemcen, Algeria (34.88°N, 1.32°E, 800m). CC BY 4.0.}
+}</pre>
+  </div>
+
+  <div class="section-title">Scientific Profile & Collaboration</div>
+  <div class="rg-box">
+    <h3>📚 ACADEMIC PRESENCE & RESEARCHGATE</h3>
+    <p>
+      AstroScan-Chohra data and methodology are being submitted to ResearchGate for formal academic indexing.
+      For pre-publication access to full datasets, methodology documentation, or collaboration requests:<br><br>
+      <strong>Zakaria Chohra</strong> —
+      <a href="mailto:zakaria.chohra@gmail.com">zakaria.chohra@gmail.com</a><br>
+      <span style="color:#445566;font-size:11px">Tlemcen, Algeria · AstroScan Space Observatory · 2026</span><br><br>
+      Related academic work: <strong>Prof. Amine Chohra</strong> (Robotics &amp; AI Research) —
+      ongoing collaboration on AI-assisted astronomical data processing.
+    </p>
+  </div>
+
+  <div class="section-title">License</div>
+  <div class="cite-box">
+    <pre>License      : Creative Commons Attribution 4.0 International (CC BY 4.0)
+Usage        : Free for scientific, educational, and research purposes
+Attribution  : Cite as "AstroScan-Chohra (astroscan.space)"
+NASA data    : Subject to NASA Open Data policy
+Contact      : zakaria.chohra@gmail.com for commercial or institutional use
+API Docs     : https://astroscan.space/api/docs
+Spec (JSON)  : https://astroscan.space/api/spec.json</pre>
+  </div>
+
+</div>
+
+<footer>
+  <p>© 2026 AstroScan-Chohra · Zakaria Chohra · Tlemcen, Algeria</p>
+  <p style="margin-top:6px;font-size:10px">
+    <a href="/api/docs">API Docs</a> ·
+    <a href="/a-propos">About</a> ·
+    <a href="/portail">Portal</a> ·
+    <a href="/sitemap.xml">Sitemap</a> ·
+    <a href="/api/spec.json" target="_blank">OpenAPI spec.json</a>
+  </p>
+</footer>
+
+<script>
+(function(){
+  fetch('/api/visitors/snapshot?exclude_my_ip=1&_='+Date.now(),{credentials:'same-origin'})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.total) document.getElementById('s-total').textContent=d.total.toLocaleString('en');
+      if(d.distinct_countries) document.getElementById('s-countries').textContent=d.distinct_countries;
+    }).catch(()=>{});
+  fetch('/api/export/observations.json')
+    .then(r=>r.json())
+    .then(d=>{ if(d.metadata&&d.metadata.count){ document.getElementById('obs-count').textContent='Latest '+d.metadata.count+' entries in this export'; } })
+    .catch(()=>{});
+})();
+</script>
+</body>
+</html>

@@ -18,7 +18,7 @@ Couche production : core.skyview_engine_safe (cache data_core/skyview/, fallback
 import os
 import sqlite3
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -106,7 +106,7 @@ def fetch_skyview_image(
         }
 
     data = safe["gif_bytes"]
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"skyview_{target_id}_{survey.replace(' ', '_')}_{ts}.gif"
     dest = os.path.join(download_dir, filename)
 
@@ -178,7 +178,7 @@ def _save_to_db(target_id, target, survey, path, filename, station_root: str):
                 f"Image réelle NASA SkyView. Survey: {survey}. "
                 f'Coordonnées: {target["coords"]}. '
                 f"Source: NASA Goddard / HEASARC. Aucun compte requis.",
-                datetime.utcnow().isoformat(),
+                datetime.now(timezone.utc).isoformat(),
                 0.0,
                 path,
             ),

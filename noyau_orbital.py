@@ -3,7 +3,7 @@ import sys
 import requests
 import json
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # CONFIGURATION DU CHEMIN SÉCURISÉ
 BASE_DIR = "/root/astro_scan"
@@ -48,7 +48,7 @@ def demarrer_noyau_orbital():
 
     # 3. TÉLÉMÉTRIE VOYAGER 1 (Espace Interstellaire via NASA JPL Horizons)
     try:
-        aujourdhui = datetime.utcnow().strftime('%Y-%m-%d')
+        aujourdhui = datetime.now(timezone.utc).strftime('%Y-%m-%d')
         jpl_url = "https://ssd.jpl.nasa.gov/api/horizons.api"
         params = {
             "format": "json",

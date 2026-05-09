@@ -62,3 +62,21 @@ def api_sdr_passes():
         subprocess_module=subprocess,
         log=log,
     )
+
+
+# ── PASS 14 — SDR captures (différé PASS 2B levé — DB extraite via app.utils.db) ──
+@sdr_bp.route("/api/sdr/captures")
+def api_sdr_captures():
+    """Liste des captures SDR/NOAA depuis la DB d'observations."""
+    try:
+        from app.utils.db import get_db
+        conn = get_db()
+        rows = conn.execute(
+            "SELECT id, timestamp, source, COALESCE(title,'') as title "
+            "FROM observations WHERE source LIKE '%SDR%' OR source LIKE '%NOAA%' "
+            "ORDER BY id DESC LIMIT 10"
+        ).fetchall()
+        return jsonify({"ok": True, "captures": [dict(r) for r in rows]})
+    except Exception as e:
+        log.warning("api/sdr/captures: %s", e)
+        return jsonify({"ok": False, "captures": []})

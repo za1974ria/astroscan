@@ -1,12 +1,24 @@
-"""Blueprint Export — CSV/JSON données scientifiques CC BY 4.0."""
+"""Blueprint Export — CSV/JSON données scientifiques CC BY 4.0.
+
+Routes URL-prefixées (/api/export/*) :
+  - visitors.csv / visitors.json
+  - observations.json
+  - ephemerides.json
+  - apod-history.json
+
+Routes globales (sans préfixe) :
+  - /api/accuracy/export.csv  (déplacé depuis system_bp lors de PASS 4 phase 2C)
+"""
 import csv
 import io
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, jsonify
 
 bp = Blueprint("export", __name__, url_prefix="/api/export")
+# Sous-blueprint pour les routes export hors-préfixe (globales).
+bp_global = Blueprint("export_global", __name__)
 
 
 def _db():
@@ -17,7 +29,7 @@ def _meta(description: str, **kwargs) -> dict:
     return {
         "source": "AstroScan-Chohra",
         "url": "https://astroscan.space",
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
         "license": "CC BY 4.0 — Scientific and educational use",
         "description": description,
         **kwargs,
@@ -28,17 +40,22 @@ def _meta(description: str, **kwargs) -> dict:
 def visitors_csv():
     try:
         conn = _db()
+        # PASS 27 — Normalize NL duplicate at query time.
         rows = conn.execute("""
-            SELECT country, country_code,
-                   COUNT(*) as visits,
-                   DATE(MIN(visited_at)) as first_visit,
-                   DATE(MAX(visited_at)) as last_visit
+            SELECT
+                CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country,
+                country_code,
+                COUNT(*) as visits,
+                DATE(MIN(visited_at)) as first_visit,
+                DATE(MAX(visited_at)) as last_visit
             FROM visitor_log
             WHERE country IS NOT NULL AND country != ''
               AND country NOT IN ('Unknown','Inconnu')
               AND (country_code IS NULL OR country_code != 'XX')
               AND is_bot = 0
-            GROUP BY country, country_code
+            GROUP BY
+                CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END,
+                country_code
             ORDER BY visits DESC
         """).fetchall()
         conn.close()
@@ -62,17 +79,22 @@ def visitors_csv():
 def visitors_json():
     try:
         conn = _db()
+        # PASS 27 — Normalize NL duplicate at query time.
         rows = conn.execute("""
-            SELECT country, country_code,
-                   COUNT(*) as visits,
-                   DATE(MIN(visited_at)) as first_visit,
-                   DATE(MAX(visited_at)) as last_visit
+            SELECT
+                CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country,
+                country_code,
+                COUNT(*) as visits,
+                DATE(MIN(visited_at)) as first_visit,
+                DATE(MAX(visited_at)) as last_visit
             FROM visitor_log
             WHERE country IS NOT NULL AND country != ''
               AND country NOT IN ('Unknown','Inconnu')
               AND (country_code IS NULL OR country_code != 'XX')
               AND is_bot = 0
-            GROUP BY country, country_code
+            GROUP BY
+                CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END,
+                country_code
             ORDER BY visits DESC
         """).fetchall()
         total = conn.execute(
@@ -134,3 +156,74 @@ def observations_json():
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/ephemerides.json")
+def ephemerides_json():
+    """Export JSON éphémérides Tlemcen avec métadonnées scientifiques."""
+    try:
+        from services.cache_service import cache_get
+        cached = cache_get('eph_tlemcen', 300) or {}
+        export = {
+            "metadata": {
+                "source": "AstroScan-Chohra",
+                "location": "Tlemcen, Algeria",
+                "coordinates": {"lat": 34.8753, "lon": 1.3167, "alt_m": 800},
+                "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
+                "license": "CC BY 4.0 — Scientific use",
+                "url": "https://astroscan.space/api/export/ephemerides.json",
+                "computation": "astropy 7.2 + SGP4",
+            }
+        }
+        export.update(cached)
+        return Response(
+            json.dumps(export, ensure_ascii=False, indent=2),
+            mimetype="application/json",
+            headers={"Access-Control-Allow-Origin": "*"},
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/apod-history.json")
+def apod_history_json():
+    """Export JSON historique APOD depuis le cache local."""
+    try:
+        from station_web import STATION
+        cache_path = f"{STATION}/data/apod_cache.json"
+        with open(cache_path) as f:
+            apod_cache = json.load(f)
+        data = {
+            "metadata": _meta(
+                "NASA APOD local cache — AstroScan FR translations CC BY 4.0",
+                count=len(apod_cache),
+            ),
+            "data": apod_cache,
+        }
+        return Response(
+            json.dumps(data, ensure_ascii=False, indent=2),
+            mimetype="application/json",
+            headers={"Access-Control-Allow-Origin": "*"},
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ─── Routes export hors-préfixe (déplacées depuis system_bp PASS 4 2C) ──────
+
+@bp_global.route('/api/accuracy/export.csv')
+def api_accuracy_export_csv():
+    """Export CSV historique de précision ISS."""
+    from app.services.accuracy_history import get_accuracy_history
+    rows = get_accuracy_history()
+    lines = ["ts,distance_km"]
+    for row in rows:
+        ts = row.get("ts", "")
+        distance = row.get("distance_km", "")
+        lines.append(f"{ts},{distance}")
+    csv_payload = "\n".join(lines) + "\n"
+    return Response(
+        csv_payload,
+        mimetype="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="accuracy_history.csv"'},
+    )

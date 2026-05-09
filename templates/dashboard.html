@@ -1,13 +1,22 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ lang | default('fr') }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AstroScan-Chohra - Dashboard QG</title>
+  <title>{% if lang == 'en' %}AstroScan-Chohra - HQ Dashboard{% else %}AstroScan-Chohra - Dashboard QG{% endif %}</title>
+  <link rel="alternate" hreflang="fr" href="https://astroscan.space{{ request.path }}">
+  <link rel="alternate" hreflang="en" href="https://astroscan.space{{ request.path }}?lang=en">
+  <link rel="alternate" hreflang="x-default" href="https://astroscan.space{{ request.path }}">
+<style>
+.fab-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
+.fab-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(1,4,8,0.95);border:1px solid rgba(0,212,255,0.3);color:#00d4ff;font-family:'Orbitron',monospace;font-size:0.45rem;letter-spacing:0.15em;text-decoration:none;cursor:pointer;transition:all 0.2s;border-radius:3px;white-space:nowrap;}
+.fab-btn:hover{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.6);box-shadow:0 0 14px rgba(0,212,255,0.2);}
+@media(max-width:600px){.fab-btn{font-size:0.38rem;padding:6px 10px;}}
+</style>
 </head>
 <body>
-  <h1>Module Dashboard QG</h1>
-  <p>Système actif</p>
+  <h1>{% if lang == 'en' %}HQ Dashboard Module{% else %}Module Dashboard QG{% endif %}</h1>
+  <p>{% if lang == 'en' %}System active{% else %}Système actif{% endif %}</p>
 
 <script>
 (function(){
@@ -19,5 +28,9 @@
     });
   } catch(e) {}
 })();
-</script></body>
+</script><div class="fab-wrap">
+  <a class="fab-btn" href="/portail">&#8962; {% if lang == 'en' %}Portal{% else %}Portail{% endif %}</a>
+  <button class="fab-btn" onclick="location.reload()">&#8635; {% if lang == 'en' %}Refresh{% else %}Actualiser{% endif %}</button>
+</div>
+</body>
 </html>

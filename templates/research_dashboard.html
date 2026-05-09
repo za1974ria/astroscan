@@ -94,6 +94,20 @@
     margin-top:10px;
   }
   .btn:hover{background:rgba(0,212,255,.2)}
+  .btn-cockpit-primary{
+    padding:12px 24px;
+    font-size:14px;
+    border:1px solid rgba(0,220,255,.4);
+    background:rgba(0,30,50,.6);
+    color:#00DCFF;
+    letter-spacing:.05em;
+    transition:all .25s ease;
+  }
+  .btn-cockpit-primary:hover{
+    background:rgba(0,50,80,.8);
+    box-shadow:0 0 12px rgba(0,220,255,.5);
+    transform:translateY(-1px);
+  }
   .btn-danger{
     border-color:rgba(255,92,122,.5);
     background:rgba(255,92,122,.12);
@@ -270,9 +284,9 @@
     </article>
 
     <article class="card">
-      <h2>Statut systeme</h2>
+      <h2>Statut système</h2>
       <div class="value" id="sysMode">-</div>
-      <div class="row"><span class="small">Etat:</span><span class="badge" id="sysStatus">-</span></div>
+      <div class="row"><span class="small">État&nbsp;:</span><span class="badge" id="sysStatus">-</span></div>
       <div class="row"><span class="small">Uptime:</span><span id="sysUptime">-</span></div>
       <div class="row"><span class="small">TLE:</span><span id="sysTle">-</span></div>
       <div class="err" id="errHealth"></div>
@@ -281,14 +295,14 @@
     <article class="card">
       <h2>Observations</h2>
       <div class="value" id="obsCount">-</div>
-      <div class="small">Images archivees dans la base</div>
+      <div class="small">Images archivées dans la base</div>
       <div class="err" id="errStatus"></div>
     </article>
 
     <article class="card">
       <h2>AEGIS IA</h2>
       <div class="value" id="aegisState" style="font-size:1.35rem">-</div>
-      <div class="small" id="aegisModel">Modele: -</div>
+      <div class="small" id="aegisModel">Modèle&nbsp;: -</div>
       <button class="btn" id="btnAegis">Tester AEGIS</button>
       <div class="err" id="errAegis"></div>
     </article>
@@ -303,10 +317,10 @@
 
     <article class="card actions">
       <h2>Actions rapides</h2>
-      <a href="/observatoire"><button class="btn">Observatoire</button></a>
-      <a href="/ce_soir"><button class="btn">Ce soir</button></a>
+      <a href="/observatoire" target="_top"><button class="btn">Observatoire</button></a>
+      <a href="/ce_soir" target="_top"><button class="btn">Ce soir</button></a>
       <a href="/dashboard"><button class="btn">Dashboard QG</button></a>
-      <a href="/portail"><button class="btn">Portail</button></a>
+      <a href="/portail" target="_top"><button class="btn btn-cockpit-primary">Portail</button></a>
       <div class="err" id="errActions"></div>
     </article>
   </section>
@@ -324,7 +338,7 @@
 
     <div class="row" style="margin:10px 0 6px">
       <div class="small">Derniers visiteurs</div>
-      <button class="btn" id="btnGeoRefresh" onclick="fetchGeoStatsAndVisitors()" style="margin:0;width:auto;padding:6px 10px">Actualiser</button>
+      <button class="btn btn-cockpit-primary" id="btnGeoRefresh" onclick="fetchGeoStatsAndVisitors()" style="margin:0;width:auto">Actualiser</button>
     </div>
     <div class="visitors" id="geoVisitors"></div>
     <div class="err" id="errGeo"></div>
@@ -343,7 +357,7 @@
     <div class="err" id="errConnectionTimes"></div>
   </section>
 
-  <div class="foot"><a href="/portail">Retour au portail</a></div>
+  <div class="foot"><a href="/portail" target="_top">Retour au portail</a></div>
 </div>
 
 <script>
@@ -514,11 +528,11 @@
       const configured = !!(data.gemini_configured || data.groq_configured);
       const isOk = !!data.ok && configured;
       $("aegisState").textContent = isOk ? "ACTIF" : "ERREUR";
-      $("aegisModel").textContent = "Modele: " + (isOk ? "Gemini/Groq" : "inconnu");
+      $("aegisModel").textContent = "Modèle : " + (isOk ? "Gemini/Groq" : "inconnu");
       setError("errAegis", isOk ? "" : "Configuration IA absente ou indisponible.");
     } catch (err) {
       $("aegisState").textContent = "ERREUR";
-      $("aegisModel").textContent = "Modele: -";
+      $("aegisModel").textContent = "Modèle : -";
       setError("errAegis", err.message || String(err));
     }
   }

@@ -1,6 +1,11 @@
-const CACHE = 'astroscan-v150';
+const CACHE = 'astroscan-v151';
 
 const PRECACHE = [];
+
+// Phase O-E (2026-05-07) : pages qui ne doivent JAMAIS être servies depuis
+// le cache — force le réseau pour éviter de servir du HTML obsolète qui aurait
+// pu être mis en cache par une version antérieure du SW.
+const NO_CACHE_PATHS = ['/portail', '/observatoire', '/landing', '/'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -30,7 +35,14 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Pages → Network First
+  // Pages "shell" critiques → strict network-only, jamais de cache HTML.
+  // Évite que du HTML obsolète (ex: sidebar dupliquée) soit servi.
+  if (e.request.mode === 'navigate' && NO_CACHE_PATHS.includes(url.pathname)) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
+  // Autres pages → Network First (cache fallback offline uniquement)
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request)

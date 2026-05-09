@@ -79,7 +79,7 @@ def get_moon_phase():
         return {'phase': phase, 'illumination_pct': illumination, 'cycle_jour': cycle_day}
     except Exception:
         # Fallback approximatif si astropy échoue
-        now_dt = datetime.utcnow()
+        now_dt = datetime.now(timezone.utc)
         known_new = datetime(2024, 1, 11)
         delta = (now_dt - known_new).days
         cycle = delta % 29.53

@@ -1356,7 +1356,7 @@ async function loadPassagesISS() {
       box.innerHTML =
         '<div class="passages-iss-demo">' +
         '<div class="iss-corner-wrap"><span class="iss-corner-status">🔴 DATA ERROR</span></div>' +
-        '<p class="sub-h">Data temporarily unavailable</p></div>';
+        '<p class="sub-h">' + (document.documentElement.lang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API') + '</p></div>';
       return;
     }
     if (data.error) {
@@ -1366,7 +1366,7 @@ async function loadPassagesISS() {
         '<span class="iss-corner-time">' +
         String(data.message || data.error).replace(/</g, '&lt;') +
         '</span></div>' +
-        '<p class="sub-h">Data temporarily unavailable</p></div>';
+        '<p class="sub-h">' + (document.documentElement.lang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API') + '</p></div>';
       return;
     }
     var passages = data.prochains_passages || [];
@@ -1432,7 +1432,7 @@ async function loadPassagesISS() {
     box.innerHTML =
       '<div class="passages-iss-demo">' +
       '<div class="iss-corner-wrap"><span class="iss-corner-status">🔴 DATA ERROR</span></div>' +
-      '<p class="sub-h">Data temporarily unavailable</p></div>';
+      '<p class="sub-h">' + (document.documentElement.lang === 'fr' ? 'Synchronisation en cours · NASA API' : 'Synchronizing · NASA API') + '</p></div>';
   }
 }
 

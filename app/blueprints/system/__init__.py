@@ -1,150 +1,158 @@
-"""Blueprint System — endpoints de monitoring et statut systeme.
+"""Blueprint System — admin / sync / data système (slim post-PASS 4 phase 2C).
 
-Endpoints :
-  - /api/system-status         : statut general
-  - /api/system-alerts         : alertes via core.alert_engine
-  - /api/system-notifications  : notifications via core.notification_engine
+Routes (6, après split health → app/blueprints/health/) :
+  - /api/tle/refresh         : refresh TLE manuel
+  - /api/latest              : dernières observations
+  - /api/sync/state (GET)    : lecture source télescope partagée
+  - /api/sync/state (POST)   : écriture source télescope partagée
+  - /api/telescope/sources   : liste sources sélectionnables
+  - /api/dsn                 : DSN NASA (snapshot data_core)
 
-Migration depuis station_web.py (CTO Critique 3 - Monolith reduction).
+Les routes health/monitoring (/health, /api/health, /selftest, /status,
+/stream/status, /api/system-*) ont été déplacées vers health_bp.
+La route /api/accuracy/export.csv a été déplacée vers export_bp (bp_global).
 """
 
 import logging
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 
 log = logging.getLogger(__name__)
 
 bp = Blueprint("system_bp", __name__)
 
 
-@bp.route("/api/system-status")
-def api_system_status():
-    """Mode demo stable : statut systeme force ONLINE."""
-    return jsonify({
-        "ok": True,
-        "status": "online",
-        "master": "ONLINE",
-        "aegis": "ACTIVE",
-        "modules": "ALL_OPERATIONAL",
-    })
-
-
-@bp.route("/api/system-alerts")
-def api_system_alerts():
-    """Alertes basees sur le cache systeme uniquement (core/alert_engine)."""
-    from station_web import STATION
+@bp.route('/api/tle/refresh', methods=['POST'])
+def api_tle_refresh():
+    """Déclenche un rafraîchissement manuel des TLE."""
     try:
-        from core import alert_engine as _alerts
-        return jsonify(_alerts.analyze_system_alerts(STATION))
-    except Exception as e:
-        log.warning("api/system-alerts: %s", e)
+        import station_web as _sw
+        ok = _sw.fetch_tle_from_celestrak()
         return jsonify({
-            "alerts": [
-                {"level": "critical", "message": "Alert engine failure"},
-            ],
-            "count": 1,
-            "global_status": "unknown",
-        }), 500
-
-
-@bp.route("/api/system-notifications")
-def api_system_notifications():
-    """Notifications derivees d'alert_engine uniquement (core/notification_engine)."""
-    from station_web import STATION
-    try:
-        from core import notification_engine as _notify
-        return jsonify(_notify.check_and_notify(STATION))
+            "ok": bool(ok),
+            "status": _sw.TLE_CACHE.get("status"),
+            "count": _sw.TLE_CACHE.get("count"),
+            "last_refresh_iso": _sw.TLE_CACHE.get("last_refresh_iso"),
+            "error": _sw.TLE_CACHE.get("error"),
+        })
     except Exception as e:
-        log.warning("api/system-notifications: %s", e)
-        return jsonify({"notifications": [], "count": 0, "error": str(e)}), 500
+        log.warning("/api/tle/refresh: %s", e)
+        return jsonify({"ok": False, "error": str(e)})
 
 
-
-@bp.route("/api/system/server-info")
-def server_info():
-    """Server infrastructure metadata (Hetzner Hillsboro Oregon US-West)."""
-    return jsonify({
-        "ip": "5.78.153.17",
-        "provider": "Hetzner",
-        "status": "ONLINE",
-        "zone": "EU",
-        "ok": True,
-    })
-
-
-
-@bp.route("/api/system/diagnostics")
-def system_diagnostics():
-    """Diagnostics systeme : memoire, CPU, cache - monitoring operationnel."""
-    import time
-    from station_web import START_TIME
-    from services.cache_service import cache_status
+@bp.route('/api/latest')
+def api_latest():
+    """Dernières observations — liste paginable avec support i18n."""
+    lang = request.args.get('lang', 'fr').lower()
     try:
-        import psutil
-        proc = psutil.Process()
-        memory_mb = round(proc.memory_info().rss / 1024 / 1024, 2)
-        cpu_percent = psutil.cpu_percent(interval=0.1)
+        import station_web as _sw
+        conn = _sw.get_db()
+        cur = conn.cursor()
+        total     = cur.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        anomalies = cur.execute("SELECT COUNT(*) FROM observations WHERE anomalie=1").fetchone()[0]
+        sources   = cur.execute("SELECT COUNT(DISTINCT source) FROM observations").fetchone()[0]
+        try:
+            req_j = cur.execute(
+                "SELECT COUNT(*) FROM observations WHERE date(timestamp)=date('now')"
+            ).fetchone()[0]
+        except Exception:
+            req_j = 0
+        try:
+            limit_arg = request.args.get('limit', '20')
+            limit = min(200, max(1, int(limit_arg))) if str(limit_arg).isdigit() else 20
+        except Exception:
+            limit = 20
+        try:
+            rows = cur.execute(
+                "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
+                "COALESCE(rapport_fr,'') as rapport_fr, objets_detectes, anomalie, "
+                "COALESCE(title,'') as title, COALESCE(objets_detectes,'') as type_objet, "
+                "COALESCE(score_confiance,0.0) as confidence "
+                "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
+        except Exception:
+            rows = cur.execute(
+                "SELECT id, timestamp, source, analyse_gemini, analyse_gemini as rapport_gemini, "
+                "'' as rapport_fr, objets_detectes, anomalie, "
+                "'' as title, '' as type_objet, 0.0 as confidence "
+                "FROM observations ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
+        conn.close()
+        obs_list = []
+        for row in rows:
+            r = dict(row)
+            raw = r.get('rapport_gemini') or r.get('analyse_gemini') or ''
+            if lang == 'fr':
+                fr = (r.get('rapport_fr') or '').strip()
+                r['rapport_gemini'] = fr if fr else raw
+            else:
+                r['rapport_gemini'] = raw
+            r['rapport_display'] = r['rapport_gemini']
+            obs_list.append(r)
+        return jsonify({
+            'ok': True, 'total': total, 'anomalies': anomalies,
+            'sources': sources, 'telescopes': 9, 'req_jour': req_j,
+            'observations': obs_list,
+            'notice': 'Analyses AEGIS',
+        })
+    except Exception as e:
+        log.error("api_latest: %s", e)
+        return jsonify({'ok': False, 'error': str(e), 'total': 0, 'observations': []})
+
+
+@bp.route('/api/sync/state', methods=['GET'])
+def api_sync_state_get():
+    """État canonique partagé (PC + Android) : source télescope affichée."""
+    import station_web as _sw
+    return jsonify({'ok': True, 'source': _sw._sync_state_read()})
+
+
+@bp.route('/api/sync/state', methods=['POST'])
+def api_sync_state_post():
+    """Met à jour l'état partagé (quand un client change la source)."""
+    import station_web as _sw
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        source = data.get('source') or request.form.get('source') or 'live'
     except Exception:
-        memory_mb = 0
-        cpu_percent = 0
+        source = 'live'
+    s = _sw._sync_state_write(source)
+    return jsonify({'ok': True, 'source': s})
+
+
+@bp.route('/api/telescope/sources')
+def api_telescope_sources():
+    """Liste des sources live sélectionnables."""
     return jsonify({
-        "system": "Orbital-Chohra",
-        "status": "online",
-        "uptime": int(time.time() - START_TIME),
-        "memory_mb": memory_mb,
-        "cpu_percent": cpu_percent,
-        "cache_entries": cache_status()["api_cache"]["count"],
+        'ok': True,
+        'sources': [
+            {'id': 'live',         'name': 'Flux principal',      'desc': 'Dernière image du pipeline (feeder)',     'icon': '📡'},
+            {'id': 'apod',         'name': 'NASA APOD',            'desc': 'Image du jour — temps 0',                 'icon': '🔭'},
+            {'id': 'hubble',       'name': 'ESA Hubble',           'desc': 'Archives Hubble — temps 0',               'icon': '🌌'},
+            {'id': 'apod_archive', 'name': 'NASA APOD (archive)',  'desc': 'Image aléatoire 2015–2024',               'icon': '📁'},
+        ]
     })
 
 
-
-@bp.route("/api/system/status")
-def api_system_status_orbital():
-    """Etat du systeme Orbital-Chohra - sante, heartbeat et uptime."""
-    import time
-    from station_web import START_TIME
-    modules_active = [
-        "portail", "observatoire", "galerie", "vision", "scientific", "lab",
-        "research", "research_center", "space", "dashboard", "overlord_live",
-    ]
-    return jsonify({
-        "system": "Orbital-Chohra",
-        "status": "online",
-        "modules": len(modules_active),
-        "apis": 10,
-        "timestamp": time.time(),
-        "uptime": int(time.time() - START_TIME),
-        "version": "1.0",
-        "modules_list": modules_active,
-    })
-
-
-
-@bp.route("/api/system-status/cache")
-def api_system_status_cache():
-    """Etat DSN / Weather / SkyView depuis les snapshots data_core (aucun reseau)."""
-    from station_web import STATION
+# ── PASS 11 — DSN (Deep Space Network NASA) ───────────────────────────
+@bp.route("/api/dsn")
+def api_dsn():
+    """DSN : fetch NASA + snapshot data_core/dsn/ + fallback."""
+    from app.config import STATION as _STATION
     try:
-        from core import system_status_engine as _sysst
-        return jsonify(_sysst.build_system_status_cache_payload(STATION))
+        from core import dsn_engine_safe as _dsn
+        return jsonify(_dsn.get_dsn_safe(_STATION))
     except Exception as e:
-        log.warning("api/system-status/cache: %s", e)
-        return jsonify({
-            "dsn": {"status": "fallback", "source": "error", "stale": True},
-            "weather": {"status": "fallback", "source": "error", "stale": True},
-            "skyview": {"status": "fallback", "source": "error", "stale": True},
-            "global_status": "critical",
-        }), 500
-
-
-
-@bp.route("/api/system-heal", methods=["POST"])
-def api_system_heal():
-    """Auto-healing controle : refresh cache DSN / meteo / SkyView (core/auto_heal_engine)."""
-    from station_web import STATION
-    try:
-        from core import auto_heal_engine as _heal
-        return jsonify(_heal.run_auto_heal(STATION))
-    except Exception as e:
-        log.warning("api/system-heal: %s", e)
-        return jsonify({"actions": [], "count": 0, "error": str(e)}), 500
+        log.warning("api/dsn: %s", e)
+        try:
+            from core import dsn_engine_safe as _dsn
+            return jsonify(_dsn.build_dsn_fallback_payload())
+        except Exception:
+            return jsonify({
+                "stations": [
+                    {"friendlyName": "Goldstone (USA)", "name": "GDS", "dishes": []},
+                    {"friendlyName": "Madrid (Spain)", "name": "MDS", "dishes": []},
+                    {"friendlyName": "Canberra (Australia)", "name": "CDS", "dishes": []},
+                ],
+                "status": "fallback",
+            })

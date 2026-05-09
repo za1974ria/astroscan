@@ -1,6 +1,6 @@
 """Blueprint SEO — sitemap.xml, robots.txt."""
 from flask import Blueprint, Response, current_app
-from datetime import datetime
+from datetime import datetime, timezone
 
 bp = Blueprint("seo", __name__)
 
@@ -28,7 +28,7 @@ SITEMAP_URLS = [
 
 @bp.route("/sitemap.xml")
 def sitemap_xml():
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',

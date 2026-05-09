@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<script>
+(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>AstroScan Éphémérides</title>
+<meta name="description" content="Éphémérides astronomiques en temps réel pour Tlemcen, Algérie. Lever/coucher du Soleil et de la Lune, phase lunaire, crépuscule astronomique, positions planétaires.">
+<meta name="keywords" content="éphémérides, astronomie, Tlemcen, Algérie, lever soleil, coucher soleil, phase lunaire, crépuscule astronomique, planètes visibles">
+<meta property="og:title" content="AstroScan — Éphémérides · Tlemcen">
+<meta property="og:description" content="Éphémérides astronomiques en temps réel pour Tlemcen, Algérie.">
+<meta property="og:url" content="https://astroscan.space/ephemerides">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://astroscan.space/static/img/og-astroscan.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AstroScan — Éphémérides · Tlemcen">
+<meta name="twitter:description" content="Lever/coucher Soleil et Lune, phase lunaire, crépuscule astronomique, planètes visibles — calcul astropy en temps réel pour Tlemcen, Algérie.">
+<link rel="canonical" href="https://astroscan.space/ephemerides">
+<link rel="icon" href="/static/favicon.ico?v=2">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #010408;
+  --panel: rgba(3,10,20,0.97);
+  --border: rgba(0,180,255,0.13);
+  --border-bright: rgba(0,212,255,0.4);
+  --cyan: #00d4ff;
+  --amber: #ff8c00;
+  --green: #00ff88;
+  --red: #ff3355;
+  --gold: #ffd166;
+  --text: #7a9ab0;
+  --text-bright: #d0e8f0;
+  --text-dim: #3a5868;
+  --font: 'Orbitron', monospace;
+  --mono: 'Share Tech Mono', monospace;
+  --sidebar-w: 220px;
+}
+*, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+html, body { width:100%; min-height:100vh; background:var(--void); font-family:var(--mono); color:var(--text); overflow-x:hidden; }
+
+/* STARS */
+#stars { position:fixed; inset:0; z-index:0; pointer-events:none; }
+.star { position:absolute; border-radius:50%; background:#fff; animation:tw var(--d,4s) ease-in-out infinite; animation-delay:var(--dl,0s); opacity:var(--op,.4); }
+@keyframes tw { 0%,100%{opacity:var(--op)} 50%{opacity:calc(var(--op)*.15)} }
+
+/* LAYOUT */
+.shell { display:grid; grid-template-columns:var(--sidebar-w) 1fr; grid-template-rows:48px 1fr; width:100%; min-height:100vh; }
+
+/* TOPBAR */
+.topbar {
+  grid-column:1/-1; grid-row:1;
+  display:flex; align-items:center; justify-content:space-between;
+  height:48px; padding:0 20px;
+  background:rgba(1,4,8,0.99);
+  border-bottom:1px solid var(--border-bright);
+  position:sticky; top:0; z-index:100;
+}
+.topbar::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--cyan),transparent); opacity:.5; }
+.brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
+.brand-icon { width:26px; height:26px; }
+.brand-icon svg { width:100%; height:100%; }
+.brand-name { font-family:var(--font); font-size:.7rem; font-weight:900; letter-spacing:.2em; color:var(--cyan); text-shadow:0 0 15px rgba(0,212,255,.5); }
+.brand-sep { color:var(--text-dim); margin:0 3px; }
+.brand-sub { font-size:.5rem; letter-spacing:.2em; color:var(--text-dim); }
+.topbar-center { display:flex; align-items:center; gap:12px; }
+.tbar-chip { display:flex; align-items:center; gap:5px; font-size:.5rem; letter-spacing:.12em; color:var(--text-dim); padding:3px 8px; border:1px solid var(--border); border-radius:4px; text-transform:uppercase; }
+.tbar-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.tbar-dot.green { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 2s infinite; }
+.tbar-dot.amber { background:var(--amber); }
+.tbar-visits { display:flex; align-items:center; gap:5px; font-family:var(--font); font-size:.55rem; letter-spacing:.1em; color:var(--cyan); padding:3px 9px; background:rgba(0,255,136,.08); border:1px solid rgba(0,212,255,.3); border-radius:4px; }
+.topbar-right { display:flex; align-items:center; gap:14px; }
+#top-ip { font-size:.45rem; letter-spacing:.12em; color:var(--text-dim); }
+#top-clock { font-family:var(--font); font-size:.75rem; font-weight:600; letter-spacing:.1em; color:var(--text-bright); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* HAMBURGER */
+.hamburger-btn { display:none; align-items:center; justify-content:center; width:36px; height:36px; background:transparent; border:none; cursor:pointer; color:var(--cyan); font-size:1.1rem; border-radius:4px; }
+.hamburger-btn:hover { background:rgba(0,212,255,.1); }
+
+/* SIDEBAR */
+.sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:199; opacity:0; pointer-events:none; transition:opacity .3s; }
+.sidebar {
+  grid-column:1; grid-row:2;
+  display:flex; flex-direction:column;
+  background:rgba(1,4,8,0.98);
+  border-right:1px solid var(--border);
+  overflow-y:auto; overflow-x:hidden;
+  position:sticky; top:48px; height:calc(100vh - 48px);
+  z-index:50;
+}
+.sidebar::-webkit-scrollbar { width:3px; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--border); }
+.s-divider { height:1px; background:linear-gradient(90deg,transparent,rgba(0,212,255,.1),transparent); margin:6px 0; flex-shrink:0; }
+.s-section { padding:10px 0 6px; flex-shrink:0; }
+.s-label { display:block; font-family:var(--font); font-size:.4rem; letter-spacing:.25em; color:var(--text-dim); padding:2px 16px 8px; text-transform:uppercase; }
+.nav-item { display:flex; align-items:center; gap:9px; padding:8px 16px; cursor:pointer; transition:all .2s; border-left:2px solid transparent; text-decoration:none; color:inherit; }
+.nav-item:hover { background:rgba(0,212,255,.04); border-left-color:rgba(0,212,255,.3); }
+.nav-item.active { background:rgba(0,212,255,.07); border-left-color:var(--cyan); }
+.nav-item.active .nav-label { color:var(--cyan); }
+.nav-item.active .nav-icon { color:var(--cyan); }
+.nav-icon { font-size:.85rem; width:17px; text-align:center; color:var(--text-dim); transition:color .2s; }
+.nav-label { font-family:var(--font); font-size:.5rem; letter-spacing:.1em; text-transform:uppercase; color:var(--text-dim); transition:color .2s; flex:1; }
+.nav-badge { font-size:.42rem; letter-spacing:.1em; padding:1px 5px; border:1px solid currentColor; text-transform:uppercase; border-radius:2px; }
+.nav-badge.live { color:var(--green); border-color:rgba(0,255,136,.4); animation:pulse 2s infinite; }
+.nav-badge.active-page { color:var(--cyan); border-color:rgba(0,212,255,.5); }
+
+/* SIDEBAR BOTTOM */
+.s-bottom { padding:10px 14px; border-top:1px solid var(--border); margin-top:auto; }
+.s-bottom-info { font-size:.42rem; letter-spacing:.08em; color:var(--text-dim); line-height:1.7; }
+.s-bottom-info .sv { color:var(--text); }
+
+/* CONTENT */
+.content-area { grid-column:2; grid-row:2; overflow-y:auto; overflow-x:hidden; min-height:calc(100vh - 48px); }
+
+/* PAGE HEADER */
+.page-header {
+  position: relative;
+  padding:1.4rem 1.5rem 1rem;
+  border-bottom:1px solid rgba(0,212,255,.08);
+  background:rgba(0,212,255,.02);
+}
+.page-title { font-family:var(--font); font-size:1rem; font-weight:900; letter-spacing:.2em; color:var(--cyan); text-shadow:0 0 20px rgba(0,212,255,.4); text-transform:uppercase; }
+.page-sub { font-size:.65rem; letter-spacing:.1em; color:var(--text-dim); margin-top:.3rem; }
+.page-meta { display:flex; gap:1.5rem; margin-top:.8rem; flex-wrap:wrap; }
+.pm { font-size:.6rem; letter-spacing:.08em; color:var(--text-dim); }
+.pm span { color:var(--text-bright); font-family:var(--mono); }
+
+.astro-title { font-family:var(--font); font-size:1rem; font-weight:900; letter-spacing:.2em; color:var(--cyan); text-shadow:0 0 20px rgba(0,212,255,.4); text-transform:uppercase; margin:0; }
+.astro-controls {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.5rem;
+  display: flex;
+  gap: 10px;
+  z-index: 9999;
+}
+.astro-btn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #00eaff;
+  background: rgba(0,25,45,.82);
+  color: #00eaff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-shadow: 0 0 10px rgba(0,234,255,.28);
+  transition: .2s ease;
+  white-space: nowrap;
+}
+.astro-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(0,45,70,.95);
+  box-shadow: 0 0 16px rgba(0,234,255,.45);
+}
+@media(max-width:768px){
+  .astro-controls {
+    position: static;
+    margin: 0.8rem 0 0;
+    justify-content: flex-end;
+  }
+}
+
+/* UPDATE BAR */
+.update-bar {
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem;
+  padding:.5rem 1.5rem;
+  background:rgba(0,212,255,.025);
+  border-bottom:1px solid rgba(0,212,255,.06);
+  font-size:.55rem; letter-spacing:.1em;
+}
+.ub-status { display:flex; align-items:center; gap:6px; color:var(--text-dim); }
+.ub-dot { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; flex-shrink:0; }
+.ub-time { color:var(--text-dim); }
+#ub-next { color:var(--cyan); font-family:var(--font); font-size:.5rem; }
+
+/* MAIN GRID */
+.main-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; padding:1.5rem; max-width:1300px; }
+.full { grid-column:1/-1; }
+@media(max-width:1100px) { .main-grid { grid-template-columns:1fr; } .full { grid-column:1; } }
+
+/* PANELS */
+.panel { background:rgba(0,212,255,.04); border:1px solid var(--border); border-radius:6px; overflow:hidden; position:relative; z-index:1; }
+.panel:hover { border-color:rgba(0,212,255,0.25); }
+.ph { padding:.75rem 1.1rem; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:.6rem; font-family:var(--font); font-size:.6rem; letter-spacing:.15em; color:var(--cyan); text-transform:uppercase; text-shadow:0 0 12px rgba(0,212,255,.3); }
+.dot-calc { width:7px; height:7px; border-radius:50%; background:rgba(0,212,255,.65); flex-shrink:0; border:1px solid rgba(0,212,255,.4); }
+.dot-live { width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; flex-shrink:0; }
+.dot-prev { width:7px; height:7px; border-radius:50%; background:rgba(255,180,50,.7); flex-shrink:0; border:1px solid rgba(255,180,50,.4); }
+.pb { padding:1.1rem; }
+
+/* SOLAR PANEL */
+.sol-grid { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; }
+.sol-card { background:rgba(255,140,0,.04); border:1px solid rgba(255,140,0,.15); border-radius:5px; padding:1rem; text-align:center; }
+.sol-icon { font-size:2.4rem; margin-bottom:.5rem; }
+.sol-val { font-family:var(--font); font-size:1.1rem; color:var(--amber); letter-spacing:.1em; }
+.sol-lbl { font-size:.6rem; letter-spacing:.12em; color:var(--text-dim); text-transform:uppercase; margin-top:.25rem; }
+
+/* SUN/MOON REALTIME */
+.rt-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:.7rem; margin-top:.8rem; }
+.rt-item { background:rgba(0,0,0,.2); border:1px solid var(--border); border-radius:4px; padding:.6rem .8rem; display:flex; justify-content:space-between; align-items:center; }
+.rt-lbl { font-size:.6rem; letter-spacing:.1em; color:var(--text-dim); text-transform:uppercase; }
+.rt-val { font-family:var(--font); font-size:.75rem; color:var(--cyan); }
+
+/* TWILIGHT */
+.twi-grid { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; }
+.twi-card { background:rgba(0,0,60,.15); border:1px solid rgba(100,100,255,.2); border-radius:5px; padding:1rem; text-align:center; }
+.twi-icon { font-size:1.8rem; margin-bottom:.4rem; }
+.twi-val { font-family:var(--font); font-size:1rem; color:#a0aaff; letter-spacing:.1em; }
+.twi-lbl { font-size:.6rem; letter-spacing:.12em; color:var(--text-dim); text-transform:uppercase; margin-top:.2rem; }
+
+/* MOON PANEL */
+.moon-wrap { display:flex; align-items:center; gap:2rem; flex-wrap:wrap; }
+.moon-emoji { font-size:4rem; animation:moonGlow 3s ease-in-out infinite alternate; flex-shrink:0; }
+@keyframes moonGlow { from{filter:drop-shadow(0 0 12px rgba(255,183,0,.4))} to{filter:drop-shadow(0 0 28px rgba(255,183,0,.8))} }
+.moon-stats { flex:1; min-width:180px; }
+.moon-row { display:flex; justify-content:space-between; padding:.35rem 0; border-bottom:1px solid rgba(255,183,0,.1); }
+.moon-lbl { color:var(--text-dim); font-size:.8rem; }
+.moon-val { font-family:var(--mono); color:var(--amber); font-size:.85rem; }
+.moon-bar-wrap { margin-top:.8rem; }
+.moon-bar-lbl { font-size:.6rem; color:var(--text-dim); letter-spacing:.1em; margin-bottom:.3rem; }
+.moon-bar-track { height:8px; background:rgba(255,183,0,.1); border-radius:4px; overflow:hidden; border:1px solid rgba(255,183,0,.2); }
+.moon-bar-fill { height:100%; background:linear-gradient(90deg,rgba(255,183,0,.4),rgba(255,220,80,.9)); border-radius:4px; transition:width .8s ease; }
+
+/* PLANETS */
+.planets-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:.8rem; }
+.planet-card { background:rgba(0,212,255,.03); border:1px solid rgba(0,212,255,.1); border-radius:6px; padding:.9rem .5rem; text-align:center; transition:all .2s; }
+.planet-card:hover { border-color:var(--cyan); box-shadow:0 0 14px rgba(0,212,255,.08); }
+.planet-icon { font-size:1.8rem; margin-bottom:.3rem; }
+.planet-name { font-family:var(--font); font-size:.6rem; letter-spacing:.08em; color:var(--cyan); }
+.planet-alt { font-size:.7rem; color:var(--text-dim); margin-top:.2rem; }
+.planet-vis { display:inline-block; font-size:.42rem; padding:2px 6px; border-radius:2px; margin-top:.3rem; font-family:var(--font); letter-spacing:.1em; }
+.planet-vis.visible { background:rgba(0,255,136,.12); color:var(--green); border:1px solid rgba(0,255,136,.3); }
+.planet-vis.below { background:rgba(255,51,85,.06); color:var(--red); border:1px solid rgba(255,51,85,.2); }
+
+/* TIMELINE */
+.timeline { position:relative; padding:0 1rem; }
+.tl-track { position:relative; height:20px; background:rgba(0,212,255,.05); border:1px solid rgba(0,212,255,.1); border-radius:10px; overflow:hidden; margin-bottom:.8rem; }
+.tl-day { position:absolute; top:0; height:100%; background:linear-gradient(90deg,rgba(255,200,80,.15),rgba(255,200,80,.3),rgba(255,100,20,.2)); border-radius:10px; transition:width .5s; }
+.tl-night { position:absolute; top:0; height:100%; background:rgba(20,20,80,.6); border-radius:10px; }
+.tl-now { position:absolute; top:-3px; width:3px; height:26px; background:var(--cyan); border-radius:2px; box-shadow:0 0 6px var(--cyan); transition:left .5s; }
+.tl-labels { display:flex; justify-content:space-between; font-size:.5rem; color:var(--text-dim); letter-spacing:.08em; margin-top:.2rem; }
+.tl-events { display:flex; gap:1.5rem; flex-wrap:wrap; margin-top:.5rem; }
+.tl-event { display:flex; align-items:center; gap:.4rem; font-size:.6rem; }
+.tl-event-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.tl-event-lbl { color:var(--text-dim); }
+.tl-event-val { font-family:var(--font); color:var(--text-bright); font-size:.6rem; letter-spacing:.08em; }
+
+/* STATES */
+.loading { text-align:center; color:var(--text-dim); font-family:var(--mono); padding:2rem; font-size:.8rem; letter-spacing:.15em; }
+.err { color:var(--red); font-family:var(--mono); font-size:.75rem; padding:.8rem; text-align:center; }
+
+/* EMBED */
+html.embed-portail .sidebar,
+html.embed-portail .sidebar-overlay,
+html.embed-portail .hamburger-btn { display:none !important; }
+html.embed-portail .shell { grid-template-columns:1fr !important; }
+html.embed-portail .content-area { grid-column:1/-1 !important; grid-row:2 !important; width:100% !important; }
+html.embed-portail .topbar { display:none !important; }
+html.embed-portail .shell { grid-template-rows:0 1fr !important; }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-track { background:#010408; }
+::-webkit-scrollbar-thumb { background:rgba(0,212,255,.25); }
+::-webkit-scrollbar-thumb:hover { background:rgba(0,212,255,.45); }
+
+/* SIDEBAR refinements */
+.s-divider { background:linear-gradient(90deg,transparent,rgba(0,212,255,.15),transparent) !important; }
+.nav-item.active { box-shadow:inset 0 0 10px rgba(0,212,255,.04) !important; }
+
+@media(max-width:768px) {
+  .hamburger-btn { display:flex !important; }
+  .sidebar { position:fixed; left:-240px; top:0; bottom:0; width:240px; z-index:200; transition:left .3s ease; background:#050a10; box-shadow:4px 0 20px rgba(0,255,136,.15); grid-column:1; grid-row:2; }
+  .sidebar.open { left:0; }
+  .sidebar-overlay { display:block !important; }
+  .sidebar-overlay.active { opacity:1 !important; pointer-events:all !important; }
+  .shell { grid-template-columns:1fr; }
+  .content-area { grid-column:1; }
+  .sol-grid, .twi-grid { grid-template-columns:1fr; }
+}
+</style>
+<!-- GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-1WNGPCCZNW');</script>
+</head>
+<body>
+
+<div id="stars"></div>
+<script>
+(function(){const s=document.getElementById('stars');for(let i=0;i<80;i++){const el=document.createElement('div');el.className='star';const sz=Math.random()<.8?1:Math.random()<.6?1.5:2;el.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${3+Math.random()*5}s;--dl:${Math.random()*6}s;--op:${.2+Math.random()*.5}`;s.appendChild(el);}})();
+</script>
+
+
+<div class="shell">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu">☰</button>
+    <a class="brand" href="/portail">
+      <div class="brand-icon">
+        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="14" cy="14" r="12" stroke="#00d4ff" stroke-width="1" stroke-dasharray="3 2" opacity="0.5"/>
+          <circle cx="14" cy="14" r="7" stroke="#00d4ff" stroke-width="0.8" opacity="0.7"/>
+          <circle cx="14" cy="14" r="2" fill="#00d4ff"/>
+          <line x1="14" y1="1" x2="14" y2="5" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="14" y1="23" x2="14" y2="27" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="1" y1="14" x2="5" y2="14" stroke="#00d4ff" stroke-width="1.2"/>
+          <line x1="23" y1="14" x2="27" y2="14" stroke="#00d4ff" stroke-width="1.2"/>
+          <circle cx="14" cy="5" r="1.5" fill="#ff8c00"/>
+        </svg>
+      </div>
+      <span class="brand-name">AstroScan-Chohra</span>
+      <span class="brand-sep">·</span>
+      <span class="brand-sub">ORBITAL-CHOHRA</span>
+    </a>
+    <div class="topbar-center">
+      <div class="tbar-visits"><span>👁</span><span id="tbar-visits-val">— —</span></div>
+      <div class="tbar-chip"><div class="tbar-dot green"></div>ASTROPY 7.2</div>
+      <div class="tbar-chip"><div class="tbar-dot green"></div>ÉPHÉMÉRIDES</div>
+      <div class="tbar-chip"><div class="tbar-dot amber"></div>DE432</div>
+    </div>
+    <div class="topbar-right">
+      <div id="top-ip" style="font-size:.42rem;letter-spacing:.1em;color:var(--text-dim)">📍 Tlemcen · 34.87°N 1.32°E</div>
+      <div id="top-clock">--:--:-- UTC+1</div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  
+
+
+  <!-- CONTENT -->
+  <div class="content-area">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <h1 class="astro-title">ASTROSCAN ÉPHÉMÉRIDES CENTER</h1>
+      <div class="astro-controls">
+        <a href="/portail" class="astro-btn">⬅ PORTAIL</a>
+        <button onclick="location.reload()" class="astro-btn">⟳ ACTUALISER</button>
+      </div>
+      <div class="page-sub">Calcul astronomique en temps réel · astropy 7.2 + Éphémérides JPL DE432 · UTC+1 (Algérie)</div>
+      <div class="page-meta">
+        <div class="pm">Latitude <span>34.8731°N</span></div>
+        <div class="pm">Longitude <span>1.3154°E</span></div>
+        <div class="pm">Altitude <span>800 m</span></div>
+        <div class="pm">Fuseau <span>Africa/Algiers (UTC+1)</span></div>
+        <div class="pm">Date <span id="hdr-date">—</span></div>
+      </div>
+    </div>
+
+    <!-- Update bar -->
+    <div class="update-bar">
+      <div class="ub-status">
+        <div class="ub-dot"></div>
+        <span>Mise à jour automatique toutes les 60 secondes</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="ub-time">Dernière mise à jour : <span id="ub-last">—</span></span>
+        <span style="color:var(--text-dim)">·</span>
+        <span class="ub-time">Prochain : <span id="ub-next">60s</span></span>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="main-grid" id="main-grid">
+
+      <!-- SUN PANEL -->
+      <div class="panel">
+        <div class="ph"><div class="dot-calc"></div>SOLEIL — LEVER / COUCHER · Calcul astropy · UTC+1</div>
+        <div class="pb">
+          <div class="sol-grid">
+            <div class="sol-card">
+              <div class="sol-icon">🌅</div>
+              <div class="sol-val" id="sun-lever">—</div>
+              <div class="sol-lbl">Lever du Soleil</div>
+            </div>
+            <div class="sol-card">
+              <div class="sol-icon">🌇</div>
+              <div class="sol-val" id="sun-coucher">—</div>
+              <div class="sol-lbl">Coucher du Soleil</div>
+            </div>
+          </div>
+          <div class="rt-grid" style="margin-top:.9rem;">
+            <div class="rt-item">
+              <span class="rt-lbl">Altitude actuelle</span>
+              <span class="rt-val" id="sun-alt">—</span>
+            </div>
+            <div class="rt-item">
+              <span class="rt-lbl">Azimut actuel</span>
+              <span class="rt-val" id="sun-az">—</span>
+            </div>
+          </div>
+          <div id="sun-status" style="margin-top:.7rem;text-align:center;font-family:var(--font);font-size:.55rem;letter-spacing:.15em;color:var(--amber)">—</div>
+        </div>
+      </div>
+
+      <!-- MOON PANEL -->
+      <div class="panel">
+        <div class="ph"><div class="dot-calc"></div>LUNE — PHASE &amp; POSITION · Éphémérides JPL</div>
+        <div class="pb">
+          <div class="moon-wrap">
+            <div class="moon-emoji" id="moon-emoji">🌑</div>
+            <div class="moon-stats">
+              <div class="moon-row"><span class="moon-lbl">Phase</span><span class="moon-val" id="moon-phase">—</span></div>
+              <div class="moon-row"><span class="moon-lbl">Lever</span><span class="moon-val" id="moon-lever">—</span></div>
+              <div class="moon-row"><span class="moon-lbl">Coucher</span><span class="moon-val" id="moon-coucher">—</span></div>
+              <div class="moon-row"><span class="moon-lbl">Altitude</span><span class="moon-val" id="moon-alt">—</span></div>
+              <div class="moon-row" style="border:none"><span class="moon-lbl">Azimut</span><span class="moon-val" id="moon-az">—</span></div>
+            </div>
+          </div>
+          <div class="moon-bar-wrap">
+            <div class="moon-bar-lbl">Illumination : <span id="moon-illum-pct" style="color:var(--amber)">—</span></div>
+            <div class="moon-bar-track"><div class="moon-bar-fill" id="moon-bar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TWILIGHT PANEL -->
+      <div class="panel full">
+        <div class="ph"><div class="dot-calc"></div>CRÉPUSCULE ASTRONOMIQUE — NUIT NOIRE · Soleil &lt; -18° · UTC+1</div>
+        <div class="pb">
+          <div class="twi-grid">
+            <div class="twi-card">
+              <div class="twi-icon">🌆</div>
+              <div class="twi-val" id="twi-debut">—</div>
+              <div class="twi-lbl">Début nuit noire</div>
+              <div style="font-size:.55rem;color:var(--text-dim);margin-top:.3rem;">Soleil à -18° (coucher)</div>
+            </div>
+            <div class="twi-card">
+              <div class="twi-icon">🌄</div>
+              <div class="twi-val" id="twi-fin">—</div>
+              <div class="twi-lbl">Fin nuit noire</div>
+              <div style="font-size:.55rem;color:var(--text-dim);margin-top:.3rem;">Soleil à -18° (lever)</div>
+            </div>
+          </div>
+          <!-- Timeline jour/nuit -->
+          <div style="margin-top:1.2rem;">
+            <div style="font-family:var(--font);font-size:.5rem;letter-spacing:.18em;color:var(--text-dim);margin-bottom:.6rem;text-transform:uppercase;">Chronologie du jour — 00h → 24h (UTC+1)</div>
+            <div class="tl-track" id="tl-track">
+              <div class="tl-night" id="tl-night-left" style="left:0;width:0%"></div>
+              <div class="tl-day" id="tl-day" style="left:0;width:0%"></div>
+              <div class="tl-night" id="tl-night-right" style="left:0;width:0%"></div>
+              <div class="tl-now" id="tl-now" style="left:0%"></div>
+            </div>
+            <div class="tl-labels">
+              <span>00h00</span><span>03h</span><span>06h</span><span>09h</span><span>12h</span><span>15h</span><span>18h</span><span>21h</span><span>24h00</span>
+            </div>
+            <div class="tl-events" id="tl-events" style="margin-top:.8rem;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLANETS PANEL -->
+      <div class="panel full">
+        <div class="ph"><div class="dot-calc"></div>PLANÈTES — POSITIONS EN TEMPS RÉEL · Tlemcen 34.87°N</div>
+        <div class="pb">
+          <div class="planets-grid" id="planets-grid">
+            <div class="loading">Calcul positions planétaires…</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main-grid -->
+
+  </div><!-- /content-area -->
+</div><!-- /shell -->
+
+<script>
+// ── Horloge UTC+1 ──
+function tickClock() {
+  const d = new Date();
+  const utc1 = new Date(d.getTime() + 3600000);
+  const hh = String(utc1.getUTCHours()).padStart(2,'0');
+  const mm = String(utc1.getUTCMinutes()).padStart(2,'0');
+  const ss = String(utc1.getUTCSeconds()).padStart(2,'0');
+  document.getElementById('top-clock').textContent = hh+':'+mm+':'+ss+' UTC+1';
+  const months=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  const dateStr = utc1.getUTCDate()+' '+months[utc1.getUTCMonth()]+' '+utc1.getUTCFullYear();
+  const el = document.getElementById('hdr-date');
+  if(el) el.textContent = dateStr;
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+// ── Compteur visites ──
+fetch('/api/visits').then(r=>r.json()).then(d=>{
+  const el=document.getElementById('tbar-visits-val');
+  if(el && d && d.count !== undefined) el.textContent = d.count.toLocaleString('fr-FR');
+}).catch(()=>{});
+
+// ── Phase lunaire → emoji ──
+const MOON_EMOJIS = {
+  'Nouvelle Lune':'🌑','Premier Croissant':'🌒','Premier Quartier':'🌓',
+  'Gibbeuse Croissante':'🌔','Pleine Lune':'🌕','Gibbeuse Décroissante':'🌖',
+  'Dernier Quartier':'🌗','Dernier Croissant':'🌘'
+};
+function moonEmoji(phase, illum) {
+  if(!phase) return '🌙';
+  for(const [k,v] of Object.entries(MOON_EMOJIS)) {
+    if(phase.toLowerCase().includes(k.toLowerCase().split(' ')[0].toLowerCase())) return v;
+  }
+  if(illum < 5) return '🌑';
+  if(illum < 25) return illum < 50 ? '🌒' : '🌘';
+  if(illum < 50) return illum < 37 ? '🌒' : '🌓';
+  if(illum < 75) return illum < 62 ? '🌔' : '🌖';
+  if(illum < 95) return illum < 87 ? '🌔' : '🌖';
+  return '🌕';
+}
+
+// ── Conversion heure "HH:MM" → fraction de journée ──
+function timeToPct(timeStr) {
+  if(!timeStr || timeStr === '—') return null;
+  const parts = timeStr.split(':');
+  if(parts.length < 2) return null;
+  return (parseInt(parts[0]) * 60 + parseInt(parts[1])) / 1440 * 100;
+}
+
+// ── Mise à jour timeline ──
+function updateTimeline(data) {
+  const now = new Date();
+  const utc1 = new Date(now.getTime() + 3600000);
+  const nowPct = (utc1.getUTCHours() * 60 + utc1.getUTCMinutes()) / 1440 * 100;
+
+  const sol = data.soleil || {};
+  const nuit = data.nuit_astronomique || {};
+  const leverPct = timeToPct(sol.lever);
+  const coucherPct = timeToPct(sol.coucher);
+  const debutNuitPct = timeToPct(nuit.debut);
+  const finNuitPct = timeToPct(nuit.fin);
+
+  const tlNow = document.getElementById('tl-now');
+  if(tlNow) tlNow.style.left = nowPct + '%';
+
+  if(leverPct !== null && coucherPct !== null) {
+    const tlDay = document.getElementById('tl-day');
+    if(tlDay) { tlDay.style.left = leverPct+'%'; tlDay.style.width = (coucherPct-leverPct)+'%'; }
+  }
+
+  const events = document.getElementById('tl-events');
+  if(events) {
+    const evList = [
+      {dot:'#6688ff',lbl:'Fin nuit noire',val:nuit.fin},
+      {dot:'#ffaa44',lbl:'Lever Soleil',val:sol.lever},
+      {dot:'#aaaaff',lbl:'Coucher Soleil',val:sol.coucher},
+      {dot:'#3344bb',lbl:'Début nuit noire',val:nuit.debut}
+    ];
+    events.innerHTML = evList.map(e =>
+      `<div class="tl-event"><div class="tl-event-dot" style="background:${e.dot}"></div><span class="tl-event-lbl">${e.lbl} :</span>&nbsp;<span class="tl-event-val">${e.val || '—'}</span></div>`
+    ).join('');
+  }
+}
+
+// ── Icônes planètes ──
+const PLANET_EMOJI = {Mercure:'☿',Vénus:'🌟','Vénus':'🌟',Mars:'🔴',Jupiter:'🟠',Saturne:'💫',Uranus:'🔵',Neptune:'🔷'};
+
+// ── Fetch et mise à jour des données ──
+let countdown = 60;
+let countdownTimer = null;
+
+function updateCountdown() {
+  countdown--;
+  const el = document.getElementById('ub-next');
+  if(el) el.textContent = countdown + 's';
+  if(countdown <= 0) { fetchEphemerides(); }
+}
+
+function fetchEphemerides() {
+  clearInterval(countdownTimer);
+  fetch('/api/ephemerides/tlemcen')
+    .then(r => r.json())
+    .then(data => {
+      if(data.error) { console.warn('Ephemerides error:', data.error); return; }
+
+      const now = new Date();
+      const utc1 = new Date(now.getTime() + 3600000);
+      const fmt = utc1.getUTCHours().toString().padStart(2,'0')+':'+utc1.getUTCMinutes().toString().padStart(2,'0')+':'+utc1.getUTCSeconds().toString().padStart(2,'0');
+      const ubLast = document.getElementById('ub-last');
+      if(ubLast) ubLast.textContent = fmt;
+
+      // Soleil
+      const sol = data.soleil || {};
+      document.getElementById('sun-lever').textContent = sol.lever || '—';
+      document.getElementById('sun-coucher').textContent = sol.coucher || '—';
+      document.getElementById('sun-alt').textContent = sol.alt_now !== undefined ? sol.alt_now.toFixed(1)+'°' : '—';
+      document.getElementById('sun-az').textContent = sol.az_now !== undefined ? sol.az_now.toFixed(1)+'°' : '—';
+      const sunStatus = document.getElementById('sun-status');
+      if(sunStatus) {
+        if(sol.alt_now !== undefined) {
+          if(sol.alt_now > 0) sunStatus.innerHTML = '☀️ SOLEIL AU-DESSUS DE L\'HORIZON';
+          else if(sol.alt_now > -18) sunStatus.innerHTML = '🌆 CRÉPUSCULE — Soleil sous l\'horizon';
+          else sunStatus.innerHTML = '🌑 NUIT ASTRONOMIQUE — Soleil < -18°';
+        }
+      }
+
+      // Lune
+      const lune = data.lune || {};
+      const illum = lune.illumination_pct || 0;
+      document.getElementById('moon-emoji').textContent = moonEmoji(lune.phase, illum);
+      document.getElementById('moon-phase').textContent = lune.phase || '—';
+      document.getElementById('moon-lever').textContent = lune.lever || '—';
+      document.getElementById('moon-coucher').textContent = lune.coucher || '—';
+      document.getElementById('moon-alt').textContent = lune.alt_now !== undefined ? lune.alt_now.toFixed(1)+'°' : '—';
+      document.getElementById('moon-az').textContent = lune.az_now !== undefined ? lune.az_now.toFixed(1)+'°' : '—';
+      document.getElementById('moon-illum-pct').textContent = illum.toFixed(1)+'%';
+      const bar = document.getElementById('moon-bar');
+      if(bar) bar.style.width = Math.min(100, illum) + '%';
+
+      // Crépuscule
+      const nuit = data.nuit_astronomique || {};
+      document.getElementById('twi-debut').textContent = nuit.debut || '—';
+      document.getElementById('twi-fin').textContent = nuit.fin || '—';
+
+      // Timeline
+      updateTimeline(data);
+
+      // Planètes
+      const planets = data.planetes_visibles || [];
+      // On affiche aussi toutes les planètes avec positions si disponibles
+      const ALL_PLANETS = ['Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune'];
+      const planGrid = document.getElementById('planets-grid');
+      if(planGrid) {
+        if(planets.length === 0) {
+          planGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-dim);font-size:.75rem;padding:1rem;">Aucune planète visible en ce moment (alt > 5°)</div>';
+        } else {
+          planGrid.innerHTML = planets.map(p => {
+            const emoji = PLANET_EMOJI[p.name] || '🪐';
+            return `<div class="planet-card">
+              <div class="planet-icon">${emoji}</div>
+              <div class="planet-name">${p.name}</div>
+              <div class="planet-alt">Alt: ${p.alt.toFixed(1)}° | Az: ${p.az.toFixed(1)}°</div>
+              <div class="planet-vis visible">VISIBLE</div>
+            </div>`;
+          }).join('');
+        }
+      }
+
+      countdown = 60;
+      countdownTimer = setInterval(updateCountdown, 1000);
+    })
+    .catch(e => {
+      console.error('fetch error:', e);
+      countdown = 60;
+      countdownTimer = setInterval(updateCountdown, 1000);
+    });
+}
+
+// Démarrage
+fetchEphemerides();
+
+// ── Hamburger menu ──
+const ham = document.getElementById('hamburger-btn');
+const sb = document.getElementById('sidebar');
+const ov = document.getElementById('sidebar-overlay');
+if(ham && sb && ov) {
+  ham.addEventListener('click', () => { sb.classList.toggle('open'); ov.classList.toggle('active'); });
+  ov.addEventListener('click', () => { sb.classList.remove('open'); ov.classList.remove('active'); });
+}
+</script>
+
+</body>
+</html>
