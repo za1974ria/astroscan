@@ -48,6 +48,81 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────
+ * FIX TÉLÉMÉTRIE STATION — Table ALL PASSES (débordement)
+ * 9 mai 2026 — Cellule "2026-04-28 00:16:00" cassée en 2 lignes
+ * Source : table créée dynamiquement par sondes_aegis.js
+ * ─────────────────────────────────────────────────────────*/
+#passages-iss-container .table-wrap {
+  width: 100%;
+  margin-top: 10px;
+  overflow-x: auto;
+}
+#passages-iss-container .table-cap {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: rgba(155, 176, 196, 0.85);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  padding-left: 2px;
+}
+#passages-iss-container table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: #c8d4e0;
+}
+#passages-iss-container thead th {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: rgba(0, 212, 255, 0.75);
+  text-align: left;
+  padding: 6px 4px 4px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.25);
+  white-space: nowrap;
+}
+#passages-iss-container thead th.num {
+  text-align: right;
+}
+#passages-iss-container tbody td {
+  padding: 4px;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.06);
+  white-space: nowrap;             /* PLUS DE SAUT DE LIGNE */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#passages-iss-container tbody td.num {
+  text-align: right;
+  color: #5eead4;
+  font-weight: 600;
+}
+#passages-iss-container tbody tr:hover {
+  background: rgba(0, 212, 255, 0.04);
+}
+/* Première colonne (Date) : un peu plus serrée + couleur subtile */
+#passages-iss-container tbody td:first-child {
+  color: rgba(200, 215, 230, 0.78);
+  letter-spacing: -0.2px;
+}
+/* Bloc NEXT PASS : assurer cohérence */
+.iss-next-block {
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+.iss-next-label {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  color: rgba(155, 176, 196, 0.85);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  padding-left: 2px;
+}
+
+
 </style>
 <script>
 (function(){
