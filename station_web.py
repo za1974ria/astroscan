@@ -1805,36 +1805,15 @@ except ImportError:
 # MIGRATED TO telescope_bp PASS 9 — /telescopes → see app/blueprints/telescope/__init__.py (telescopes_page)
 
 
-def _fetch_hubble():
-    NASA_KEY = (os.environ.get('NASA_API_KEY') or 'DEMO_KEY').strip()
-
-    # Source 1 : NASA APOD avec images Hubble réelles
-    raw = _curl_get(f'https://api.nasa.gov/planetary/apod?api_key={NASA_KEY}&count=6', timeout=10)
-    if raw:
-        try:
-            items = json.loads(raw)
-            imgs = []
-            for i in items:
-                if i.get('url') and i.get('media_type', 'image') == 'image':
-                    imgs.append({
-                        'title': i.get('title', 'Hubble'),
-                        'url': i.get('hdurl') or i.get('url', ''),
-                        'date': i.get('date', '')
-                    })
-            if imgs:
-                return imgs
-        except Exception:
-            pass
-
-    # Source 2 : Titres Hubble fixes en français (APOD/Webb)
-    return [
-        {'title': 'Piliers de la Création', 'url': 'https://apod.nasa.gov/apod/image/2304/M16Pillar_Webb_960.jpg'},
-        {'title': 'Galaxie du Tourbillon M51', 'url': 'https://apod.nasa.gov/apod/image/2305/M51_HubbleWebb_960.jpg'},
-        {'title': 'Nébuleuse de la Carène', 'url': 'https://apod.nasa.gov/apod/image/2207/Carina_Webb_960.jpg'},
-        {'title': 'Quintette de Stephan', 'url': 'https://apod.nasa.gov/apod/image/2207/StephansQuintet_Webb_1024.jpg'},
-        {'title': "Galaxie d'Andromède M31", 'url': 'https://apod.nasa.gov/apod/image/0601/m31_ware_960.jpg'},
-        {'title': "Grande Nébuleuse d'Orion M42", 'url': 'https://apod.nasa.gov/apod/image/2301/M42_Webb_960.jpg'}
-    ]
+# PASS 27.12 (2026-05-09) — _fetch_hubble + _fetch_swpc_alerts (~106 lignes corps
+# cumulés) déduplication via re-export aliasé vers les services existants
+# (pattern PASS 27.11). Sources de vérité :
+#   - app.services.telescope_sources.fetch_hubble_images (PASS 9, identique)
+#   - app.services.external_feeds.fetch_swpc_alerts (PASS 8, identique)
+# Doublons morts orphelins éliminés (0 appel actif, 0 consommateur externe via
+# `from station_web import _fetch_hubble | _fetch_swpc_alerts`).
+from app.services.telescope_sources import fetch_hubble_images as _fetch_hubble  # noqa: F401
+from app.services.external_feeds import fetch_swpc_alerts as _fetch_swpc_alerts  # noqa: F401
 
 
 
@@ -1917,82 +1896,9 @@ def _apply_news_translations(items):
 # MIGRATED TO iss_bp PASS 14 — /api/iss/passes/<float:lat>/<float:lon> → see app/blueprints/iss/routes.py (api_iss_passes_observer)
 
 
-def _fetch_swpc_alerts():
-    """Alertes NOAA SWPC dernières 24h — format normalisé."""
-    import datetime as _dt
-    try:
-        raw = _curl_get('https://services.swpc.noaa.gov/products/alerts.json', timeout=12)
-        if not raw:
-            return []
-        data = _safe_json_loads(raw, 'swpc_alerts')
-        if not isinstance(data, list):
-            return []
-        cutoff = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(hours=24)
-        alerts = []
-        for item in data:
-            if not isinstance(item, dict):
-                continue
-            issued_str = (item.get('issue_datetime') or item.get('issued') or '').strip()
-            try:
-                issued_dt = _dt.datetime.strptime(issued_str[:16], '%Y-%m-%d %H:%M')
-            except Exception:
-                try:
-                    issued_dt = _dt.datetime.strptime(issued_str[:16], '%Y-%m-%dT%H:%M')
-                except Exception:
-                    issued_dt = _dt.datetime.now(_dt.timezone.utc)
-            if issued_dt < cutoff:
-                continue
-            msg = (item.get('message') or item.get('msg') or '').strip()
-            # Detect type and level from message
-            alert_type = 'Alerte Spatiale'
-            level = ''
-            msg_up = msg.upper()
-            if 'GEOMAGNETIC' in msg_up or 'K-INDEX' in msg_up or 'G-SCALE' in msg_up:
-                alert_type = 'Tempête Géomagnétique'
-                for g in ['G5', 'G4', 'G3', 'G2', 'G1']:
-                    if g in msg_up:
-                        level = g
-                        break
-                if not level:
-                    import re as _re
-                    m_k = _re.search(r'K-?index\s+of\s+(\d)', msg, _re.IGNORECASE)
-                    if m_k:
-                        k = int(m_k.group(1))
-                        level = 'G' + str(max(1, min(5, k - 4))) if k >= 5 else 'Kp=' + str(k)
-            elif 'SOLAR FLARE' in msg_up or 'X-RAY' in msg_up or 'FLARE' in msg_up:
-                alert_type = 'Éruption Solaire'
-                import re as _re
-                m_f = _re.search(r'\b([XMC]\d[\.\d]*)\b', msg, _re.IGNORECASE)
-                if m_f:
-                    level = m_f.group(1).upper()
-                else:
-                    for cls in ['X', 'M', 'C']:
-                        if cls + '-CLASS' in msg_up or ' ' + cls + ' CLASS' in msg_up:
-                            level = cls
-                            break
-            elif 'RADIATION STORM' in msg_up or 'S-SCALE' in msg_up or 'PROTON' in msg_up:
-                alert_type = 'Tempête Radiative'
-                for s in ['S5', 'S4', 'S3', 'S2', 'S1']:
-                    if s in msg_up:
-                        level = s
-                        break
-            elif 'RADIO BLACKOUT' in msg_up or 'R-SCALE' in msg_up:
-                alert_type = 'Éclipse Radio'
-                for r in ['R5', 'R4', 'R3', 'R2', 'R1']:
-                    if r in msg_up:
-                        level = r
-                        break
-            alerts.append({
-                'type': alert_type,
-                'level': level,
-                'message': msg[:300],
-                'issued': issued_str,
-                'issued_dt': issued_dt.strftime('%Y-%m-%dT%H:%M'),
-            })
-        return sorted(alerts, key=lambda x: x['issued_dt'], reverse=True)[:10]
-    except Exception as e:
-        log.warning('swpc_alerts: %s', e)
-        return []
+# PASS 27.12 (2026-05-09) — _fetch_swpc_alerts déplacée vers
+# app.services.external_feeds.fetch_swpc_alerts (re-exportée plus haut via le
+# bloc d'aliasing PASS 27.12).
 
 
 # MIGRATED TO feeds_bp PASS 8 — /api/space-weather/alerts → see app/blueprints/feeds/__init__.py (api_space_weather_alerts)
