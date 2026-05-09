@@ -1,8 +1,14 @@
 """
 apod_translator.py — Traducteur NASA APOD FR via Claude API
+
+PASS 27.14 (2026-05-09) — Cascade graceful (latence /apod 3-10s → ~50ms cas nominal) :
+- timeout NASA réduit 10s → 4s (fetch_apod)
+- helper get_today_cached_entry() pour pré-check cache disque AVANT fetch HTTP
+- cache négatif in-memory 5min (is_negative_cache_active / mark_negative_cache)
 """
 import os
 import json
+import time
 from datetime import datetime, timezone
 import requests
 import anthropic
@@ -10,6 +16,22 @@ import anthropic
 NASA_API_KEY = os.getenv("NASA_API_KEY", "DEMO_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CACHE_PATH = "/root/astro_scan/data/apod_cache.json"
+
+# Cache négatif in-memory (par worker) — ttl 5 min après échec NASA.
+# Volatil au restart worker, acceptable vu le ttl court.
+_NEGATIVE_CACHE_FAILED_AT = 0.0
+_NEGATIVE_CACHE_TTL = 300
+
+
+def is_negative_cache_active():
+    """True si NASA a échoué dans les 5 dernières minutes (skip fetch)."""
+    return _NEGATIVE_CACHE_FAILED_AT > 0 and (time.time() - _NEGATIVE_CACHE_FAILED_AT) < _NEGATIVE_CACHE_TTL
+
+
+def mark_negative_cache():
+    """Marque NASA en échec — bloque les fetchs pendant 5 min."""
+    global _NEGATIVE_CACHE_FAILED_AT
+    _NEGATIVE_CACHE_FAILED_AT = time.time()
 
 
 def load_cache():
@@ -42,11 +64,26 @@ def get_latest_cached_entry():
     return None
 
 
+def get_today_cached_entry():
+    """Retourne l'entrée cache disque pour la date UTC courante avec title_fr
+    valide (non-translation_failed). Sinon None — l'appelant fera fallback."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    cache = load_cache()
+    entry = cache.get(today)
+    if not isinstance(entry, dict):
+        return None
+    if not entry.get("title_fr"):
+        return None
+    if entry.get("translation_failed"):
+        return None
+    return entry
+
+
 def fetch_apod():
     r = requests.get(
         "https://api.nasa.gov/planetary/apod",
         params={"api_key": NASA_API_KEY},
-        timeout=10,
+        timeout=4,
     )
     r.raise_for_status()
     data = r.json()
