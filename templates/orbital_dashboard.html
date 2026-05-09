@@ -5,6 +5,7 @@
 <script>(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Orbital Dashboard — AstroScan</title>
+<meta name="description" content="ASTRO-SCAN — Dashboard orbital live : suivi ISS, satellites Starlink, sondes Voyager, météo solaire">
 <link rel="alternate" hreflang="fr" href="https://astroscan.space{{ request.path }}">
 <link rel="alternate" hreflang="en" href="https://astroscan.space{{ request.path }}?lang=en">
 <link rel="alternate" hreflang="x-default" href="https://astroscan.space{{ request.path }}">
@@ -169,7 +170,7 @@ a{text-decoration:none;color:inherit}
 .iss-photo{
   position:relative;height:300px;border-radius:8px;overflow:hidden;
   border:1px solid var(--border);
-  background:url('/static/earth.jpg') center/cover no-repeat;
+  background:url('/static/earth.jpg') center/cover no-repeat;background-image:image-set(url('/static/earth.webp') type('image/webp'),url('/static/earth.jpg') type('image/jpeg'));background-size:cover;background-position:center;background-repeat:no-repeat;
 }
 .iss-photo img{width:100%;height:100%;object-fit:cover;object-position:center;opacity:.88}
 .iss-photo-overlay{
