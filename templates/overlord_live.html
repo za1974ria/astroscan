@@ -49,64 +49,75 @@
 }
 
 /* ─────────────────────────────────────────────────────────
- * FIX TÉLÉMÉTRIE STATION — Table ALL PASSES (débordement)
- * 9 mai 2026 — Cellule "2026-04-28 00:16:00" cassée en 2 lignes
- * Source : table créée dynamiquement par sondes_aegis.js
+ * FIX TÉLÉMÉTRIE STATION — ALL PASSES en cards (style NEXT PASS)
+ * 9 mai 2026 — V2 : table remplacée par liste de cards cohérentes
+ * Source : généré dynamiquement par sondes_aegis.js
  * ─────────────────────────────────────────────────────────*/
-#passages-iss-container .table-wrap {
-  width: 100%;
-  margin-top: 10px;
-  overflow-x: auto;
+#passages-iss-container .iss-passes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
 }
-#passages-iss-container .table-cap {
+#passages-iss-container .iss-passes-cap {
   font-size: 9px;
   letter-spacing: 1.2px;
   color: rgba(155, 176, 196, 0.85);
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   padding-left: 2px;
 }
-#passages-iss-container table {
-  width: 100%;
-  border-collapse: collapse;
+#passages-iss-container .iss-pass-card {
+  background: rgba(2, 12, 20, 0.5);
+  border-left: 2px solid rgba(0, 212, 255, 0.4);
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+#passages-iss-container .iss-pass-card:hover {
+  background: rgba(2, 12, 20, 0.7);
+  border-left-color: rgba(0, 212, 255, 0.8);
+}
+#passages-iss-container .iss-pass-date {
   font-family: 'Share Tech Mono', monospace;
-  font-size: 10.5px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: #c8d4e0;
-}
-#passages-iss-container thead th {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: rgba(0, 212, 255, 0.75);
-  text-align: left;
-  padding: 6px 4px 4px;
-  border-bottom: 1px solid rgba(0, 212, 255, 0.25);
+  color: rgba(200, 215, 230, 0.92);
+  letter-spacing: 0.3px;
   white-space: nowrap;
-}
-#passages-iss-container thead th.num {
-  text-align: right;
-}
-#passages-iss-container tbody td {
-  padding: 4px;
-  border-bottom: 1px solid rgba(0, 212, 255, 0.06);
-  white-space: nowrap;             /* PLUS DE SAUT DE LIGNE */
   overflow: hidden;
   text-overflow: ellipsis;
 }
-#passages-iss-container tbody td.num {
-  text-align: right;
+#passages-iss-container .iss-pass-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+#passages-iss-container .iss-pass-grid .cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+#passages-iss-container .iss-pass-grid .cell .k {
+  font-size: 8px;
+  letter-spacing: 1.1px;
+  color: rgba(155, 176, 196, 0.7);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#passages-iss-container .iss-pass-grid .cell .v {
+  font-size: 11px;
+  font-family: 'Share Tech Mono', monospace;
+  font-variant-numeric: tabular-nums;
   color: #5eead4;
   font-weight: 600;
-}
-#passages-iss-container tbody tr:hover {
-  background: rgba(0, 212, 255, 0.04);
-}
-/* Première colonne (Date) : un peu plus serrée + couleur subtile */
-#passages-iss-container tbody td:first-child {
-  color: rgba(200, 215, 230, 0.78);
-  letter-spacing: -0.2px;
+  white-space: nowrap;
 }
 /* Bloc NEXT PASS : assurer cohérence */
 .iss-next-block {

@@ -1406,24 +1406,20 @@ async function loadPassagesISS() {
       '</span></div>';
     html += '<div class="cell"><span class="k">duree</span><span class="v">' + nf.dureeStr + '</span></div>';
     html += '</div></div>';
-    html += '<div class="table-wrap">';
-    html += '<div class="table-cap">All passes</div>';
-    html += '<table><thead><tr>';
-    html += '<th>Date</th>';
-    html += '<th>Culmination</th>';
-    html += '<th class="num">Max Elevation</th>';
-    html += '<th class="num">Duration</th>';
-    html += '</tr></thead><tbody>';
+    html += '<div class="iss-passes-list">';
+    html += '<div class="iss-passes-cap">All passes</div>';
     for (var i = 0; i < passages.length; i++) {
       var f = _issPassFields(passages[i]);
-      html += '<tr>';
-      html += '<td>' + f.dateStr + '</td>';
-      html += '<td>' + f.heureMax + '</td>';
-      html += '<td class="num">' + (f.elev != null ? f.elev + '°' : '—') + '</td>';
-      html += '<td class="num">' + f.dureeStr + '</td>';
-      html += '</tr>';
+      html += '<div class="iss-pass-card">';
+      html += '<div class="iss-pass-date">' + f.dateStr + '</div>';
+      html += '<div class="iss-pass-grid">';
+      html += '<div class="cell"><span class="k">culmination</span><span class="v">' + f.heureMax + '</span></div>';
+      html += '<div class="cell"><span class="k">elevation</span><span class="v">' + (f.elev != null ? f.elev + '°' : '—') + '</span></div>';
+      html += '<div class="cell"><span class="k">duree</span><span class="v">' + f.dureeStr + '</span></div>';
+      html += '</div>';
+      html += '</div>';
     }
-    html += '</tbody></table></div></div>';
+    html += '</div></div>';
     box.innerHTML = html;
     _startPassagesIssRelTimer();
   } catch (e) {
