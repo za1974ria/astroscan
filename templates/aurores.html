@@ -208,11 +208,11 @@ function buildForecast(data) {
 }
 
 function loadAuroraData() {
-  fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json')
+  fetch('/api/aurores')
     .then(function(r) { return r.json(); })
-    .then(function(kpData) {
-      var latest = kpData[kpData.length - 1];
-      var kp = parseFloat(latest[1]);
+    .then(function(apiData) {
+      var kp = parseFloat(apiData.kp);
+      if (isNaN(kp)) kp = 0;
 
       document.getElementById('kp-value').textContent = kp.toFixed(1);
       document.getElementById('kp-label').textContent = KP_LABELS[Math.min(Math.floor(kp), 9)] + ' · Kp = ' + kp.toFixed(1);
