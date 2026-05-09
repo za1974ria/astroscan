@@ -26,47 +26,132 @@ background:black;
 Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
 
 (async function() {
-  // Stack premium pérenne (anti-sunset Bing 2025-2026)
-  // - Terrain : Cesium World Terrain (asset 1)
-  // - Imagery : Sentinel-2 cloudless mosaic (asset 3) — alternative pérenne à Bing
-  // - Buildings : Cesium OSM Buildings (asset 96188 via createOsmBuildingsAsync)
-  // - Photo3D : Google Photorealistic 3D Tiles en TOGGLE OFF par défaut (perf)
-  let viewer;
-  try {
-    viewer = new Cesium.Viewer('cesiumContainer', {
-      timeline: true,
-      animation: true,
-      baseLayerPicker: true,
-      geocoder: true,
-      homeButton: true,
-      sceneModePicker: true,
-      navigationHelpButton: false,
-      terrainProvider: await Cesium.CesiumTerrainProvider.fromIonAssetId(1),
-      imageryProvider: await Cesium.IonImageryProvider.fromAssetId(3)
-    });
-  } catch (e) {
-    console.warn('Cesium premium init failed, fallback default viewer:', e);
-    viewer = new Cesium.Viewer('cesiumContainer', {
-      timeline: true,
-      animation: true,
-      baseLayerPicker: true
-    });
-  }
+  // ═══════════════════════════════════════════════════════
+  // MIX MULTI-SOURCES — Mission Control ASTRO-SCAN
+  // ═══════════════════════════════════════════════════════
+  // Sources combinées pour résilience et beauté :
+  // 1. Bing Maps Aerial (Cesium ion asset 2) - défaut, haute res
+  // 2. ESRI World Imagery (gratuit) - satellite alternatif
+  // 3. ESRI World Topographic - relief topo
+  // 4. NASA GIBS Black Marble - lights at night officiel NASA
+  // 5. OpenStreetMap - vue communautaire
+  // ═══════════════════════════════════════════════════════
+
+  const imageryViewModels = [];
+
+  // 1. Bing Maps Aerial (asset 2 Cesium ion - fonctionne)
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'Bing Maps Aerial',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/bingAerial.png'),
+    tooltip: 'Bing Maps Aerial - Imagerie satellite haute résolution',
+    creationFunction: function() {
+      return Cesium.IonImageryProvider.fromAssetId(2);
+    }
+  }));
+
+  // 2. ESRI World Imagery (satellite, gratuit, sans token)
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'ESRI World Imagery',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldImagery.png'),
+    tooltip: 'ESRI World Imagery - Satellite haute résolution gratuit',
+    creationFunction: function() {
+      return new Cesium.ArcGisMapServerImageryProvider({
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+      });
+    }
+  }));
+
+  // 3. ESRI World Topographic (relief topo, gratuit)
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'ESRI Topographic',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldStreetMap.png'),
+    tooltip: 'ESRI World Topographic - Relief topographique',
+    creationFunction: function() {
+      return new Cesium.ArcGisMapServerImageryProvider({
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer'
+      });
+    }
+  }));
+
+  // 4. NASA GIBS Black Marble - Earth at Night (lights at night officiel NASA)
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'NASA Earth at Night',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blackMarble.png'),
+    tooltip: 'NASA Black Marble - Pollution lumineuse mondiale (VIIRS)',
+    creationFunction: function() {
+      return new Cesium.WebMapTileServiceImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/VIIRS_Black_Marble/default/2016-01-01/500m/{TileMatrix}/{TileRow}/{TileCol}.jpg',
+        layer: 'VIIRS_Black_Marble',
+        style: 'default',
+        format: 'image/jpeg',
+        tileMatrixSetID: '500m',
+        maximumLevel: 8,
+        credit: 'NASA Earth Observatory · NOAA · USGS'
+      });
+    }
+  }));
+
+  // 5. OpenStreetMap (vue communautaire)
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'OpenStreetMap',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/openStreetMap.png'),
+    tooltip: 'OpenStreetMap - Carte communautaire',
+    creationFunction: function() {
+      return new Cesium.OpenStreetMapImageryProvider({
+        url: 'https://tile.openstreetmap.org/'
+      });
+    }
+  }));
+
+  // Création du viewer avec sélecteur custom (pas de defaults Cesium ion cassés)
+  const viewer = new Cesium.Viewer('cesiumContainer', {
+    timeline: true,
+    animation: true,
+    baseLayerPicker: true,
+    geocoder: false,
+    homeButton: true,
+    sceneModePicker: true,
+    navigationHelpButton: false,
+    imageryProviderViewModels: imageryViewModels,
+    selectedImageryProviderViewModel: imageryViewModels[0],
+    terrainProviderViewModels: []
+  });
 
   viewer.scene.globe.enableLighting = true;
 
-  // OSM Buildings (silhouettes 3D bâtiments en zoom rapproché)
-  try {
-    const buildings = await Cesium.createOsmBuildingsAsync();
-    viewer.scene.primitives.add(buildings);
-  } catch (e) {
-    console.warn('OSM Buildings non chargés:', e);
-  }
+  // ═══════════════════════════════════════════════════════
+  // CAMÉRA STABLE — Vue initiale Tlemcen depuis l'espace
+  // ═══════════════════════════════════════════════════════
+  const TLEMCEN_LAT = 34.87;
+  const TLEMCEN_LON = 1.32;
+  const VIEW_HEIGHT = 5000000;  // 5000 km, vue Terre
 
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(TLEMCEN_LON, TLEMCEN_LAT, VIEW_HEIGHT),
+    orientation: {
+      heading: 0,
+      pitch: -Cesium.Math.PI_OVER_TWO,
+      roll: 0
+    }
+  });
+
+  // Override Home button -> Tlemcen
+  viewer.homeButton.viewModel.command.beforeExecute.addEventListener(function(e) {
+    e.cancel = true;
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(TLEMCEN_LON, TLEMCEN_LAT, VIEW_HEIGHT),
+      duration: 2,
+      orientation: {
+        heading: 0,
+        pitch: -Cesium.Math.PI_OVER_TWO,
+        roll: 0
+      }
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════
   // ISS satellite (préservé)
-  const issTLE1 = "1 25544U 98067A   24153.51782528  .00016717  00000+0  10270-3 0  9004";
-  const issTLE2 = "2 25544  51.6416 215.6054 0004578  54.8858  87.6423 15.50243893399554";
-
+  // ═══════════════════════════════════════════════════════
   viewer.entities.add({
     name: "ISS",
     position: Cesium.Cartesian3.fromDegrees(0, 0, 400000),
@@ -87,27 +172,27 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
     }
   });
 
-  viewer.zoomTo(viewer.entities);
-
-  // Toggle Photorealistic 3D Tiles (Google) — OFF par défaut pour perf
+  // ═══════════════════════════════════════════════════════
+  // Toggle Photo3D Tiles (optionnel, peut échouer silencieusement)
+  // ═══════════════════════════════════════════════════════
   let photoTileset = null;
   const toggleBtn = document.createElement('button');
-  toggleBtn.textContent = '🌍 Photo3D';
+  toggleBtn.textContent = 'Photo3D';
   toggleBtn.style.cssText = 'position:absolute;top:10px;right:60px;z-index:100;padding:6px 12px;background:rgba(0,0,0,0.7);color:#0ff;border:1px solid #0ff;border-radius:4px;cursor:pointer;font-family:sans-serif;font-size:12px;';
   toggleBtn.onclick = async () => {
     if (!photoTileset) {
       try {
         photoTileset = await Cesium.createGooglePhotorealistic3DTileset();
         viewer.scene.primitives.add(photoTileset);
-        toggleBtn.textContent = '🌍 Photo3D ✓';
+        toggleBtn.textContent = 'Photo3D ON';
         toggleBtn.style.background = 'rgba(0,80,80,0.7)';
       } catch (e) {
         console.warn('Photo3D Tiles non disponibles:', e);
-        toggleBtn.textContent = '🌍 Photo3D ❌';
+        toggleBtn.textContent = 'Photo3D ❌';
       }
     } else {
       photoTileset.show = !photoTileset.show;
-      toggleBtn.textContent = photoTileset.show ? '🌍 Photo3D ✓' : '🌍 Photo3D';
+      toggleBtn.textContent = photoTileset.show ? 'Photo3D ON' : 'Photo3D';
       toggleBtn.style.background = photoTileset.show ? 'rgba(0,80,80,0.7)' : 'rgba(0,0,0,0.7)';
     }
   };
