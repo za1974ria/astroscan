@@ -87,3 +87,13 @@
 :focus:not(:focus-visible) {
   outline: none;
 }
+
+/* === A11y — Respect mouvement réduit (PASS Kaizen Day 1, 2026-05-09) === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
