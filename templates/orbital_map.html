@@ -2991,6 +2991,9 @@ handler.setInputAction(function (movement) {
       <button type="button" class="om-layer-option" data-layer="nasa-modis">
         🛰️ NASA MODIS Today <small>(satellite temps réel J-1)</small>
       </button>
+      <button type="button" class="om-layer-option" data-layer="nasa-blackmarble">
+        🌃 NASA Earth at Night <small>(pollution lumineuse mondiale)</small>
+      </button>
     </div>
   </div>
 </div>
@@ -3196,18 +3199,24 @@ handler.setInputAction(function (movement) {
             });
           } else if (layer === 'nasa-bluemarble') {
             provider = new Cesium.UrlTemplateImageryProvider({
-              url: 'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/BlueMarble_NextGeneration/default/2004-08-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg',
+              url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/2004-08-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg',
               maximumLevel: 8,
-              credit: 'NASA Blue Marble'
+              credit: 'NASA Blue Marble · GIBS'
             });
           } else if (layer === 'nasa-modis') {
             var d = new Date();
             d.setUTCDate(d.getUTCDate() - 1);
             var ymd = d.toISOString().slice(0, 10);
             provider = new Cesium.UrlTemplateImageryProvider({
-              url: 'https://map1.vis.earthdata.nasa.gov/wmts-webmerc/MODIS_Terra_CorrectedReflectance_TrueColor/default/' + ymd + '/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg',
+              url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/' + ymd + '/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg',
               maximumLevel: 9,
-              credit: 'NASA MODIS Terra'
+              credit: 'NASA MODIS Terra · GIBS'
+            });
+          } else if (layer === 'nasa-blackmarble') {
+            provider = new Cesium.UrlTemplateImageryProvider({
+              url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg',
+              maximumLevel: 8,
+              credit: 'NASA Black Marble · VIIRS · GIBS'
             });
           }
           if (provider) {
