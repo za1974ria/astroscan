@@ -27,6 +27,8 @@ import time
 
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 
+from app.services.security import require_admin
+
 log = logging.getLogger(__name__)
 
 bp = Blueprint("health_bp", __name__)
@@ -163,6 +165,7 @@ def api_system_status_cache():
 
 
 @bp.route("/api/system-heal", methods=["POST"])
+@require_admin
 def api_system_heal():
     """Auto-healing controle : refresh cache DSN / meteo / SkyView (core/auto_heal_engine)."""
     from station_web import STATION

@@ -18,6 +18,8 @@ import sqlite3
 
 from flask import Blueprint, jsonify, redirect, render_template, request
 
+from app.services.security import require_admin
+
 log = logging.getLogger(__name__)
 
 bp = Blueprint("analytics_bp", __name__)
@@ -50,6 +52,7 @@ def api_visits_increment():
 
 
 @bp.route("/api/visits/reset", methods=["POST"])
+@require_admin
 def reset_visits():
     """Reset compteur de visites - admin seulement."""
     try:
@@ -102,6 +105,7 @@ def api_visitors_connection_time_legacy():
 
 # ── PASS 12 — Owner IPs CRUD (Domaine AI) ─────────────────────────────
 @bp.route("/api/owner-ips", methods=["POST"])
+@require_admin
 def api_owner_ips_add():
     """Ajoute une IP propriétaire. Body JSON: {"ip": "x.x.x.x", "label": "Maison"}"""
     from app.services.db_visitors import _get_db_visitors, _invalidate_owner_ips_cache
@@ -126,6 +130,7 @@ def api_owner_ips_add():
 
 
 @bp.route("/api/owner-ips/<int:ip_id>", methods=["DELETE"])
+@require_admin
 def api_owner_ips_delete(ip_id):
     """Supprime une IP propriétaire par son ID."""
     from app.services.db_visitors import _get_db_visitors, _invalidate_owner_ips_cache

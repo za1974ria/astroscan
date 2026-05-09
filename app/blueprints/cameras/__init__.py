@@ -24,6 +24,7 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 from app.config import STATION
+from app.services.security import rate_limit_ip
 from app.utils.llm_errors import friendly_message
 
 log = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ def sky_camera():
 
 
 @bp.route("/api/sky-camera/analyze", methods=["POST"])
+@rate_limit_ip(max_per_minute=5, key_prefix="cameras.sky_analyze")
 def api_sky_camera_analyze():
     """Analyse d'image ciel nocturne via Claude Vision."""
     try:

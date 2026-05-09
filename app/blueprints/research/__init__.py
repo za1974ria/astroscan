@@ -16,6 +16,7 @@ import uuid
 from flask import Blueprint, render_template, request, jsonify
 
 from app.config import STATION
+from app.services.security import rate_limit_ip
 from app.utils.cache import get_cached
 
 log = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ def api_research_logs():
 
 # ── Science : analyse d'image scientifique ────────────────────────────
 @bp.route("/api/science/analyze-image", methods=["POST"])
+@rate_limit_ip(max_per_minute=5, key_prefix="research.analyze_image")
 def api_science_analyze_image():
     """Analyse d'image spatiale via image_science_engine."""
     from station_web import LAB_UPLOADS
