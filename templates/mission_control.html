@@ -79,12 +79,8 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
     iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blackMarble.png'),
     tooltip: 'NASA Black Marble - Pollution lumineuse mondiale (VIIRS)',
     creationFunction: function() {
-      return new Cesium.WebMapTileServiceImageryProvider({
-        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/VIIRS_Black_Marble/default/2016-01-01/500m/{TileMatrix}/{TileRow}/{TileCol}.png',
-        layer: 'VIIRS_Black_Marble',
-        style: 'default',
-        format: 'image/png',
-        tileMatrixSetID: '500m',
+      return new Cesium.UrlTemplateImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
         maximumLevel: 8,
         credit: 'NASA Earth Observatory · NOAA · USGS'
       });
@@ -109,12 +105,8 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
     iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blueMarble.png'),
     tooltip: 'NASA BlueMarble - Imagerie satellite jour officiel NASA',
     creationFunction: function() {
-      return new Cesium.WebMapTileServiceImageryProvider({
-        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_NextGeneration/default/2004-08-01/500m/{TileMatrix}/{TileRow}/{TileCol}.jpeg',
-        layer: 'BlueMarble_NextGeneration',
-        style: 'default',
-        format: 'image/jpeg',
-        tileMatrixSetID: '500m',
+      return new Cesium.UrlTemplateImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/2004-08-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg',
         maximumLevel: 8,
         credit: 'NASA Earth Observatory'
       });
@@ -128,12 +120,8 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
     tooltip: 'NASA MODIS Terra - Image satellite quotidienne true color',
     creationFunction: function() {
       const yesterday = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
-      return new Cesium.WebMapTileServiceImageryProvider({
-        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/' + yesterday + '/250m/{TileMatrix}/{TileRow}/{TileCol}.jpg',
-        layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
-        style: 'default',
-        format: 'image/jpeg',
-        tileMatrixSetID: '250m',
+      return new Cesium.UrlTemplateImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/' + yesterday + '/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg',
         maximumLevel: 9,
         credit: 'NASA EOSDIS GIBS'
       });
