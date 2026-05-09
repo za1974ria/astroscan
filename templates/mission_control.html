@@ -43,7 +43,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
   // 1. OpenStreetMap (defaut, vue communautaire)
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'OpenStreetMap',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/openStreetMap.png'),
+    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     tooltip: 'OpenStreetMap - Carte communautaire',
     creationFunction: function() {
       return new Cesium.OpenStreetMapImageryProvider({
@@ -55,7 +55,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
   // 2. CartoDB Positron - carte claire propre
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'CartoDB Positron',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/openStreetMap.png'),
+    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     tooltip: 'CartoDB Positron - carte claire propre',
     creationFunction: function() {
       return new Cesium.UrlTemplateImageryProvider({
@@ -69,7 +69,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
   // 3. CartoDB Dark Matter - carte sombre stylisee
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'CartoDB Dark',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/openStreetMap.png'),
+    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     tooltip: 'CartoDB Dark Matter - carte sombre nocturne',
     creationFunction: function() {
       return new Cesium.UrlTemplateImageryProvider({
@@ -83,7 +83,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
   // 4. OpenTopoMap - relief topographique
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'OpenTopoMap',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/openStreetMap.png'),
+    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     tooltip: 'OpenTopoMap - relief topographique mondial',
     creationFunction: function() {
       return new Cesium.UrlTemplateImageryProvider({
@@ -97,7 +97,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
   // 5. USGS Imagery - satellite mondial gratuit
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'USGS Imagery',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blueMarble.png'),
+    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     tooltip: 'USGS Imagery - satellite mondial gratuit',
     creationFunction: function() {
       return new Cesium.UrlTemplateImageryProvider({
@@ -111,7 +111,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
   // 6. NASA GIBS BlueMarble (jour officiel NASA)
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'NASA BlueMarble',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blueMarble.png'),
+    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     tooltip: 'NASA BlueMarble - Imagerie satellite jour officiel NASA',
     creationFunction: function() {
       return new Cesium.UrlTemplateImageryProvider({
@@ -125,7 +125,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
   // 7. NASA GIBS MODIS Terra (true color quotidien J-2)
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'NASA MODIS Terra',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/sentinel-2.png'),
+    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     tooltip: 'NASA MODIS Terra - Image satellite quotidienne true color (J-2)',
     creationFunction: function() {
       const yesterday = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
@@ -140,7 +140,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
   // 8. NASA GIBS MODIS Aqua (jour bonus J-2)
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'NASA MODIS Aqua',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blueMarble.png'),
+    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     tooltip: 'NASA MODIS Aqua - imagerie satellite jour J-2',
     creationFunction: function() {
       var d = new Date();
@@ -157,7 +157,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
   // 9. NASA GIBS Black Marble - Earth at Night (lights at night officiel NASA)
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'NASA Earth at Night',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blackMarble.png'),
+    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
     tooltip: 'NASA Black Marble - Pollution lumineuse mondiale (VIIRS)',
     creationFunction: function() {
       return new Cesium.UrlTemplateImageryProvider({
