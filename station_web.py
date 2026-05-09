@@ -885,81 +885,27 @@ from app.services.visitors_helpers import (  # noqa: E402,F401
 # API — DONNÉES PRINCIPALES
 # ══════════════════════════════════════════════════════════════
 
-_IMAGE_CACHE_TTL = 300  # 5 min — APOD/Hubble/archive changent peu
-def _source_path(s):
-    return Path(f'{STATION}/telescope_live/source_{s}.jpg')
-
-def _fetch_apod_live():
-    """Image du jour NASA APOD — temps 0 (API en _curl_get, image en urllib pour binaire)."""
-    try:
-        key = (os.environ.get('NASA_API_KEY') or 'DEMO_KEY').strip()
-        raw = _curl_get(f'https://api.nasa.gov/planetary/apod?api_key={key}', timeout=14)
-        if not raw:
-            return None, None, None
-        d = json.loads(raw)
-        if d.get('media_type') != 'image':
-            return None, None, None
-        url = d.get('hdurl') or d.get('url')
-        if not url:
-            return None, None, None
-        import urllib.request as urlreq
-        with urlreq.urlopen(urlreq.Request(url, headers={'User-Agent': 'ORBITAL-CHOHRA/1.0'}), timeout=25) as img:
-            data = img.read()
-        return data, d.get('title', 'APOD'), 'NASA APOD'
-    except Exception as e:
-        log.warning(f"fetch apod: {e}")
-        return None, None, None
-
-def _fetch_hubble_archive():
-    """Image Hubble issue des archives ESA (6 images iconiques, sélection aléatoire).
-    Note : images d'archive 1994-2020, pas une observation en cours."""
-    urls = [
-        ("Pilliers de la Création — M16 (1995)", "https://esahubble.org/media/archives/images/screen/heic1501a.jpg"),
-        ("Galaxie du Tourbillon M51 (2005)", "https://esahubble.org/media/archives/images/screen/heic0506a.jpg"),
-        ("Nébuleuse de la Carène (2007)", "https://esahubble.org/media/archives/images/screen/heic0707a.jpg"),
-        ("Galaxie d'Andromède M31 (2015)", "https://esahubble.org/media/archives/images/screen/heic1502a.jpg"),
-        ("Nébuleuse Œil de Chat (2004)", "https://esahubble.org/media/archives/images/screen/heic0403a.jpg"),
-        ("Jupiter — Grande Tache Rouge (2019)", "https://esahubble.org/media/archives/images/screen/heic1920a.jpg"),
-    ]
-    import random
-    title, url = random.choice(urls)
-    try:
-        import urllib.request as urlreq
-        req = urlreq.Request(url, headers={'User-Agent': 'ORBITAL-CHOHRA/1.0'})
-        with urlreq.urlopen(req, timeout=25) as r:
-            data = r.read()
-        if len(data) < 10000:
-            return None, None, None
-        return data, title, 'Archives ESA/Hubble'
-    except Exception as e:
-        log.warning(f"fetch hubble archive: {e}")
-        return None, None, None
-
-# Alias de compatibilité pour le code existant
-_fetch_hubble_live = _fetch_hubble_archive
-
-def _fetch_apod_archive_live():
-    """NASA APOD — image d'archive aléatoire (2015-2024). Honnête : pas l'image du jour."""
-    try:
-        import urllib.request as urlreq
-        import random
-        key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-        y, m = random.randint(2015, 2024), random.randint(1, 12)
-        d = random.randint(1, 28)
-        date = f'{y}-{m:02d}-{d:02d}'
-        with urlreq.urlopen(
-            f'https://api.nasa.gov/planetary/apod?api_key={key}&date={date}', timeout=12
-        ) as r:
-            data_j = json.loads(r.read())
-        if data_j.get('media_type') != 'image':
-            return None, None, None
-        url = data_j.get('hdurl') or data_j.get('url')
-        with urlreq.urlopen(urlreq.Request(url, headers={'User-Agent': 'ORBITAL-CHOHRA/1.0'}), timeout=25) as img:
-            data = img.read()
-        return data, data_j.get('title', 'APOD') + f' ({date})', f'NASA APOD {date}'
-    except Exception as e:
-        log.warning(f"fetch apod archive: {e}")
-        return None, None, None
+# PASS 27.8 (2026-05-09) — APOD/Hubble fetchers déplacés vers source de vérité
+# unique app/services/telescope_sources.py (extrait au PASS 9, mais doublon
+# laissé en place dans le monolithe — supprimé en PASS 27.8 comme PASS 27.6
+# l'a fait pour _curl_*).
+#
+# Note : le brief PASS 27.8 ciblait `external_feeds.py` mais telescope_sources.py
+# contient déjà ces 4 fonctions à l'identique depuis PASS 9 et est consommé par
+# app/blueprints/telescope/__init__.py:37-41. Re-exporter depuis cette source
+# existante évite un nouveau doublon (cf. /tmp/PASS_27_8_INVENTORY.md pour la
+# justification complète).
+#
+# Aucun consommateur externe via `from station_web import _fetch_*` détecté à
+# ce jour, ni d'appel interne au monolithe. Re-export maintenu par défensive.
+from app.services.telescope_sources import (  # noqa: F401 (re-export)
+    _IMAGE_CACHE_TTL,
+    _source_path,
+    _fetch_apod_live,
+    _fetch_hubble_archive,
+    _fetch_hubble_live,
+    _fetch_apod_archive_live,
+)
 
 # État de synchronisation PC ↔ Android (source télescope affichée)
 SYNC_STATE_F = Path(f'{STATION}/telescope_live/sync_state.json')
