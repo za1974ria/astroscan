@@ -103,6 +103,109 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
     }
   }));
 
+  // 6. NASA GIBS BlueMarble (jour officiel NASA)
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'NASA BlueMarble',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blueMarble.png'),
+    tooltip: 'NASA BlueMarble - Imagerie satellite jour officiel NASA',
+    creationFunction: function() {
+      return new Cesium.WebMapTileServiceImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_NextGeneration/default/2004-01-01/500m/{TileMatrix}/{TileRow}/{TileCol}.jpeg',
+        layer: 'BlueMarble_NextGeneration',
+        style: 'default',
+        format: 'image/jpeg',
+        tileMatrixSetID: '500m',
+        maximumLevel: 8,
+        credit: 'NASA Earth Observatory'
+      });
+    }
+  }));
+
+  // 7. NASA GIBS MODIS Terra (true color quotidien)
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'NASA MODIS Terra',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/sentinel-2.png'),
+    tooltip: 'NASA MODIS Terra - Image satellite quotidienne true color',
+    creationFunction: function() {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      return new Cesium.WebMapTileServiceImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/' + yesterday + '/250m/{TileMatrix}/{TileRow}/{TileCol}.jpg',
+        layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
+        style: 'default',
+        format: 'image/jpeg',
+        tileMatrixSetID: '250m',
+        maximumLevel: 9,
+        credit: 'NASA EOSDIS GIBS'
+      });
+    }
+  }));
+
+  // 8. ESRI World Hillshade (ombrage relief)
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'ESRI Hillshade',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldStreetMap.png'),
+    tooltip: 'ESRI World Hillshade - Ombrage relief',
+    creationFunction: function() {
+      return new Cesium.ArcGisMapServerImageryProvider({
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer'
+      });
+    }
+  }));
+
+  // 9. ESRI World Physical (relief naturel)
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'ESRI Physical',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldStreetMap.png'),
+    tooltip: 'ESRI World Physical - Relief naturel',
+    creationFunction: function() {
+      return new Cesium.ArcGisMapServerImageryProvider({
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer'
+      });
+    }
+  }));
+
+  // 10. ESRI Ocean Basemap
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'ESRI Ocean',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldStreetMap.png'),
+    tooltip: 'ESRI Ocean Basemap - Bathymétrie océanique',
+    creationFunction: function() {
+      return new Cesium.ArcGisMapServerImageryProvider({
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer'
+      });
+    }
+  }));
+
+  // 11. ESRI World Street Map
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'ESRI Streets',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldStreetMap.png'),
+    tooltip: 'ESRI World Street Map - Cartes routières',
+    creationFunction: function() {
+      return new Cesium.ArcGisMapServerImageryProvider({
+        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer'
+      });
+    }
+  }));
+
+  // 12. NASA GIBS Earth Lights composite (alternative Black Marble)
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'NASA Lights 2016',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blackMarble.png'),
+    tooltip: 'NASA VIIRS DNB Annual 2016 - Lights composite alternatif',
+    creationFunction: function() {
+      return new Cesium.WebMapTileServiceImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/VIIRS_SNPP_DayNightBand_AT_Sensor_Radiance/default/2016-01-01/500m/{TileMatrix}/{TileRow}/{TileCol}.jpg',
+        layer: 'VIIRS_SNPP_DayNightBand_AT_Sensor_Radiance',
+        style: 'default',
+        format: 'image/jpeg',
+        tileMatrixSetID: '500m',
+        maximumLevel: 8,
+        credit: 'NASA EOSDIS GIBS · VIIRS DNB'
+      });
+    }
+  }));
+
   // Création du viewer avec sélecteur custom (pas de defaults Cesium ion cassés)
   const viewer = new Cesium.Viewer('cesiumContainer', {
     timeline: true,
