@@ -36,6 +36,7 @@ from app.services.observatory_feeds import (
     fetch_jwst_live_images, jwst_cache_file_path,
 )
 from app.services.http_client import _curl_get
+from app.services.security import rate_limit_ip
 from app.utils.llm_errors import friendly_message, llm_error_response
 
 log = logging.getLogger(__name__)
@@ -60,6 +61,7 @@ def oracle_cosmique_page():
 
 # ── AEGIS chat (Domaine N) ─────────────────────────────────────────────
 @bp.route("/api/chat", methods=["POST"])
+@rate_limit_ip(max_per_minute=10, key_prefix="ai.chat")
 def api_chat():
     """Chat libre AEGIS — orchestrateur Claude/Groq + cache 5 min."""
     ua = (request.headers.get("User-Agent") or "").lower()
@@ -144,6 +146,7 @@ def api_chat():
 
 
 @bp.route("/api/aegis/chat", methods=["POST"])
+@rate_limit_ip(max_per_minute=8, key_prefix="ai.aegis_chat")
 def api_aegis_chat():
     """AEGIS chatbot — Claude haiku avec historique multi-tours et contexte live."""
     data = request.get_json(silent=True) or {}
@@ -342,6 +345,7 @@ def api_aegis_claude_test():
 
 # ── Translation (Domaine N) ────────────────────────────────────────────
 @bp.route("/api/translate", methods=["POST"])
+@rate_limit_ip(max_per_minute=20, key_prefix="ai.translate")
 def api_translate():
     data = request.get_json(silent=True) or {}
     text = data.get("text", "")
@@ -350,6 +354,7 @@ def api_translate():
 
 
 @bp.route("/api/astro/explain", methods=["POST"])
+@rate_limit_ip(max_per_minute=10, key_prefix="ai.astro_explain")
 def api_astro_explain():
     """Traduction EN→FR d'un texte (ex. analyse Gemini)."""
     data = request.get_json(silent=True) or {}
@@ -493,6 +498,7 @@ def api_jwst_refresh():
 
 # ── PASS 17 — Oracle Cosmique POST (différé PASS 10 levé) ────────────
 @bp.route("/api/oracle-cosmique", methods=["POST"])
+@rate_limit_ip(max_per_minute=3, key_prefix="ai.oracle_cosmique")
 def api_oracle_cosmique():
     """Chat Oracle Cosmique : contexte live (lune, météo spatiale, ce soir) + Claude."""
     from flask import Response, stream_with_context
@@ -573,6 +579,7 @@ def api_oracle_alias():
 
 # ── PASS 17 — Guide Stellaire POST (différé PASS 10 levé) ────────────
 @bp.route("/api/guide-stellaire", methods=["POST"])
+@rate_limit_ip(max_per_minute=2, key_prefix="ai.guide_stellaire")
 def api_guide_stellaire():
     """Génère un guide d'observation orbital pour ville/lat/lon/date."""
     from app.services.guide_engine import build_orbital_guide

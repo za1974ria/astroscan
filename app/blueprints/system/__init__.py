@@ -17,12 +17,15 @@ import logging
 
 from flask import Blueprint, jsonify, request
 
+from app.services.security import require_admin
+
 log = logging.getLogger(__name__)
 
 bp = Blueprint("system_bp", __name__)
 
 
 @bp.route('/api/tle/refresh', methods=['POST'])
+@require_admin
 def api_tle_refresh():
     """Déclenche un rafraîchissement manuel des TLE."""
     try:

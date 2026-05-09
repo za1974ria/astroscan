@@ -33,6 +33,8 @@ from flask import (
     Response, stream_with_context,
 )
 
+from app.services.security import require_admin
+
 from app.config import STATION, IMG_PATH, TITLE_F, HUB_F
 from app.services.telescope_sources import (
     _IMAGE_CACHE_TTL, _source_path,
@@ -357,6 +359,7 @@ def api_hubble_images():
 
 # ── PASS 16 — /api/telescope/trigger-nightly POST (différé PASS 9 levé) ──
 @bp.route("/api/telescope/trigger-nightly", methods=["POST"])
+@require_admin
 def api_telescope_trigger_nightly():
     """Déclenche manuellement le pipeline nocturne Harvard MO (thread daemon)."""
     import threading
