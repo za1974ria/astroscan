@@ -822,94 +822,20 @@ API_SPEC = {
 # MIGRATED TO pages_bp PASS 5 — /dashboard → see app/blueprints/pages/__init__.py (dashboard)
 
 
-def _analytics_tz_for_country_code(code):
-    """Fuseau indicatif pour heure locale (US / DZ / BR)."""
-    c = (code or "").strip().upper()
-    if c == "US":
-        return "America/Los_Angeles"
-    if c == "DZ":
-        return "Africa/Algiers"
-    if c == "BR":
-        return "America/Sao_Paulo"
-    return "UTC"
-
-
-def _analytics_fmt_duration_sec(sec):
-    """Ex. 125 → 2m05."""
-    try:
-        s = int(sec)
-    except Exception:
-        return "—"
-    s = max(0, s)
-    m, s = divmod(s, 60)
-    h, m = divmod(m, 60)
-    if h > 0:
-        return f"{h}h{m:02d}m{s:02d}"
-    if m > 0:
-        return f"{m}m{s:02d}"
-    return f"{s}s"
-
-
-def _analytics_journey_display(journey_raw):
-    if not journey_raw:
-        return "—"
-    parts = [p.strip() for p in str(journey_raw).split(",") if p.strip()]
-    if not parts:
-        return "—"
-    return " → ".join(parts)
-
-
-def _analytics_start_local_display(start_iso, country_code):
-    """Heure locale au début de session selon country_code."""
-    try:
-        from zoneinfo import ZoneInfo
-
-        raw = (start_iso or "").strip()
-        if not raw:
-            return "—"
-        tzname = _analytics_tz_for_country_code(country_code)
-        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        local = dt.astimezone(ZoneInfo(tzname))
-        return local.strftime("%Y-%m-%d %H:%M %Z")
-    except Exception:
-        return (start_iso or "—") if start_iso else "—"
-
-
-def _analytics_time_hms_local(iso_str, country_code):
-    """Heure locale HH:MM:SS pour une ligne de timeline."""
-    try:
-        from zoneinfo import ZoneInfo
-
-        raw = (iso_str or "").strip()
-        if not raw:
-            return "—"
-        tzname = _analytics_tz_for_country_code(country_code)
-        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        local = dt.astimezone(ZoneInfo(tzname))
-        return local.strftime("%H:%M:%S")
-    except Exception:
-        return "—"
-
-
-def _analytics_session_classification(total_sec, page_count):
-    """Profil comportemental (nombre de vues = lignes session_time)."""
-    try:
-        t = int(total_sec)
-    except Exception:
-        t = 0
-    try:
-        n = int(page_count)
-    except Exception:
-        n = 0
-    if t > 180 and n > 5:
-        return "Inspection approfondie"
-    if n > 3:
-        return "Exploration active"
-    return "Passage rapide"
+# PASS 27.7 (2026-05-09) — Analytics helpers déplacés vers source de vérité unique
+# app/services/analytics_dashboard.py (les 6 fonctions étaient utilisées par
+# load_analytics_readonly() sans y être importées — bug latent depuis PASS 16
+# corrigé par effet de bord). Re-exportés ici pour conformité au pattern
+# strangler fig (aucun consommateur externe via `from station_web import _analytics_*`
+# détecté à ce jour, mais maintenu par défensive).
+from app.services.analytics_dashboard import (  # noqa: F401 (re-export)
+    _analytics_tz_for_country_code,
+    _analytics_fmt_duration_sec,
+    _analytics_journey_display,
+    _analytics_start_local_display,
+    _analytics_time_hms_local,
+    _analytics_session_classification,
+)
 
 
 # PASS 20.1 (2026-05-08) — Visitors helpers extracted to app/services/visitors_helpers.py

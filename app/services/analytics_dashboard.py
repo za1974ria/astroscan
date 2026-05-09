@@ -3,9 +3,21 @@
 Extrait de station_web.py (PASS 16) pour permettre l'utilisation
 par analytics_bp sans dépendance circulaire.
 
+PASS 27.7 (2026-05-09) — Ajout des 6 helpers `_analytics_*` (déplacés
+verbatim depuis station_web.py L825-912). Avant ce PASS, ces helpers
+étaient utilisés mais non importés ici, ce qui aurait provoqué un
+NameError au runtime sur la route /analytics. Le déplacement résout ce
+bug latent et fait de ce module la source de vérité unique.
+
 Fonctions exposées :
     analytics_empty_payload() -> dict
-    load_analytics_readonly() -> dict       # Lecture seule visitor_log + session_time
+    load_analytics_readonly() -> dict        # Lecture seule visitor_log + session_time
+    _analytics_tz_for_country_code(code)
+    _analytics_fmt_duration_sec(sec)
+    _analytics_journey_display(journey_raw)
+    _analytics_start_local_display(start_iso, country_code)
+    _analytics_time_hms_local(iso_str, country_code)
+    _analytics_session_classification(total_sec, page_count)
 """
 from __future__ import annotations
 
@@ -16,6 +28,97 @@ from datetime import datetime, timezone
 from app.config import DB_PATH
 
 log = logging.getLogger(__name__)
+
+
+def _analytics_tz_for_country_code(code):
+    """Fuseau indicatif pour heure locale (US / DZ / BR)."""
+    c = (code or "").strip().upper()
+    if c == "US":
+        return "America/Los_Angeles"
+    if c == "DZ":
+        return "Africa/Algiers"
+    if c == "BR":
+        return "America/Sao_Paulo"
+    return "UTC"
+
+
+def _analytics_fmt_duration_sec(sec):
+    """Ex. 125 → 2m05."""
+    try:
+        s = int(sec)
+    except Exception:
+        return "—"
+    s = max(0, s)
+    m, s = divmod(s, 60)
+    h, m = divmod(m, 60)
+    if h > 0:
+        return f"{h}h{m:02d}m{s:02d}"
+    if m > 0:
+        return f"{m}m{s:02d}"
+    return f"{s}s"
+
+
+def _analytics_journey_display(journey_raw):
+    if not journey_raw:
+        return "—"
+    parts = [p.strip() for p in str(journey_raw).split(",") if p.strip()]
+    if not parts:
+        return "—"
+    return " → ".join(parts)
+
+
+def _analytics_start_local_display(start_iso, country_code):
+    """Heure locale au début de session selon country_code."""
+    try:
+        from zoneinfo import ZoneInfo
+
+        raw = (start_iso or "").strip()
+        if not raw:
+            return "—"
+        tzname = _analytics_tz_for_country_code(country_code)
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        local = dt.astimezone(ZoneInfo(tzname))
+        return local.strftime("%Y-%m-%d %H:%M %Z")
+    except Exception:
+        return (start_iso or "—") if start_iso else "—"
+
+
+def _analytics_time_hms_local(iso_str, country_code):
+    """Heure locale HH:MM:SS pour une ligne de timeline."""
+    try:
+        from zoneinfo import ZoneInfo
+
+        raw = (iso_str or "").strip()
+        if not raw:
+            return "—"
+        tzname = _analytics_tz_for_country_code(country_code)
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        local = dt.astimezone(ZoneInfo(tzname))
+        return local.strftime("%H:%M:%S")
+    except Exception:
+        return "—"
+
+
+def _analytics_session_classification(total_sec, page_count):
+    """Profil comportemental (nombre de vues = lignes session_time)."""
+    try:
+        t = int(total_sec)
+    except Exception:
+        t = 0
+    try:
+        n = int(page_count)
+    except Exception:
+        n = 0
+    if t > 180 and n > 5:
+        return "Inspection approfondie"
+    if n > 3:
+        return "Exploration active"
+    return "Passage rapide"
+
 
 def analytics_empty_payload():
     return {
