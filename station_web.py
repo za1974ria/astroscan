@@ -1370,191 +1370,22 @@ from datetime import datetime as _dt_utc, timezone as _tz_utc
 # MIGRATED TO astro_bp PASS 7 — /api/v1/tonight → see app/blueprints/astro/__init__.py (api_v1_tonight)
 
 
-def _fetch_voyager():
-    """Position Voyager 1 & 2 via NASA JPL Horizons (curl)."""
-    try:
-        now = _dt_utc.now(_tz_utc.utc)
-        y, mo, d = now.year, now.month, now.day
-        results = {}
-        for name, target in [('VOYAGER_1', '-31'), ('VOYAGER_2', '-32')]:
-            url = (
-                f"https://ssd.jpl.nasa.gov/api/horizons.api?"
-                f"format=text&COMMAND='{target}'&OBJ_DATA=YES&MAKE_EPHEM=YES"
-                f"&EPHEM_TYPE=VECTORS&CENTER='500@10'"
-                f"&START_TIME='{y}-{mo:02d}-{d:02d}'&STOP_TIME='{y}-{mo:02d}-{d:02d}T23:59'"
-                f"&STEP_SIZE='1d'&QUANTITIES='20'"
-            )
-            raw = _curl_get(url, timeout=20)
-            if not raw:
-                continue
-            dist_au = None
-            speed_km_s = None
-            rg_match = re.search(r'RG=\s*([\d.]+)', raw)
-            if rg_match:
-                dist_au = float(rg_match.group(1))
-            rr_match = re.search(r'RR=\s*([-\d.]+)', raw)
-            if rr_match:
-                speed_au_d = float(rr_match.group(1))
-                speed_km_s = abs(speed_au_d * 1731.46)
-            if dist_au is not None:
-                results[name] = {
-                    'dist_au': round(dist_au, 4),
-                    'dist_km': round(dist_au * 149597870.7),
-                    'speed_km_s': round(speed_km_s, 2) if speed_km_s else None,
-                    'source': 'NASA JPL Horizons',
-                }
-        return results if results else None
-    except Exception as e:
-        log.warning(f"voyager: {e}")
-        return None
-
-def _fetch_neo():
-    """Astéroïdes NEO du jour via NASA NeoWs API (curl)."""
-    try:
-        nasa_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-        today = _dt_utc.now(_tz_utc.utc).date().isoformat()
-        url = f"https://api.nasa.gov/neo/rest/v1/feed?start_date={today}&end_date={today}&api_key={nasa_key}"
-        raw = _curl_get(url, timeout=20)
-        if not raw:
-            return None
-        data = _safe_json_loads(raw, "neo")
-        if not isinstance(data, dict):
-            return None
-        neos = []
-        for date_key, objects in data.get('near_earth_objects', {}).items():
-            for obj in (objects or [])[:8]:
-                ca = (obj.get('close_approach_data') or [{}])[0]
-                dist_au = ca.get('miss_distance', {}).get('astronomical', '?')
-                dist_km = ca.get('miss_distance', {}).get('kilometers', '?')
-                vel = ca.get('relative_velocity', {}).get('kilometers_per_second', 0)
-                try:
-                    vel = round(float(vel), 2)
-                except (TypeError, ValueError):
-                    vel = 0
-                diam = obj.get('estimated_diameter', {}).get('meters', {}) or {}
-                diam_min = round(float(diam.get('estimated_diameter_min', 0)))
-                diam_max = round(float(diam.get('estimated_diameter_max', 0)))
-                neos.append({
-                    'name': obj.get('name', ''),
-                    'dist_au': dist_au,
-                    'dist_km': dist_km,
-                    'vel_km_s': vel,
-                    'diam_min': diam_min,
-                    'diam_max': diam_max,
-                    'hazardous': obj.get('is_potentially_hazardous_asteroid', False),
-                    'date': ca.get('close_approach_date', today),
-                })
-        neos.sort(key=lambda x: (float(x['dist_au']) if x['dist_au'] != '?' else 999))
-        return neos
-    except Exception as e:
-        log.warning(f"neo: {e}")
-        return None
-
-def _fetch_solar_wind():
-    """Vent solaire NOAA DSCOVR temps réel (curl)."""
-    try:
-        url = "https://services.swpc.noaa.gov/products/solar-wind/plasma-7-day.json"
-        raw = _curl_get(url, timeout=15)
-        if not raw:
-            return None
-        data = _safe_json_loads(raw, "solar_wind")
-        if not isinstance(data, list) or len(data) < 2:
-            return None
-        latest = data[-1]
-        return {
-            'timestamp': latest[0],
-            'density': latest[1],
-            'speed': latest[2],
-            'temperature': latest[3],
-            'source': 'NOAA DSCOVR',
-        }
-    except Exception as e:
-        log.warning(f"solar_wind: {e}")
-        return None
-
-def _fetch_solar_alerts():
-    """Alertes éruptions solaires et événements — NOAA SWPC (curl)."""
-    try:
-        # Alertes texte + derniers flares X-ray
-        out = {'alerts': [], 'flares': [], 'source': 'NOAA SWPC'}
-        raw = _curl_get('https://services.swpc.noaa.gov/json/alerts.json', timeout=12)
-        if raw:
-            data = _safe_json_loads(raw, "solar_alerts")
-            if isinstance(data, list):
-                out['alerts'] = [a for a in data[-10:] if isinstance(a, dict)]
-            elif isinstance(data, dict) and 'alerts' in data:
-                out['alerts'] = data['alerts'][-10:]
-        raw2 = _curl_get('https://services.swpc.noaa.gov/json/xray-flares-latest.json', timeout=10)
-        if raw2:
-            data2 = _safe_json_loads(raw2, "solar_alerts_xray")
-            if isinstance(data2, list):
-                out['flares'] = data2[-5:]
-            elif isinstance(data2, dict):
-                fl = data2.get('flares', data2.get('xray_flares', [])) or []
-                if isinstance(fl, list):
-                    out['flares'] = fl[-5:]
-        return out if (out['alerts'] or out['flares']) else None
-    except Exception as e:
-        log.warning(f"solar_alerts: {e}")
-        return None
-
-def _fetch_mars_rover():
-    """Photos Mars Rovers (Curiosity / Perseverance) du jour — NASA API (curl)."""
-    try:
-        nasa_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-        photos = []
-        for rover in ['curiosity', 'perseverance']:
-            try:
-                url = f"https://api.nasa.gov/mars-photos/api/v1/rovers/{rover}/latest_photos?api_key={nasa_key}&page=1"
-                raw = _curl_get(url, timeout=20)
-                if not raw:
-                    continue
-                data = _safe_json_loads(raw, "mars_rover")
-                if not isinstance(data, dict):
-                    continue
-                for p in (data.get('latest_photos') or [])[:3]:
-                    photos.append({
-                        'rover': rover.capitalize(),
-                        'sol': p.get('sol'),
-                        'date': p.get('earth_date'),
-                        'camera': (p.get('camera') or {}).get('full_name', ''),
-                        'img_url': p.get('img_src', ''),
-                    })
-            except Exception:
-                continue
-        return photos if photos else None
-    except Exception as e:
-        log.warning(f"mars_rover: {e}")
-        return None
-
-def _fetch_apod_hd():
-    """APOD HD — image du jour NASA (curl)."""
-    try:
-        nasa_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-        url = f"https://api.nasa.gov/planetary/apod?api_key={nasa_key}&hd=True"
-        raw = _curl_get(url, timeout=15)
-        if not raw:
-            return None
-        data = _safe_json_loads(raw, "apod_hd")
-        if not isinstance(data, dict):
-            return None
-        img_url = data.get('hdurl') or data.get('url', '')
-        if not img_url or not str(img_url).startswith('http'):
-            return None
-        hd_path = f'{STATION}/telescope_live/apod_hd.jpg'
-        subprocess.run(['curl', '-s', '-L', '--max-time', '30', '-o', hd_path, img_url], timeout=35, capture_output=True)
-        if Path(hd_path).exists():
-            return {
-                'title': data.get('title', ''),
-                'date': data.get('date', ''),
-                'explanation': (data.get('explanation') or '')[:300],
-                'url': img_url,
-                'hd_path': hd_path,
-            }
-        return {'title': data.get('title', ''), 'date': data.get('date', ''), 'url': img_url}
-    except Exception as e:
-        log.warning(f"apod_hd: {e}")
-        return None
+# PASS 27.11 (2026-05-09) — 6 fetchers externes (Voyager/NEO/SolarWind/SolarAlerts/
+# MarsRover/ApodHD) déplacés vers source de vérité unique app/services/external_feeds.py
+# (déjà présents là-bas depuis PASS 8 sous forme `fetch_*` sans underscore — doublon
+# mort éliminé en PASS 27.11, comme PASS 27.6 l'a fait pour _curl_*).
+# Re-exportés avec aliasing `as _fetch_*` pour préserver l'API monolithe historique
+# (aucun consommateur externe via `from station_web import _fetch_*` détecté à ce
+# jour, mais maintenu par défensive). feeds_bp utilise déjà directement les `fetch_*`
+# sans underscore depuis app.services.external_feeds (ligne 31 du blueprint).
+from app.services.external_feeds import (  # noqa: F401 (re-export aliasé)
+    fetch_voyager as _fetch_voyager,
+    fetch_neo as _fetch_neo,
+    fetch_solar_wind as _fetch_solar_wind,
+    fetch_solar_alerts as _fetch_solar_alerts,
+    fetch_mars_rover as _fetch_mars_rover,
+    fetch_apod_hd as _fetch_apod_hd,
+)
 
 # MIGRATED TO feeds_bp PASS 8 — /api/feeds/voyager → see app/blueprints/feeds/__init__.py (api_feeds_voyager)
 # MIGRATED TO feeds_bp PASS 8 — /api/feeds/neo → see app/blueprints/feeds/__init__.py (api_feeds_neo)
