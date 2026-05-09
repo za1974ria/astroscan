@@ -1304,185 +1304,20 @@ FETES_ISLAMIQUES = [
 # Helper _fetch_microobservatory_images extrait → app/services/microobservatory.py
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# PIPELINE NOCTURNE — HARVARD MICROOBSERVATORY · SÉLECTION TLEMCEN
-# Sélectionne 3 objets visibles ce soir, télécharge les vrais FITS Harvard,
-# convertit en JPG et stocke avec métadonnées de capture.
-# ══════════════════════════════════════════════════════════════════════════════
-
-_MO_DIR_URL  = "https://waps.cfa.harvard.edu/microobservatory/MOImageDirectory/ImageDirectory.php"
-_MO_DL_BASE  = "https://mo-www.cfa.harvard.edu/ImageDirectory/"   # URL réelle de téléchargement FITS
-
-# Correspondance préfixes MO → coordonnées + labels FR
-_MO_OBJECT_CATALOG = {
-    'Moon':         {'ra': None,   'dec': None,   'type': 'Satellite nat.', 'label': 'Lune',                 'body': 'moon'},
-    'Jupiter':      {'ra': None,   'dec': None,   'type': 'Planète',        'label': 'Jupiter',              'body': 'jupiter'},
-    'Pluto':        {'ra': None,   'dec': None,   'type': 'Planète naine',  'label': 'Pluton',               'body': 'pluto'},
-    'AndromedaGal': {'ra': 10.68,  'dec': 41.27,  'type': 'Galaxie',        'label': 'M31 — Andromède'},
-    'OrionNebula':  {'ra': 83.82,  'dec': -5.39,  'type': 'Nébuleuse',      'label': 'M42 — Orion'},
-    'OrionNebulaM': {'ra': 83.82,  'dec': -5.39,  'type': 'Nébuleuse',      'label': 'M42 — Orion'},
-    'Pleiades':     {'ra': 56.87,  'dec': 24.12,  'type': 'Amas ouvert',    'label': 'M45 — Pléiades'},
-    'HerculesClus': {'ra': 250.42, 'dec': 36.46,  'type': 'Amas glob.',     'label': 'M13 — Hercule'},
-    'RingNebulaM5': {'ra': 283.40, 'dec': 33.03,  'type': 'Nébuleuse plan.','label': 'M57 — Lyre'},
-    'DumbbellNebu': {'ra': 299.90, 'dec': 22.72,  'type': 'Nébuleuse plan.','label': 'M27 — Haltère'},
-    'M-81SpiralGa': {'ra': 148.89, 'dec': 69.07,  'type': 'Galaxie',        'label': 'M81 — Bode'},
-    'NGC3031M81':   {'ra': 148.89, 'dec': 69.07,  'type': 'Galaxie',        'label': 'M81 — Bode'},
-    'M-51Whirlpoo': {'ra': 202.47, 'dec': 47.20,  'type': 'Galaxie',        'label': 'M51 — Tourbillon'},
-    'CrabNebulaM1': {'ra': 83.63,  'dec': 22.01,  'type': 'Reste supernova','label': 'M1 — Crabe'},
-    'M-101SpiralG': {'ra': 210.80, 'dec': 54.35,  'type': 'Galaxie',        'label': 'M101 — Épinglier'},
-    'NGC5457M101':  {'ra': 210.80, 'dec': 54.35,  'type': 'Galaxie',        'label': 'NGC5457/M101'},
-    'LagoonNebula': {'ra': 270.92, 'dec': -24.38, 'type': 'Nébuleuse',      'label': 'M8 — Lagune'},
-    'EagleNebulaM': {'ra': 274.70, 'dec': -13.79, 'type': 'Nébuleuse',      'label': 'M16 — Aigle'},
-    'RosetteNebul': {'ra': 97.65,  'dec': 4.93,   'type': 'Nébuleuse',      'label': 'Nébuleuse de la Rosette'},
-    'Quasar3C273':  {'ra': 187.28, 'dec': 2.05,   'type': 'Quasar',         'label': 'Quasar 3C 273'},
-    'M87':          {'ra': 187.71, 'dec': 12.39,  'type': 'Galaxie géante', 'label': 'M87 — Virgo'},
-    'SombreroGala': {'ra': 190.00, 'dec': -11.62, 'type': 'Galaxie',        'label': 'M104 — Sombrero'},
-    'SagittariusA': {'ra': 266.42, 'dec': -29.01, 'type': 'Noyau galactique','label': 'Sgr A* — Centre galactique'},
-    'MilkyWay':     {'ra': 266.42, 'dec': -29.01, 'type': 'Voie Lactée',   'label': 'Voie Lactée — Cœur galactique'},
-    'OpenClusterM': {'ra': 92.27,  'dec': 24.33,  'type': 'Amas ouvert',   'label': 'Amas ouvert — Gémeaux'},
-    'NGC891':       {'ra': 35.64,  'dec': 42.35,  'type': 'Galaxie',        'label': 'NGC 891'},
-    'CentaurusA':   {'ra': 201.36, 'dec': -43.02, 'type': 'Galaxie radio',  'label': 'Cen A / NGC 5128'},
-    'Messier15':    {'ra': 322.49, 'dec': 12.17,  'type': 'Amas glob.',     'label': 'M15 — Pégase'},
-    'BetaLyr':      {'ra': 282.52, 'dec': 33.36,  'type': 'Étoile double',  'label': 'Beta Lyrae'},
-    'CygnusX-1':    {'ra': 299.59, 'dec': 35.20,  'type': 'Trou noir binaire','label': 'Cygnus X-1'},
-    'Algol':        {'ra': 47.04,  'dec': 40.96,  'type': 'Étoile variable','label': 'Algol (β Persei)'},
-    'DeltaCephei':  {'ra': 337.29, 'dec': 58.42,  'type': 'Céphéide',       'label': 'Delta Cephei'},
-    'M-82Irregula': {'ra': 148.97, 'dec': 69.68,  'type': 'Galaxie irr.',   'label': 'M82 — Cigare'},
-    'M82Irregular': {'ra': 148.97, 'dec': 69.68,  'type': 'Galaxie irr.',   'label': 'M82 — Cigare'},
-    'NGC4579M58':   {'ra': 189.43, 'dec': 11.82,  'type': 'Galaxie',        'label': 'M58 — Virgo'},
-    'NGC3351M95':   {'ra': 160.99, 'dec': 11.70,  'type': 'Galaxie',        'label': 'M95 — Leo'},
-    'BeehiveClust': {'ra': 130.10, 'dec': 19.67,  'type': 'Amas ouvert',   'label': 'M44 — La Ruche'},
-    'M-82Irregula': {'ra': 148.97, 'dec': 69.68,  'type': 'Galaxie irr.',   'label': 'M82 — Cigare'},
-}
-
-
-def _mo_parse_filename(name):
-    """Parse 'ObjectName260422221047.FITS' → dict avec prefix, captured_at, url."""
-    stem = os.path.splitext(name)[0]
-    m = re.search(r'^(.+?)(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$', stem)
-    if not m:
-        return None
-    prefix = m.group(1)
-    yy, mo, dd, hh, mi, ss = m.groups()[1:]
-    try:
-        dt = datetime(2000 + int(yy), int(mo), int(dd), int(hh), int(mi), int(ss), tzinfo=timezone.utc)
-    except ValueError:
-        return None
-    return {'prefix': prefix, 'filename': name, 'captured_at': dt, 'url': _MO_DL_BASE + name}
-
-
-def _mo_fetch_catalog_today():
-    """
-    Lit le répertoire MicroObservatory et retourne {prefix → [entries]}
-    pour les 30 derniers jours. Cache 1h.
-    """
-    from datetime import timedelta
-
-    cached = cache_get('mo_catalog_today', 3600)
-    if cached is not None:
-        return cached
-
-    html = _curl_get(_MO_DIR_URL, timeout=25) or ""
-    now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(days=30)
-
-    catalog = {}
-    for name in re.findall(r'\b([\w\-]+\d{12}\.FITS)\b', html, re.I):
-        parsed = _mo_parse_filename(name)
-        if not parsed or parsed['captured_at'] < cutoff:
-            continue
-        prefix = parsed['prefix']
-        if prefix not in catalog:
-            catalog[prefix] = []
-        catalog[prefix].append(parsed)
-
-    for k in catalog:
-        catalog[k].sort(key=lambda x: x['captured_at'], reverse=True)
-
-    cache_set('mo_catalog_today', catalog)
-    log.info('mo_fetch_catalog_today: %d préfixes d\'objets trouvés', len(catalog))
-    return catalog
-
-
-def _mo_visible_tonight():
-    """
-    Retourne les objets MO visibles depuis Tlemcen à 23h00 UTC (nuit locale),
-    triés par altitude décroissante.
-    """
-    from astropy.coordinates import EarthLocation, AltAz, SkyCoord, get_body
-    from astropy.time import Time
-    import astropy.units as u
-
-    location = EarthLocation(lat=34.87*u.deg, lon=1.32*u.deg, height=816*u.m)
-    # 23:00 UTC = 00:00 locale Tlemcen (UTC+1)
-    t_obs = Time(int(Time.now().jd) + 23/24.0, format='jd')
-    frame = AltAz(obstime=t_obs, location=location)
-
-    visible = []
-    seen_labels = set()
-
-    for prefix, info in _MO_OBJECT_CATALOG.items():
-        try:
-            if info.get('body'):
-                if info['body'] == 'sun':
-                    continue
-                coord = get_body(info['body'], t_obs, location)
-                altaz = coord.transform_to(frame)
-                alt = float(altaz.alt.deg)
-            elif info.get('ra') is not None:
-                coord = SkyCoord(ra=info['ra']*u.deg, dec=info['dec']*u.deg, frame='icrs')
-                altaz = coord.transform_to(frame)
-                alt = float(altaz.alt.deg)
-            else:
-                continue
-        except Exception:
-            continue
-
-        label = info['label']
-        if alt > 20 and label not in seen_labels:
-            seen_labels.add(label)
-            visible.append({'prefix': prefix, 'alt': round(alt, 1), **info})
-
-    visible.sort(key=lambda x: -x['alt'])
-    return visible
-
-
-def _mo_fits_to_jpg(fits_bytes, save_path):
-    """Convertit des octets FITS en JPG avec étirement ZScale + colormap hot."""
-    import io, numpy as np
-    from astropy.io import fits as _fits
-    from astropy.visualization import ZScaleInterval
-    from PIL import Image
-
-    with _fits.open(io.BytesIO(fits_bytes)) as hdul:
-        data = hdul[0].data
-        header = hdul[0].header
-        captured_hdr = header.get('DATE-OBS', header.get('DATE', ''))
-
-    if data is None:
-        raise ValueError('FITS data vide')
-
-    while hasattr(data, 'ndim') and data.ndim > 2:
-        data = data[0]
-    arr = np.nan_to_num(np.asarray(data, dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
-
-    interval = ZScaleInterval()
-    try:
-        vmin, vmax = interval.get_limits(arr)
-    except Exception:
-        vmin = float(np.percentile(arr, 2))
-        vmax = float(np.percentile(arr, 98))
-    if vmax <= vmin:
-        vmax = vmin + 1.0
-
-    norm = np.clip((arr - vmin) / (vmax - vmin), 0.0, 1.0)
-    r = np.clip(norm * 255,       0, 255).astype(np.uint8)
-    g = np.clip(norm * 155,       0, 255).astype(np.uint8)
-    b = np.clip(norm * 55  - 10,  0, 255).astype(np.uint8)
-
-    pil = Image.fromarray(np.stack([r, g, b], axis=2), 'RGB').resize((600, 600), Image.LANCZOS)
-    pil.save(save_path, 'JPEG', quality=92, optimize=True)
-    return captured_hdr
+# PASS 27.9 (2026-05-09) — Microobservatory pipeline (3 constantes + 4 helpers)
+# déplacé vers source de vérité unique app/services/microobservatory.py.
+# Re-exporté ici pour préserver le lazy import de telescope_helpers.py:35-41
+# (`from station_web import _mo_fetch_catalog_today, _mo_fits_to_jpg,
+# _mo_visible_tonight, cache_set, log` — pattern PASS 20.4 cycle-safe).
+from app.services.microobservatory import (  # noqa: F401 (re-export)
+    _MO_DIR_URL,
+    _MO_DL_BASE,
+    _MO_OBJECT_CATALOG,
+    _mo_parse_filename,
+    _mo_fetch_catalog_today,
+    _mo_visible_tonight,
+    _mo_fits_to_jpg,
+)
 
 
 # PASS 20.4 (2026-05-08) — Telescope helpers extracted to app/services/telescope_helpers.py
