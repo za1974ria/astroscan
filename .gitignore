@@ -60,3 +60,25 @@ RESUME_REPRISE_*.md
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# === CLEANUP 2026-05-09 — Patterns anti-rechute ===
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Backups templates (suppression directe via Git)
+templates/*.bak
+templates/*.bak_*
+templates/*.bak.*
+templates/*_backup.html
+
+# Archives logs
+logs/archive_*/
+
+# Fichiers temporaires divers
+*.tmp
+*.swp
+*.swo
+.DS_Store
