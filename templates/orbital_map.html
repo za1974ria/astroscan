@@ -3001,14 +3001,14 @@ handler.setInputAction(function (movement) {
       <button type="button" class="om-layer-option active" data-layer="osm">
         🌍 OpenStreetMap <small>(default)</small>
       </button>
-      <button type="button" class="om-layer-option" data-layer="esri">
-        🌐 ESRI World Imagery <small>(satellite haute résolution)</small>
+      <button type="button" class="om-layer-option" data-layer="usgs-imagery">
+        🛰️ USGS Imagery <small>(satellite USA+monde gratuit)</small>
       </button>
-      <button type="button" class="om-layer-option" data-layer="esri-streets">
-        🗺️ ESRI World Streets <small>(routes détaillées)</small>
+      <button type="button" class="om-layer-option" data-layer="opentopomap">
+        🏔️ OpenTopoMap <small>(relief topographique mondial)</small>
       </button>
-      <button type="button" class="om-layer-option" data-layer="esri-topo">
-        ⛰️ ESRI Topographic <small>(reliefs et altitudes)</small>
+      <button type="button" class="om-layer-option" data-layer="cartodb-positron">
+        ☁️ CartoDB Positron <small>(carte claire propre)</small>
       </button>
       <button type="button" class="om-layer-option" data-layer="nasa-bluemarble">
         🌌 NASA Blue Marble <small>(Terre depuis l'espace)</small>
@@ -3216,17 +3216,23 @@ handler.setInputAction(function (movement) {
             provider = new Cesium.OpenStreetMapImageryProvider({
               url: 'https://tile.openstreetmap.org/'
             });
-          } else if (layer === 'esri') {
-            provider = new Cesium.ArcGisMapServerImageryProvider({
-              url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+          } else if (layer === 'usgs-imagery') {
+            provider = new Cesium.UrlTemplateImageryProvider({
+              url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',
+              maximumLevel: 16,
+              credit: 'USGS · The National Map'
             });
-          } else if (layer === 'esri-streets') {
-            provider = new Cesium.ArcGisMapServerImageryProvider({
-              url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer'
+          } else if (layer === 'opentopomap') {
+            provider = new Cesium.UrlTemplateImageryProvider({
+              url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
+              maximumLevel: 17,
+              credit: 'OpenTopoMap (CC-BY-SA) · OpenStreetMap'
             });
-          } else if (layer === 'esri-topo') {
-            provider = new Cesium.ArcGisMapServerImageryProvider({
-              url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer'
+          } else if (layer === 'cartodb-positron') {
+            provider = new Cesium.UrlTemplateImageryProvider({
+              url: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+              maximumLevel: 18,
+              credit: 'CartoDB Positron · OpenStreetMap'
             });
           } else if (layer === 'nasa-bluemarble') {
             provider = new Cesium.UrlTemplateImageryProvider({
