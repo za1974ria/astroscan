@@ -8,7 +8,7 @@ Aucune dépendance Flask. Testable isolément.
 import json
 import os
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from services.circuit_breaker import CB_NASA
 
@@ -74,8 +74,8 @@ def _fetch_nasa_neo():
     """NASA NEO feed (7 jours) normalisé — protégé par CB_NASA."""
     def _raw():
         key = get_api_key()
-        start_date = datetime.utcnow().strftime("%Y-%m-%d")
-        end_date = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d")
+        start_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        end_date = (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%d")
         url = (
             f"https://api.nasa.gov/neo/rest/v1/feed?"
             f"start_date={start_date}&end_date={end_date}&api_key={key}"
@@ -118,8 +118,8 @@ def _fetch_nasa_solar():
     """NASA DONKI (space weather events) — protégé par CB_NASA."""
     def _raw():
         key = get_api_key()
-        start_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
-        end_date = datetime.utcnow().strftime("%Y-%m-%d")
+        start_date = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+        end_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         url = (
             f"https://api.nasa.gov/DONKI/notifications?"
             f"startDate={start_date}&endDate={end_date}&type=all&api_key={key}"

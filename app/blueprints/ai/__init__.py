@@ -378,7 +378,7 @@ def api_telescope_live():
     """APOD du jour NASA : titre + description traduits FR via Gemini, analyse Claude."""
     try:
         meta_path = os.path.join(STATION, "telescope_live", "apod_meta.json")
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         if os.path.isfile(meta_path):
             try:
                 with open(meta_path, encoding="utf-8") as f:

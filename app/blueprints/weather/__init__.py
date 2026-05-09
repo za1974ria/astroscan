@@ -195,7 +195,7 @@ def api_weather_alias():
         _internal_weather_fallback, compute_reliability, compute_risk,
     )
     try:
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         url = (
             "https://api.open-meteo.com/v1/forecast"
@@ -268,7 +268,7 @@ def api_weather_alias():
             "risque_pro": compute_risk(fallback),
             "source": "Open-Meteo + ECMWF",
             "mode": "multi-source validated",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "valid": validate_data(fallback),
             "fallback": True,
         })
@@ -470,7 +470,7 @@ def api_v1_solar():
     from modules.space_alerts import get_solar_weather
     data = get_cached("solar_weather", 300, get_solar_weather)
     return jsonify({
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "solar_wind": data or {},
         "source": "NOAA SWPC",
         "credit": "AstroScan-Chohra · ORBITAL-CHOHRA",
@@ -493,7 +493,7 @@ def meteo_reel():
             "humidity": current["humidity"],
             "wind": current["windspeedKmph"],
             "desc": current["weatherDesc"][0]["value"],
-            "time": datetime.utcnow().isoformat(),
+            "time": datetime.now(timezone.utc).isoformat(),
             "ok": True,
         })
     except Exception as e:

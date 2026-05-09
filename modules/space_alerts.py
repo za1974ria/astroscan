@@ -9,8 +9,8 @@ def _curl(url, timeout=10):
 
 def get_asteroid_alerts():
     try:
-        from datetime import datetime
-        today = datetime.utcnow().strftime('%Y-%m-%d')
+        from datetime import datetime, timezone
+        today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
         import os
         key = os.environ.get('NASA_API_KEY','DEMO_KEY').strip()
         raw = _curl(f'https://api.nasa.gov/neo/rest/v1/feed?start_date={today}&end_date={today}&api_key={key}', timeout=15)

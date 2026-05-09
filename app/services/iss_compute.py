@@ -81,7 +81,7 @@ def compute_iss_passes_for_observer(lat_deg: float, lon_deg: float) -> List[dict
     obs_lat = math.radians(LAT_DEG)
     obs_lon = math.radians(LON_DEG)
 
-    now = _dt.datetime.utcnow()
+    now = _dt.datetime.now(_dt.timezone.utc)
     passes: List[dict] = []
     in_pass = False
     pass_data: dict = {}
@@ -166,7 +166,7 @@ def compute_iss_ground_track() -> dict:
             return {"track": []}
         sat = Satrec.twoline2rv(l1, l2)
         track = []
-        now = _dt.datetime.utcnow()
+        now = _dt.datetime.now(_dt.timezone.utc)
         for sec in range(0, 5400, 90):
             t = now + _dt.timedelta(seconds=sec)
             jd, fr = jday(t.year, t.month, t.day, t.hour, t.minute, t.second + t.microsecond / 1e6)

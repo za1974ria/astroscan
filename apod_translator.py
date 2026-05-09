@@ -3,7 +3,7 @@ apod_translator.py — Traducteur NASA APOD FR via Claude API
 """
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 import requests
 import anthropic
 
@@ -91,7 +91,7 @@ def build_or_refresh_current_apod(apod_meta=None):
     data = apod_meta if isinstance(apod_meta, dict) else fetch_apod()
     title_en = data.get("title", "") or ""
     explanation_en = data.get("explanation", "") or ""
-    day = (data.get("date") or datetime.utcnow().strftime("%Y-%m-%d")).strip()
+    day = (data.get("date") or datetime.now(timezone.utc).strftime("%Y-%m-%d")).strip()
 
     title_fr = title_en
     explanation_fr = explanation_en

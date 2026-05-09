@@ -157,7 +157,7 @@ def save_weather_archive_json(data):
         "pressure": int(round(float(data.get("pressure", 1013) or 1013))),
         "condition": str(data.get("condition") or "Stable"),
         "source": "open-meteo",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     try:
         with open(path, "w", encoding="utf-8") as fh:

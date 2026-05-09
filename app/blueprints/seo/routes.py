@@ -2,7 +2,7 @@
 
 Extrait de station_web.py. Aucune dépendance sur les globals du monolithe.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Blueprint, Response
 
 seo_bp = Blueprint('seo', __name__)
@@ -50,7 +50,7 @@ def sitemap_xml():
 
     PASS 30 — multilingual: each URL declares xhtml:link rel=alternate
     hreflang fr/en + x-default for international SEO."""
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     URLS = [
         ("https://astroscan.space/",               "1.0", "daily"),
         ("https://astroscan.space/portail",         "1.0", "daily"),

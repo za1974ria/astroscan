@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, request, jsonify, current_app
 
@@ -43,7 +43,7 @@ bp = Blueprint("feeds", __name__)
 def api_feeds_voyager():
     data = get_cached("voyager", 3600, fetch_voyager)
     if not data:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         days_v1 = (now - datetime(1977, 9, 5)).days
         days_v2 = (now - datetime(1977, 8, 20)).days
         v1_au = 17.0 + days_v1 * 0.000985
@@ -165,7 +165,7 @@ def api_feeds_all():
         "mars": get_cached("mars", 7200, fetch_mars_rover),
         "apod_hd": get_cached("apod_hd", 3600, fetch_apod_hd),
         "station": "ORBITAL-CHOHRA · Tlemcen, Algérie",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 
 
@@ -212,8 +212,8 @@ def api_neo():
     import urllib.request
     try:
         nasa_key = os.environ.get("NASA_API_KEY", "DEMO_KEY")
-        today = datetime.utcnow().strftime("%Y-%m-%d")
-        tomorrow = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        tomorrow = (datetime.now(timezone.utc) + timedelta(days=7)).strftime("%Y-%m-%d")
         url = (
             f"https://api.nasa.gov/neo/rest/v1/feed?"
             f"start_date={today}&end_date={tomorrow}&api_key={nasa_key}"
@@ -259,7 +259,7 @@ def api_alerts_all():
     return jsonify({
         "asteroids": get_cached("asteroids", 3600, get_asteroid_alerts),
         "solar": get_cached("solar_weather", 300, get_solar_weather),
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 
 
@@ -331,7 +331,7 @@ def api_live_all():
         "spacex": get_cached("spacex", 3600, get_spacex_launches),
         "news": get_cached("space_news", 1800, get_space_news),
         "mars_weather": get_cached("mars_weather", 3600, get_mars_weather),
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 
 

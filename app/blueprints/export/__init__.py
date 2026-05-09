@@ -13,7 +13,7 @@ import csv
 import io
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, jsonify
 
 bp = Blueprint("export", __name__, url_prefix="/api/export")
@@ -29,7 +29,7 @@ def _meta(description: str, **kwargs) -> dict:
     return {
         "source": "AstroScan-Chohra",
         "url": "https://astroscan.space",
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
         "license": "CC BY 4.0 — Scientific and educational use",
         "description": description,
         **kwargs,
@@ -169,7 +169,7 @@ def ephemerides_json():
                 "source": "AstroScan-Chohra",
                 "location": "Tlemcen, Algeria",
                 "coordinates": {"lat": 34.8753, "lon": 1.3167, "alt_m": 800},
-                "generated_at": datetime.utcnow().isoformat() + "Z",
+                "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
                 "license": "CC BY 4.0 — Scientific use",
                 "url": "https://astroscan.space/api/export/ephemerides.json",
                 "computation": "astropy 7.2 + SGP4",

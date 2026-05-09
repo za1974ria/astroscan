@@ -111,7 +111,7 @@ def contact_form():
         if not nom or not message:
             return jsonify({"ok": False, "error": "Nom et message requis."}), 400
         ip = _client_ip_from_request(request)
-        ts = _dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         log.info(
             "CONTACT_FORM | ts=%s | ip=%s | nom=%r | organisme=%r | message=%r",
             ts, ip, nom, organisme, message[:200],

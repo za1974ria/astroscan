@@ -6,7 +6,7 @@ Retourne des données structurées pour la page /ce_soir.
 Ici on fournit un jeu de données statique mais déjà formaté
 comme attendu par le JavaScript de ce_soir.html.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def get_tonight_data():
@@ -30,7 +30,7 @@ def get_tonight_data():
             "alt": 45,
             "direction": "S‑SE",
         },
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
     }
 
     # Quelques objets du ciel profond (exemple)

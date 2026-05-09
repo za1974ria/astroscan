@@ -1679,7 +1679,7 @@ from app.services.telescope_helpers import _telescope_nightly_tlemcen  # noqa: E
 #   APOD:         https://api.nasa.gov/planetary/apod
 # ══════════════════════════════════════════════════════════════
 
-from datetime import datetime as _dt_utc
+from datetime import datetime as _dt_utc, timezone as _tz_utc
 
 
 # MIGRATED TO api_bp PASS 11 — /api/v1/asteroids → see app/blueprints/api/__init__.py (api_v1_asteroids)
@@ -1692,7 +1692,7 @@ from datetime import datetime as _dt_utc
 def _fetch_voyager():
     """Position Voyager 1 & 2 via NASA JPL Horizons (curl)."""
     try:
-        now = _dt_utc.utcnow()
+        now = _dt_utc.now(_tz_utc.utc)
         y, mo, d = now.year, now.month, now.day
         results = {}
         for name, target in [('VOYAGER_1', '-31'), ('VOYAGER_2', '-32')]:
@@ -1731,7 +1731,7 @@ def _fetch_neo():
     """Astéroïdes NEO du jour via NASA NeoWs API (curl)."""
     try:
         nasa_key = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-        today = _dt_utc.utcnow().date().isoformat()
+        today = _dt_utc.now(_tz_utc.utc).date().isoformat()
         url = f"https://api.nasa.gov/neo/rest/v1/feed?start_date={today}&end_date={today}&api_key={nasa_key}"
         raw = _curl_get(url, timeout=20)
         if not raw:
@@ -2415,7 +2415,7 @@ def _fetch_swpc_alerts():
         data = _safe_json_loads(raw, 'swpc_alerts')
         if not isinstance(data, list):
             return []
-        cutoff = _dt.datetime.utcnow() - _dt.timedelta(hours=24)
+        cutoff = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(hours=24)
         alerts = []
         for item in data:
             if not isinstance(item, dict):
@@ -2427,7 +2427,7 @@ def _fetch_swpc_alerts():
                 try:
                     issued_dt = _dt.datetime.strptime(issued_str[:16], '%Y-%m-%dT%H:%M')
                 except Exception:
-                    issued_dt = _dt.datetime.utcnow()
+                    issued_dt = _dt.datetime.now(_dt.timezone.utc)
             if issued_dt < cutoff:
                 continue
             msg = (item.get('message') or item.get('msg') or '').strip()
@@ -2594,10 +2594,10 @@ def _download_nasa_apod():
             if not isinstance(data, dict):
                 return
             if data.get("url") and data.get("media_type") == "image":
-                from datetime import datetime as _dt
+                from datetime import datetime as _dt, timezone as _tz
                 img_url = data["url"]
                 ext = ".jpg" if ".jpg" in img_url.lower() else ".png"
-                safe_date = (data.get("date") or _dt.utcnow().strftime("%Y-%m-%d")).replace("-", "")
+                safe_date = (data.get("date") or _dt.now(_tz.utc).strftime("%Y-%m-%d")).replace("-", "")
                 filename = f"apod_{safe_date}{ext}"
                 path = os.path.join(RAW_IMAGES, filename)
                 urllib.request.urlretrieve(img_url, path)

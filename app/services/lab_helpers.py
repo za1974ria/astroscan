@@ -48,7 +48,7 @@ def _sync_skyview_to_lab() -> None:
     """Copie les images du dossier SkyView vers RAW_IMAGES et crée les métadonnées lab."""
     import json
     import shutil
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     # Lazy imports pour éviter le cycle station_web ↔ lab_helpers au load.
     # Au moment de l'APPEL (typiquement par un thread après le load complet),
@@ -69,7 +69,7 @@ def _sync_skyview_to_lab() -> None:
                     "source": "SKYVIEW",
                     "telescope": "SkyView Observatory",
                     "filename": file,
-                    "date": datetime.utcnow().isoformat() + "Z",
+                    "date": datetime.now(timezone.utc).isoformat() + "Z",
                 }
                 meta_path = os.path.join(METADATA_DB, file + ".json")
                 with open(meta_path, "w", encoding="utf-8") as f:

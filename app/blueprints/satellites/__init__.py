@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import math
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, request, jsonify
 
@@ -173,7 +173,7 @@ def api_satellite_passes():
                 obs_ecef[2],
             )
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for sat in _TLE_FOR_PASSES:
             rec = Satrec.twoline2rv(sat["tle1"], sat["tle2"])
             next_pass_dt = None

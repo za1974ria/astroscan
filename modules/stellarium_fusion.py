@@ -5,7 +5,7 @@ LAT, LON, ALT = "34.87", "1.32", 816
 def get_observer():
     obs = ephem.Observer()
     obs.lat = LAT; obs.lon = LON; obs.elevation = ALT
-    obs.date = datetime.datetime.utcnow()
+    obs.date = datetime.datetime.now(datetime.timezone.utc)
     obs.pressure = 0  # pas de réfraction atmosphérique
     return obs
 
@@ -78,7 +78,7 @@ def get_stellarium_data():
         "mode": "LIVE_SKY" if obs_objects else "STANDARD",
         "source": "ephem — calcul astronomique réel",
         "location": "Tlemcen 34.87°N 1.32°E",
-        "computed_at": datetime.datetime.utcnow().isoformat(),
+        "computed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "fresh": True,
         "objects": obs_objects,
         "count": len(obs_objects),

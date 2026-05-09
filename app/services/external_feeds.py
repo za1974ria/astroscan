@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 def fetch_voyager():
     """Position Voyager 1 & 2 via NASA JPL Horizons."""
     try:
-        now = _dt.datetime.utcnow()
+        now = _dt.datetime.now(_dt.timezone.utc)
         y, mo, d = now.year, now.month, now.day
         results = {}
         for name, target in [("VOYAGER_1", "-31"), ("VOYAGER_2", "-32")]:
@@ -68,7 +68,7 @@ def fetch_neo():
     """Astéroïdes NEO du jour via NASA NeoWs API."""
     try:
         nasa_key = os.environ.get("NASA_API_KEY", "DEMO_KEY")
-        today = _dt.datetime.utcnow().date().isoformat()
+        today = _dt.datetime.now(_dt.timezone.utc).date().isoformat()
         url = (
             f"https://api.nasa.gov/neo/rest/v1/feed?"
             f"start_date={today}&end_date={today}&api_key={nasa_key}"
@@ -242,7 +242,7 @@ def fetch_swpc_alerts():
         data = _safe_json_loads(raw, "swpc_alerts")
         if not isinstance(data, list):
             return []
-        cutoff = _dt.datetime.utcnow() - _dt.timedelta(hours=24)
+        cutoff = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(hours=24)
         alerts = []
         for item in data:
             if not isinstance(item, dict):
@@ -254,7 +254,7 @@ def fetch_swpc_alerts():
                 try:
                     issued_dt = _dt.datetime.strptime(issued_str[:16], "%Y-%m-%dT%H:%M")
                 except Exception:
-                    issued_dt = _dt.datetime.utcnow()
+                    issued_dt = _dt.datetime.now(_dt.timezone.utc)
             if issued_dt < cutoff:
                 continue
             msg = (item.get("message") or item.get("msg") or "").strip()

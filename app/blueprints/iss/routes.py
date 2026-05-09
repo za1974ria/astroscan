@@ -116,7 +116,7 @@ def api_iss_orbit():
             return _jsonify({"ok": False, "message": "TLE ISS indisponible", "points": [], "count": 0})
 
         sat = Satrec.twoline2rv(tle1, tle2)
-        now = _dt.datetime.utcnow()
+        now = _dt.datetime.now(_dt.timezone.utc)
         points = []
 
         for sec in range(0, 90 * 60 + 1, 60):

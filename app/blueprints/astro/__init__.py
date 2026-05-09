@@ -10,7 +10,7 @@ Différé : /api/astro/explain (deps _translate_to_french/_call_claude → PASS 
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, render_template, request, jsonify
 
@@ -38,7 +38,7 @@ def api_moon():
 def api_v1_tonight():
     from modules.observation_planner import get_tonight_objects
     return jsonify({
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "location": "Tlemcen, Algérie (~34,9°N, 1,3°E)",
         "data": get_cached("tonight", 3600, get_tonight_objects),
         "credit": "AstroScan-Chohra · ORBITAL-CHOHRA",
@@ -72,7 +72,7 @@ def _compute_ephemerides_tlemcen_astropy():
     import astropy.units as u
 
     location = EarthLocation(lat=34.8731 * u.deg, lon=1.3154 * u.deg, height=800 * u.m)
-    start_dt = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    start_dt = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     step_min = 5
     timeline = [start_dt + timedelta(minutes=m) for m in range(0, 24 * 60 + step_min, step_min)]
     times = Time(timeline, scale="utc")

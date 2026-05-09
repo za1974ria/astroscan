@@ -16,7 +16,7 @@ import logging
 import os
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import (
     Blueprint, render_template, request, jsonify, send_from_directory,
@@ -71,7 +71,7 @@ def lab_upload():
         meta = {
             "source": "UPLOAD",
             "filename": filename,
-            "date": datetime.utcnow().isoformat() + "Z",
+            "date": datetime.now(timezone.utc).isoformat() + "Z",
             "telescope": "unknown",
             "object_name": "unknown",
             "instrument": "unknown",

@@ -35,7 +35,7 @@ def _utc_plus1(dt):
 
 def _midnight_steps():
     """Renvoie (dt_steps, times, frame) pour le jour courant (5 min, minuit → minuit)."""
-    now_utc = _dt.datetime.utcnow()
+    now_utc = _dt.datetime.now(_dt.timezone.utc)
     today = now_utc.date()
     midnight = _dt.datetime(today.year, today.month, today.day, 0, 0, 0)
     dt_steps = [midnight + _dt.timedelta(minutes=5 * i) for i in range(289)]
@@ -61,7 +61,7 @@ def get_sun_ephemeris():
     dt_steps, times, frame = _midnight_steps()
     sun_alts = get_sun(times).transform_to(frame).alt.deg
 
-    now_utc = _dt.datetime.utcnow()
+    now_utc = _dt.datetime.now(_dt.timezone.utc)
     now_time = Time(now_utc)
     now_frame = AltAz(obstime=now_time, location=TLEMCEN)
     sun_now = get_sun(now_time).transform_to(now_frame)
@@ -79,7 +79,7 @@ def get_moon_ephemeris():
     dt_steps, times, frame = _midnight_steps()
     moon_alts = get_body("moon", times, TLEMCEN).transform_to(frame).alt.deg
 
-    now_utc = _dt.datetime.utcnow()
+    now_utc = _dt.datetime.now(_dt.timezone.utc)
     now_time = Time(now_utc)
     now_frame = AltAz(obstime=now_time, location=TLEMCEN)
     moon_now = get_body("moon", now_time).transform_to(now_frame)
@@ -121,7 +121,7 @@ def get_full_ephemeris():
 
     Retourne le même dict que l'ancienne logique inline de api_ephemerides_tlemcen().
     """
-    now_utc = _dt.datetime.utcnow()
+    now_utc = _dt.datetime.now(_dt.timezone.utc)
     today = now_utc.date()
 
     # Étapes temporelles : minuit → minuit, pas 5 min

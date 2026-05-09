@@ -132,13 +132,13 @@ def api_admin_circuit_breakers():
 @bp.route("/api/version")
 def api_version():
     """Version metadata for AstroScan."""
-    from datetime import datetime
+    from datetime import datetime, timezone
     return jsonify({
         "ok": True,
         "name": "AstroScan",
         "version": "1.0.0",
         "status": "production-ready",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 
 
@@ -297,10 +297,10 @@ def api_catalog_object(obj_id):
 @bp.route("/api/v1/catalog")
 def api_v1_catalog():
     from modules.catalog import search_catalog
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone as _tz
     q = request.args.get("q", "")
     return jsonify({
-        "timestamp": _dt.utcnow().isoformat(),
+        "timestamp": _dt.now(_tz.utc).isoformat(),
         "query": q,
         "results": search_catalog(q),
         "credit": "AstroScan-Chohra · ORBITAL-CHOHRA",
@@ -311,10 +311,10 @@ def api_v1_catalog():
 def api_v1_asteroids():
     from modules.space_alerts import get_asteroid_alerts
     from app.utils.cache import get_cached
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone as _tz
     data = get_cached("asteroids", 3600, get_asteroid_alerts)
     return jsonify({
-        "timestamp": _dt.utcnow().isoformat(),
+        "timestamp": _dt.now(_tz.utc).isoformat(),
         "total_today": data.get("total_today", 0) if data else 0,
         "hazardous": data.get("alerts", []) if data else [],
         "source": "NASA NeoWs",
@@ -325,7 +325,7 @@ def api_v1_asteroids():
 @bp.route("/api/v1/iss")
 def api_v1_iss():
     from modules.orbit_engine import get_iss_precise, get_iss_crew
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone as _tz
     data = get_iss_precise()
     if data.get("error"):
         return jsonify({
@@ -339,7 +339,7 @@ def api_v1_iss():
     sk = float(data.get("speed_kms", 7.66))
     return jsonify({
         "object": "ISS",
-        "timestamp": _dt.utcnow().isoformat(),
+        "timestamp": _dt.now(_tz.utc).isoformat(),
         "position": {
             "latitude": data.get("lat", 0),
             "longitude": data.get("lon", 0),
