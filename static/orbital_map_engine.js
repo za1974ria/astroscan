@@ -412,6 +412,9 @@
       satA = list[i];
       for (j = i + 1; j < list.length; j++) {
         satB = list[j];
+        if (satA === satB) continue;
+        if (satA.noradId != null && satB.noradId != null && satA.noradId === satB.noradId) continue;
+        if (satA.name && satB.name && satA.name === satB.name) continue;
         distKm = computeDistanceKm(satA, satB);
         if (distKm >= CLOSE_APPROACH_THRESHOLD_KM) continue;
         if (distKm < 10) severity = "critical";
