@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <title>AstroScan-Chohra - Carte orbitale 3D</title>
 <meta name="description" content="ASTRO-SCAN — Carte orbitale 3D temps réel : ISS, satellites, débris spatiaux, sondes interplanétaires">
-<link href="https://cdn.jsdelivr.net/npm/cesium@1.110/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/cesium@1.118/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 <link href="/static/css/orbital_command.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/cesium@1.110/Build/Cesium/Cesium.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.118/Build/Cesium/Cesium.js"></script>
 <script src="/static/js/satellite.min.js"></script>
 <style>
 html, body {
@@ -1555,17 +1555,42 @@ if (!viewer) {
 (function ensureCesiumBaseLayer() {
   try {
     if (!Cesium.Ion.defaultAccessToken && viewer && viewer.imageryLayers) {
-      try { viewer.imageryLayers.removeAll(); } catch (e) {}
+      // [Day 1.8] Pattern safe : ajouter NOUVELLE couche en premier,
+      // attendre frame Cesium suivant, retirer les anciennes en différé.
       try {
-        viewer.imageryLayers.addImageryProvider(new Cesium.OpenStreetMapImageryProvider({
+        var newLayer = viewer.imageryLayers.addImageryProvider(new Cesium.OpenStreetMapImageryProvider({
           url: "https://tile.openstreetmap.org/"
         }));
-        console.info("OrbitalMap: using free OSM imagery fallback.");
+
+        // Différer le retrait des anciennes couches à 1 sec
+        // pour laisser Cesium 1.118 finir l'init de la nouvelle.
+        requestAnimationFrame(function () {
+          setTimeout(function () {
+            try {
+              var toRemove = [];
+              for (var i = 0; i < viewer.imageryLayers.length; i++) {
+                var lyr = viewer.imageryLayers.get(i);
+                if (lyr !== newLayer) toRemove.push(lyr);
+              }
+              toRemove.forEach(function (lyr) {
+                if (lyr && viewer.imageryLayers.contains(lyr)) {
+                  viewer.imageryLayers.remove(lyr, false);
+                }
+              });
+            } catch (cleanupErr) {
+              console.warn("[ASTRO] OSM fallback cleanup:", cleanupErr.message);
+            }
+          }, 1000);
+        });
+
+        console.info("OrbitalMap: using free OSM imagery fallback (safe init).");
       } catch (e2) {
         console.warn("OrbitalMap: OSM fallback failed", e2);
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("[ASTRO] ensureCesiumBaseLayer error:", e.message);
+  }
 })();
 
 // Demo overlay visual state helper (no logic change).
@@ -3234,7 +3259,8 @@ handler.setInputAction(function (movement) {
           // FIX CRITIQUE (Day 1.7) : éviter le crash Cesium
           // "Cannot read properties of undefined (reading 'getDerivedResource')"
           // qui survient quand on retire la couche pendant qu'elle a des tuiles
-          // en cours de chargement asynchrone (Cesium 1.110 known bug).
+          // en cours de chargement asynchrone (Cesium ≤1.115 known bug,
+          // patché 1.116+, on tourne en 1.118 depuis Day 1.8).
           //
           // Stratégie : ajouter la NOUVELLE couche d'abord, attendre 500ms que
           // Cesium ait pris en charge le frame courant, puis retirer les
