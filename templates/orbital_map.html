@@ -3240,7 +3240,7 @@ handler.setInputAction(function (movement) {
             });
           } else if (layer === 'nasa-modis') {
             var d = new Date();
-            d.setUTCDate(d.getUTCDate() - 1);
+            d.setUTCDate(d.getUTCDate() - 2);
             var ymd = d.toISOString().slice(0, 10);
             provider = new Cesium.WebMapTileServiceImageryProvider({
               url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/MODIS_Terra_CorrectedReflectance_TrueColor/default/' + ymd + '/250m/{TileMatrix}/{TileRow}/{TileCol}.jpg',
@@ -3253,10 +3253,10 @@ handler.setInputAction(function (movement) {
             });
           } else if (layer === 'nasa-blackmarble') {
             provider = new Cesium.WebMapTileServiceImageryProvider({
-              url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/VIIRS_Black_Marble/default/2016-01-01/500m/{TileMatrix}/{TileRow}/{TileCol}.jpeg',
+              url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/VIIRS_Black_Marble/default/2016-01-01/500m/{TileMatrix}/{TileRow}/{TileCol}.png',
               layer: 'VIIRS_Black_Marble',
               style: 'default',
-              format: 'image/jpeg',
+              format: 'image/png',
               tileMatrixSetID: '500m',
               maximumLevel: 8,
               credit: 'NASA Black Marble · VIIRS · GIBS'
