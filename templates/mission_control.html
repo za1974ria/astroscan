@@ -27,67 +27,20 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
 
 (async function() {
   // ═══════════════════════════════════════════════════════
-  // MIX MULTI-SOURCES — Mission Control ASTRO-SCAN
+  // MIX MULTI-SOURCES — Mission Control ASTRO-SCAN (Day 1.14)
   // ═══════════════════════════════════════════════════════
-  // Sources combinées pour résilience et beauté :
-  // 1. Bing Maps Aerial (Cesium ion asset 2) - défaut, haute res
-  // 2. ESRI World Imagery (gratuit) - satellite alternatif
-  // 3. ESRI World Topographic - relief topo
-  // 4. NASA GIBS Black Marble - lights at night officiel NASA
-  // 5. OpenStreetMap - vue communautaire
+  // 9 sources testees HTTP 200 et compatibles Cesium 1.118 :
+  // 1. OpenStreetMap (defaut, vue communautaire)
+  // 2-3. CartoDB Positron / Dark Matter (carte claire / sombre)
+  // 4. OpenTopoMap (relief topographique)
+  // 5. USGS Imagery (satellite mondial gratuit)
+  // 6-9. NASA GIBS (Blue Marble, MODIS Terra J-2, MODIS Aqua J-2,
+  //      Earth at Night Black Marble)
   // ═══════════════════════════════════════════════════════
 
   const imageryViewModels = [];
 
-  // 1. Bing Maps Aerial (asset 2 Cesium ion - fonctionne)
-  imageryViewModels.push(new Cesium.ProviderViewModel({
-    name: 'Bing Maps Aerial',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/bingAerial.png'),
-    tooltip: 'Bing Maps Aerial - Imagerie satellite haute résolution',
-    creationFunction: function() {
-      return Cesium.IonImageryProvider.fromAssetId(2);
-    }
-  }));
-
-  // 2. ESRI World Imagery (satellite, gratuit, sans token)
-  imageryViewModels.push(new Cesium.ProviderViewModel({
-    name: 'ESRI World Imagery',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldImagery.png'),
-    tooltip: 'ESRI World Imagery - Satellite haute résolution gratuit',
-    creationFunction: function() {
-      return new Cesium.ArcGisMapServerImageryProvider({
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
-      });
-    }
-  }));
-
-  // 3. ESRI World Topographic (relief topo, gratuit)
-  imageryViewModels.push(new Cesium.ProviderViewModel({
-    name: 'ESRI Topographic',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldStreetMap.png'),
-    tooltip: 'ESRI World Topographic - Relief topographique',
-    creationFunction: function() {
-      return new Cesium.ArcGisMapServerImageryProvider({
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer'
-      });
-    }
-  }));
-
-  // 4. NASA GIBS Black Marble - Earth at Night (lights at night officiel NASA)
-  imageryViewModels.push(new Cesium.ProviderViewModel({
-    name: 'NASA Earth at Night',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blackMarble.png'),
-    tooltip: 'NASA Black Marble - Pollution lumineuse mondiale (VIIRS)',
-    creationFunction: function() {
-      return new Cesium.UrlTemplateImageryProvider({
-        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
-        maximumLevel: 8,
-        credit: 'NASA Earth Observatory · NOAA · USGS'
-      });
-    }
-  }));
-
-  // 5. OpenStreetMap (vue communautaire)
+  // 1. OpenStreetMap (defaut, vue communautaire)
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'OpenStreetMap',
     iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/openStreetMap.png'),
@@ -95,6 +48,62 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
     creationFunction: function() {
       return new Cesium.OpenStreetMapImageryProvider({
         url: 'https://tile.openstreetmap.org/'
+      });
+    }
+  }));
+
+  // 2. CartoDB Positron - carte claire propre
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'CartoDB Positron',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/openStreetMap.png'),
+    tooltip: 'CartoDB Positron - carte claire propre',
+    creationFunction: function() {
+      return new Cesium.UrlTemplateImageryProvider({
+        url: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+        maximumLevel: 18,
+        credit: 'CartoDB Positron · OpenStreetMap'
+      });
+    }
+  }));
+
+  // 3. CartoDB Dark Matter - carte sombre stylisee
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'CartoDB Dark',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/openStreetMap.png'),
+    tooltip: 'CartoDB Dark Matter - carte sombre nocturne',
+    creationFunction: function() {
+      return new Cesium.UrlTemplateImageryProvider({
+        url: 'https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
+        maximumLevel: 18,
+        credit: 'CartoDB Dark Matter · OpenStreetMap'
+      });
+    }
+  }));
+
+  // 4. OpenTopoMap - relief topographique
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'OpenTopoMap',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/openStreetMap.png'),
+    tooltip: 'OpenTopoMap - relief topographique mondial',
+    creationFunction: function() {
+      return new Cesium.UrlTemplateImageryProvider({
+        url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
+        maximumLevel: 17,
+        credit: 'OpenTopoMap (CC-BY-SA) · OpenStreetMap'
+      });
+    }
+  }));
+
+  // 5. USGS Imagery - satellite mondial gratuit
+  imageryViewModels.push(new Cesium.ProviderViewModel({
+    name: 'USGS Imagery',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blueMarble.png'),
+    tooltip: 'USGS Imagery - satellite mondial gratuit',
+    creationFunction: function() {
+      return new Cesium.UrlTemplateImageryProvider({
+        url: 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}',
+        maximumLevel: 16,
+        credit: 'USGS · The National Map'
       });
     }
   }));
@@ -113,11 +122,11 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
     }
   }));
 
-  // 7. NASA GIBS MODIS Terra (true color quotidien)
+  // 7. NASA GIBS MODIS Terra (true color quotidien J-2)
   imageryViewModels.push(new Cesium.ProviderViewModel({
     name: 'NASA MODIS Terra',
     iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/sentinel-2.png'),
-    tooltip: 'NASA MODIS Terra - Image satellite quotidienne true color',
+    tooltip: 'NASA MODIS Terra - Image satellite quotidienne true color (J-2)',
     creationFunction: function() {
       const yesterday = new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0];
       return new Cesium.UrlTemplateImageryProvider({
@@ -128,86 +137,33 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
     }
   }));
 
-  // 8. ESRI World Hillshade (ombrage relief)
+  // 8. NASA GIBS MODIS Aqua (jour bonus J-2)
   imageryViewModels.push(new Cesium.ProviderViewModel({
-    name: 'ESRI Hillshade',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldStreetMap.png'),
-    tooltip: 'ESRI World Hillshade - Ombrage relief',
+    name: 'NASA MODIS Aqua',
+    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blueMarble.png'),
+    tooltip: 'NASA MODIS Aqua - imagerie satellite jour J-2',
     creationFunction: function() {
-      return new Cesium.ArcGisMapServerImageryProvider({
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer'
+      var d = new Date();
+      d.setUTCDate(d.getUTCDate() - 2);
+      var ymd = d.toISOString().slice(0, 10);
+      return new Cesium.UrlTemplateImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Aqua_CorrectedReflectance_TrueColor/default/' + ymd + '/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg',
+        maximumLevel: 9,
+        credit: 'NASA MODIS Aqua · GIBS'
       });
     }
   }));
 
-  // 9. ESRI World Physical (relief naturel)
+  // 9. NASA GIBS Black Marble - Earth at Night (lights at night officiel NASA)
   imageryViewModels.push(new Cesium.ProviderViewModel({
-    name: 'ESRI Physical',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldStreetMap.png'),
-    tooltip: 'ESRI World Physical - Relief naturel',
-    creationFunction: function() {
-      return new Cesium.ArcGisMapServerImageryProvider({
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer'
-      });
-    }
-  }));
-
-  // 10. ESRI Ocean Basemap
-  imageryViewModels.push(new Cesium.ProviderViewModel({
-    name: 'ESRI Ocean',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldStreetMap.png'),
-    tooltip: 'ESRI Ocean Basemap - Bathymétrie océanique',
-    creationFunction: function() {
-      return new Cesium.ArcGisMapServerImageryProvider({
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer'
-      });
-    }
-  }));
-
-  // 11. ESRI World Street Map
-  imageryViewModels.push(new Cesium.ProviderViewModel({
-    name: 'ESRI Streets',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/esriWorldStreetMap.png'),
-    tooltip: 'ESRI World Street Map - Cartes routières',
-    creationFunction: function() {
-      return new Cesium.ArcGisMapServerImageryProvider({
-        url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer'
-      });
-    }
-  }));
-
-  // 12. NASA GIBS Earth Lights composite (alternative Black Marble)
-  imageryViewModels.push(new Cesium.ProviderViewModel({
-    name: 'NASA Lights 2016',
+    name: 'NASA Earth at Night',
     iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blackMarble.png'),
-    tooltip: 'NASA VIIRS DNB Annual 2016 - Lights composite alternatif',
+    tooltip: 'NASA Black Marble - Pollution lumineuse mondiale (VIIRS)',
     creationFunction: function() {
-      return new Cesium.WebMapTileServiceImageryProvider({
-        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/VIIRS_SNPP_DayNightBand_AT_Sensor_Radiance/default/2016-01-01/500m/{TileMatrix}/{TileRow}/{TileCol}.jpg',
-        layer: 'VIIRS_SNPP_DayNightBand_AT_Sensor_Radiance',
-        style: 'default',
-        format: 'image/jpeg',
-        tileMatrixSetID: '500m',
+      return new Cesium.UrlTemplateImageryProvider({
+        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
         maximumLevel: 8,
-        credit: 'NASA EOSDIS GIBS · VIIRS DNB'
-      });
-    }
-  }));
-
-  // 13. NASA Black Marble 2024 - Version récente haute définition
-  imageryViewModels.push(new Cesium.ProviderViewModel({
-    name: 'NASA Black Marble 2024',
-    iconUrl: Cesium.buildModuleUrl('Widgets/Images/ImageryProviders/blackMarble.png'),
-    tooltip: 'NASA Black Marble 2024 - Lights at night version la plus récente (VIIRS NOAA-20)',
-    creationFunction: function() {
-      return new Cesium.WebMapTileServiceImageryProvider({
-        url: 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/VIIRS_NOAA20_DayNightBand_AT_Sensor_Radiance/default/2024-01-01/500m/{TileMatrix}/{TileRow}/{TileCol}.jpg',
-        layer: 'VIIRS_NOAA20_DayNightBand_AT_Sensor_Radiance',
-        style: 'default',
-        format: 'image/jpeg',
-        tileMatrixSetID: '500m',
-        maximumLevel: 8,
-        credit: 'NASA EOSDIS GIBS · VIIRS NOAA-20 · Black Marble 2024'
+        credit: 'NASA Earth Observatory · NOAA · USGS'
       });
     }
   }));
