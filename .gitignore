@@ -52,3 +52,33 @@ de421.bsp
 *.iml
 .archive/
 RESUME_REPRISE_*.md
+
+# PASS 28 cleanup (2026-05-09) — anti-rechute
+# Templates "_backup.html" éparpillés (déjà nettoyés vague 1.4)
+*_backup.html
+# Caches outils dev
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# === CLEANUP 2026-05-09 — Patterns anti-rechute ===
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Backups templates (suppression directe via Git)
+templates/*.bak
+templates/*.bak_*
+templates/*.bak.*
+templates/*_backup.html
+
+# Archives logs
+logs/archive_*/
+
+# Fichiers temporaires divers
+*.tmp
+*.swp
+*.swo
+.DS_Store
