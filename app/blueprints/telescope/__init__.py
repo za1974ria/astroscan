@@ -78,7 +78,7 @@ def telescope():
 # ── Mission Control (Domaine AO) ───────────────────────────────────────
 @bp.route("/mission-control")
 def mission_control():
-    cesium_token = os.getenv("CESIUM_TOKEN", "")
+    cesium_token = os.getenv("CESIUM_ION_TOKEN") or os.getenv("CESIUM_TOKEN", "")
     return render_template("mission_control.html", cesium_token=cesium_token)
 
 
