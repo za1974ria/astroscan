@@ -3,20 +3,176 @@
 Extrait de station_web.py (PASS 14) pour permettre l'utilisation
 par iss_bp sans dépendance circulaire.
 
+PASS 27.13 (2026-05-09) — Ajout de 4 helpers TLE + passes calculateur :
+    _run_calculateur_passages_iss() -> bool   # subprocess calculateur_passages.py
+    ensure_passages_iss_json() -> bool        # garantit présence du fichier JSON
+    _get_iss_tle_from_cache() -> tuple|None   # cherche ISS dans TLE_CACHE + fallback fichier
+    _get_satellite_tle_by_name(name) -> tuple # cherche par nom canonique
+
 Fonctions exposées :
     _az_to_direction(az_deg) -> str
     compute_iss_ground_track() -> dict       # 90 min, pas 90s, format {"track": [[lat, lon], ...]}
     compute_iss_passes_for_observer(lat, lon) -> list  # 5 prochains passages
     compute_iss_passes_tlemcen() -> list     # alias coords Tlemcen
+    + les 4 helpers PASS 27.13 ci-dessus
 """
 from __future__ import annotations
 
 import datetime as _dt
 import logging
 import math
+import os
+import subprocess
+import sys
 from typing import List
 
+from app.services.station_state import STATION
+
 log = logging.getLogger(__name__)
+
+# Constantes de chemins (cohérent avec station_web.py L262-264)
+PASSAGES_ISS_JSON = f'{STATION}/static/passages_iss.json'
+CALC_PASSAGES_SCRIPT = os.path.join(STATION, 'calculateur_passages.py')
+
+
+def _run_calculateur_passages_iss():
+    """Exécute calculateur_passages.py pour régénérer static/passages_iss.json."""
+    try:
+        r = subprocess.run(
+            [sys.executable, CALC_PASSAGES_SCRIPT],
+            cwd=STATION,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if r.returncode != 0:
+            log.error(
+                'passages-iss: calculateur échec rc=%s stderr=%s',
+                r.returncode,
+                (r.stderr or '')[:800],
+            )
+            return False
+        log.info('passages-iss: fichier JSON généré par calculateur_passages.py')
+        return os.path.isfile(PASSAGES_ISS_JSON)
+    except subprocess.TimeoutExpired:
+        log.error('passages-iss: calculateur timeout (>120s)')
+        return False
+    except Exception as e:
+        log.error('passages-iss: calculateur exception %s', e)
+        return False
+
+
+def ensure_passages_iss_json():
+    """Si passages_iss.json est absent, lance le calculateur. Retourne True si le fichier existe."""
+    if os.path.isfile(PASSAGES_ISS_JSON):
+        return True
+    log.info('passages-iss: fichier absent, lancement auto du calculateur…')
+    return _run_calculateur_passages_iss()
+
+
+def _get_iss_tle_from_cache():
+    # moved to app/services/tle.py (get_iss_tle_from_sources)
+    """Retourne (tle1, tle2) ISS depuis TLE_CACHE si disponible."""
+    # Lazy imports inside pour éviter le cycle station_web ↔ iss_compute :
+    # _emit_diag_json est défini dans station_web.py et accédé post-bootstrap.
+    from app.services.tle_cache import TLE_CACHE, TLE_ACTIVE_PATH, _parse_tle_file
+    from station_web import _emit_diag_json
+    try:
+        items = (TLE_CACHE or {}).get("items") or []
+        for item in items:
+            name = str(item.get("name") or "").upper()
+            if "ISS" in name or "ZARYA" in name:
+                tle1 = str(
+                    item.get("line1")
+                    or item.get("tle1")
+                    or item.get("tle_line1")
+                    or ""
+                ).strip()
+                tle2 = str(
+                    item.get("line2")
+                    or item.get("tle2")
+                    or item.get("tle_line2")
+                    or ""
+                ).strip()
+                if tle1 and tle2:
+                    _emit_diag_json(
+                        {
+                            "event": "iss_tle_loaded",
+                            "name": item.get("name"),
+                            "tle1_len": len(tle1),
+                            "tle2_len": len(tle2),
+                        }
+                    )
+                    return tle1, tle2
+    except Exception as e:
+        _emit_diag_json(
+            {
+                "event": "iss_tle_missing",
+                "reason": f"exception:{e}",
+            }
+        )
+    # Fallback TLE: scanner le fichier complet (le cache items peut être tronqué à 1000 entrées).
+    try:
+        if os.path.isfile(TLE_ACTIVE_PATH):
+            all_items = _parse_tle_file(TLE_ACTIVE_PATH)
+            for item in all_items:
+                name = str(item.get("name") or "").upper()
+                if "ISS" in name or "ZARYA" in name:
+                    tle1 = str(item.get("line1") or "").strip()
+                    tle2 = str(item.get("line2") or "").strip()
+                    if tle1 and tle2:
+                        _emit_diag_json(
+                            {
+                                "event": "iss_tle_loaded",
+                                "name": item.get("name"),
+                                "source": "tle_active_file",
+                                "tle1_len": len(tle1),
+                                "tle2_len": len(tle2),
+                            }
+                        )
+                        return tle1, tle2
+    except Exception as e:
+        _emit_diag_json(
+            {
+                "event": "iss_tle_missing",
+                "reason": f"file_scan_exception:{e}",
+            }
+        )
+
+    _emit_diag_json(
+        {
+            "event": "iss_tle_missing",
+            "tle_items_count": len((TLE_CACHE or {}).get("items") or []),
+        }
+    )
+    return None, None
+
+
+def _get_satellite_tle_by_name(target_name):
+    from app.services.tle_cache import TLE_CACHE, TLE_ACTIVE_PATH, _parse_tle_file
+    from app.services.satellites import get_satellite_tle_name_map
+
+    target_upper = str(target_name or "").upper()
+    canonical = get_satellite_tle_name_map().get(target_upper, target_upper)
+
+    for item in (TLE_CACHE or {}).get("items") or []:
+        name = str(item.get("name") or "").upper()
+        if name == canonical.upper():
+            tle1 = str(item.get("line1") or item.get("tle1") or "").strip()
+            tle2 = str(item.get("line2") or item.get("tle2") or "").strip()
+            if tle1 and tle2:
+                return tle1, tle2, str(item.get("name") or canonical)
+
+    if os.path.isfile(TLE_ACTIVE_PATH):
+        for item in _parse_tle_file(TLE_ACTIVE_PATH):
+            name = str(item.get("name") or "").upper()
+            if name == canonical.upper():
+                tle1 = str(item.get("line1") or "").strip()
+                tle2 = str(item.get("line2") or "").strip()
+                if tle1 and tle2:
+                    return tle1, tle2, str(item.get("name") or canonical)
+
+    return None, None, canonical
 
 
 def _az_to_direction(az_deg: float) -> str:

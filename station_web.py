@@ -347,41 +347,26 @@ except Exception:
 from app.services.status_engine import _core_status_engine  # noqa: F401 (re-export)
 
 
-def _run_calculateur_passages_iss():
-    """Exécute calculateur_passages.py pour régénérer static/passages_iss.json."""
-    try:
-        r = subprocess.run(
-            [sys.executable, CALC_PASSAGES_SCRIPT],
-            cwd=STATION,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        if r.returncode != 0:
-            log.error(
-                'passages-iss: calculateur échec rc=%s stderr=%s',
-                r.returncode,
-                (r.stderr or '')[:800],
-            )
-            return False
-        log.info('passages-iss: fichier JSON généré par calculateur_passages.py')
-        return os.path.isfile(PASSAGES_ISS_JSON)
-    except subprocess.TimeoutExpired:
-        log.error('passages-iss: calculateur timeout (>120s)')
-        return False
-    except Exception as e:
-        log.error('passages-iss: calculateur exception %s', e)
-        return False
+# PASS 27.13 (2026-05-09) — ISS helpers léger (6 fonctions ~150 lignes corps cumulés)
+# déplacés vers sources de vérité uniques :
+# - calculateur passages + TLE helpers → app.services.iss_compute (PASS 14)
+# - fetcher crew + cache crew → app.services.iss_live (PASS 23)
+# Re-exporté ici pour préserver les consommateurs externes (4 BPs : iss/routes,
+# blueprints/satellites, blueprints/iss/routes) ET l'effet de bord boot
+# `ensure_passages_iss_json()` au load monolithe (init disque passages_iss.json).
+from app.services.iss_compute import (  # noqa: F401 (re-export)
+    _run_calculateur_passages_iss,
+    ensure_passages_iss_json,
+    _get_iss_tle_from_cache,
+    _get_satellite_tle_by_name,
+)
+from app.services.iss_live import (  # noqa: F401 (re-export)
+    _fetch_iss_crew,
+    _get_iss_crew,
+)
 
-
-def ensure_passages_iss_json():
-    """Si passages_iss.json est absent, lance le calculateur. Retourne True si le fichier existe."""
-    if os.path.isfile(PASSAGES_ISS_JSON):
-        return True
-    log.info('passages-iss: fichier absent, lancement auto du calculateur…')
-    return _run_calculateur_passages_iss()
-
-
+# Effet de bord boot — préservé verbatim de la position d'origine L385
+# (génération auto de static/passages_iss.json si absent).
 ensure_passages_iss_json()
 
 # Mission-control operational log (rotation 5 MB, 3 backups)
@@ -956,78 +941,8 @@ def _sync_state_write(source):
 from app.services.iss_live import _fetch_iss_live  # noqa: F401 (re-export)
 
 
-def _get_iss_tle_from_cache():
-    # moved to app/services/tle.py (get_iss_tle_from_sources)
-    """Retourne (tle1, tle2) ISS depuis TLE_CACHE si disponible."""
-    try:
-        items = (TLE_CACHE or {}).get("items") or []
-        for item in items:
-            name = str(item.get("name") or "").upper()
-            if "ISS" in name or "ZARYA" in name:
-                tle1 = str(
-                    item.get("line1")
-                    or item.get("tle1")
-                    or item.get("tle_line1")
-                    or ""
-                ).strip()
-                tle2 = str(
-                    item.get("line2")
-                    or item.get("tle2")
-                    or item.get("tle_line2")
-                    or ""
-                ).strip()
-                if tle1 and tle2:
-                    _emit_diag_json(
-                        {
-                            "event": "iss_tle_loaded",
-                            "name": item.get("name"),
-                            "tle1_len": len(tle1),
-                            "tle2_len": len(tle2),
-                        }
-                    )
-                    return tle1, tle2
-    except Exception as e:
-        _emit_diag_json(
-            {
-                "event": "iss_tle_missing",
-                "reason": f"exception:{e}",
-            }
-        )
-    # Fallback TLE: scanner le fichier complet (le cache items peut être tronqué à 1000 entrées).
-    try:
-        if os.path.isfile(TLE_ACTIVE_PATH):
-            all_items = _parse_tle_file(TLE_ACTIVE_PATH)
-            for item in all_items:
-                name = str(item.get("name") or "").upper()
-                if "ISS" in name or "ZARYA" in name:
-                    tle1 = str(item.get("line1") or "").strip()
-                    tle2 = str(item.get("line2") or "").strip()
-                    if tle1 and tle2:
-                        _emit_diag_json(
-                            {
-                                "event": "iss_tle_loaded",
-                                "name": item.get("name"),
-                                "source": "tle_active_file",
-                                "tle1_len": len(tle1),
-                                "tle2_len": len(tle2),
-                            }
-                        )
-                        return tle1, tle2
-    except Exception as e:
-        _emit_diag_json(
-            {
-                "event": "iss_tle_missing",
-                "reason": f"file_scan_exception:{e}",
-            }
-        )
-
-    _emit_diag_json(
-        {
-            "event": "iss_tle_missing",
-            "tle_items_count": len((TLE_CACHE or {}).get("items") or []),
-        }
-    )
-    return None, None
+# PASS 27.13 — _get_iss_tle_from_cache déplacée vers app.services.iss_compute
+# (re-exportée via le bloc d'import ligne ~350).
 
 
 # MIGRATED TO iss_bp PASS 16 — /api/iss → see app/blueprints/iss/routes.py (api_iss)
@@ -1039,28 +954,7 @@ def _get_iss_tle_from_cache():
 
 
 
-def _get_satellite_tle_by_name(target_name):
-    target_upper = str(target_name or "").upper()
-    canonical = get_satellite_tle_name_map().get(target_upper, target_upper)
-
-    for item in (TLE_CACHE or {}).get("items") or []:
-        name = str(item.get("name") or "").upper()
-        if name == canonical.upper():
-            tle1 = str(item.get("line1") or item.get("tle1") or "").strip()
-            tle2 = str(item.get("line2") or item.get("tle2") or "").strip()
-            if tle1 and tle2:
-                return tle1, tle2, str(item.get("name") or canonical)
-
-    if os.path.isfile(TLE_ACTIVE_PATH):
-        for item in _parse_tle_file(TLE_ACTIVE_PATH):
-            name = str(item.get("name") or "").upper()
-            if name == canonical.upper():
-                tle1 = str(item.get("line1") or "").strip()
-                tle2 = str(item.get("line2") or "").strip()
-                if tle1 and tle2:
-                    return tle1, tle2, str(item.get("name") or canonical)
-
-    return None, None, canonical
+# PASS 27.13 — _get_satellite_tle_by_name déplacée vers app.services.iss_compute.
 
 
 # MIGRATED TO satellites_bp PASS 14 — /api/satellite/<name> → see app/blueprints/satellites/__init__.py (api_satellite)
@@ -1078,33 +972,7 @@ def _get_satellite_tle_by_name(target_name):
 # MIGRATED TO feeds_bp PASS 8 — /api/voyager-live → see app/blueprints/feeds/__init__.py (api_voyager_live)
 
 
-def _fetch_iss_crew():
-    """Lecture brute du nombre d'astronautes à bord de l'ISS via open-notify."""
-    raw = _curl_get('http://api.open-notify.org/astros.json', timeout=6)
-    if not raw:
-        return 7
-    try:
-        data = json.loads(raw)
-        iss = [p for p in data.get('people', []) if p.get('craft') == 'ISS']
-        return len(iss) if iss else data.get('number', 7)
-    except Exception:
-        return 7
-
-
-def _get_iss_crew():
-    """
-    Nombre d'astronautes à bord de l'ISS avec cache serveur 5 min.
-    On interroge la source officielle une seule fois toutes les 5 minutes,
-    puis PC et Android partagent la même valeur.
-    """
-    crew = get_cached('iss_crew', 300, _fetch_iss_crew)
-    try:
-        crew = int(crew)
-        if crew <= 0 or crew > 20:
-            crew = 7
-    except Exception:
-        crew = 7
-    return crew
+# PASS 27.13 — _fetch_iss_crew + _get_iss_crew déplacées vers app.services.iss_live.
 
 def _guess_region(lat, lon):
     """Estimation grossière de la région survolée."""

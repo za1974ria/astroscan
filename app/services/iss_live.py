@@ -4,12 +4,18 @@ Extrait depuis station_web.py L2768-L2811 (+ helpers L1739, L3008) lors de
 PASS 23. Helpers internes (_curl_get, _guess_region) copiés verbatim pour
 éviter tout import retour vers station_web (anti-circulaire).
 
+PASS 27.13 (2026-05-09) — Ajout de 2 helpers crew :
+    _fetch_iss_crew() -> int           # raw HTTP open-notify (cache layer above)
+    _get_iss_crew() -> int             # cached 5 min, sanity bounds [1, 20], default 7
+
 station_web.py conserve un alias re-export pour la compat des imports legacy.
 """
+import json
 import logging
 import subprocess
 
 from services.utils import _safe_json_loads
+from services.cache_service import get_cached
 
 log = logging.getLogger(__name__)
 
@@ -98,3 +104,32 @@ def _fetch_iss_live():
             log.warning(f"ISS {url}: {e}")
             continue
     return None
+
+
+def _fetch_iss_crew():
+    """Lecture brute du nombre d'astronautes à bord de l'ISS via open-notify."""
+    raw = _curl_get('http://api.open-notify.org/astros.json', timeout=6)
+    if not raw:
+        return 7
+    try:
+        data = json.loads(raw)
+        iss = [p for p in data.get('people', []) if p.get('craft') == 'ISS']
+        return len(iss) if iss else data.get('number', 7)
+    except Exception:
+        return 7
+
+
+def _get_iss_crew():
+    """
+    Nombre d'astronautes à bord de l'ISS avec cache serveur 5 min.
+    On interroge la source officielle une seule fois toutes les 5 minutes,
+    puis PC et Android partagent la même valeur.
+    """
+    crew = get_cached('iss_crew', 300, _fetch_iss_crew)
+    try:
+        crew = int(crew)
+        if crew <= 0 or crew > 20:
+            crew = 7
+    except Exception:
+        crew = 7
+    return crew
