@@ -3179,8 +3179,14 @@ handler.setInputAction(function (movement) {
     btn.addEventListener('click', function () {
       var layer = btn.getAttribute('data-layer');
       waitForViewer(function (v) {
-        var provider = null;
+        if (!v || !v.imageryLayers) {
+          console.warn('[ASTRO] Cesium viewer not ready');
+          return;
+        }
+
         try {
+          var provider = null;
+
           if (layer === 'osm') {
             provider = new Cesium.OpenStreetMapImageryProvider({
               url: 'https://tile.openstreetmap.org/'
@@ -3219,16 +3225,60 @@ handler.setInputAction(function (movement) {
               credit: 'NASA Black Marble · VIIRS · GIBS'
             });
           }
-          if (provider) {
-            v.imageryLayers.removeAll();
-            v.imageryLayers.addImageryProvider(provider);
-            document.querySelectorAll('.om-layer-option').forEach(function (b) {
-              b.classList.remove('active');
-            });
-            btn.classList.add('active');
-            setTimeout(function () { window.omCloseModal('om-modal-layers'); }, 600);
+
+          if (!provider) {
+            console.warn('[ASTRO] Provider non trouve pour layer:', layer);
+            return;
           }
-        } catch (e) { console.warn('[ASTRO] Layer error:', e); }
+
+          // FIX CRITIQUE (Day 1.7) : éviter le crash Cesium
+          // "Cannot read properties of undefined (reading 'getDerivedResource')"
+          // qui survient quand on retire la couche pendant qu'elle a des tuiles
+          // en cours de chargement asynchrone (Cesium 1.110 known bug).
+          //
+          // Stratégie : ajouter la NOUVELLE couche d'abord, attendre 500ms que
+          // Cesium ait pris en charge le frame courant, puis retirer les
+          // anciennes proprement. requestAnimationFrame synchronise avec le
+          // pipeline de rendu.
+          requestAnimationFrame(function () {
+            try {
+              // Snapshot des anciennes couches AVANT remplacement
+              var oldLayers = [];
+              for (var i = 0; i < v.imageryLayers.length; i++) {
+                oldLayers.push(v.imageryLayers.get(i));
+              }
+
+              // Ajouter la nouvelle couche (par-dessus les anciennes)
+              v.imageryLayers.addImageryProvider(provider);
+
+              // Cleanup gracieux : retirer les anciennes une fois la nouvelle posée
+              setTimeout(function () {
+                try {
+                  oldLayers.forEach(function (old) {
+                    if (old && v.imageryLayers.contains(old)) {
+                      v.imageryLayers.remove(old, false);
+                    }
+                  });
+                } catch (cleanupErr) {
+                  console.warn('[ASTRO] Cleanup ancien layer:', cleanupErr.message);
+                }
+              }, 500);
+
+              // UI feedback
+              document.querySelectorAll('.om-layer-option').forEach(function (b) {
+                b.classList.remove('active');
+              });
+              btn.classList.add('active');
+              setTimeout(function () { window.omCloseModal('om-modal-layers'); }, 600);
+
+            } catch (renderErr) {
+              console.error('[ASTRO] Cesium rendering error caught:', renderErr.message);
+            }
+          });
+
+        } catch (e) {
+          console.error('[ASTRO] Layer switch error:', e.message);
+        }
       });
     });
   });
