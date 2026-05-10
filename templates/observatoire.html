@@ -2158,7 +2158,7 @@ function openSondeModal(k){
       html+='<div style="text-align:center;font-size:40px;margin-bottom:10px">🛸</div>';
       html+='<div style="text-align:center;font-family:Orbitron,monospace;font-size:11px;color:#39ff14;letter-spacing:3px;margin-bottom:14px">STATION SPATIALE INTERNATIONALE</div>';
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px">';
-      [['LAT',(d.lat||0).toFixed(2)+'°'],['LON',(d.lon||0).toFixed(2)+'°'],['ALT',parseFloat(d.altitude_km||408).toFixed(1)+' km'],['VITESSE',parseFloat(d.speed_kms||7.66).toFixed(2)+' km/s'],['ÉQUIPAGE',(d.crew_count||d.crew&&d.crew.length||7)+' 👨‍🚀'],['ORBITE','LEO ~420 km']].forEach(function(r){
+      [['LAT',(d.lat||0).toFixed(2)+'°'],['LON',(d.lon||0).toFixed(2)+'°'],['ALT',parseFloat(d.altitude_km||408).toFixed(1)+' km'],['VITESSE',parseFloat(d.speed_kms||7.66).toFixed(2)+' km/s'],['ÉQUIPAGE','<span id="iss-crew-count">--</span> 👨‍🚀'],['ORBITE','LEO ~420 km']].forEach(function(r){
       html+='<div style="background:rgba(57,255,20,0.05);border:1px solid #39ff1433;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8px;color:#4a7a8a;margin-bottom:4px">'+r[0]+'</div><div style="font-size:13px;color:#39ff14">'+r[1]+'</div></div>';
       });
       html+='</div>';
@@ -2189,8 +2189,33 @@ function openSondeModal(k){
       html+='</div>';
     }
     el.innerHTML=html;
-    if(k==='iss'){ setTimeout(function(){ if(typeof drawISSCanvasModal==='function') drawISSCanvasModal('iss-obs-canvas',d); }, 100); }
+    if(k==='iss'){ setTimeout(function(){ if(typeof drawISSCanvasModal==='function') drawISSCanvasModal('iss-obs-canvas',d); refreshIssCrewCount(); }, 100); }
   }).catch(function(){ el.innerHTML='<div style="color:var(--red);font-size:11px;padding:20px">Erreur API /api/sondes</div>'; });
+}
+
+function refreshIssCrewCount(){
+  var el=document.getElementById('iss-crew-count');
+  if(!el) return;
+  // Priorité /api/iss (champ crew = nombre live, ex: 7).
+  // /api/iss/crew est en fallback car son cache contient parfois une liste obsolète.
+  fetch('/api/iss',{cache:'no-store'}).then(function(r){
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(d){
+    if(d && typeof d.crew==='number' && d.crew>0 && d.crew<20) return d.crew;
+    return fetch('/api/iss/crew',{cache:'no-store'}).then(function(r2){return r2.json();}).then(function(d2){
+      if(!d2) return 7;
+      if(typeof d2.count==='number') return d2.count;
+      if(typeof d2.crew==='number') return d2.crew;
+      return 7;
+    });
+  }).then(function(n){
+    if(typeof n==='number' && n>0 && n<20) el.textContent=String(n);
+    else el.textContent='7';
+  }).catch(function(e){
+    console.warn('[iss-crew] fetch failed:',e);
+    if(el.textContent==='--' || el.textContent==='') el.textContent='7';
+  });
 }
 function renderSondesGrid(d,g){
   if(!g)return; _sondesData=d||{}; g.dataset.loaded='1';
