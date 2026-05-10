@@ -114,13 +114,18 @@
         maxZoom: 19,
       }
     );
-    state.basemapLayers.sat = L.tileLayer(
+    var satImagery = L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
         attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics",
         maxZoom: 19,
       }
     );
+    var satLabels = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      { attribution: "", maxZoom: 19 }
+    );
+    state.basemapLayers.sat = L.layerGroup([satImagery, satLabels]);
     state.basemapLayers.dark.addTo(state.map);
     state.basemap = "dark";
     addBasemapToggleControl();

@@ -55,11 +55,54 @@ def _fetch_iss():
     try:
         import math
         from modules.orbit_engine import get_iss_precise, get_iss_crew
+        from app.constants.iss_crew import (
+            ISS_CREW_COUNT_FALLBACK,
+            ISS_CREW_STALE_SIGNATURES,
+            ISS_CREW_CURRENT,
+        )
         data = get_iss_precise()
         if 'error' not in data:
-            crew = get_iss_crew()
-            crew_display = crew if crew else []
-            crew_count = len(crew) if crew else 7
+            raw_crew = get_iss_crew() or []
+            # Normaliser en liste de noms (str)
+            names = []
+            for c in raw_crew:
+                if isinstance(c, str):
+                    names.append(c)
+                elif isinstance(c, dict):
+                    nm = c.get('name') or ''
+                    if nm:
+                        names.append(nm)
+
+            # Détection signature obsolète (open-notify 2024)
+            stale_hits = sum(
+                1 for n in names if any(sig in n for sig in ISS_CREW_STALE_SIGNATURES)
+            )
+            placeholder_hit = any(
+                ('données en cache' in n.lower() or 'membres' in n.lower()) for n in names
+            )
+
+            # Compteur live cohérent avec /api/iss
+            try:
+                from app.services.iss_live import _get_iss_crew as _live_count
+                live_count = int(_live_count() or ISS_CREW_COUNT_FALLBACK)
+                if live_count <= 0 or live_count > 20:
+                    live_count = ISS_CREW_COUNT_FALLBACK
+            except Exception:
+                live_count = ISS_CREW_COUNT_FALLBACK
+
+            crew_stale = bool(
+                stale_hits >= 2
+                or placeholder_hit
+                or (names and len(names) > live_count)
+            )
+
+            if crew_stale or not names:
+                crew_display = list(ISS_CREW_CURRENT)  # vide tant qu'aucune source officielle
+                crew_count = live_count
+            else:
+                crew_display = list(names)
+                crew_count = len(names)
+
             result = {
                 'name': 'ISS',
                 'status': 'En orbite',
@@ -69,6 +112,7 @@ def _fetch_iss():
                 'speed_kms': round(data.get('speed_kms', 7.66), 2),
                 'crew_count': crew_count,
                 'crew': crew_display,
+                'crew_stale': crew_stale,
                 'source': 'Skyfield/SGP4'
             }
             # Sanitise NaN/Inf
@@ -78,7 +122,7 @@ def _fetch_iss():
             return {'iss': result}
     except Exception:
         pass
-    return {'iss': {'name': 'ISS', 'lat': 0, 'lon': 0, 'altitude_km': 408, 'speed_kms': 7.66, 'crew_count': 7, 'crew': [], 'status': 'En orbite', 'source': 'fallback'}}
+    return {'iss': {'name': 'ISS', 'lat': 0, 'lon': 0, 'altitude_km': 408, 'speed_kms': 7.66, 'crew_count': 7, 'crew': [], 'crew_stale': True, 'status': 'En orbite', 'source': 'fallback'}}
 
 
 def _fetch_mars_rover(rover='perseverance'):
