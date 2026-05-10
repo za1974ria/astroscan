@@ -29,6 +29,7 @@ from datetime import datetime, timezone
 
 from app.services.http_client import _curl_get
 from services.cache_service import cache_get, cache_set
+from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M
 
 log = logging.getLogger(__name__)
 
@@ -292,7 +293,7 @@ def _mo_visible_tonight():
     from astropy.time import Time
     import astropy.units as u
 
-    location = EarthLocation(lat=34.87*u.deg, lon=1.32*u.deg, height=816*u.m)
+    location = EarthLocation(lat=OBSERVER_LAT*u.deg, lon=OBSERVER_LON*u.deg, height=OBSERVER_ALT_M*u.m)
     # 23:00 UTC = 00:00 locale Tlemcen (UTC+1)
     t_obs = Time(int(Time.now().jd) + 23/24.0, format='jd')
     frame = AltAz(obstime=t_obs, location=location)

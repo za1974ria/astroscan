@@ -155,7 +155,7 @@ def api_telescope_catalogue():
         "objets": OBJETS_TLEMCEN,
         "surveys": SURVEYS,
         "source": "NASA SkyView",
-        "observatoire": "Tlemcen 34.87°N 1.32°E 816m",
+        "observatoire": "Tlemcen 34.87°N 1.32°W 816m",
     })
 
 

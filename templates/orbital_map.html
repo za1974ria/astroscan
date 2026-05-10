@@ -1719,9 +1719,9 @@ var categoryPoints = {
 };
 
 var observer = {
-  lat: 34.888,
-  lon: 1.315,
-  height: 0
+  lat: 34.8753,
+  lon: -1.3167,    // NÉGATIF — Tlemcen est à l'ouest de Greenwich
+  height: 816
 };
 
 var visibleSatellites = [];
@@ -3092,7 +3092,7 @@ handler.setInputAction(function (movement) {
     if (el) el.style.display = 'none';
   };
 
-  /* 1. HOME — Tlemcen 34.87°N -1.32°E */
+  /* 1. HOME — Tlemcen 34.87°N 1.32°W */
   var btnHome = $('om-btn-home');
   if (btnHome) btnHome.addEventListener('click', function () {
     waitForViewer(function (v) {

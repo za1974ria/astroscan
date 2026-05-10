@@ -14,6 +14,8 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, render_template, request, jsonify
 
+from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M
+
 from app.utils.cache import cache_get, cache_set, get_cached
 
 log = logging.getLogger(__name__)
@@ -71,7 +73,7 @@ def _compute_ephemerides_tlemcen_astropy():
     from astropy.time import Time
     import astropy.units as u
 
-    location = EarthLocation(lat=34.8731 * u.deg, lon=1.3154 * u.deg, height=800 * u.m)
+    location = EarthLocation(lat=OBSERVER_LAT * u.deg, lon=OBSERVER_LON * u.deg, height=OBSERVER_ALT_M * u.m)
     start_dt = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     step_min = 5
     timeline = [start_dt + timedelta(minutes=m) for m in range(0, 24 * 60 + step_min, step_min)]
@@ -119,7 +121,7 @@ def _compute_ephemerides_tlemcen_astropy():
         })
 
     return {
-        "site": {"name": "Tlemcen", "lat": 34.8731, "lon": 1.3154, "altitude_m": 800},
+        "site": {"name": "Tlemcen", "lat": OBSERVER_LAT, "lon": OBSERVER_LON, "altitude_m": OBSERVER_ALT_M},
         "date_utc": start_dt.strftime("%Y-%m-%d"),
         "source": "astropy",
         "ephemerides": results,

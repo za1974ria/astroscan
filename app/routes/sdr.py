@@ -17,8 +17,9 @@ def api_sdr_passes_impl(
     retour graceful avec degraded=True (sans planter le frontend).
     """
     from skyfield.api import load, EarthSatellite, wgs84
+    from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M
 
-    _lat, _lon, _alt_m = 34.87, 1.32, 800.0
+    _lat, _lon, _alt_m = OBSERVER_LAT, OBSERVER_LON, float(OBSERVER_ALT_M)
     _min_el = 5.0
     noaa_norad = {
         "NOAA-15": {"norad": 25338, "freq": "137.620 MHz"},

@@ -13,6 +13,10 @@ cycle station_web ↔ telescope_helpers au load.
 """
 from __future__ import annotations
 
+from app.constants.observatory import (
+    OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M, OBSERVER_CITY,
+)
+
 import os
 
 from app.services.station_state import STATION
@@ -40,7 +44,7 @@ def _telescope_nightly_tlemcen():
         log,
     )
 
-    log.info('telescope_nightly: démarrage pipeline — Tlemcen 34.87°N 1.32°E')
+    log.info('telescope_nightly: démarrage pipeline — Tlemcen 34.87°N 1.32°W')
 
     try:
         mo_catalog = _mo_fetch_catalog_today()
@@ -113,7 +117,7 @@ def _telescope_nightly_tlemcen():
     meta = {
         'run_at':       datetime.now(timezone.utc).isoformat(),
         'run_date':     datetime.now(timezone.utc).strftime('%Y-%m-%d'),
-        'location':     {'city': 'Tlemcen', 'lat': 34.87, 'lon': 1.32, 'alt_m': 816},
+        'location':     {'city': 'Tlemcen', 'lat': OBSERVER_LAT, 'lon': OBSERVER_LON, 'alt_m': OBSERVER_ALT_M},
         'source':       'Harvard MicroObservatory — waps.cfa.harvard.edu',
         'note':         'FITS originaux · Télescopes robotiques CCD 6" · Pipeline automatique AstroScan',
         'total_visible_tonight': len(visible),

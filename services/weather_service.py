@@ -300,9 +300,10 @@ def _kp_premium_profile(kp, fallback=False):
 
 def _fetch_open_meteo_raw():
     """Fetch Open-Meteo brut — levée d'exception si erreur (pour CB_METEO)."""
+    from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON
     url = (
         "https://api.open-meteo.com/v1/forecast"
-        "?latitude=34.87&longitude=-1.32"
+        f"?latitude={OBSERVER_LAT}&longitude={OBSERVER_LON}"
         "&current=temperature_2m,relative_humidity_2m,precipitation,rain,showers,snowfall,"
         "weather_code,cloud_cover,visibility,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m"
     )

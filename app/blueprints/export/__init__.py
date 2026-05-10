@@ -16,6 +16,8 @@ import sqlite3
 from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, jsonify
 
+from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M
+
 bp = Blueprint("export", __name__, url_prefix="/api/export")
 # Sous-blueprint pour les routes export hors-préfixe (globales).
 bp_global = Blueprint("export_global", __name__)
@@ -168,7 +170,7 @@ def ephemerides_json():
             "metadata": {
                 "source": "AstroScan-Chohra",
                 "location": "Tlemcen, Algeria",
-                "coordinates": {"lat": 34.8753, "lon": 1.3167, "alt_m": 800},
+                "coordinates": {"lat": OBSERVER_LAT, "lon": OBSERVER_LON, "alt_m": OBSERVER_ALT_M},
                 "generated_at": datetime.now(timezone.utc).isoformat() + "Z",
                 "license": "CC BY 4.0 — Scientific use",
                 "url": "https://astroscan.space/api/export/ephemerides.json",

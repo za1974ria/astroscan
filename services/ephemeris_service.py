@@ -2,7 +2,7 @@
 
 Logique extraite de station_web.py / api_ephemerides_tlemcen().
 Aucune dépendance Flask. Testable isolément.
-Localisation : Tlemcen, Algérie — 34.8753°N / 1.3167°E / 800 m
+Localisation : Tlemcen, Algérie — 34.8753°N / -1.3167°W / 816 m
 Fuseau horaire affiché : UTC+1 (Algérie)
 """
 
@@ -11,12 +11,11 @@ from astropy.coordinates import EarthLocation, AltAz, get_sun, get_body
 from astropy.time import Time
 import astropy.units as u
 
+from app.constants.observatory import TLEMCEN_LAT, TLEMCEN_LON, TLEMCEN_ALT
+
 
 # ── Constantes lieu ───────────────────────────────────────────────────────────
 
-TLEMCEN_LAT = 34.8753   # °N
-TLEMCEN_LON = 1.3167    # °E
-TLEMCEN_ALT = 800       # m
 TLEMCEN = EarthLocation(lat=TLEMCEN_LAT * u.deg, lon=TLEMCEN_LON * u.deg, height=TLEMCEN_ALT * u.m)
 
 _PLANET_FR = {

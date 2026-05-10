@@ -28,6 +28,19 @@ import time
 from flask import Blueprint, Response, jsonify, request, stream_with_context
 
 from app.services.security import require_admin
+from app.constants.observatory import (
+    OBSERVER_LAT as _OBS_LAT_HEALTH,
+    OBSERVER_LON as _OBS_LON_HEALTH,
+    OBSERVER_ALT_M as _OBS_ALT_HEALTH,
+    OBSERVER_TIMEZONE as _OBS_TZ_HEALTH,
+)
+
+_OBS_DICT_HEALTH = {
+    'lat': _OBS_LAT_HEALTH,
+    'lon': _OBS_LON_HEALTH,
+    'alt_m': _OBS_ALT_HEALTH,
+    'timezone': _OBS_TZ_HEALTH,
+}
 
 log = logging.getLogger(__name__)
 
@@ -324,7 +337,7 @@ def api_health():
             bool(os.environ.get('ANTHROPIC_API_KEY')),
         ]),
         'integrations_total': 5,
-        'coordinates': {'lat': 34.87, 'lon': 1.32, 'alt_m': 800, 'timezone': 'Africa/Algiers'},
+        'coordinates': _OBS_DICT_HEALTH,
     }
     try:
         import station_web as _sw

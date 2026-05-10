@@ -98,9 +98,15 @@ CLAUDE_MAX_CALLS: int = 100
 # Coordonnées station Tlemcen (utilisées dans les calculs orbitaux)
 # ---------------------------------------------------------------------------
 
-TLEMCEN_LAT: float = 34.87
-TLEMCEN_LON: float = 1.32
-TLEMCEN_ALT: float = 820.0  # mètres
+from app.constants.observatory import (
+    OBSERVER_LAT as _OBS_LAT,
+    OBSERVER_LON as _OBS_LON,
+    OBSERVER_ALT_M as _OBS_ALT,
+)
+
+TLEMCEN_LAT: float = _OBS_LAT       # 34.8753 °N
+TLEMCEN_LON: float = _OBS_LON       # -1.3167 °W (NÉGATIF — OUEST Greenwich)
+TLEMCEN_ALT: float = float(_OBS_ALT)  # 816 m
 
 # ---------------------------------------------------------------------------
 # Tokens / API Keys — lus depuis l'environnement

@@ -8,11 +8,13 @@ Fonctions exposées :
     hilal_compute_calendar() -> dict           # 24 prochains mois
 
 Critères supportés : ODEH 2006, UIOF/France, Oum Al Qura, Istanbul 1978.
-Coordonnées par défaut : Tlemcen 34.87°N 1.32°E 816m.
+Coordonnées par défaut : Tlemcen 34.87°N 1.32°W 816m.
 """
 from __future__ import annotations
 
 from datetime import datetime, timezone
+
+from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M
 
 _HIJRI_MONTHS = [
     'Mouharram','Safar','Rabi al-Awwal','Rabi al-Thani',
@@ -33,7 +35,7 @@ def hilal_compute(for_date=None):
     from astropy.time import Time
     import astropy.units as u
 
-    LAT, LON, ALT = 34.87, 1.32, 800
+    LAT, LON, ALT = OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M
     location = EarthLocation(lat=LAT * u.deg, lon=LON * u.deg, height=ALT * u.m)
 
     # Date de référence
@@ -222,7 +224,7 @@ def hilal_compute_calendar():
     import ephem
     from datetime import timedelta
 
-    LAT, LON, ALT = 34.8700, 1.3200, 816   # Tlemcen précis
+    LAT, LON, ALT = OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M   # Tlemcen précis
 
     now   = datetime.now(timezone.utc)
     today = now.date()
@@ -392,7 +394,7 @@ def hilal_compute_calendar():
         'criteria_info': {
             'primary':   'ODEH 2006 — International Astronomical Center',
             'secondary': 'Istanbul 1978 — IRCICA (alt ≥ 5° + arcl ≥ 8° + âge ≥ 15h)',
-            'note':      'Précision ±1 jour · Tlemcen 34.87°N 1.32°E 816m · Cache 24h',
+            'note':      'Précision ±1 jour · Tlemcen 34.87°N 1.32°W 816m · Cache 24h',
         },
         'calendar':               calendar,
         'next_ramadan':           next_ramadan,

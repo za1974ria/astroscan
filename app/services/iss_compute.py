@@ -298,8 +298,9 @@ def compute_iss_passes_for_observer(lat_deg: float, lon_deg: float) -> List[dict
 
 
 def compute_iss_passes_tlemcen() -> List[dict]:
-    """Tlemcen (34.87°N, 1.32°E) — rétrocompat."""
-    return compute_iss_passes_for_observer(34.87, 1.32)
+    """Tlemcen (34.87°N, 1.32°W) — rétrocompat."""
+    from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON
+    return compute_iss_passes_for_observer(OBSERVER_LAT, OBSERVER_LON)
 
 
 def compute_iss_ground_track() -> dict:
