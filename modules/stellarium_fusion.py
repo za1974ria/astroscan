@@ -1,6 +1,7 @@
 import ephem, datetime, math, json, os
 
-LAT, LON, ALT = "34.87", "1.32", 816
+from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M
+LAT, LON, ALT = str(OBSERVER_LAT), str(OBSERVER_LON), OBSERVER_ALT_M
 
 def get_observer():
     obs = ephem.Observer()
@@ -77,7 +78,7 @@ def get_stellarium_data():
     return {
         "mode": "LIVE_SKY" if obs_objects else "STANDARD",
         "source": "ephem — calcul astronomique réel",
-        "location": "Tlemcen 34.87°N 1.32°E",
+        "location": f"Tlemcen {OBSERVER_LAT}°N {abs(OBSERVER_LON)}°{'W' if OBSERVER_LON < 0 else 'E'}",
         "computed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "fresh": True,
         "objects": obs_objects,
