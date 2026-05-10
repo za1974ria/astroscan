@@ -107,16 +107,32 @@ def _fetch_iss_live():
 
 
 def _fetch_iss_crew():
-    """Lecture brute du nombre d'astronautes à bord de l'ISS via open-notify."""
+    """Lecture brute du nombre d'astronautes à bord de l'ISS via open-notify.
+
+    open-notify.org n'est plus maintenu depuis 2023 et retourne 9 noms
+    obsolètes (Crew-8 / MS-25, 2024). On détecte cette signature et on
+    retourne le fallback statique au lieu du faux 9.
+    """
+    from app.constants.iss_crew import (
+        ISS_CREW_COUNT_FALLBACK,
+        ISS_CREW_STALE_SIGNATURES,
+    )
     raw = _curl_get('http://api.open-notify.org/astros.json', timeout=6)
     if not raw:
-        return 7
+        return ISS_CREW_COUNT_FALLBACK
     try:
         data = json.loads(raw)
         iss = [p for p in data.get('people', []) if p.get('craft') == 'ISS']
-        return len(iss) if iss else data.get('number', 7)
+        names = [p.get('name', '') for p in iss]
+        # Détection signature obsolète open-notify (2024)
+        stale_hits = sum(
+            1 for n in names if any(sig in n for sig in ISS_CREW_STALE_SIGNATURES)
+        )
+        if stale_hits >= 2:
+            return ISS_CREW_COUNT_FALLBACK
+        return len(iss) if iss else data.get('number', ISS_CREW_COUNT_FALLBACK)
     except Exception:
-        return 7
+        return ISS_CREW_COUNT_FALLBACK
 
 
 def _get_iss_crew():

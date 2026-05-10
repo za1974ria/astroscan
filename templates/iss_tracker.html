@@ -234,9 +234,26 @@
 
   function loadCrew() {
     var el = document.getElementById('crew-box');
-    fetch('/api/iss/crew').then(function (r) { return r.json(); }).then(function (d) {
-      var crew = d.crew || [];
-      if (!crew.length) { el.innerHTML = '<div>Données équipage indisponibles</div>'; return; }
+    var STALE_SIGS = ['Kononenko', 'Caldwell Dyson', 'Dominick', 'Grebenkin'];
+    fetch('/api/iss/crew', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      var stale = !!(d && d.names_stale);
+      var crew = (d && Array.isArray(d.names)) ? d.names.map(function (n) { return { name: n, photo_url: '' }; })
+               : (d && Array.isArray(d.crew)) ? d.crew
+               : [];
+      var count = (d && typeof d.count === 'number') ? d.count : 7;
+      if (!stale) {
+        var nameStrs = crew.map(function (c) { return (typeof c === 'string') ? c : (c && c.name) || ''; });
+        var hits = nameStrs.reduce(function (acc, n) { return acc + (STALE_SIGS.some(function (s) { return n.indexOf(s) !== -1; }) ? 1 : 0); }, 0);
+        if (hits >= 2 || nameStrs.length > count) stale = true;
+      }
+      if (stale || !crew.length) {
+        el.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:8px 4px;font-size:11px;color:#dfe8f5">'
+          + '<div style="color:#00e5ff;font-weight:700">' + count + ' astronautes à bord</div>'
+          + '<div style="color:#6a7a8e;font-size:10px;margin-top:4px">Liste détaillée temporairement indisponible</div>'
+          + '<a href="https://www.nasa.gov/international-space-station/space-station-crews/" target="_blank" style="color:#00e5ff;font-size:9px">nasa.gov/space-station-crews</a>'
+          + '</div>';
+        return;
+      }
       el.innerHTML = crew.map(function (c) {
         var nm = (typeof c === 'string') ? c : (c.name || '');
         var ph = (typeof c === 'object' && c) ? (c.photo_url || '') : '';

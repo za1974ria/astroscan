@@ -77,24 +77,103 @@ def tle_catalog():
 # ── PASS 11 — Extensions ISS (Domaine I) ──────────────────────────────
 @iss_bp.route("/api/iss/crew")
 def api_iss_crew():
-    """Équipage ISS — noms (open-notify / fallback), format UI iss_tracker."""
+    """Équipage ISS — count + names (avec flag stale si données suspectes).
+
+    Format de réponse enrichi :
+      {
+        "ok": true,
+        "count": 7,                   # nombre live (cohérent /api/iss)
+        "crew": [...],                # rétrocompat (liste de {name, photo_url})
+        "names": [...],               # alias plus lisible
+        "names_stale": false,         # true si liste obsolète/suspecte
+        "source": "open-notify|fallback_static|empty|...",
+        "last_updated": "YYYY-MM-DD"
+      }
+    """
+    from datetime import datetime as _dt
     from flask import jsonify as _jsonify
+    from app.constants.iss_crew import (
+        ISS_CREW_CURRENT,
+        ISS_CREW_COUNT_FALLBACK,
+        ISS_CREW_LAST_UPDATE,
+        ISS_CREW_NAMES_TTL_DAYS,
+        ISS_CREW_STALE_SIGNATURES,
+    )
+
+    # 1) Compteur live cohérent avec /api/iss (open-notify avec détection stale).
+    try:
+        from station_web import _get_iss_crew as _get_count
+        count = int(_get_count() or ISS_CREW_COUNT_FALLBACK)
+        if count <= 0 or count > 20:
+            count = ISS_CREW_COUNT_FALLBACK
+    except Exception:
+        count = ISS_CREW_COUNT_FALLBACK
+
+    # 2) Récupération de la liste de noms via orbit_engine (open-notify/thespacedevs).
+    raw_names: list[str] = []
+    src = "fallback_static"
     try:
         from modules.orbit_engine import get_iss_crew
-        raw = get_iss_crew()
-        crew = []
-        for c in raw or []:
+        raw = get_iss_crew() or []
+        for c in raw:
             if isinstance(c, str):
-                crew.append({"name": c, "photo_url": ""})
+                raw_names.append(c)
             elif isinstance(c, dict):
-                crew.append({
-                    "name": c.get("name") or "?",
-                    "photo_url": c.get("photo_url") or "",
-                })
-        return _jsonify({"ok": True, "crew": crew})
+                nm = c.get("name") or ""
+                if nm:
+                    raw_names.append(nm)
+        if raw_names:
+            src = "open-notify"
     except Exception as e:
-        log.warning("api/iss/crew: %s", e)
-        return _jsonify({"ok": False, "crew": [], "error": str(e)})
+        log.warning("api/iss/crew names lookup: %s", e)
+
+    # 3) Détection liste stale (signature open-notify 2024 ou taille incohérente).
+    names_stale = False
+    if raw_names:
+        stale_hits = sum(
+            1 for n in raw_names if any(sig in n for sig in ISS_CREW_STALE_SIGNATURES)
+        )
+        if stale_hits >= 2:
+            names_stale = True
+        # Si la liste compte plus que le live, elle est probablement obsolète.
+        if len(raw_names) > count:
+            names_stale = True
+        # Détection placeholder fallback de orbit_engine.
+        if any("données en cache" in n.lower() or "membres" in n.lower() for n in raw_names):
+            names_stale = True
+            src = "fallback_static"
+
+    # 4) TTL constants : si la liste statique est trop vieille, marquer stale.
+    try:
+        age_days = (_dt.now().date() - ISS_CREW_LAST_UPDATE).days
+    except Exception:
+        age_days = None
+
+    # 5) Choix final names + source.
+    if names_stale or not raw_names:
+        # On préfère liste vide à des noms périmés ou inventés.
+        if ISS_CREW_CURRENT and (age_days is None or age_days <= ISS_CREW_NAMES_TTL_DAYS):
+            names_out = list(ISS_CREW_CURRENT)
+            src = "fallback_static"
+            names_stale = False
+        else:
+            names_out = []
+            src = "empty" if not raw_names else "stale_external"
+            names_stale = True
+    else:
+        names_out = raw_names
+
+    crew_objects = [{"name": n, "photo_url": ""} for n in names_out]
+    payload = {
+        "ok": True,
+        "count": count,
+        "crew": crew_objects,                 # rétrocompat
+        "names": names_out,
+        "names_stale": names_stale,
+        "source": src,
+        "last_updated": ISS_CREW_LAST_UPDATE.isoformat(),
+    }
+    return _jsonify(payload)
 
 
 @iss_bp.route("/api/iss/orbit")

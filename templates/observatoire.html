@@ -2164,15 +2164,9 @@ function openSondeModal(k){
       html+='</div>';
       html+='<div style="background:rgba(57,255,20,0.05);border:1px solid #39ff1433;border-radius:8px;padding:12px;margin-bottom:12px">';
       html+='<div style="font-size:9px;color:#39ff14;letter-spacing:2px;margin-bottom:8px">👨‍🚀 ÉQUIPAGE ISS — SOURCE OFFICIELLE</div>';
-      var crew = d.crew || [];
-      var crewCount = d.crew_count || 7;
-      if(crew.length > 0){
-        crew.forEach(function(name){
-          html+='<div style="padding:3px 8px;margin:2px 0;background:rgba(57,255,20,0.07);border-left:2px solid #39ff14;font-size:10px;color:#fff;border-radius:0 4px 4px 0">👤 '+name+'</div>';
-        });
-      } else {
-        html+='<div style="color:#39ff14;font-size:13px;text-align:center">'+crewCount+' membres à bord</div>';
-      }
+      // Liste rendue par refreshIssCrewList() après fetch /api/iss/crew enrichi.
+      // Tant que stale ou vide, on n'affiche que le compteur (cohérent /api/iss).
+      html+='<div id="iss-crew-list-container" style="color:#39ff14;font-size:13px;text-align:center">Chargement…</div>';
       html+='</div>';
       html+='<div style="border:1px solid #39ff1433;border-radius:8px;overflow:hidden;margin-bottom:10px">';
       html+='<div style="font-size:9px;color:#39ff14;padding:8px;letter-spacing:2px">🗺️ POSITION ISS EN TEMPS RÉEL</div>';
@@ -2189,7 +2183,7 @@ function openSondeModal(k){
       html+='</div>';
     }
     el.innerHTML=html;
-    if(k==='iss'){ setTimeout(function(){ if(typeof drawISSCanvasModal==='function') drawISSCanvasModal('iss-obs-canvas',d); refreshIssCrewCount(); }, 100); }
+    if(k==='iss'){ setTimeout(function(){ if(typeof drawISSCanvasModal==='function') drawISSCanvasModal('iss-obs-canvas',d); refreshIssCrewCount(); refreshIssCrewList(); }, 100); }
   }).catch(function(){ el.innerHTML='<div style="color:var(--red);font-size:11px;padding:20px">Erreur API /api/sondes</div>'; });
 }
 
@@ -2215,6 +2209,42 @@ function refreshIssCrewCount(){
   }).catch(function(e){
     console.warn('[iss-crew] fetch failed:',e);
     if(el.textContent==='--' || el.textContent==='') el.textContent='7';
+  });
+}
+
+function refreshIssCrewList(){
+  var el=document.getElementById('iss-crew-list-container');
+  if(!el) return;
+  // Garde-fou client : signatures de l'équipage 2024 obsolète d'open-notify.
+  var STALE_SIGS=['Kononenko','Caldwell Dyson','Dominick','Grebenkin'];
+  fetch('/api/iss/crew',{cache:'no-store'}).then(function(r){
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+  }).then(function(d){
+    var stale = !!(d && d.names_stale);
+    var names = (d && Array.isArray(d.names)) ? d.names
+              : (d && Array.isArray(d.crew)) ? d.crew.map(function(c){return (typeof c==='string')?c:(c&&c.name)||'';}).filter(Boolean)
+              : [];
+    var count = (d && typeof d.count==='number') ? d.count : 7;
+    if(!stale){
+      var hits=names.reduce(function(acc,n){return acc + (STALE_SIGS.some(function(s){return n.indexOf(s)!==-1;})?1:0);},0);
+      if(hits>=2 || names.length>count) stale=true;
+    }
+    if(!stale && names.length>0){
+      var html='';
+      names.forEach(function(name){
+        html+='<div style="padding:3px 8px;margin:2px 0;background:rgba(57,255,20,0.07);border-left:2px solid #39ff14;font-size:10px;color:#fff;border-radius:0 4px 4px 0;text-align:left">👤 '+name+'</div>';
+      });
+      el.innerHTML=html;
+      el.style.textAlign='left';
+    } else {
+      el.style.textAlign='center';
+      el.innerHTML='<div style="color:#39ff14;font-size:13px">'+count+' astronautes à bord</div>'
+        +'<div style="color:#4a7a8a;font-size:9px;margin-top:4px;font-family:monospace">Liste détaillée temporairement indisponible — voir <a href="https://www.nasa.gov/international-space-station/space-station-crews/" target="_blank" style="color:#39ff14">nasa.gov</a></div>';
+    }
+  }).catch(function(e){
+    console.warn('[iss-crew-list] fetch failed:',e);
+    el.innerHTML='<div style="color:#39ff14;font-size:13px">7 astronautes à bord</div>';
   });
 }
 function renderSondesGrid(d,g){
