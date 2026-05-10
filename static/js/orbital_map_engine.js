@@ -126,7 +126,7 @@
     viewer.entities.add({
       id: "astroscan-observer-tlemcen",
       name: "Tlemcen (réf. AstroScan-Chohra)",
-      position: Cesium.Cartesian3.fromDegrees(1.32, 34.87, 800),
+      position: Cesium.Cartesian3.fromDegrees(-1.3167, 34.8753, 816),
       point: {
         pixelSize: 15,
         color: Cesium.Color.RED,
@@ -3071,14 +3071,7 @@
           console.log("ENTITY 10 SHOW:", e.show);
         }
       }
-      if (window.viewer) {
-        window.viewer.entities.add({
-          id: "test-paris",
-          position: Cesium.Cartesian3.fromDegrees(2.35, 48.85, 500000),
-          point: { pixelSize: 20, color: Cesium.Color.RED }
-        });
-        console.log("TEST PARIS ADDED");
-      }
+      // [REMOVED] test-paris debug marker (v2.4.0-coords-fix)
     }, 5000);
   }
 
