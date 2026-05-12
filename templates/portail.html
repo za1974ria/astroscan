@@ -1537,10 +1537,10 @@ hr{
           <a href="/space" target="_blank" class="nav-item nav-sub nav-link">
             <span class="nav-label">Space Intelligence</span>
           </a>
-          <a href="/maintenance" class="nav-item nav-sub nav-link" target="_blank">
-            <span class="nav-label">{% if lang == 'en' %}Maintenance Control{% else %}Contrôle Maintenance{% endif %}</span>
+          <div class="nav-item nav-sub" id="nav-maintenance" onclick="navigate('maintenance')" data-page="maintenance">
+            <span class="nav-label" data-i18n="nav_maintenance">Contrôle Maintenance</span>
             <span class="nav-badge new" style="background: rgba(0, 255, 136, 0.15); color: var(--green); border-color: rgba(0, 255, 136, 0.4);">LIVE</span>
-          </a>
+          </div>
         </div>
       </div>
 
@@ -1796,6 +1796,11 @@ hr{
           <div class="card-desc">{% if lang == 'en' %}Observations catalog{% else %}Catalogue observations{% endif %}</div>
           <span class="card-link">→ /module/galerie</span>
         </a>
+        <a href="/maintenance" class="portal-card card" style="border-color: rgba(0, 255, 136, 0.3);">
+          <div class="card-title" style="color: var(--green);">{% if lang == 'en' %}MAINTENANCE CONTROL{% else %}CONTRÔLE MAINTENANCE{% endif %} <span style="font-size: 9px; background: rgba(0, 255, 136, 0.15); color: var(--green); padding: 2px 6px; border-radius: 3px; vertical-align: middle; margin-left: 6px;">LIVE</span></div>
+          <div class="card-desc">{% if lang == 'en' %}Real-time service health · LED indicators · 20 services monitored{% else %}Santé services temps réel · Voyants LED · 20 services surveillés{% endif %}</div>
+          <span class="card-link">→ /maintenance</span>
+        </a>
       </div>
 
       <div class="loading-bar" style="width:100%"></div>
@@ -1806,6 +1811,7 @@ hr{
       <iframe id="frame-dashboard" class="page-frame" data-src="/dashboard"></iframe>
       <iframe id="frame-overlord" class="page-frame" data-src="/overlord_live"></iframe>
       <iframe id="frame-galerie" class="page-frame" data-src="/galerie"></iframe>
+      <iframe id="frame-maintenance" class="page-frame" data-src="/maintenance"></iframe>
       <iframe id="frame-observatoire" class="page-frame" data-src="/observatoire?embed=1"></iframe>
       <iframe id="frame-ce_soir" class="page-frame" data-src="/ce_soir?embed=1"></iframe>
       <iframe id="frame-orbital_radio" class="page-frame" data-src="/orbital-radio"></iframe>
@@ -1867,6 +1873,7 @@ hr{
       nav_dashboard: 'Dashboard QG',
       nav_overlord: 'Overlord Contrôle',
       nav_galerie: 'Archive Stellaire',
+      nav_maintenance: 'Contrôle Maintenance',
       nav_observatoire: 'Observatoire',
       nav_ce_soir: 'Ce soir',
       badge_direct: 'DIRECT',
@@ -1928,6 +1935,7 @@ hr{
       nav_dashboard: 'HQ Dashboard',
       nav_overlord: 'Overlord Live',
       nav_galerie: 'Stellar Archive',
+      nav_maintenance: 'Maintenance Control',
       nav_observatoire: 'Observatory',
       nav_ce_soir: 'Tonight',
       badge_direct: 'LIVE',
@@ -2336,6 +2344,7 @@ hr{
     dashboard:    { frame: 'frame-dashboard',    label: 'Dashboard QG' },
     overlord:     { frame: 'frame-overlord',     label: 'Overlord Contrôle' },
     galerie:      { frame: 'frame-galerie',      label: 'Archive Stellaire' },
+    maintenance:  { frame: 'frame-maintenance',  label: 'Contrôle Maintenance' },
     observatoire: { frame: 'frame-observatoire', label: 'Observatoire Mondial' },
     ce_soir:      { frame: 'frame-ce_soir',      label: 'Ce soir' },
     orbital_radio: { frame: 'frame-orbital_radio', label: 'ORBITAL-RADIO' },
