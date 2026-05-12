@@ -1702,7 +1702,7 @@
     var status = sel.goodPass ? "GOOD PASS" : (sel.visible ? "VISIBLE" : "below horizon");
     var html = "<div style=\"font-size:10px;color:#0f0;margin-bottom:4px;\">Analyse en temps réel</div>";
     html += "<div class=\"sat-focus-name\">" + (sel.name || "—") + "</div>";
-    html += "<div>Type: " + (sel.type || "other") + "</div>";
+    html += "<div>Type : " + (sel.type || "other") + "</div>";
     html += "<div>Visible: " + (sel.visible ? "Oui" : "Non") + "</div>";
     html += "<div>Lat " + lat + "° · Lon " + lon + "°</div>";
     html += "<div>Alt " + alt + " km</div>";
@@ -2453,10 +2453,10 @@
       var speedStr = (best.speed_kms != null && isFinite(best.speed_kms)) ? (best.speed_kms.toFixed(2) + " km/s") : "n/a";
       var html = "";
       html += "<div style=\"font-size:12px;font-weight:bold;color:#e8f4fa;\">" + best.name + "</div>";
-      html += "<div style=\"margin-top:2px;color:rgba(150,175,190,.85);font-size:10px;\">Type: " + best.type + " · Visible: " + (best.visible ? "YES" : "NO") + " · Speed: " + speedStr + "</div>";
+      html += "<div style=\"margin-top:2px;color:rgba(150,175,190,.85);font-size:10px;\">Type : " + best.type + " · Visible : " + (best.visible ? "OUI" : "NON") + " · Vitesse : " + speedStr + "</div>";
       html += "<div style=\"margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;\">";
       html += "<div class=\"asc-kpi-card\" style=\"flex:1 1 120px;\"><div class=\"asc-kpi-label\">Score</div><div class=\"asc-kpi-value\">" + best.score + "</div><div class=\"asc-kpi-sub\">0–100</div></div>";
-      html += "<div class=\"asc-kpi-card\" style=\"flex:1 1 120px;\"><div class=\"asc-kpi-label\">Level</div><div class=\"asc-kpi-value " + sevClass + "\">" + best.level + "</div><div class=\"asc-kpi-sub\">Band</div></div>";
+      html += "<div class=\"asc-kpi-card\" style=\"flex:1 1 120px;\"><div class=\"asc-kpi-label\">Level</div><div class=\"asc-kpi-value " + sevClass + "\">" + localizeLevel(best.level) + "</div><div class=\"asc-kpi-sub\">Band</div></div>";
       html += "</div>";
       html += "<div style=\"margin-top:8px;\"><span style=\"color:#aaa;\">Danger</span>: <span style=\"color:" + dangerColor + ";font-weight:bold;\">" + best.danger + "</span></div>";
       html += "<div style=\"margin-top:4px;\"><span style=\"color:#aaa;\">Action</span>: " + best.action + "</div>";
