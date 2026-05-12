@@ -218,66 +218,106 @@ def _gemini_translate(text: str, obs_id: Optional[int] = None) -> str:
 
 def _gemini_translate_no_throttle(text: str) -> str:
     """
-    Version sans throttle de _gemini_translate, dédiée au batch endpoint.
+    Traduction multi-provider avec fallback chain (Day 1.18 batch endpoint).
 
-    Le batch endpoint est lui-même rate-limité à 10/min/IP, donc le throttle
-    global de 1s n'a pas lieu d'être ici (il casserait toute boucle batch).
+    Ordre de priorité :
+      1. Cache TRANSLATE_CACHE (in-memory, 0ms si hit)
+      2. Groq llama-3.3-70b (~200ms, gratuit 14400/jour)
+      3. Gemini K1 (~1-3s, qualité ★★★★★)
+      4. Gemini K2 BACKUP (si K1 quota épuisé)
+      5. Claude (payant, infaillible)
+      6. Passthrough anglais (graceful degradation)
 
-    Réutilise TRANSLATE_CACHE partagé. NE met PAS à jour la DB observations
-    (pas d'obs_id en batch).
+    Cache partagé avec _gemini_translate. NE met PAS à jour la DB observations.
     """
     if not text or len(text) < 15:
         return text
     if not _detect_lang(text):
         return text  # déjà en français
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    if not api_key:
-        return text
-    cache_key = None
+
+    # === L1 : Cache mémoire ===
+    raw_key = (text[:1500] + "|fr").encode("utf-8", errors="ignore")
+    cache_key = hashlib.sha256(raw_key).hexdigest()
+    now_ts = time.time()
+    item = TRANSLATE_CACHE.get(cache_key)
+    if item and (now_ts - item.get("ts", 0) < TRANSLATE_TTL_SECONDS):
+        cached = item.get("value", text)
+        if cached and cached != text:
+            return cached
+
+    prompt = (
+        "Traduis ce texte astronomique en français fluide et naturel. "
+        "Réponds UNIQUEMENT avec la traduction, sans guillemets ni commentaires.\n\n"
+        + text[:1500]
+    )
+
+    def _is_valid_translation(result):
+        """Le résultat doit être non-vide ET différent de l'original."""
+        if not result:
+            return False
+        r = result.strip()
+        if not r or r.lower() == text.lower().strip():
+            return False
+        return True
+
+    # === L2.1 : Groq (rapide, gratuit) ===
     try:
-        lang = "fr"
-        raw_key = (text[:1500] + "|" + lang).encode("utf-8", errors="ignore")
-        cache_key = hashlib.sha256(raw_key).hexdigest()
-        now_ts = time.time()
-        item = TRANSLATE_CACHE.get(cache_key)
-        if item and (now_ts - item.get("ts", 0) < TRANSLATE_TTL_SECONDS):
-            return item.get("value", text)
-        # PAS de check TRANSLATE_LAST_REQUEST_TS ici (volontaire pour batch)
-        payload = json.dumps({"contents": [{"parts": [{"text":
-            "Traduis ce texte astronomique en français fluide et naturel. "
-            "Réponds UNIQUEMENT avec la traduction, sans guillemets ni commentaires.\n\n"
-            + text[:1500]
-        }]}]}).encode()
-        req = urllib.request.Request(
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"gemini-2.0-flash:generateContent?key={api_key}",
-            data=payload, headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=15) as r:
-            result = json.loads(r.read())
-        translated = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        result, err = _call_groq(prompt)
+        if _is_valid_translation(result):
+            TRANSLATE_CACHE[cache_key] = {"value": result.strip(), "ts": time.time()}
+            return result.strip()
+    except Exception:
+        pass
+
+    # === L2.2 : Gemini K1 (clé principale) ===
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if api_key:
         try:
-            TRANSLATE_CACHE[cache_key] = {"value": translated or text, "ts": time.time()}
+            payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode()
+            req = urllib.request.Request(
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"gemini-2.0-flash:generateContent?key={api_key}",
+                data=payload, headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as r:
+                result = json.loads(r.read())
+            translated = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+            if _is_valid_translation(translated):
+                TRANSLATE_CACHE[cache_key] = {"value": translated, "ts": time.time()}
+                return translated
         except Exception:
             pass
-        return translated or text
-    except urllib.error.HTTPError as e:
-        if getattr(e, "code", None) == 429:
-            try:
-                prompt_tr = (
-                    "Traduis ce texte astronomique en français fluide et naturel. "
-                    "Réponds UNIQUEMENT avec la traduction, sans guillemets ni commentaires.\n\n"
-                    + text[:1500]
-                )
-                result, err = _call_gemini(prompt_tr)
-                if result and result != text and cache_key:
-                    TRANSLATE_CACHE[cache_key] = {"value": result, "ts": time.time()}
-                    return result
-            except Exception:
-                pass
-        return text
+
+    # === L2.3 : Gemini K2 BACKUP (clé secondaire) ===
+    api_key_backup = os.environ.get("GEMINI_API_KEY_BACKUP", "")
+    if api_key_backup:
+        try:
+            payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode()
+            req = urllib.request.Request(
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"gemini-2.0-flash:generateContent?key={api_key_backup}",
+                data=payload, headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as r:
+                result = json.loads(r.read())
+            translated = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+            if _is_valid_translation(translated):
+                TRANSLATE_CACHE[cache_key] = {"value": translated, "ts": time.time()}
+                return translated
+        except Exception:
+            pass
+
+    # === L2.4 : Claude (payant, infaillible) ===
+    try:
+        result, err = _call_claude(prompt)
+        if _is_valid_translation(result):
+            TRANSLATE_CACHE[cache_key] = {"value": result.strip(), "ts": time.time()}
+            return result.strip()
     except Exception:
-        return text
+        pass
+
+    # === L3 : Passthrough graceful ===
+    return text
 
 
 # ---------------------------------------------------------------------------
