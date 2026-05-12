@@ -317,6 +317,20 @@
     };
   }
 
+  // ── i18n display helper (logique reste EN, affichage FR)
+  var LEVEL_FR = {
+    "CRITICAL": "CRITIQUE",
+    "HIGH": "ÉLEVÉ",
+    "MEDIUM": "MOYEN",
+    "LOW": "FAIBLE",
+    "ACTIVE": "ACTIF",
+    "YES": "OUI",
+    "NO": "NON"
+  };
+  function localizeLevel(lvl) {
+    return LEVEL_FR[lvl] || lvl;
+  }
+
   /** Single source of truth for all radar data. */
   var state = {
     trackedSatellites: [],
@@ -1588,12 +1602,12 @@
     var sumHtml = "";
     var listHtml = "";
     if (!state.catalogLoaded && !state.trackedSatellites.length) {
-      sumHtml = "Visible: 0 — real data from TLE propagation";
+      sumHtml = "Visible : 0 — real data from TLE propagation";
       listHtml = "No propagated satellites available";
     } else {
       var visible = state.visibleSatellites;
       sumHtml =
-        "Visible: " + visible.length +
+        "Visible : " + visible.length +
         " / " +
         state.trackedSatellites.length +
         " tracked — orbital predictions based on NORAD TLE data";
@@ -2262,10 +2276,10 @@
     try {
       var t = (sat && sat.type) ? String(sat.type).toLowerCase() : "";
       if (danger) {
-        if (t.indexOf("debris") >= 0) return "Increase monitoring, consider avoidance analysis";
-        return "Prioritize tracking, notify operator";
+        if (t.indexOf("debris") >= 0) return "Surveillance accrue, envisager une analyse d'évitement";
+        return "Prioriser le suivi, notifier l'opérateur";
       }
-      if (level === "HIGH") return "Maintain tracking, watch for changes";
+      if (level === "HIGH") return "Maintenir le suivi, surveiller les changements";
       if (level === "MODERATE") return "Routine monitoring";
       return "No action required";
     } catch (e) {
@@ -2463,7 +2477,7 @@
       if (state._analysisFp === analysisFp) return;
       state._analysisFp = analysisFp;
       badge.className = "asc-badge " + cls;
-      badge.innerHTML = "<span class=\"asc-dot\" style=\"background:currentColor;\"></span><span>" + best.level + "</span>";
+      badge.innerHTML = "<span class=\"asc-dot\" style=\"background:currentColor;\"></span><span>" + localizeLevel(best.level) + "</span>";
       body.innerHTML = html;
     } catch (e) {}
   }
