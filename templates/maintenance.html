@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="{{ lang | default('fr') }}" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="robots" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if lang == 'en' %}Maintenance Control · ORBITAL-CHOHRA{% else %}Contrôle Maintenance · ORBITAL-CHOHRA{% endif %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cyan: #00d4ff;
+  --green: #00ff88;
+  --amber: #ff8c00;
+  --red: #ff3355;
+  --bg: #02050a;
+  --panel: rgba(8, 15, 28, 0.85);
+  --border: rgba(0, 212, 255, 0.18);
+  --text: #cbd6e4;
+  --text-hi: #ffffff;
+  --text-lo: #6c7a89;
+  --font: 'Orbitron', monospace;
+  --font-mono: 'Share Tech Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+body { padding: 20px; overflow-x: hidden; }
+
+#starfield-bg { position: fixed; inset: 0; z-index: -1; background: radial-gradient(ellipse at center, #050a14 0%, #000 100%); }
+
+.mc-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 20px; backdrop-filter: blur(8px); }
+.mc-brand { font-size: 18px; font-weight: 900; letter-spacing: 0.18em; color: var(--cyan); text-shadow: 0 0 12px rgba(0, 212, 255, 0.4); }
+.mc-brand .divider { color: var(--text-lo); margin: 0 12px; }
+.mc-brand .subtitle { font-size: 11px; color: var(--text-lo); letter-spacing: 0.15em; margin-top: 4px; font-weight: 400; }
+.mc-back { color: var(--cyan); text-decoration: none; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; padding: 8px 16px; border: 1px solid var(--border); border-radius: 4px; transition: all 0.2s; }
+.mc-back:hover { background: rgba(0, 212, 255, 0.1); border-color: var(--cyan); }
+
+.mc-summary { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 20px 24px; margin-bottom: 24px; backdrop-filter: blur(8px); }
+.mc-summary-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 24px; flex-wrap: wrap; }
+.mc-status-pill { display: inline-flex; align-items: center; gap: 12px; padding: 10px 20px; border-radius: 4px; font-weight: 700; letter-spacing: 0.15em; font-size: 14px; }
+.mc-status-pill.ok { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.4); color: var(--green); }
+.mc-status-pill.warn { background: rgba(255, 140, 0, 0.1); border: 1px solid rgba(255, 140, 0, 0.4); color: var(--amber); }
+.mc-status-pill.down { background: rgba(255, 51, 85, 0.1); border: 1px solid rgba(255, 51, 85, 0.4); color: var(--red); }
+.mc-summary-stats { display: flex; gap: 24px; font-family: var(--font-mono); font-size: 13px; flex-wrap: wrap; }
+.mc-summary-stat { display: flex; flex-direction: column; }
+.mc-summary-stat-val { font-size: 22px; font-weight: 700; color: var(--text-hi); }
+.mc-summary-stat-val.ok { color: var(--green); }
+.mc-summary-stat-val.warn { color: var(--amber); }
+.mc-summary-stat-val.down { color: var(--red); }
+.mc-summary-stat-lbl { font-size: 9px; letter-spacing: 0.15em; color: var(--text-lo); margin-top: 2px; }
+.mc-summary-bar { display: flex; height: 4px; background: rgba(255, 255, 255, 0.04); border-radius: 2px; overflow: hidden; margin-top: 12px; }
+.mc-summary-bar > div { height: 100%; transition: width 0.5s ease; }
+.mc-summary-bar .ok-bar { background: var(--green); }
+.mc-summary-bar .warn-bar { background: var(--amber); }
+.mc-summary-bar .down-bar { background: var(--red); }
+.mc-summary-meta { display: flex; justify-content: space-between; margin-top: 14px; font-family: var(--font-mono); font-size: 11px; color: var(--text-lo); letter-spacing: 0.1em; flex-wrap: wrap; gap: 12px; }
+.mc-countdown { color: var(--cyan); font-weight: 700; }
+
+.mc-intervention { background: linear-gradient(135deg, rgba(255, 51, 85, 0.12), rgba(255, 51, 85, 0.04)); border: 1px solid var(--red); border-radius: 6px; padding: 18px 24px; margin-bottom: 24px; animation: pulse-border 1.5s infinite; display: none; }
+.mc-intervention.visible { display: block; }
+.mc-intervention-title { font-size: 13px; font-weight: 700; color: var(--red); letter-spacing: 0.15em; margin-bottom: 12px; }
+.mc-intervention-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255, 51, 85, 0.15); gap: 16px; flex-wrap: wrap; }
+.mc-intervention-item:last-child { border-bottom: none; }
+.mc-intervention-svc { font-weight: 700; color: var(--text-hi); }
+.mc-intervention-msg { font-family: var(--font-mono); font-size: 11px; color: var(--text-lo); margin-top: 3px; }
+.mc-intervention-action { font-family: var(--font-mono); font-size: 11px; color: var(--amber); padding: 6px 12px; border: 1px solid var(--amber); border-radius: 3px; }
+@keyframes pulse-border { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 51, 85, 0.4); } 50% { box-shadow: 0 0 18px 4px rgba(255, 51, 85, 0.15); } }
+
+.mc-section { margin-bottom: 28px; }
+.mc-section-title { font-size: 11px; letter-spacing: 0.25em; color: var(--cyan); font-weight: 700; margin-bottom: 14px; padding-left: 12px; border-left: 3px solid var(--cyan); text-shadow: 0 0 8px rgba(0, 212, 255, 0.3); }
+
+.mc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.mc-card { background: var(--panel); border: 1px solid var(--border); border-radius: 5px; padding: 16px; position: relative; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); backdrop-filter: blur(8px); overflow: hidden; }
+.mc-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; transition: all 0.3s; }
+.mc-card.status-ok::before { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.mc-card.status-warn::before { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.mc-card.status-down::before { background: var(--red); box-shadow: 0 0 12px var(--red); }
+.mc-card:hover { transform: translateY(-3px); border-color: rgba(0, 212, 255, 0.5); box-shadow: 0 0 24px rgba(0, 212, 255, 0.18); }
+
+.mc-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.mc-card-name { font-size: 12px; font-weight: 700; color: var(--text-hi); letter-spacing: 0.05em; }
+.mc-led { width: 14px; height: 14px; border-radius: 50%; position: relative; flex-shrink: 0; }
+.mc-led.ok { background: var(--green); box-shadow: 0 0 12px var(--green); animation: led-pulse-ok 2s infinite; }
+.mc-led.warn { background: var(--amber); box-shadow: 0 0 12px var(--amber); animation: led-pulse-warn 1s infinite; }
+.mc-led.down { background: var(--red); box-shadow: 0 0 16px var(--red); animation: led-pulse-down 0.5s infinite; }
+@keyframes led-pulse-ok { 0%, 100% { box-shadow: 0 0 12px var(--green), 0 0 0 0 rgba(0, 255, 136, 0.5); } 50% { box-shadow: 0 0 16px var(--green), 0 0 0 5px rgba(0, 255, 136, 0); } }
+@keyframes led-pulse-warn { 0%, 100% { box-shadow: 0 0 12px var(--amber); transform: scale(1); } 50% { box-shadow: 0 0 18px var(--amber); transform: scale(1.1); } }
+@keyframes led-pulse-down { 0%, 100% { box-shadow: 0 0 16px var(--red); opacity: 1; } 50% { box-shadow: 0 0 24px var(--red); opacity: 0.6; } }
+
+.mc-card-status { font-size: 10px; letter-spacing: 0.18em; font-weight: 700; margin-bottom: 8px; }
+.mc-card-status.ok { color: var(--green); }
+.mc-card-status.warn { color: var(--amber); }
+.mc-card-status.down { color: var(--red); }
+.mc-card-message { font-family: var(--font-mono); font-size: 11px; color: var(--text); line-height: 1.5; min-height: 32px; }
+.mc-card-latency { font-family: var(--font-mono); font-size: 18px; color: var(--cyan); font-weight: 700; margin-top: 8px; }
+.mc-card-meta { font-family: var(--font-mono); font-size: 9px; color: var(--text-lo); letter-spacing: 0.1em; margin-top: 6px; }
+
+.mc-footer { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; margin-top: 24px; font-family: var(--font-mono); font-size: 11px; color: var(--text-lo); flex-wrap: wrap; gap: 12px; }
+.mc-refresh-btn { background: transparent; color: var(--cyan); border: 1px solid var(--cyan); padding: 6px 14px; border-radius: 3px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; }
+.mc-refresh-btn:hover { background: rgba(0, 212, 255, 0.1); }
+
+.mc-loading { padding: 60px; text-align: center; color: var(--text-lo); font-family: var(--font-mono); }
+
+@media (max-width: 720px) {
+  body { padding: 10px; }
+  .mc-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+  .mc-summary-top { flex-direction: column; gap: 14px; align-items: flex-start; }
+  .mc-summary-stats { flex-wrap: wrap; }
+  .mc-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body class="notranslate">
+
+<canvas id="starfield-bg" aria-hidden="true"></canvas>
+
+<div class="mc-header">
+  <div class="mc-brand">
+    ◈ ASTRO·SCAN <span class="divider">//</span> {% if lang == 'en' %}MAINTENANCE CONTROL CENTER{% else %}CONTRÔLE DE MAINTENANCE{% endif %}
+    <div class="subtitle">{% if lang == 'en' %}Tlemcen HQ · 34.8753°N -1.3167°W · LIVE{% else %}QG Tlemcen · 34.8753°N -1.3167°O · EN DIRECT{% endif %}</div>
+  </div>
+  <a href="/portail" class="mc-back">← {% if lang == 'en' %}Portal{% else %}Portail{% endif %}</a>
+</div>
+
+<div class="mc-summary" id="mc-summary">
+  <div class="mc-summary-top">
+    <div class="mc-status-pill ok" id="mc-status-pill">
+      <span id="mc-status-icon">●</span>
+      <span id="mc-status-label">{% if lang == 'en' %}LOADING...{% else %}CHARGEMENT...{% endif %}</span>
+    </div>
+    <div class="mc-summary-stats">
+      <div class="mc-summary-stat"><div class="mc-summary-stat-val ok" id="mc-ok-count">—</div><div class="mc-summary-stat-lbl">{% if lang == 'en' %}OPERATIONAL{% else %}OPÉRATIONNELS{% endif %}</div></div>
+      <div class="mc-summary-stat"><div class="mc-summary-stat-val warn" id="mc-warn-count">—</div><div class="mc-summary-stat-lbl">{% if lang == 'en' %}WARNINGS{% else %}AVERTISSEMENTS{% endif %}</div></div>
+      <div class="mc-summary-stat"><div class="mc-summary-stat-val down" id="mc-down-count">—</div><div class="mc-summary-stat-lbl">{% if lang == 'en' %}OFFLINE{% else %}HORS LIGNE{% endif %}</div></div>
+      <div class="mc-summary-stat"><div class="mc-summary-stat-val" id="mc-uptime">—</div><div class="mc-summary-stat-lbl">{% if lang == 'en' %}UPTIME{% else %}DISPONIBILITÉ{% endif %}</div></div>
+    </div>
+  </div>
+  <div class="mc-summary-bar">
+    <div class="ok-bar" id="mc-ok-bar" style="width: 0%"></div>
+    <div class="warn-bar" id="mc-warn-bar" style="width: 0%"></div>
+    <div class="down-bar" id="mc-down-bar" style="width: 0%"></div>
+  </div>
+  <div class="mc-summary-meta">
+    <span><span id="mc-last-check">—</span></span>
+    <span>{% if lang == 'en' %}Next refresh in{% else %}Prochaine actu dans{% endif %} <span class="mc-countdown" id="mc-countdown">10s</span></span>
+  </div>
+</div>
+
+<div class="mc-intervention" id="mc-intervention">
+  <div class="mc-intervention-title">⚠ {% if lang == 'en' %}INTERVENTION REQUIRED{% else %}INTERVENTION REQUISE{% endif %}</div>
+  <div id="mc-intervention-list"></div>
+</div>
+
+<div id="mc-sections">
+  <div class="mc-loading">{% if lang == 'en' %}Loading mission control...{% else %}Chargement contrôle mission...{% endif %}</div>
+</div>
+
+<div class="mc-footer">
+  <span>{% if lang == 'en' %}Auto-refresh every 10 seconds{% else %}Actualisation auto toutes les 10 secondes{% endif %}</span>
+  <button class="mc-refresh-btn" id="mc-refresh-btn">⟳ {% if lang == 'en' %}REFRESH NOW{% else %}ACTUALISER{% endif %}</button>
+</div>
+
+<script src="/static/js/starfield.js" defer></script>
+<script>
+(function () {
+  'use strict';
+  var LANG = '{{ lang | default("fr") }}';
+  var REFRESH_MS = 10000;
+  var countdownTimer = null;
+  var countdownVal = 10;
+
+  var I18N = {
+    fr: {
+      operational: 'OPÉRATIONNEL',
+      warning: 'AVERTISSEMENT',
+      offline: 'HORS LIGNE',
+      external_apis: 'APIs EXTERNES',
+      infrastructure: 'INFRASTRUCTURE',
+      data_quality: 'QUALITÉ DES DONNÉES',
+      workers: 'WORKERS BACKGROUND',
+      last_check: 'Dernière vérification',
+      investigate: 'INVESTIGUER',
+      monitor: 'SURVEILLER'
+    },
+    en: {
+      operational: 'OPERATIONAL',
+      warning: 'WARNING',
+      offline: 'OFFLINE',
+      external_apis: 'EXTERNAL APIs',
+      infrastructure: 'INFRASTRUCTURE',
+      data_quality: 'DATA QUALITY',
+      workers: 'BACKGROUND WORKERS',
+      last_check: 'Last check',
+      investigate: 'INVESTIGATE',
+      monitor: 'MONITOR'
+    }
+  };
+  var T = I18N[LANG] || I18N.fr;
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function statusLabel(status) {
+    if (status === 'ok') return T.operational;
+    if (status === 'warn') return T.warning;
+    if (status === 'down') return T.offline;
+    return '—';
+  }
+
+  function renderCard(svc) {
+    var statusClass = svc.status || 'unknown';
+    var latencyHtml = (svc.latency_ms != null)
+      ? '<div class="mc-card-latency">' + svc.latency_ms + ' ms</div>'
+      : '';
+    var lastCheckShort = svc.last_check ? svc.last_check.substring(11, 19) + ' UTC' : '—';
+    return (
+      '<div class="mc-card status-' + statusClass + '">' +
+        '<div class="mc-card-head">' +
+          '<div class="mc-card-name">' + escapeHtml(svc.service) + '</div>' +
+          '<div class="mc-led ' + statusClass + '"></div>' +
+        '</div>' +
+        '<div class="mc-card-status ' + statusClass + '">' + statusLabel(statusClass) + '</div>' +
+        '<div class="mc-card-message">' + escapeHtml(svc.message || '—') + '</div>' +
+        latencyHtml +
+        '<div class="mc-card-meta">' + T.last_check + ': ' + escapeHtml(lastCheckShort) + '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderSection(titleKey, services) {
+    if (!services || !services.length) return '';
+    var cards = services.map(renderCard).join('');
+    return (
+      '<div class="mc-section">' +
+        '<div class="mc-section-title">' + T[titleKey] + '</div>' +
+        '<div class="mc-grid">' + cards + '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderAll(data) {
+    if (!data || !data.global) return;
+
+    var pill = document.getElementById('mc-status-pill');
+    var label = document.getElementById('mc-status-label');
+    pill.className = 'mc-status-pill ' + data.global.status;
+    label.textContent = statusLabel(data.global.status);
+
+    document.getElementById('mc-ok-count').textContent = data.global.ok_count;
+    document.getElementById('mc-warn-count').textContent = data.global.warn_count;
+    document.getElementById('mc-down-count').textContent = data.global.down_count;
+    document.getElementById('mc-uptime').textContent = data.uptime || '—';
+
+    var total = data.global.total || 1;
+    document.getElementById('mc-ok-bar').style.width = (data.global.ok_count / total * 100) + '%';
+    document.getElementById('mc-warn-bar').style.width = (data.global.warn_count / total * 100) + '%';
+    document.getElementById('mc-down-bar').style.width = (data.global.down_count / total * 100) + '%';
+
+    var lc = new Date(data.timestamp);
+    document.getElementById('mc-last-check').textContent =
+      (LANG === 'en' ? 'Last check: ' : 'Dernière vérif : ') +
+      lc.toLocaleTimeString(LANG === 'en' ? 'en-US' : 'fr-FR') + ' UTC';
+
+    var iv = document.getElementById('mc-intervention');
+    var ivList = document.getElementById('mc-intervention-list');
+    if (data.alerts && data.alerts.length > 0) {
+      iv.classList.add('visible');
+      ivList.innerHTML = data.alerts.map(function (a) {
+        return (
+          '<div class="mc-intervention-item">' +
+            '<div>' +
+              '<div class="mc-intervention-svc">🔴 ' + escapeHtml(a.service) + '</div>' +
+              '<div class="mc-intervention-msg">' + escapeHtml(a.message) + ' · ' + escapeHtml(a.action_hint) + '</div>' +
+            '</div>' +
+            '<div class="mc-intervention-action">' + (a.severity === 'down' ? T.investigate : T.monitor) + '</div>' +
+          '</div>'
+        );
+      }).join('');
+    } else {
+      iv.classList.remove('visible');
+      ivList.innerHTML = '';
+    }
+
+    var sec = document.getElementById('mc-sections');
+    sec.innerHTML =
+      renderSection('external_apis', data.categories.external_apis) +
+      renderSection('infrastructure', data.categories.infrastructure) +
+      renderSection('data_quality', data.categories.data_quality) +
+      renderSection('workers', data.categories.workers);
+  }
+
+  function fetchAndRender() {
+    fetch('/api/maintenance/aggregate', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(renderAll)
+      .catch(function (e) {
+        console.error('aggregate fetch failed', e);
+        document.getElementById('mc-sections').innerHTML =
+          '<div class="mc-loading">' +
+          (LANG === 'en' ? 'Failed to fetch maintenance data. Retrying...' : 'Échec récupération données. Nouvelle tentative...') +
+          '</div>';
+      });
+  }
+
+  function resetCountdown() {
+    countdownVal = REFRESH_MS / 1000;
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(function () {
+      countdownVal--;
+      if (countdownVal <= 0) {
+        countdownVal = REFRESH_MS / 1000;
+        fetchAndRender();
+      }
+      document.getElementById('mc-countdown').textContent = countdownVal + 's';
+    }, 1000);
+  }
+
+  document.getElementById('mc-refresh-btn').addEventListener('click', function () {
+    fetchAndRender();
+    resetCountdown();
+  });
+
+  fetchAndRender();
+  resetCountdown();
+})();
+</script>
+</body>
+</html>

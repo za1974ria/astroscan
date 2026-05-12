@@ -163,6 +163,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.blueprints.scan_signal import scan_signal_bp
     from app.blueprints.flight_radar import flight_radar_bp
     from app.blueprints.hilal import bp as hilal_bp
+    from app.blueprints.maintenance import bp as maintenance_bp
 
     app.register_blueprint(seo_bp)
     app.register_blueprint(apod_bp)
@@ -193,7 +194,8 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(scan_signal_bp)
     app.register_blueprint(flight_radar_bp)
     app.register_blueprint(hilal_bp)
-    log.info("[Blueprints] 29 blueprints + 8 hooks enregistrés (sync station_web.py + hilal)")
+    app.register_blueprint(maintenance_bp)
+    log.info("[Blueprints] 30 blueprints + 8 hooks enregistrés (sync station_web.py + hilal + maintenance)")
 
 
 def register_all_for_fallback(app: Flask) -> None:
