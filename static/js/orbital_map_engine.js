@@ -2456,10 +2456,10 @@
       html += "<div style=\"margin-top:2px;color:rgba(150,175,190,.85);font-size:10px;\">Type : " + best.type + " · Visible : " + (best.visible ? "OUI" : "NON") + " · Vitesse : " + speedStr + "</div>";
       html += "<div style=\"margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;\">";
       html += "<div class=\"asc-kpi-card\" style=\"flex:1 1 120px;\"><div class=\"asc-kpi-label\">Score</div><div class=\"asc-kpi-value\">" + best.score + "</div><div class=\"asc-kpi-sub\">0–100</div></div>";
-      html += "<div class=\"asc-kpi-card\" style=\"flex:1 1 120px;\"><div class=\"asc-kpi-label\">Level</div><div class=\"asc-kpi-value " + sevClass + "\">" + localizeLevel(best.level) + "</div><div class=\"asc-kpi-sub\">Band</div></div>";
+      html += "<div class=\"asc-kpi-card\" style=\"flex:1 1 120px;\"><div class=\"asc-kpi-label\">Niveau</div><div class=\"asc-kpi-value " + sevClass + "\">" + localizeLevel(best.level) + "</div><div class=\"asc-kpi-sub\">Bande</div></div>";
       html += "</div>";
-      html += "<div style=\"margin-top:8px;\"><span style=\"color:#aaa;\">Danger</span>: <span style=\"color:" + dangerColor + ";font-weight:bold;\">" + best.danger + "</span></div>";
-      html += "<div style=\"margin-top:4px;\"><span style=\"color:#aaa;\">Action</span>: " + best.action + "</div>";
+      html += "<div style=\"margin-top:8px;\"><span style=\"color:#aaa;\">Danger</span> : <span style=\"color:" + dangerColor + ";font-weight:bold;\">" + localizeLevel(best.danger) + "</span></div>";
+      html += "<div style=\"margin-top:4px;\"><span style=\"color:#aaa;\">Action</span> : " + best.action + "</div>";
       var analysisFp =
         best.name +
         "|" +
