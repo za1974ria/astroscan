@@ -169,12 +169,15 @@ def data_credibility_stub(
     """
     age, src = tle_freshness_fields(tle_cache, tle_cache_file)
     err = tle_cache.get("error") if isinstance(tle_cache, dict) else None
+    # Seuils alignés sur fresh_bundle_for_skip_network(6h) du tle_worker.
+    # HIGH si age <= 6h (le worker considère le cache valide sans appel réseau),
+    # MEDIUM entre 6h et 24h, LOW au-delà ou si erreur explicite.
     level = "high"
     if err:
         level = "low"
     elif age is not None and age > 86400:
-        level = "medium"
-    elif age is not None and age > 3600:
+        level = "low"
+    elif age is not None and age > 21600:
         level = "medium"
     return {
         "source_label": src,

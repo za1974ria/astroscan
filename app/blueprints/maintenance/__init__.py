@@ -76,8 +76,8 @@ SERVICES_I18N = {
         "en": ("Data Credibility", "{level}"),
     },
     "Anomaly Detection": {
-        "fr": ("Détection d'anomalies", "{count} anomalies actives"),
-        "en": ("Anomaly Detection", "{count} active anomalies"),
+        "fr": ("Observations remarquables", "{count} observations remarquables archivées"),
+        "en": ("Notable Observations", "{count} notable observations archived"),
     },
     # Workers
     "tle_refresh_loop": {
