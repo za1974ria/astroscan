@@ -441,11 +441,11 @@
     var list = state.closeApproaches;
     if (state.trackedSatellites.length < 2) {
       state.closeApproaches = [];
-      panel.innerHTML = "No close approaches detected.";
+      panel.innerHTML = "Aucune approche critique détectée.";
       return;
     }
     if (list.length === 0) {
-      panel.innerHTML = "No close approaches detected.";
+      panel.innerHTML = "Aucune approche critique détectée.";
       return;
     }
     var top5 = list.slice(0, 5);
@@ -1915,9 +1915,9 @@
       if (state.closeApproaches && state.closeApproaches.length) {
         var topCa = state.closeApproaches[0];
         if (topCa && topCa.severity === "critical") {
-          alerts.push({ level: "danger", msg: "Critical close approach detected", meta: "conjunction" });
+          alerts.push({ level: "danger", msg: "Approche critique détectée", meta: "conjonction" });
         } else if (topCa && topCa.severity === "warning") {
-          alerts.push({ level: "warn", msg: "Close approach watchlist active", meta: "conjunction" });
+          alerts.push({ level: "warn", msg: "Surveillance d'approche active", meta: "conjonction" });
         }
       }
     } catch (e3) {}
@@ -2194,7 +2194,7 @@
       if (!state._demoNextAlertMs || now >= state._demoNextAlertMs) {
         var msgs = [
           { level: "data", msg: "High velocity object detected", meta: "tracking" },
-          { level: "warn", msg: "Close approach under review", meta: "conjunction" },
+          { level: "warn", msg: "Approche en cours d'examen", meta: "conjonction" },
           { level: "warn", msg: "Tracking confidence fluctuation detected", meta: "telemetry" }
         ];
         var pick = msgs[Math.floor(Math.random() * msgs.length)];
