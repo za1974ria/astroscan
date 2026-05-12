@@ -112,8 +112,11 @@ body { padding: 20px; overflow-x: hidden; }
 </head>
 <body class="notranslate">
 
+{% if not request.args.get('embed') %}
 <canvas id="starfield-bg" aria-hidden="true"></canvas>
+{% endif %}
 
+{% if not request.args.get('embed') %}
 <div class="mc-header">
   <div class="mc-brand">
     ◈ ASTRO·SCAN <span class="divider">//</span> {% if lang == 'en' %}MAINTENANCE CONTROL CENTER{% else %}CONTRÔLE DE MAINTENANCE{% endif %}
@@ -121,6 +124,7 @@ body { padding: 20px; overflow-x: hidden; }
   </div>
   <a href="/portail" class="mc-back">← {% if lang == 'en' %}Portal{% else %}Portail{% endif %}</a>
 </div>
+{% endif %}
 
 <div class="mc-summary" id="mc-summary">
   <div class="mc-summary-top">
@@ -155,12 +159,16 @@ body { padding: 20px; overflow-x: hidden; }
   <div class="mc-loading">{% if lang == 'en' %}Loading mission control...{% else %}Chargement contrôle mission...{% endif %}</div>
 </div>
 
+{% if not request.args.get('embed') %}
 <div class="mc-footer">
   <span>{% if lang == 'en' %}Auto-refresh every 10 seconds{% else %}Actualisation auto toutes les 10 secondes{% endif %}</span>
   <button class="mc-refresh-btn" id="mc-refresh-btn">⟳ {% if lang == 'en' %}REFRESH NOW{% else %}ACTUALISER{% endif %}</button>
 </div>
+{% endif %}
 
+{% if not request.args.get('embed') %}
 <script src="/static/js/starfield.js" defer></script>
+{% endif %}
 <script>
 (function () {
   'use strict';
@@ -319,7 +327,8 @@ body { padding: 20px; overflow-x: hidden; }
     }, 1000);
   }
 
-  document.getElementById('mc-refresh-btn').addEventListener('click', function () {
+  var _refreshBtn = document.getElementById('mc-refresh-btn');
+  if (_refreshBtn) _refreshBtn.addEventListener('click', function () {
     fetchAndRender();
     resetCountdown();
   });
