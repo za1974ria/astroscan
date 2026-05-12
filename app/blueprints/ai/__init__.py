@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 
 import requests
 
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, current_app
 
 from app.config import STATION
 from app.services.ai_translate import (
@@ -351,6 +351,51 @@ def api_translate():
     text = data.get("text", "")
     translated = _gemini_translate(text)
     return jsonify({"ok": True, "translated": translated})
+
+
+@bp.route("/api/translate/batch", methods=["POST"])
+@rate_limit_ip(max_per_minute=10, key_prefix="ai.translate.batch")
+def api_translate_batch():
+    """
+    Batch translation endpoint.
+    Body: {"texts": ["text1", "text2", ...]} (max 50 items)
+    Returns: {"translations": ["fr1", "fr2", ...], "count": N}
+
+    Each text is translated via _gemini_translate (cached in DB),
+    so the per-item cost is amortized — 1 batch request = 1 rate-limit hit.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        texts = data.get("texts", [])
+        if not isinstance(texts, list):
+            return jsonify({"error": "texts must be an array"}), 400
+        if len(texts) == 0:
+            return jsonify({"translations": [], "count": 0}), 200
+        if len(texts) > 50:
+            return jsonify({"error": "max 50 texts per batch"}), 400
+
+        translations = []
+        for t in texts:
+            if not isinstance(t, str) or not t.strip():
+                translations.append("")
+                continue
+            try:
+                tr = _gemini_translate(t)
+                translations.append(tr or t)
+            except Exception as e:
+                current_app.logger.warning(
+                    "translate.batch item failed: %s", str(e)[:120]
+                )
+                translations.append(t)
+
+        current_app.logger.info(
+            "translate.batch ok count=%d ip=%s",
+            len(texts), request.remote_addr
+        )
+        return jsonify({"translations": translations, "count": len(translations)}), 200
+    except Exception as e:
+        current_app.logger.error("translate.batch error: %s", e)
+        return jsonify({"error": "batch translation failed"}), 500
 
 
 @bp.route("/api/astro/explain", methods=["POST"])

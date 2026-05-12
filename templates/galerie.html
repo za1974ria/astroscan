@@ -267,14 +267,105 @@ window.GALERIE_CLASSIFICATION = {{ classification_stats|tojson }};
       })
       .catch(function(){ el.textContent = orig; el.removeAttribute("data-orig"); el.classList.remove("translating"); });
   }
+  // === BATCH TRANSLATE (Day 1.18 fix) ===
+  var LS_PREFIX = "astroscan_tr_";
+  var LS_TTL_MS = 7 * 24 * 3600 * 1000;
+
+  function lsHash(s) {
+    var h = 5381;
+    for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return Math.abs(h).toString(36);
+  }
+  function lsGet(orig) {
+    try {
+      var raw = localStorage.getItem(LS_PREFIX + lsHash(orig));
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      if (!obj || !obj.t || (Date.now() - obj.ts) > LS_TTL_MS) return null;
+      return obj.t;
+    } catch(e) { return null; }
+  }
+  function lsSet(orig, tr) {
+    try {
+      localStorage.setItem(
+        LS_PREFIX + lsHash(orig),
+        JSON.stringify({ t: tr, ts: Date.now() })
+      );
+    } catch(e) { /* quota exceeded, ignore */ }
+  }
+  function chunkArray(arr, size) {
+    var out = [];
+    for (var i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
   function afterRenderTranslate(){
     if (LANG !== "fr") return;
-    document.querySelectorAll(".card [data-orig]").forEach(function(el){
+
+    var nodes = document.querySelectorAll(".card [data-orig]");
+    var jobs = [];
+    nodes.forEach(function(el){
       var orig = dec(el.getAttribute("data-orig") || "");
+      if (!orig) return;
       var isAnalyse = el.classList.contains("card-analyse");
-      translateAndFill(orig, el, isAnalyse);
+
+      if (translateCache[orig]) {
+        applyTranslation(el, translateCache[orig], isAnalyse);
+        return;
+      }
+      var cached = lsGet(orig);
+      if (cached) {
+        translateCache[orig] = cached;
+        applyTranslation(el, cached, isAnalyse);
+        return;
+      }
+      el.classList.add("translating");
+      jobs.push({ orig: orig, el: el, isAnalyse: isAnalyse });
     });
+
+    if (!jobs.length) return;
+
+    var chunks = chunkArray(jobs, 50);
+    var chunkIdx = 0;
+
+    function processNext() {
+      if (chunkIdx >= chunks.length) return;
+      var chunk = chunks[chunkIdx++];
+      var texts = chunk.map(function(j){ return j.orig; });
+
+      fetch("/api/translate/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texts: texts })
+      })
+      .then(function(r){
+        if (!r.ok) throw new Error("batch HTTP " + r.status);
+        return r.json();
+      })
+      .then(function(d){
+        var trs = d.translations || [];
+        chunk.forEach(function(job, i){
+          var tr = (trs[i] || job.orig).trim();
+          translateCache[job.orig] = tr;
+          lsSet(job.orig, tr);
+          applyTranslation(job.el, tr, job.isAnalyse);
+        });
+      })
+      .catch(function(err){
+        console.warn("translate.batch failed", err);
+        chunk.forEach(function(job){
+          job.el.textContent = job.orig;
+          job.el.removeAttribute("data-orig");
+          job.el.classList.remove("translating");
+        });
+      })
+      .finally(function(){
+        setTimeout(processNext, 200);
+      });
+    }
+    processNext();
   }
+  // === FIN BATCH TRANSLATE ===
 
   var currentFilter = "all";
   var currentTypeFilter = null;

@@ -720,12 +720,26 @@ async function translateObsCards() {
     if (rapportEl && looksLikeEnglish(rapportEl.textContent)) jobs.push({ el: rapportEl, text: rapportEl.textContent.trim(), html: true });
   });
   if (!jobs.length) return;
+  // === Batch translate (Day 1.18 fix) ===
   try {
-    var results = await Promise.all(jobs.map(function(j) {
-      return fetchRetry('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: j.text }) }).then(function(r) { return r.json(); }).then(function(d) { return { el: j.el, translated: (d.translated || j.text).trim(), html: j.html }; });
-    }));
-    results.forEach(function(r) { if (r.html) r.el.innerHTML = md(r.translated); else r.el.textContent = r.translated; });
-  } catch (e) { console.error('translateObsCards', e); }
+    var texts = jobs.map(function(j) { return j.text; });
+    var resp = await fetch('/api/translate/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts: texts })
+    });
+    if (!resp.ok) throw new Error('batch HTTP ' + resp.status);
+    var d = await resp.json();
+    var trs = d.translations || [];
+    jobs.forEach(function(j, i) {
+      var translated = (trs[i] || j.text).trim();
+      if (j.html) j.el.innerHTML = md(translated);
+      else j.el.textContent = translated;
+    });
+  } catch (e) {
+    console.error('translateObsCards batch', e);
+  }
+  // === Fin batch translate ===
 }
 
 function md(txt){
