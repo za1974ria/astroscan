@@ -102,6 +102,68 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--mono); mi
 }
 .wl-fallback.is-hidden { display:none !important; }
 
+/* === Paris HD slideshow gallery (v2.6.0) === */
+.paris-gallery-wrap {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
+  background: #000;
+}
+.paris-slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.2s ease-in-out;
+  pointer-events: none;
+}
+.paris-slide.is-active {
+  opacity: 1;
+}
+.paris-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 18px 12px;
+  background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0) 100%);
+  color: #fff;
+  font-family: var(--font, 'Orbitron', monospace);
+  pointer-events: none;
+}
+.paris-clock {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 12px rgba(0, 212, 255, 0.55);
+  margin-bottom: 4px;
+}
+.paris-weather {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.92);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pw-temp {
+  font-weight: 700;
+  color: #00d4ff;
+}
+.pw-sep {
+  color: rgba(255,255,255,0.4);
+}
+.pw-cond {
+  text-transform: capitalize;
+}
+.pw-wind {
+  color: rgba(255,255,255,0.7);
+}
+
 .wl-foot {
   padding:18px 40px; border-top:1px solid rgba(0,212,255,0.07); text-align:center;
   font-size:0.62rem; color:rgba(224,232,255,0.28); letter-spacing:2px; text-transform:uppercase; line-height:1.6;
@@ -152,29 +214,34 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--mono); mi
     </div>
   </article>
 
-  <article class="wl-card">
+  <article class="wl-card paris-card">
     <div class="wl-card-head">
-      <span class="wl-card-title" id="title-cam2">PARIS — Tour Eiffel</span>
-      <span class="wl-live-badge">LIVE</span>
+      <span class="wl-card-title">PARIS — Tour Eiffel</span>
+      <span class="wl-live-badge" id="paris-live-badge">LIVE</span>
     </div>
-    <div class="wl-embed-wrap">
-      <iframe id="iframe-cam2"
-        data-fallback-index="0"
-        data-fallbacks='[{"id":"iZipA1LL_sU","title":"PARIS — Tour Eiffel"},{"id":"_Sof1oNx2mY","title":"NEW YORK — Times Square 4K"},{"id":"jH8aF7adIPI","title":"LONDON — Trafalgar Square"}]'
-        title="Paris Eiffel Tower live (Trocadero view)"
-        src="https://www.youtube.com/embed/iZipA1LL_sU?autoplay=1&mute=1"
-        width="100%" height="300" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen
-        onload="wlOnIframeLoad('cam2')" onerror="wlSwitchFallback('cam2')"></iframe>
-      <div class="wl-fallback is-hidden" id="wl-fallback-cam2">Flux temporairement indisponible</div>
+    <div class="paris-gallery-wrap">
+      <img class="paris-slide is-active" src="/static/paris/paris_1.jpg" alt="Tour Eiffel — vue 1" loading="lazy" decoding="async">
+      <img class="paris-slide" src="/static/paris/paris_2.jpg" alt="Tour Eiffel — vue 2" loading="lazy" decoding="async">
+      <img class="paris-slide" src="/static/paris/paris_3.jpg" alt="Tour Eiffel — vue 3" loading="lazy" decoding="async">
+      <img class="paris-slide" src="/static/paris/paris_4.jpg" alt="Tour Eiffel — vue 4" loading="lazy" decoding="async">
+      <img class="paris-slide" src="/static/paris/paris_5.jpg" alt="Tour Eiffel — vue 5" loading="lazy" decoding="async">
+      <div class="paris-overlay">
+        <div class="paris-clock" id="paris-clock">--:--:--</div>
+        <div class="paris-weather" id="paris-weather">
+          <span class="pw-temp" id="pw-temp">—°C</span>
+          <span class="pw-sep">·</span>
+          <span class="pw-cond" id="pw-cond">—</span>
+          <span class="pw-sep">·</span>
+          <span class="pw-wind" id="pw-wind">— km/h</span>
+        </div>
+      </div>
     </div>
   </article>
 
 </div>
 
 <footer class="wl-foot">
-  AstroScan · WORLD LIVE · Tokyo + Paris — YouTube · disponibilité selon les fournisseurs · Pas d’appel API AstroScan depuis cette page
+  AstroScan · WORLD LIVE · Tokyo YouTube + Paris HD Gallery · auto-fallback YouTube · météo Paris cache 10 min
 </footer>
 
 <script>
@@ -248,6 +315,53 @@ function wlTickClock() {
 }
 wlTickClock();
 setInterval(wlTickClock, 1000);
+
+// === Paris HD gallery — slideshow + clock + weather (v2.6.0) ===
+(function () {
+  var slides = document.querySelectorAll('.paris-slide');
+  if (!slides.length) return;
+  var idx = 0;
+  function nextSlide() {
+    slides[idx].classList.remove('is-active');
+    idx = (idx + 1) % slides.length;
+    slides[idx].classList.add('is-active');
+  }
+  setInterval(nextSlide, 6000);
+
+  // Heure locale Paris (Europe/Paris IANA)
+  function tickParisClock() {
+    var el = document.getElementById('paris-clock');
+    if (!el) return;
+    try {
+      el.textContent = new Date().toLocaleTimeString('fr-FR', {
+        timeZone: 'Europe/Paris',
+        hour12: false
+      });
+    } catch (e) {
+      el.textContent = new Date().toLocaleTimeString('fr-FR', { hour12: false });
+    }
+  }
+  tickParisClock();
+  setInterval(tickParisClock, 1000);
+
+  // Météo Paris via backend cache 10 min
+  function fetchParisWeather() {
+    fetch('/api/paris/weather', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || d.error) return;
+        var t = document.getElementById('pw-temp');
+        var c = document.getElementById('pw-cond');
+        var w = document.getElementById('pw-wind');
+        if (t) t.textContent = d.temp_c + '°C';
+        if (c) c.textContent = (d.conditions || '—');
+        if (w) w.textContent = d.wind_kmh + ' km/h';
+      })
+      .catch(function () { /* silencieux — pas critique */ });
+  }
+  fetchParisWeather();
+  setInterval(fetchParisWeather, 10 * 60 * 1000); // refresh côté client toutes les 10 min
+})();
 </script>
 
 </body>
