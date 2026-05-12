@@ -105,7 +105,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 <body class="notranslate">
 <div id="stars"></div>
 <div class="top-bar">
-  <div class="tb-brand">◈ Archive Stellaire · ORBITAL-CHOHRA</div>
+  <div class="tb-brand">◈ {% if lang == 'en' %}Stellar Archive{% else %}Archive Stellaire{% endif %} · ORBITAL-CHOHRA</div>
   <div class="tb-right">
     <a class="tb-home" href="/portail">← Portail</a>
     <div class="lang-toggle">
@@ -154,15 +154,31 @@ window.GALERIE_CLASSIFICATION = {{ classification_stats|tojson }};
 <script>
 (function(){
   var STORAGE_KEY = "astro_lang";
-  function getLang(){
-    var s = localStorage.getItem(STORAGE_KEY);
-    if (s === "fr" || s === "en") return s;
-    var n = (navigator.language || navigator.languages && navigator.languages[0] || "fr").toLowerCase().slice(0,2);
+  // LANG init priority (PASS 30 i18n coherence):
+  // 1. SERVER_LANG : Jinja injecté (serveur a déjà résolu ?lang= > cookie > Accept-Language)
+  // 2. ?lang= URL param (override explicite)
+  // 3. cookie lang=
+  // 4. localStorage astro_lang
+  // 5. navigator.language (dernier recours)
+  function readCookieLang() {
+    try {
+      var m = document.cookie.match(/(?:^|;\s*)lang=(fr|en)(?:;|$)/);
+      return m ? m[1] : null;
+    } catch(e) { return null; }
+  }
+  function readNavLang() {
+    var n = (navigator.language || (navigator.languages && navigator.languages[0]) || "fr").toLowerCase().slice(0,2);
     return n === "en" ? "en" : "fr";
   }
+  var SERVER_LANG = "{{ lang | default('') }}";
   var q = new URLSearchParams(window.location.search);
   var urlLang = q.get("lang");
-  var LANG = (urlLang === "fr" || urlLang === "en") ? urlLang : getLang();
+  var storageLang = localStorage.getItem(STORAGE_KEY);
+  var LANG = (SERVER_LANG === "fr" || SERVER_LANG === "en") ? SERVER_LANG
+           : (urlLang === "fr" || urlLang === "en") ? urlLang
+           : readCookieLang()
+           || ((storageLang === "fr" || storageLang === "en") ? storageLang : null)
+           || readNavLang();
   if (urlLang === "fr" || urlLang === "en") localStorage.setItem(STORAGE_KEY, urlLang);
   document.documentElement.lang = LANG;
   document.querySelectorAll(".lb").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-lang") === LANG); });
@@ -461,13 +477,18 @@ window.GALERIE_CLASSIFICATION = {{ classification_stats|tojson }};
   document.getElementById("lb-fr").addEventListener("click", function(){ setL("fr"); });
   document.getElementById("lb-en").addEventListener("click", function(){ setL("en"); });
   function setL(l){
-    LANG = l;
+    if (l !== "fr" && l !== "en") return;
+    // Écrire cookie 1 an pour cohérence serveur (PASS 30 i18n)
+    try {
+      var d = new Date();
+      d.setTime(d.getTime() + (365 * 24 * 60 * 60 * 1000));
+      document.cookie = "lang=" + l + "; expires=" + d.toUTCString() + "; path=/; SameSite=Lax";
+    } catch(e) {}
     localStorage.setItem(STORAGE_KEY, l);
-    document.documentElement.lang = l;
-    document.querySelectorAll(".lb").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-lang") === l); });
-    updateFilterLabels();
-    renderCards();
-    if (window.updateIssUiFromLang) window.updateIssUiFromLang();
+    // Reload sur URL avec ?lang= pour re-render serveur cohérent
+    var u = new URL(window.location.href);
+    u.searchParams.set("lang", l);
+    window.location.href = u.toString();
   }
 
   function updateFilterLabels(){
