@@ -1230,14 +1230,17 @@ body.embed-mode main {
 <div id="panel-iss" class="panel">
   <div class="section-title">🛸 STATION SPATIALE INTERNATIONALE</div>
   <div class="iss-live-container">
-    <div class="iss-live-header">LIVE ISS - NASA HD</div>
+    <div class="iss-live-header" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span>🛰️ ISS — POSITION TEMPS RÉEL</span>
+      <span style="background:#0a3d62;color:#7fdbff;padding:2px 8px;border-radius:4px;font-size:9px;letter-spacing:1.5px;border:1px solid rgba(0,212,255,.3)">SGP4 LIVE</span>
+    </div>
     <div class="iss-live-meta">
-    Flux NASA intégré – synchronisation en temps réel
+    Calculé sur AstroScan · Skyfield SGP4 · TLE AMSAT · Vérifié vs Open-Notify
     </div>
 
     <iframe
         src="/iss-tracker"
-        title="ISS Position Temps Réel — N2YO"
+        title="ISS Position Temps Réel — Skyfield SGP4"
         frameborder="0"
         scrolling="no"
         loading="lazy"
