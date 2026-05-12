@@ -216,6 +216,70 @@ def _gemini_translate(text: str, obs_id: Optional[int] = None) -> str:
         return text
 
 
+def _gemini_translate_no_throttle(text: str) -> str:
+    """
+    Version sans throttle de _gemini_translate, dédiée au batch endpoint.
+
+    Le batch endpoint est lui-même rate-limité à 10/min/IP, donc le throttle
+    global de 1s n'a pas lieu d'être ici (il casserait toute boucle batch).
+
+    Réutilise TRANSLATE_CACHE partagé. NE met PAS à jour la DB observations
+    (pas d'obs_id en batch).
+    """
+    if not text or len(text) < 15:
+        return text
+    if not _detect_lang(text):
+        return text  # déjà en français
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        return text
+    cache_key = None
+    try:
+        lang = "fr"
+        raw_key = (text[:1500] + "|" + lang).encode("utf-8", errors="ignore")
+        cache_key = hashlib.sha256(raw_key).hexdigest()
+        now_ts = time.time()
+        item = TRANSLATE_CACHE.get(cache_key)
+        if item and (now_ts - item.get("ts", 0) < TRANSLATE_TTL_SECONDS):
+            return item.get("value", text)
+        # PAS de check TRANSLATE_LAST_REQUEST_TS ici (volontaire pour batch)
+        payload = json.dumps({"contents": [{"parts": [{"text":
+            "Traduis ce texte astronomique en français fluide et naturel. "
+            "Réponds UNIQUEMENT avec la traduction, sans guillemets ni commentaires.\n\n"
+            + text[:1500]
+        }]}]}).encode()
+        req = urllib.request.Request(
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"gemini-2.0-flash:generateContent?key={api_key}",
+            data=payload, headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as r:
+            result = json.loads(r.read())
+        translated = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        try:
+            TRANSLATE_CACHE[cache_key] = {"value": translated or text, "ts": time.time()}
+        except Exception:
+            pass
+        return translated or text
+    except urllib.error.HTTPError as e:
+        if getattr(e, "code", None) == 429:
+            try:
+                prompt_tr = (
+                    "Traduis ce texte astronomique en français fluide et naturel. "
+                    "Réponds UNIQUEMENT avec la traduction, sans guillemets ni commentaires.\n\n"
+                    + text[:1500]
+                )
+                result, err = _call_gemini(prompt_tr)
+                if result and result != text and cache_key:
+                    TRANSLATE_CACHE[cache_key] = {"value": result, "ts": time.time()}
+                    return result
+            except Exception:
+                pass
+        return text
+    except Exception:
+        return text
+
+
 # ---------------------------------------------------------------------------
 # Claude (Anthropic) — requests wrapper
 # ---------------------------------------------------------------------------

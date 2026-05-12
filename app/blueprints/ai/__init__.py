@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 import requests
@@ -29,7 +30,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app
 from app.config import STATION
 from app.services.ai_translate import (
     _call_claude, _call_groq, _call_ai, _enforce_french,
-    _gemini_translate, _translate_to_french,
+    _gemini_translate, _gemini_translate_no_throttle, _translate_to_french,
     get_ai_counters,
 )
 from app.services.observatory_feeds import (
@@ -374,19 +375,22 @@ def api_translate_batch():
         if len(texts) > 50:
             return jsonify({"error": "max 50 texts per batch"}), 400
 
-        translations = []
-        for t in texts:
+        # Parallélisation : ThreadPoolExecutor (max 8 workers)
+        # Le throttle de 1s est désactivé pour ce code path (batch rate-limité)
+        def _translate_one(t):
             if not isinstance(t, str) or not t.strip():
-                translations.append("")
-                continue
+                return ""
             try:
-                tr = _gemini_translate(t)
-                translations.append(tr or t)
+                tr = _gemini_translate_no_throttle(t)
+                return tr or t
             except Exception as e:
                 current_app.logger.warning(
                     "translate.batch item failed: %s", str(e)[:120]
                 )
-                translations.append(t)
+                return t
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            translations = list(executor.map(_translate_one, texts))
 
         current_app.logger.info(
             "translate.batch ok count=%d ip=%s",
