@@ -953,3 +953,39 @@ path.ga-radar-circle {
   margin-left: auto;
   flex-shrink: 0;
 }
+
+/* === Basemap DARK/SAT Toggle (aligné scan_signal) === */
+.ga-basemap-toggle {
+  display: inline-flex;
+  background: rgba(8, 12, 18, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 4px;
+  overflow: hidden;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.ga-basemap-btn {
+  background: transparent;
+  color: #8aa0b4;
+  border: none;
+  padding: 6px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ga-basemap-btn:hover {
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.08);
+}
+.ga-basemap-btn.active {
+  background: #00e5ff;
+  color: #061015;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+}
+.ga-basemap-btn + .ga-basemap-btn {
+  border-left: 1px solid rgba(0, 229, 255, 0.25);
+}

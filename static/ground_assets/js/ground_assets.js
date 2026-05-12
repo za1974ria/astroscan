@@ -209,14 +209,60 @@
       zoomSnap: 0.5,
     });
     L.control.zoom({ position: 'topright' }).addTo(map);
-    L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+
+    // === BASEMAP DARK/SAT TOGGLE (aligné scan_signal) ===
+    var tileDark = L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
       {
-        attribution: '© OpenStreetMap · © CARTO',
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
         subdomains: 'abcd',
-        maxZoom: 9,
+        maxZoom: 19,
       }
-    ).addTo(map);
+    );
+    var tileSatImagery = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+        maxZoom: 19,
+      }
+    );
+    var tileSatLabels = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      { attribution: '', maxZoom: 19 }
+    );
+    var tileSat = L.layerGroup([tileSatImagery, tileSatLabels]);
+    var basemapLayers = { dark: tileDark, sat: tileSat };
+    var currentBasemap = 'dark';
+    tileDark.addTo(map);
+
+    var BasemapToggle = L.Control.extend({
+      options: { position: 'topright' },
+      onAdd: function () {
+        var div = L.DomUtil.create('div', 'ga-basemap-toggle');
+        div.innerHTML =
+          '<button type="button" class="ga-basemap-btn active" data-basemap="dark">DARK</button>' +
+          '<button type="button" class="ga-basemap-btn" data-basemap="sat">SAT</button>';
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        div.querySelectorAll('.ga-basemap-btn').forEach(function (b) {
+          b.addEventListener('click', function (e) {
+            e.preventDefault();
+            var which = b.getAttribute('data-basemap');
+            if (which === currentBasemap) return;
+            map.removeLayer(basemapLayers[currentBasemap]);
+            basemapLayers[which].addTo(map);
+            currentBasemap = which;
+            div.querySelectorAll('.ga-basemap-btn').forEach(function (x) {
+              x.classList.toggle('active', x.getAttribute('data-basemap') === which);
+            });
+          });
+        });
+        return div;
+      },
+    });
+    new BasemapToggle().addTo(map);
+    // === FIN BASEMAP TOGGLE ===
+
     state.map = map;
     state.svgRenderer = L.svg({ padding: 0.5 });
     state.svgRenderer.addTo(map);
