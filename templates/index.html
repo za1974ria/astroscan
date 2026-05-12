@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr" id="html-lang">
+<html lang="{{ lang | default('fr') }}" id="html-lang" translate="no">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="robots" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#00d4ff">
 <title>AstroScan-Chohra - Dashboard QG · ORBITAL-CHOHRA</title>
@@ -278,7 +280,7 @@ border-radius:50%;animation:spin 0.8s linear infinite}
 }
 </style>
 </head>
-<body>
+<body class="notranslate">
 
 <div id="loader">
   <div class="ld-spin"></div>

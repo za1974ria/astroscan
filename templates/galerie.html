@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ lang | default('fr') }}" translate="no">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="robots" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstroScan-Chohra - Archive stellaire · ORBITAL-CHOHRA</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -100,7 +102,7 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .translating{color:var(--lo);font-style:italic}
 </style>
 </head>
-<body>
+<body class="notranslate">
 <div id="stars"></div>
 <div class="top-bar">
   <div class="tb-brand">◈ Archive Stellaire · ORBITAL-CHOHRA</div>

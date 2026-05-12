@@ -1,7 +1,9 @@
 <!doctype html>
-<html lang="{{ lang or 'fr' }}" data-lang="{{ lang or 'fr' }}">
+<html lang="{{ lang or 'fr' }}" data-lang="{{ lang or 'fr' }}" translate="no">
 <head>
   <meta charset="utf-8">
+  <meta name="google" content="notranslate">
+  <meta name="robots" content="notranslate">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="theme-color" content="#05070A">
   <title>{% if lang == 'en' %}Ground Assets Network — ASTRO-SCAN{% else %}Réseau au sol — ASTRO-SCAN{% endif %}</title>
@@ -31,7 +33,7 @@
     html, body { margin: 0; padding: 0; height: 100%; }
   </style>
 </head>
-<body class="ga-app">
+<body class="ga-app notranslate">
 
   <!-- ── BOOT SEQUENCE OVERLAY ──────────────────────────────────── -->
   <div class="ga-boot" id="ga-boot" role="status" aria-live="polite">

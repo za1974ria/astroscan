@@ -1,7 +1,9 @@
 <!doctype html>
-<html lang="{{ lang or 'fr' }}" data-lang="{{ lang or 'fr' }}">
+<html lang="{{ lang or 'fr' }}" data-lang="{{ lang or 'fr' }}" translate="no">
 <head>
   <meta charset="utf-8">
+  <meta name="google" content="notranslate">
+  <meta name="robots" content="notranslate">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="theme-color" content="#05070A">
   <title>{% if lang == 'en' %}SCAN A SIGNAL — VESSEL TRACKER{% else %}SCAN A SIGNAL — TRACEUR NAVIRES{% endif %}</title>
@@ -24,7 +26,7 @@
     html, body { margin: 0; padding: 0; height: 100%; min-height: 100vh; }
   </style>
 </head>
-<body class="ss-app">
+<body class="ss-app notranslate">
 
 <style>
 .btn-portail-back {

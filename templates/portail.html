@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html lang="{{ lang | default('fr') }}">
+<html lang="{{ lang | default('fr') }}" translate="no">
 <head>
 <meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="robots" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <title>ORBITAL-CHOHRA — Portail</title>
 <meta name="description" content="{% if lang == 'en' %}Astronomy dashboard — live ISS position, NOAA alerts, James Webb imagery, satellite passes and space weather from Tlemcen.{% else %}Tableau de bord astronomique — position ISS en direct, alertes NOAA, images James Webb, passages satellites et météo spatiale depuis Tlemcen.{% endif %}">
@@ -1249,7 +1251,7 @@ hr{
   <link rel="stylesheet" href="/static/css/components.css">
   <link rel="stylesheet" href="/static/css/fixes.css">
 </head>
-<body>
+<body class="notranslate">
 
 <canvas id="starfield-bg" aria-hidden="true"></canvas>
 
