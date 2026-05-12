@@ -149,6 +149,7 @@ a{text-decoration:none;color:inherit}
 
 /* ─── 3-COL GRID ─────────────────────────────────────────── */
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
 .svc-row{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(0,0,0,.17);border-radius:6px;border:1px solid var(--border);font-size:.72rem;margin-bottom:5px}
 .svc-row:last-child{margin-bottom:0}
 .svc-n{color:rgba(255,255,255,.72)}
@@ -351,7 +352,7 @@ a{text-decoration:none;color:inherit}
         </div>
 
         <!-- 3 PETITES CARDS -->
-        <div class="g3">
+        <div class="g2">
           <!-- Services -->
           <div class="card" style="margin-bottom:0">
             <div class="ctitle">&#9881; {% if lang == 'en' %}SERVICES STATUS{% else %}&Eacute;TAT DES SERVICES{% endif %}</div>
@@ -360,6 +361,15 @@ a{text-decoration:none;color:inherit}
             <div class="svc-row"><span class="svc-n">{% if lang == 'en' %}SPACE WEATHER{% else %}M&Eacute;T&Eacute;O SPATIALE{% endif %}</span><span class="badge-ok">OK</span></div>
             <div class="svc-row"><span class="svc-n">ORBITAL DATA</span><span class="badge-ok">OK</span></div>
             <div class="svc-row"><span class="svc-n">FALLBACK SYSTEM</span><span class="badge-ok">OK</span></div>
+          </div>
+          <!-- Statut Mission -->
+          <div class="card" style="margin-bottom:0">
+            <div class="ctitle">&#128640; {% if lang == 'en' %}MISSION STATUS{% else %}STATUT MISSION{% endif %}</div>
+            <div class="svc-row"><span class="svc-n">{% if lang == 'en' %}Version{% else %}Version{% endif %}</span><span class="badge-ok">v2.5.9</span></div>
+            <div class="svc-row"><span class="svc-n">{% if lang == 'en' %}Build{% else %}Build{% endif %}</span><span class="badge-ok">RESILIENT</span></div>
+            <div class="svc-row"><span class="svc-n">{% if lang == 'en' %}Language{% else %}Langue{% endif %}</span><span class="badge-ok">{% if lang == 'en' %}EN{% else %}FR{% endif %}</span></div>
+            <div class="svc-row"><span class="svc-n">{% if lang == 'en' %}Observatory{% else %}Observatoire{% endif %}</span><span class="badge-ok">TLEMCEN</span></div>
+            <div class="svc-row"><span class="svc-n">{% if lang == 'en' %}Coordinates{% else %}Coordonnées{% endif %}</span><span class="badge-ok">34.87N -1.32W</span></div>
           </div>
         </div>
 

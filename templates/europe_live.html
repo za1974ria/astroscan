@@ -135,32 +135,38 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--mono); mi
 
   <article class="wl-card">
     <div class="wl-card-head">
-      <span class="wl-card-title">TOKYO — Shibuya Crossing</span>
+      <span class="wl-card-title" id="title-cam1">TOKYO — Shibuya Crossing</span>
       <span class="wl-live-badge">LIVE</span>
     </div>
     <div class="wl-embed-wrap">
-      <iframe title="Tokyo Shibuya Scramble Crossing live (city center)"
-        src="https://www.youtube.com/embed/dfVK7ld38Ys"
+      <iframe id="iframe-cam1"
+        data-fallback-index="0"
+        data-fallbacks='[{"id":"dfVK7ld38Ys","title":"TOKYO — Shibuya Crossing"},{"id":"H9BBwaT4Gug","title":"TOKYO — Yamanote Line"},{"id":"_Sof1oNx2mY","title":"NEW YORK — Times Square 4K"}]'
+        title="Tokyo Shibuya Scramble Crossing live (city center)"
+        src="https://www.youtube.com/embed/dfVK7ld38Ys?autoplay=1&mute=1"
         width="100%" height="300" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowfullscreen
-        onload="wlHideFallback('cam1')" onerror="wlShowFallback('cam1')"></iframe>
+        onload="wlOnIframeLoad('cam1')" onerror="wlSwitchFallback('cam1')"></iframe>
       <div class="wl-fallback is-hidden" id="wl-fallback-cam1">Flux temporairement indisponible</div>
     </div>
   </article>
 
   <article class="wl-card">
     <div class="wl-card-head">
-      <span class="wl-card-title">PARIS — Tour Eiffel</span>
+      <span class="wl-card-title" id="title-cam2">PARIS — Tour Eiffel</span>
       <span class="wl-live-badge">LIVE</span>
     </div>
     <div class="wl-embed-wrap">
-      <iframe title="Paris Eiffel Tower live (Trocadero view)"
-        src="https://www.youtube.com/embed/iZipA1LL_sU"
+      <iframe id="iframe-cam2"
+        data-fallback-index="0"
+        data-fallbacks='[{"id":"iZipA1LL_sU","title":"PARIS — Tour Eiffel"},{"id":"_Sof1oNx2mY","title":"NEW YORK — Times Square 4K"},{"id":"jH8aF7adIPI","title":"LONDON — Trafalgar Square"}]'
+        title="Paris Eiffel Tower live (Trocadero view)"
+        src="https://www.youtube.com/embed/iZipA1LL_sU?autoplay=1&mute=1"
         width="100%" height="300" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowfullscreen
-        onload="wlHideFallback('cam2')" onerror="wlShowFallback('cam2')"></iframe>
+        onload="wlOnIframeLoad('cam2')" onerror="wlSwitchFallback('cam2')"></iframe>
       <div class="wl-fallback is-hidden" id="wl-fallback-cam2">Flux temporairement indisponible</div>
     </div>
   </article>
@@ -173,6 +179,60 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--mono); mi
 
 <script>
 'use strict';
+
+// Système rotation auto-fallback YouTube (v2.5.9)
+// Si un live YouTube échoue (onerror OU pas de chargement après 12s),
+// bascule automatiquement sur le backup suivant dans la liste data-fallbacks
+var wlLoadTimers = {};
+var wlLoadStatus = {};
+
+function wlOnIframeLoad(camId) {
+  wlLoadStatus[camId] = true;
+  var el = document.getElementById('wl-fallback-' + camId);
+  if (el) el.classList.add('is-hidden');
+  if (wlLoadTimers[camId]) {
+    clearTimeout(wlLoadTimers[camId]);
+    delete wlLoadTimers[camId];
+  }
+}
+
+function wlSwitchFallback(camId) {
+  var iframe = document.getElementById('iframe-' + camId);
+  if (!iframe) return;
+  var titleEl = document.getElementById('title-' + camId);
+  var idx = parseInt(iframe.getAttribute('data-fallback-index') || '0', 10);
+  var fallbacksAttr = iframe.getAttribute('data-fallbacks');
+  if (!fallbacksAttr) return;
+  var fallbacks;
+  try { fallbacks = JSON.parse(fallbacksAttr); } catch(e) { return; }
+  var nextIdx = idx + 1;
+  if (nextIdx >= fallbacks.length) {
+    var el = document.getElementById('wl-fallback-' + camId);
+    if (el) el.classList.remove('is-hidden');
+    return;
+  }
+  var next = fallbacks[nextIdx];
+  iframe.setAttribute('data-fallback-index', String(nextIdx));
+  wlLoadStatus[camId] = false;
+  iframe.src = 'https://www.youtube.com/embed/' + next.id + '?autoplay=1&mute=1';
+  if (titleEl) titleEl.textContent = next.title;
+  wlArmTimer(camId);
+}
+
+function wlArmTimer(camId) {
+  if (wlLoadTimers[camId]) clearTimeout(wlLoadTimers[camId]);
+  wlLoadTimers[camId] = setTimeout(function() {
+    if (!wlLoadStatus[camId]) {
+      wlSwitchFallback(camId);
+    }
+  }, 12000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  wlArmTimer('cam1');
+  wlArmTimer('cam2');
+});
+
 function wlHideFallback(id) {
   var el = document.getElementById('wl-fallback-' + id);
   if (el) el.classList.add('is-hidden');
