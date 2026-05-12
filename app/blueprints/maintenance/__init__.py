@@ -1,17 +1,136 @@
-"""Blueprint maintenance — Mission Control Center.
+"""Blueprint maintenance — Mission Control Center (i18n FR/EN).
 
-Sert la page /maintenance (dashboard santé de tous les services)
-et l'endpoint /api/maintenance/aggregate qui consolide les autres
-endpoints de santé pour un polling client unique.
-
-Pas de logique métier : agrège des endpoints existants.
+Sert /maintenance (dashboard) et /api/maintenance/aggregate (JSON
+agrégé pour le polling client). Tous les noms de service et messages
+sont localisés selon get_lang() (priorité ?lang= > cookie > Accept-Language).
 """
 import time
 from datetime import datetime, timezone
 
 from flask import Blueprint, render_template, jsonify, current_app
 
+from app.blueprints.i18n import get_lang
+
 bp = Blueprint("maintenance", __name__)
+
+
+# ── i18n catalog ────────────────────────────────────────────────────
+SERVICES_I18N = {
+    # External APIs
+    "NASA APOD": {
+        "fr": ("NASA APOD", "Image astronomique du jour"),
+        "en": ("NASA APOD", "Astronomy Picture of the Day"),
+    },
+    "N2YO ISS Tracker": {
+        "fr": ("N2YO Traceur ISS", "Âge TLE : {tle_age}s"),
+        "en": ("N2YO ISS Tracker", "TLE age: {tle_age}s"),
+    },
+    "Gemini AI": {
+        "fr": ("Gemini AI", "Fournisseur traduction principal"),
+        "en": ("Gemini AI", "Translation primary provider"),
+    },
+    "Groq Llama 3.3": {
+        "fr": ("Groq Llama 3.3", "Fallback traduction rapide"),
+        "en": ("Groq Llama 3.3", "Translation fast fallback"),
+    },
+    "Claude Anthropic": {
+        "fr": ("Claude Anthropic", "Chatbot AEGIS + fallback ultime"),
+        "en": ("Claude Anthropic", "AEGIS chatbot + ultimate fallback"),
+    },
+    "AISStream": {
+        "fr": ("AISStream", "Suivi navires en direct"),
+        "en": ("AISStream", "Live vessel tracking"),
+    },
+    # Infrastructure
+    "Gunicorn / Flask": {
+        "fr": ("Gunicorn / Flask", "Disponibilité : {uptime}"),
+        "en": ("Gunicorn / Flask", "Uptime: {uptime}"),
+    },
+    "Redis Cache": {
+        "fr": ("Cache Redis", "{value}"),
+        "en": ("Redis Cache", "{value}"),
+    },
+    "SQLite": {
+        "fr": ("SQLite", "{count} observations"),
+        "en": ("SQLite", "{count} observations"),
+    },
+    "WebSocket SSE": {
+        "fr": ("WebSocket SSE", "{value}"),
+        "en": ("WebSocket SSE", "{value}"),
+    },
+    "WebSocket view-sync": {
+        "fr": ("WebSocket view-sync", "{value}"),
+        "en": ("WebSocket view-sync", "{value}"),
+    },
+    # Data Quality
+    "TLE Freshness": {
+        "fr": ("Fraîcheur TLE", "Âge : {hours}h"),
+        "en": ("TLE Freshness", "Age: {hours}h"),
+    },
+    "Integrations": {
+        "fr": ("Intégrations", "{ready}/{total} prêtes"),
+        "en": ("Integrations", "{ready}/{total} ready"),
+    },
+    "Data Credibility": {
+        "fr": ("Crédibilité des données", "{level}"),
+        "en": ("Data Credibility", "{level}"),
+    },
+    "Anomaly Detection": {
+        "fr": ("Détection d'anomalies", "{count} anomalies actives"),
+        "en": ("Anomaly Detection", "{count} active anomalies"),
+    },
+    # Workers
+    "tle_refresh_loop": {
+        "fr": ("Rafraîchissement TLE", "Thread d'arrière-plan actif"),
+        "en": ("TLE refresh loop", "Active background thread"),
+    },
+    "lab_image_collector": {
+        "fr": ("Collecteur images Lab", "Thread d'arrière-plan actif"),
+        "en": ("Lab image collector", "Active background thread"),
+    },
+    "skyview_sync": {
+        "fr": ("Synchronisation SkyView", "Thread d'arrière-plan actif"),
+        "en": ("SkyView sync", "Active background thread"),
+    },
+    "translate_worker": {
+        "fr": ("Worker traduction", "Thread d'arrière-plan actif"),
+        "en": ("Translate worker", "Active background thread"),
+    },
+    "tle_collector": {
+        "fr": ("Collecteur TLE", "Thread d'arrière-plan actif"),
+        "en": ("TLE collector", "Active background thread"),
+    },
+}
+
+ACTION_HINTS_I18N = {
+    "down": {
+        "fr": "Vérifier les logs / redémarrer le service",
+        "en": "Check logs / restart service",
+    },
+    "warn": {
+        "fr": "Surveiller de près",
+        "en": "Monitor closely",
+    },
+}
+
+CRED_LABELS_I18N = {
+    "high":    {"fr": "ÉLEVÉE",     "en": "HIGH"},
+    "medium":  {"fr": "MOYENNE",    "en": "MEDIUM"},
+    "low":     {"fr": "FAIBLE",     "en": "LOW"},
+    "unknown": {"fr": "INCONNUE",   "en": "UNKNOWN"},
+}
+
+
+def _t(key: str, lang: str, fmt: dict | None = None) -> tuple[str, str]:
+    """Return (localized_name, localized_message) for a service key."""
+    entry = SERVICES_I18N.get(key)
+    if not entry:
+        return key, ""
+    name, msg_tpl = entry.get(lang) or entry.get("en") or (key, "")
+    try:
+        return name, msg_tpl.format(**(fmt or {}))
+    except Exception:
+        return name, msg_tpl
 
 
 @bp.route("/maintenance")
@@ -27,10 +146,12 @@ def maintenance_page():
 @bp.route("/api/maintenance/aggregate")
 def api_maintenance_aggregate():
     """
-    Agrège l'état de tous les services en un seul JSON.
-    Consommé par le polling client toutes les 10 secondes.
+    Agrège l'état de tous les services. Localise les noms et messages
+    selon get_lang() (?lang= prioritaire pour permettre au frontend de
+    forcer une langue côté fetch).
     """
     try:
+        lang = get_lang()
         now_iso = datetime.now(timezone.utc).isoformat()
         client = current_app.test_client()
 
@@ -51,6 +172,7 @@ def api_maintenance_aggregate():
         db_info = (health or {}).get("db", {}) or {}
         integrations_ready = (health or {}).get("integrations_ready", 0)
         integrations_total = (health or {}).get("integrations_total", 1)
+        uptime_val = (health or {}).get("uptime", "—")
 
         def state_from(value, fallback="unknown"):
             if value in ("ok", "connected", "present", "running", True):
@@ -61,32 +183,37 @@ def api_maintenance_aggregate():
                 return "down"
             return fallback
 
+        def build(key, status, latency_ms=None, fmt=None):
+            name, msg = _t(key, lang, fmt)
+            return {
+                "service": name,
+                "status": status,
+                "latency_ms": latency_ms,
+                "message": msg,
+                "last_check": now_iso,
+            }
+
+        ext_api_status = state_from(operational.get("external_api"))
         external_apis = [
-            {"service": "NASA APOD", "status": state_from(operational.get("external_api")),
-             "latency_ms": t_health_ms, "message": "Astronomy Picture of the Day", "last_check": now_iso},
-            {"service": "N2YO ISS Tracker", "status": state_from(operational.get("external_api")),
-             "latency_ms": None, "message": f"TLE age: {operational.get('tle_age_seconds', '—')}s", "last_check": now_iso},
-            {"service": "Gemini AI", "status": state_from(operational.get("external_api")),
-             "latency_ms": None, "message": "Translation primary provider", "last_check": now_iso},
-            {"service": "Groq Llama 3.3", "status": state_from(operational.get("external_api")),
-             "latency_ms": None, "message": "Translation fast fallback", "last_check": now_iso},
-            {"service": "Claude Anthropic", "status": state_from(operational.get("external_api")),
-             "latency_ms": None, "message": "AEGIS chatbot + ultimate fallback", "last_check": now_iso},
-            {"service": "AISStream", "status": state_from(operational.get("external_api")),
-             "latency_ms": None, "message": "Live vessel tracking", "last_check": now_iso},
+            build("NASA APOD",         ext_api_status, latency_ms=t_health_ms),
+            build("N2YO ISS Tracker",  ext_api_status, fmt={"tle_age": operational.get("tle_age_seconds", "—")}),
+            build("Gemini AI",         ext_api_status),
+            build("Groq Llama 3.3",    ext_api_status),
+            build("Claude Anthropic",  ext_api_status),
+            build("AISStream",         ext_api_status),
         ]
 
         infrastructure = [
-            {"service": "Gunicorn / Flask", "status": "ok" if (health or {}).get("ok") else "down",
-             "latency_ms": t_health_ms, "message": f"Uptime: {(health or {}).get('uptime', '—')}", "last_check": now_iso},
-            {"service": "Redis Cache", "status": state_from(operational.get("redis")),
-             "latency_ms": None, "message": str(operational.get("redis", "—")), "last_check": now_iso},
-            {"service": "SQLite", "status": state_from(operational.get("sqlite")),
-             "latency_ms": None, "message": f"{db_info.get('total', 0)} observations", "last_check": now_iso},
-            {"service": "WebSocket SSE", "status": state_from(operational.get("sse_status")),
-             "latency_ms": None, "message": str(operational.get("sse_status", "—")), "last_check": now_iso},
-            {"service": "WebSocket view-sync", "status": state_from(operational.get("ws_status")),
-             "latency_ms": None, "message": str(operational.get("ws_status", "—")), "last_check": now_iso},
+            build("Gunicorn / Flask",   "ok" if (health or {}).get("ok") else "down",
+                  latency_ms=t_health_ms, fmt={"uptime": uptime_val}),
+            build("Redis Cache",        state_from(operational.get("redis")),
+                  fmt={"value": str(operational.get("redis", "—"))}),
+            build("SQLite",             state_from(operational.get("sqlite")),
+                  fmt={"count": db_info.get("total", 0)}),
+            build("WebSocket SSE",      state_from(operational.get("sse_status")),
+                  fmt={"value": str(operational.get("sse_status", "—"))}),
+            build("WebSocket view-sync", state_from(operational.get("ws_status")),
+                  fmt={"value": str(operational.get("ws_status", "—"))}),
         ]
 
         tle_age = operational.get("tle_age_seconds", 0) or 0
@@ -97,26 +224,21 @@ def api_maintenance_aggregate():
         tle_status = "ok" if tle_age_int < 86400 else ("warn" if tle_age_int < 172800 else "down")
         integ_ratio = integrations_ready / max(1, integrations_total)
         integ_status = "ok" if integ_ratio >= 0.9 else ("warn" if integ_ratio >= 0.5 else "down")
-        cred = ((health or {}).get("data_credibility", {}) or {}).get("confidence_level", "unknown")
-        cred_status = "ok" if cred == "high" else ("warn" if cred == "medium" else "down")
+        cred_raw = ((health or {}).get("data_credibility", {}) or {}).get("confidence_level", "unknown")
+        cred_status = "ok" if cred_raw == "high" else ("warn" if cred_raw == "medium" else "down")
+        cred_label = CRED_LABELS_I18N.get(cred_raw, CRED_LABELS_I18N["unknown"]).get(lang, cred_raw)
 
         data_quality = [
-            {"service": "TLE Freshness", "status": tle_status,
-             "latency_ms": None, "message": f"Age: {int(tle_age_int/3600)}h", "last_check": now_iso},
-            {"service": "Integrations", "status": integ_status,
-             "latency_ms": None, "message": f"{integrations_ready}/{integrations_total} ready", "last_check": now_iso},
-            {"service": "Data Credibility", "status": cred_status,
-             "latency_ms": None, "message": str(cred).upper(), "last_check": now_iso},
-            {"service": "Anomaly Detection", "status": "ok",
-             "latency_ms": None, "message": f"{db_info.get('anomalies', 0)} active anomalies", "last_check": now_iso},
+            build("TLE Freshness",      tle_status,    fmt={"hours": int(tle_age_int / 3600)}),
+            build("Integrations",       integ_status,  fmt={"ready": integrations_ready, "total": integrations_total}),
+            build("Data Credibility",   cred_status,   fmt={"level": cred_label}),
+            build("Anomaly Detection",  "ok",          fmt={"count": db_info.get("anomalies", 0)}),
         ]
 
         workers = [
-            {"service": w, "status": "ok", "latency_ms": None,
-             "message": "Active background thread", "last_check": now_iso}
-            for w in [
+            build(w, "ok") for w in [
                 "tle_refresh_loop", "lab_image_collector", "skyview_sync",
-                "translate_worker", "tle_collector"
+                "translate_worker", "tle_collector",
             ]
         ]
 
@@ -139,12 +261,13 @@ def api_maintenance_aggregate():
                     "service": s["service"],
                     "severity": s["status"],
                     "message": s["message"],
-                    "action_hint": "Check logs / restart service" if s["status"] == "down" else "Monitor closely",
+                    "action_hint": ACTION_HINTS_I18N[s["status"]].get(lang, ACTION_HINTS_I18N[s["status"]]["en"]),
                 })
 
         return jsonify({
+            "lang": lang,
             "timestamp": now_iso,
-            "uptime": (health or {}).get("uptime", "—"),
+            "uptime": uptime_val,
             "global": {
                 "status": global_status,
                 "ok_count": ok_count,

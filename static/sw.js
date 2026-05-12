@@ -1,4 +1,4 @@
-const CACHE = 'astroscan-v178';
+const CACHE = 'astroscan-v179';
 
 const PRECACHE = [];
 

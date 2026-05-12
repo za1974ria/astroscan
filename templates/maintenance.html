@@ -294,7 +294,7 @@ body { padding: 20px; overflow-x: hidden; }
   }
 
   function fetchAndRender() {
-    fetch('/api/maintenance/aggregate', { credentials: 'same-origin' })
+    fetch('/api/maintenance/aggregate?lang=' + encodeURIComponent(LANG), { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .then(renderAll)
       .catch(function (e) {
