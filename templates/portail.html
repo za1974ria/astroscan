@@ -1246,6 +1246,111 @@ hr{
   box-shadow: none;
 }
 /* ═══ END FIX 3 ═══ */
+
+/* ═══════════════════════════════════════════════
+   Day 1.18 — AURORA MAGIC (v2.3.3-aurora-magic)
+   CSS-only enhancements : parallax stars,
+   cyan glow on hover, fade-in cascade.
+   Scope : .portal-cards-grid container only.
+   ═══════════════════════════════════════════════ */
+
+/* EFFET 1 — Parallax stars background (box-shadow stars, no images) */
+.aurora-stars-bg {
+  position: relative;
+  isolation: isolate;
+}
+.aurora-stars-bg::before,
+.aurora-stars-bg::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 200%;
+  pointer-events: none;
+  z-index: -1;
+  background-repeat: repeat;
+  will-change: transform;
+}
+.aurora-stars-bg::before {
+  background-image:
+    radial-gradient(1px 1px at 12% 8%, rgba(255,255,255,0.85), transparent 60%),
+    radial-gradient(1px 1px at 38% 22%, rgba(180,220,255,0.7), transparent 60%),
+    radial-gradient(1.4px 1.4px at 67% 14%, rgba(255,255,255,0.9), transparent 60%),
+    radial-gradient(1px 1px at 84% 38%, rgba(200,235,255,0.75), transparent 60%),
+    radial-gradient(1px 1px at 22% 55%, rgba(255,255,255,0.7), transparent 60%),
+    radial-gradient(1.2px 1.2px at 55% 72%, rgba(160,210,255,0.8), transparent 60%),
+    radial-gradient(1px 1px at 78% 88%, rgba(255,255,255,0.85), transparent 60%),
+    radial-gradient(1.3px 1.3px at 8% 92%, rgba(190,225,255,0.7), transparent 60%);
+  background-size: 100% 50%;
+  animation: auroraStarsDrift 120s linear infinite;
+}
+.aurora-stars-bg::after {
+  background-image:
+    radial-gradient(0.8px 0.8px at 31% 12%, rgba(0,220,255,0.6), transparent 60%),
+    radial-gradient(0.8px 0.8px at 73% 27%, rgba(255,255,255,0.55), transparent 60%),
+    radial-gradient(0.8px 0.8px at 47% 48%, rgba(140,200,255,0.5), transparent 60%),
+    radial-gradient(0.8px 0.8px at 91% 63%, rgba(255,255,255,0.6), transparent 60%),
+    radial-gradient(0.8px 0.8px at 18% 78%, rgba(0,212,255,0.55), transparent 60%),
+    radial-gradient(0.8px 0.8px at 62% 95%, rgba(255,255,255,0.5), transparent 60%);
+  background-size: 100% 50%;
+  animation: auroraStarsDrift 80s linear infinite reverse;
+  opacity: 0.7;
+}
+@keyframes auroraStarsDrift {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-50%); }
+}
+
+/* EFFET 2 — Hover scale 1.05 + cyan glow */
+.aurora-card-hover {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.aurora-card-hover:hover {
+  transform: scale(1.05) !important;
+  box-shadow: 0 0 24px rgba(0, 220, 255, 0.6),
+              0 8px 28px rgba(0, 0, 0, 0.55),
+              inset 0 0 12px rgba(0, 220, 255, 0.08) !important;
+  border-color: rgba(0, 220, 255, 0.7) !important;
+}
+
+/* EFFET 3 — Fade-in cascade (apparition séquentielle) */
+@keyframes auroraFadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.aurora-fade-cascade {
+  opacity: 0;
+  animation: auroraFadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+.aurora-fade-cascade:nth-child(1)  { animation-delay: 0.10s; }
+.aurora-fade-cascade:nth-child(2)  { animation-delay: 0.20s; }
+.aurora-fade-cascade:nth-child(3)  { animation-delay: 0.30s; }
+.aurora-fade-cascade:nth-child(4)  { animation-delay: 0.40s; }
+.aurora-fade-cascade:nth-child(5)  { animation-delay: 0.50s; }
+.aurora-fade-cascade:nth-child(6)  { animation-delay: 0.60s; }
+.aurora-fade-cascade:nth-child(7)  { animation-delay: 0.70s; }
+.aurora-fade-cascade:nth-child(8)  { animation-delay: 0.80s; }
+.aurora-fade-cascade:nth-child(9)  { animation-delay: 0.90s; }
+.aurora-fade-cascade:nth-child(10) { animation-delay: 1.00s; }
+.aurora-fade-cascade:nth-child(11) { animation-delay: 1.10s; }
+.aurora-fade-cascade:nth-child(12) { animation-delay: 1.20s; }
+
+/* EFFET 4 — Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-stars-bg::before,
+  .aurora-stars-bg::after { animation: none !important; }
+  .aurora-fade-cascade {
+    opacity: 1 !important;
+    animation: none !important;
+    transform: none !important;
+  }
+  .aurora-card-hover { transition: none !important; }
+  .aurora-card-hover:hover { transform: none !important; }
+}
+/* ═══ END AURORA MAGIC ═══ */
 </style>
   <link rel="stylesheet" href="/static/css/design_tokens.css">
   <link rel="stylesheet" href="/static/css/components.css">
@@ -1750,53 +1855,53 @@ hr{
         </div>
       </div>
 
-      <div class="portal-cards-grid">
-        <a href="/orbital-map" class="portal-card card">
+      <div class="portal-cards-grid aurora-stars-bg">
+        <a href="/orbital-map" class="portal-card card aurora-card-hover aurora-fade-cascade">
           <div class="card-title">{% if lang == 'en' %}ORBITAL MAP{% else %}CARTE ORBITALE{% endif %}</div>
           <div class="card-desc">{% if lang == 'en' %}ISS and satellites live on the planet{% else %}ISS et satellites en direct sur la planète{% endif %}</div>
           <span class="card-link">→ /orbital-map</span>
         </a>
-        <a href="/space-weather" class="portal-card card">
+        <a href="/space-weather" class="portal-card card aurora-card-hover aurora-fade-cascade">
           <div class="card-title">{% if lang == 'en' %}SPACE WEATHER{% else %}MÉTÉO SPATIALE{% endif %}</div>
           <div class="card-desc">{% if lang == 'en' %}Solar activity, solar wind, Kp index{% else %}Activité solaire, vent solaire, indice Kp{% endif %}</div>
           <span class="card-link">→ /space-weather</span>
         </a>
-        <a href="/module/observatoire" class="portal-card card">
+        <a href="/module/observatoire" class="portal-card card aurora-card-hover aurora-fade-cascade">
           <div class="card-title">{% if lang == 'en' %}OBSERVATORY{% else %}OBSERVATOIRE{% endif %}</div>
           <div class="card-desc">{% if lang == 'en' %}World telescopes and observations{% else %}Télescopes mondiaux et observations{% endif %}</div>
           <span class="card-link">→ /module/observatoire</span>
         </a>
-        <a href="/module/vision" class="portal-card card">
+        <a href="/module/vision" class="portal-card card aurora-card-hover aurora-fade-cascade">
           <div class="card-title">VISION 2026</div>
           <div class="card-desc">{% if lang == 'en' %}Project roadmap{% else %}Roadmap du projet{% endif %}</div>
           <span class="card-link">→ /module/vision</span>
         </a>
-        <a href="/module/scientific" class="portal-card card">
+        <a href="/module/scientific" class="portal-card card aurora-card-hover aurora-fade-cascade">
           <div class="card-title">{% if lang == 'en' %}SCIENTIFIC MODE{% else %}MODE SCIENTIFIQUE{% endif %}</div>
           <div class="card-desc">{% if lang == 'en' %}ISS, Moon, catalog, solar weather{% else %}ISS, Lune, catalogue, météo solaire{% endif %}</div>
           <span class="card-link">→ /module/scientific</span>
         </a>
-        <a href="/module/lab" class="portal-card card">
+        <a href="/module/lab" class="portal-card card aurora-card-hover aurora-fade-cascade">
           <div class="card-title">DIGITAL LAB</div>
           <div class="card-desc">{% if lang == 'en' %}Scientific analysis of space images{% else %}Analyse scientifique des images spatiales{% endif %}</div>
           <span class="card-link">→ /module/lab</span>
         </a>
-        <a href="/mission-control" class="portal-card card">
+        <a href="/mission-control" class="portal-card card aurora-card-hover aurora-fade-cascade">
           <div class="card-title">MISSION CONTROL</div>
           <div class="card-desc">{% if lang == 'en' %}ISS status, Voyager, NOAA, alerts{% else %}État ISS, Voyager, NOAA, alertes{% endif %}</div>
           <span class="card-link">→ /mission-control</span>
         </a>
-        <a href="/space-intelligence-page" class="portal-card card">
+        <a href="/space-intelligence-page" class="portal-card card aurora-card-hover aurora-fade-cascade">
           <div class="card-title">SPACE INTELLIGENCE</div>
           <div class="card-desc">{% if lang == 'en' %}Alerts, events, risk level{% else %}Alertes, événements, niveau de risque{% endif %}</div>
           <span class="card-link">→ /space-intelligence-page</span>
         </a>
-        <a href="/module/galerie" class="portal-card card">
+        <a href="/module/galerie" class="portal-card card aurora-card-hover aurora-fade-cascade">
           <div class="card-title">{% if lang == 'en' %}STELLAR ARCHIVE{% else %}ARCHIVE STELLAIRE{% endif %}</div>
           <div class="card-desc">{% if lang == 'en' %}Observations catalog{% else %}Catalogue observations{% endif %}</div>
           <span class="card-link">→ /module/galerie</span>
         </a>
-        <a href="/maintenance" class="portal-card card" style="border-color: rgba(0, 255, 136, 0.3);">
+        <a href="/maintenance" class="portal-card card aurora-card-hover aurora-fade-cascade" style="border-color: rgba(0, 255, 136, 0.3);">
           <div class="card-title" style="color: var(--green);">{% if lang == 'en' %}MAINTENANCE CONTROL{% else %}CONTRÔLE MAINTENANCE{% endif %} <span style="font-size: 9px; background: rgba(0, 255, 136, 0.15); color: var(--green); padding: 2px 6px; border-radius: 3px; vertical-align: middle; margin-left: 6px;">LIVE</span></div>
           <div class="card-desc">{% if lang == 'en' %}Real-time service health · LED indicators · 20 services monitored{% else %}Santé services temps réel · Voyants LED · 20 services surveillés{% endif %}</div>
           <span class="card-link">→ /maintenance</span>
