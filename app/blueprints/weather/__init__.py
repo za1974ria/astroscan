@@ -22,7 +22,7 @@ import os
 import sqlite3
 from datetime import datetime, timezone
 
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, Response
 
 from app.config import STATION, WEATHER_DB_PATH, WEATHER_HISTORY_DIR
 from app.utils.cache import cache_get, cache_set, cache_cleanup, get_cached
@@ -508,7 +508,138 @@ def meteo_page():
 @bp.route("/control")
 @bp.route("/meteo")
 def control():
-    return render_template("orbital_control_center.html")
+    """Page bulletin météo. Accepte ?date=YYYY-MM-DD pour précharger une date."""
+    requested_date = (request.args.get("date") or "").strip()
+
+    bulletin_date = ""
+    if (
+        len(requested_date) == 10
+        and requested_date[4] == "-"
+        and requested_date[7] == "-"
+        and requested_date[:4].isdigit()
+        and requested_date[5:7].isdigit()
+        and requested_date[8:10].isdigit()
+    ):
+        bulletin_date = requested_date
+
+    return render_template(
+        "orbital_control_center.html",
+        bulletin_date=bulletin_date,
+    )
+
+
+@bp.route("/control/bulletin-meteo.pdf")
+def control_bulletin_export():
+    """Export du bulletin météo en fichier texte téléchargeable.
+
+    Query param: ?date=YYYY-MM-DD (par défaut: dernière date disponible).
+    Retourne: text/plain téléchargeable.
+
+    Note: nommé .pdf pour cohérence URL historique mais sert un .txt
+    pour éviter dépendance reportlab. Migration PDF natif possible plus tard.
+    """
+    requested_date = (request.args.get("date") or "").strip()
+
+    if not os.path.exists(WEATHER_DB_PATH):
+        return Response(
+            "Erreur : base de données weather_bulletins.db introuvable.\n",
+            status=500,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    try:
+        conn = sqlite3.connect(WEATHER_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        if (
+            len(requested_date) == 10
+            and requested_date[4] == "-"
+            and requested_date[7] == "-"
+            and requested_date[:4].isdigit()
+        ):
+            cur.execute(
+                "SELECT * FROM weather_bulletins WHERE date = ? ORDER BY hour DESC LIMIT 1",
+                (requested_date,),
+            )
+        else:
+            cur.execute(
+                "SELECT * FROM weather_bulletins ORDER BY date DESC, hour DESC LIMIT 1"
+            )
+
+        row = cur.fetchone()
+        conn.close()
+
+        generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        if not row:
+            content = (
+                "═══════════════════════════════════════════════════════════\n"
+                "  BULLETIN MÉTÉOROLOGIQUE — ASTRO-SCAN / ORBITAL-CHOHRA\n"
+                "  Station : Tlemcen, Algérie\n"
+                "═══════════════════════════════════════════════════════════\n\n"
+                f"Date demandée : {requested_date or 'non spécifiée'}\n\n"
+                "Aucune donnée disponible pour cette date.\n"
+                "Veuillez choisir une date présente dans l'archive.\n\n"
+                f"Généré le : {generated_at}\n"
+            )
+            filename = "bulletin-meteo-aucune-donnee.txt"
+        else:
+            data = dict(row)
+            date_str = data.get("date") or "N/A"
+            content = (
+                "═══════════════════════════════════════════════════════════\n"
+                "  BULLETIN MÉTÉOROLOGIQUE — ASTRO-SCAN / ORBITAL-CHOHRA\n"
+                "  Station : Tlemcen, Algérie\n"
+                "═══════════════════════════════════════════════════════════\n\n"
+                f"Date          : {date_str}\n"
+                f"Heure         : {data.get('hour', 'N/A')} UTC\n\n"
+                "─── CONDITIONS ───────────────────────────────────────────\n"
+                f"Température   : {data.get('temp', 'N/A')} °C\n"
+                f"Humidité      : {data.get('humidity', 'N/A')} %\n"
+                f"Pression      : {data.get('pressure', 'N/A')} hPa\n"
+                f"Vent          : {data.get('wind', 'N/A')} km/h\n"
+                f"Direction vent: {data.get('wind_direction', 'N/A')} °\n"
+                f"Condition     : {data.get('condition', 'N/A')}\n\n"
+                "─── ÉVALUATION ───────────────────────────────────────────\n"
+                f"Score météo   : {data.get('score', 'N/A')}/100\n"
+                f"Statut        : {data.get('status', 'N/A')}\n"
+                f"Risque        : {data.get('risk', 'N/A')}\n"
+                f"Fiabilité     : {data.get('reliability_score', 'N/A')} %\n\n"
+            )
+
+            bulletin_text = (data.get("bulletin") or "").strip()
+            if bulletin_text:
+                content += (
+                    "─── BULLETIN ─────────────────────────────────────────────\n"
+                    f"{bulletin_text}\n\n"
+                )
+
+            source_text = (data.get("source") or "").strip()
+            if source_text:
+                content += f"Source : {source_text}\n"
+
+            content += (
+                f"Généré le : {generated_at}\n"
+                "═══════════════════════════════════════════════════════════\n"
+            )
+            filename = f"bulletin-meteo-{date_str}.txt"
+
+        return Response(
+            content,
+            content_type="text/plain; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+    except Exception as e:
+        log.warning("control/bulletin-meteo.pdf: %s", e)
+        return Response(
+            f"Erreur interne lors de la génération du bulletin : {e}\n",
+            status=500,
+            content_type="text/plain; charset=utf-8",
+        )
 
 
 # ─────────────────────────────────────────────────────────────────
