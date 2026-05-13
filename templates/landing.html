@@ -238,6 +238,136 @@
     }
     footer a:last-child { margin-right: 0; }
     footer a:hover { text-decoration: underline; opacity: 0.8; }
+
+    /* ═══ DAY 1.19 — Killer phrase + hero CTA (v2.3.4-killer-phrase) ═══ */
+    .hero-killer {
+      text-align: center;
+      padding: 6rem 1.5rem 4rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .killer-phrase-en {
+      font-size: clamp(1.8rem, 4.5vw, 2.5rem);
+      font-weight: 600;
+      line-height: 1.3;
+      color: var(--cyan);
+      margin: 0 0 12px 0;
+      letter-spacing: -0.01em;
+    }
+    .killer-phrase-fr {
+      font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+      font-weight: 400;
+      font-style: italic;
+      opacity: 0.75;
+      margin: 0 0 2.5rem 0;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .hero-cta {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .hero-cta .btn-primary,
+    .hero-cta .btn-secondary {
+      display: inline-block;
+      padding: 0.85rem 1.8rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+    }
+    .hero-cta .btn-primary {
+      background: var(--cyan);
+      color: #000;
+      border: 1px solid var(--cyan);
+    }
+    .hero-cta .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 220, 255, 0.35);
+    }
+    .hero-cta .btn-secondary {
+      background: transparent;
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+    }
+    .hero-cta .btn-secondary:hover {
+      background: rgba(0, 220, 255, 0.1);
+    }
+    .obs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .obs-card {
+      display: block;
+      padding: 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .obs-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(0, 232, 255, 0.45);
+      box-shadow: 0 6px 24px rgba(0, 232, 255, 0.12);
+    }
+    .obs-card h3 {
+      font-size: 1rem;
+      color: var(--cyan);
+      margin: 0 0 6px 0;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .obs-card p {
+      margin: 0;
+      color: var(--text);
+      font-size: 0.92rem;
+      line-height: 1.5;
+      opacity: 0.85;
+    }
+    .inline-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .inline-link:hover { text-decoration: underline; }
+    .sources-list {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+    }
+    .sources-list li {
+      font-size: 0.85rem;
+      color: var(--muted);
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(8, 18, 28, 0.5);
+    }
+    @media (max-width: 768px) {
+      .hero-killer { padding: 4rem 1rem 3rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hero-cta .btn-primary,
+      .hero-cta .btn-secondary,
+      .obs-card {
+        transition: none !important;
+      }
+      .hero-cta .btn-primary:hover,
+      .obs-card:hover {
+        transform: none !important;
+      }
+    }
+    /* ═══ END Day 1.19 ═══ */
   </style>
 <style>
 .fab-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
@@ -317,28 +447,29 @@
 </style>
 </head>
 <body class="notranslate">
+{# DAY 1.19 : bloc astro-dashboard-wrapper retiré pour simplification + règle VÉRITÉ (stats illustratives non mesurées). Peut être réactivé une fois des métriques réelles disponibles.
 <section id="astro-dashboard-wrapper">
 <div class="astro-dashboard">
   <div class="astro-topbar">
-    {% if lang == 'en' %}
+    {% raw %}{% if lang == 'en' %}{% endraw %}
     <div class="stat">Visitors<br><span>1,099</span></div>
     <div class="stat">Countries<br><span>42</span></div>
     <div class="stat">Requests<br><span>24,532</span></div>
     <div class="stat">Uptime<br><span>99.82%</span></div>
     <div class="stat">Errors<br><span>12</span></div>
     <div class="stat">Latency<br><span>128 ms</span></div>
-    {% else %}
+    {% raw %}{% else %}{% endraw %}
     <div class="stat">Visites<br><span>1 099</span></div>
     <div class="stat">Pays<br><span>42</span></div>
     <div class="stat">Requêtes<br><span>24 532</span></div>
     <div class="stat">Disponibilité<br><span>99,82%</span></div>
     <div class="stat">Erreurs<br><span>12</span></div>
     <div class="stat">Latence<br><span>128 ms</span></div>
-    {% endif %}
+    {% raw %}{% endif %}{% endraw %}
   </div>
 
   <div class="astro-grid">
-    <div class="astro-map">🌍 {% if lang == 'en' %}LIVE WORLD MAP{% else %}CARTE MONDE EN DIRECT{% endif %}</div>
+    <div class="astro-map">LIVE WORLD MAP / CARTE MONDE EN DIRECT</div>
 
     <div class="astro-iss">
       <img src="https://images-assets.nasa.gov/image/iss064e000602/iss064e000602~orig.jpg">
@@ -350,12 +481,14 @@
       </div>
     </div>
 
-    <div class="astro-logs">🛰️ {% if lang == 'en' %}SYSTEM LOGS{% else %}JOURNAL SYSTÈME{% endif %}</div>
-    <div class="astro-visitors">👥 {% if lang == 'en' %}LATEST VISITORS{% else %}DERNIERS VISITEURS{% endif %}</div>
-    <div class="astro-status">✅ {% if lang == 'en' %}SYSTEM OK{% else %}SYSTÈME OK{% endif %}</div>
+    <div class="astro-logs">SYSTEM LOGS / JOURNAL SYSTÈME</div>
+    <div class="astro-visitors">LATEST VISITORS / DERNIERS VISITEURS</div>
+    <div class="astro-status">SYSTEM OK / SYSTÈME OK</div>
   </div>
 </div>
 </section>
+FIN DAY 1.19 #}
+
 
 <!-- Lang switcher -->
 <div style="position:fixed;top:12px;right:12px;z-index:9998;display:flex;gap:6px;background:rgba(3,5,8,0.85);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-family:system-ui,sans-serif;font-size:12px;">
@@ -368,157 +501,111 @@
 
   <main>
     {% if lang == 'en' %}
-    <section class="hero">
-      <div class="container">
-        <h1 class="logo">Track the ISS live and predict visible satellite passes — reliably.</h1>
-        <h2>AstroScan turns complex space data into clear, actionable insights in real time — for observation, teaching, or building your own applications.</h2>
-        <a class="cta btn" href="/portail">Start tracking the sky</a>
-        <p class="trust-line">Live data • SGP4-based • Production system</p>
-        <div class="live-box">
-          <p style="color:#888; font-size:13px;">Live snapshot</p>
-          <p>ISS position updates in real-time via SGP4 computation</p>
-        </div>
+    <section class="hero-killer">
+      <h1 class="killer-phrase-en" lang="en">
+        Astronomical observations from Tlemcen, Algeria — in real time, open to all.
+      </h1>
+      <p class="killer-phrase-fr" lang="fr">
+        Observations astronomiques depuis Tlemcen, Algérie — en temps réel, ouvertes à tous.
+      </p>
+      <div class="hero-cta">
+        <a href="/portail" class="btn-primary">Enter the observatory</a>
+        <a href="/data" class="btn-secondary">Open data portal</a>
       </div>
     </section>
 
     <section class="section">
-      <h2>📡 Live system snapshot</h2>
-      <div class="astro-mini-dashboard">
-        <div class="mini-card">👥 Visitors<br><strong>1,099</strong></div>
-        <div class="mini-card">🌍 Countries<br><strong>42</strong></div>
-        <div class="mini-card">📡 Requests<br><strong>24,532</strong></div>
-        <div class="mini-card">⚡ Uptime<br><strong>99.82%</strong></div>
-        <div class="mini-card">❌ Errors<br><strong>12</strong></div>
-        <div class="mini-card">🚀 Latency<br><strong>128 ms</strong></div>
+      <h2>What you can observe</h2>
+      <div class="obs-grid">
+        <a href="/observatoire" class="obs-card">
+          <h3>ISS and satellites</h3>
+          <p>Live positions computed with SGP4 from NORAD TLE data.</p>
+        </a>
+        <a href="/aurores" class="obs-card">
+          <h3>Space weather</h3>
+          <p>Solar wind, Kp index and geomagnetic activity from NOAA SWPC.</p>
+        </a>
+        <a href="/ce_soir" class="obs-card">
+          <h3>Tonight's sky</h3>
+          <p>Planet and ISS visibility for Tlemcen tonight.</p>
+        </a>
       </div>
     </section>
 
     <section class="section">
-      <h2>What AstroScan brings you</h2>
-      <div class="info-block">
-        <ul class="bullet-list">
-          <li>Never miss a visible satellite pass again</li>
-          <li>Access reliable data, even when external sources fail</li>
-          <li>Understand what's happening above you in seconds</li>
-          <li>Use this data for your courses, projects, or applications</li>
-        </ul>
-      </div>
+      <h2>Open data</h2>
+      <p>All data comes from public scientific sources: NORAD/CelesTrak (TLE), NOAA SWPC (space weather), NASA APOD, Skyfield (orbital computation).</p>
+      <ul class="sources-list">
+        <li>NORAD / CelesTrak</li>
+        <li>NOAA SWPC</li>
+        <li>NASA APOD</li>
+        <li>Skyfield (SGP4)</li>
+      </ul>
+      <p style="margin-top: 1.2rem;"><a href="/data" class="inline-link">Browse the open data portal &rarr;</a></p>
     </section>
 
-    <section class="section">
-      <h2>Built for concrete use cases</h2>
-      <div class="info-block">
-        <ul class="bullet-list">
-          <li><strong>Education:</strong> illustrate orbital motion in real time</li>
-          <li><strong>Astronomy clubs:</strong> plan observations precisely</li>
-          <li><strong>Media:</strong> visualize space events at a glance</li>
-          <li><strong>Developers:</strong> integrate reliable orbital data into your apps</li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2>A reliable technical foundation</h2>
-      <div class="info-block">
-        <ul class="bullet-list">
-          <li>Real orbital computation based on NORAD data (SGP4)</li>
-          <li>Resilient system with caching and fallback mechanisms</li>
-          <li>Backend deployed in production with monitoring</li>
-          <li>Stable API for external use</li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2>Explore what's happening above you — right now</h2>
-      <p>Access live data and discover a new way to observe the sky.</p>
-      <div class="final-cta">
-        <a class="cta btn" href="/portail">Enter AstroScan</a>
-      </div>
-    </section>
+    {# DAY 1.19 : sections "What AstroScan brings you", "Built for concrete use cases", "A reliable technical foundation", "Explore what's happening above you" retirées pour simplification + règles HUMILITÉ/PROJET>AUTEUR. Voir backup landing.html.bak_day119_*. #}
 
     <footer>
-      <p class="creator">AstroScan · Space observation platform in production</p>
+      <p class="creator">Space observation platform from Tlemcen, Algeria.</p>
       <div class="links">
         <a href="/portail">Portal</a>
-        <a href="https://github.com/" rel="noopener noreferrer" target="_blank">GitHub</a>
+        <a href="/data">Open data</a>
+        <a href="/observatoire">Observatory</a>
       </div>
     </footer>
     {% else %}
-    <section class="hero">
-      <div class="container">
-        <h1 class="logo">Suivez l’ISS en direct et anticipez les passages satellites visibles, en toute fiabilité.</h1>
-        <h2>AstroScan transforme des données spatiales complexes en informations claires, exploitables en temps réel — pour observer, enseigner ou construire vos propres applications.</h2>
-        <a class="cta btn" href="/portail">Commencer à suivre le ciel</a>
-        <p class="trust-line">Données live • SGP4 • Système en production</p>
-        <div class="live-box">
-          <p style="color:#888; font-size:13px;">Aperçu temps réel</p>
-          <p>Position ISS mise à jour en temps réel via calcul SGP4</p>
-        </div>
+    <section class="hero-killer">
+      <h1 class="killer-phrase-en" lang="en">
+        Astronomical observations from Tlemcen, Algeria — in real time, open to all.
+      </h1>
+      <p class="killer-phrase-fr" lang="fr">
+        Observations astronomiques depuis Tlemcen, Algérie — en temps réel, ouvertes à tous.
+      </p>
+      <div class="hero-cta">
+        <a href="/portail" class="btn-primary">Entrer dans l'observatoire</a>
+        <a href="/data" class="btn-secondary">Portail open data</a>
       </div>
     </section>
 
     <section class="section">
-      <h2>📡 Aperçu système en direct</h2>
-      <div class="astro-mini-dashboard">
-        <div class="mini-card">👥 Visites<br><strong>1 099</strong></div>
-        <div class="mini-card">🌍 Pays<br><strong>42</strong></div>
-        <div class="mini-card">📡 Requêtes<br><strong>24 532</strong></div>
-        <div class="mini-card">⚡ Disponibilité<br><strong>99,82%</strong></div>
-        <div class="mini-card">❌ Erreurs<br><strong>12</strong></div>
-        <div class="mini-card">🚀 Latence<br><strong>128 ms</strong></div>
+      <h2>Ce que vous pouvez observer</h2>
+      <div class="obs-grid">
+        <a href="/observatoire" class="obs-card">
+          <h3>ISS et satellites</h3>
+          <p>Positions en direct calculées avec SGP4 à partir des TLE NORAD.</p>
+        </a>
+        <a href="/aurores" class="obs-card">
+          <h3>Météo spatiale</h3>
+          <p>Vent solaire, indice Kp et activité géomagnétique depuis NOAA SWPC.</p>
+        </a>
+        <a href="/ce_soir" class="obs-card">
+          <h3>Le ciel ce soir</h3>
+          <p>Visibilité des planètes et de l'ISS depuis Tlemcen ce soir.</p>
+        </a>
       </div>
     </section>
 
     <section class="section">
-      <h2>Ce que AstroScan vous apporte</h2>
-      <div class="info-block">
-        <ul class="bullet-list">
-          <li>Ne ratez plus jamais un passage satellite visible</li>
-          <li>Accédez à des données fiables, même en cas de défaillance externe</li>
-          <li>Comprenez en quelques secondes ce qui se passe au-dessus de vous</li>
-          <li>Exploitez ces données pour vos cours, projets ou applications</li>
-        </ul>
-      </div>
+      <h2>Open data</h2>
+      <p>Toutes les données proviennent de sources scientifiques publiques : NORAD/CelesTrak (TLE), NOAA SWPC (météo spatiale), NASA APOD, Skyfield (calcul orbital).</p>
+      <ul class="sources-list">
+        <li>NORAD / CelesTrak</li>
+        <li>NOAA SWPC</li>
+        <li>NASA APOD</li>
+        <li>Skyfield (SGP4)</li>
+      </ul>
+      <p style="margin-top: 1.2rem;"><a href="/data" class="inline-link">Parcourir le portail open data &rarr;</a></p>
     </section>
 
-    <section class="section">
-      <h2>Conçu pour des usages concrets</h2>
-      <div class="info-block">
-        <ul class="bullet-list">
-          <li><strong>Éducation :</strong> illustrer les mouvements orbitaux en temps réel</li>
-          <li><strong>Clubs d’astronomie :</strong> planifier les observations avec précision</li>
-          <li><strong>Médias :</strong> visualiser rapidement les événements spatiaux</li>
-          <li><strong>Développeurs :</strong> intégrer des données orbitales fiables dans leurs applications</li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2>Une base technique fiable</h2>
-      <div class="info-block">
-        <ul class="bullet-list">
-          <li>Calcul orbital réel basé sur les données NORAD (SGP4)</li>
-          <li>Système résilient avec cache et mécanismes de fallback</li>
-          <li>Backend déployé en production avec monitoring</li>
-          <li>API stable pour exploitation externe</li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2>Explorez ce qui se passe au-dessus de vous, maintenant</h2>
-      <p>Accédez aux données en direct et découvrez une nouvelle manière d’observer le ciel.</p>
-      <div class="final-cta">
-        <a class="cta btn" href="/portail">Entrer dans AstroScan</a>
-      </div>
-    </section>
+    {# DAY 1.19 : sections "Ce que AstroScan vous apporte", "Conçu pour des usages concrets", "Une base technique fiable", "Explorez ce qui se passe au-dessus de vous" retirées pour simplification + règles HUMILITÉ/PROJET>AUTEUR. Voir backup landing.html.bak_day119_*. #}
 
     <footer>
-      <p class="creator">AstroScan · Plateforme d’observation spatiale en production</p>
+      <p class="creator">Plateforme d'observation spatiale depuis Tlemcen, Algérie.</p>
       <div class="links">
         <a href="/portail">Portail</a>
-        <a href="https://github.com/" rel="noopener noreferrer" target="_blank">GitHub</a>
+        <a href="/data">Open data</a>
+        <a href="/observatoire">Observatoire</a>
       </div>
     </footer>
     {% endif %}
