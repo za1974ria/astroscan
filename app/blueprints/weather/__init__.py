@@ -577,10 +577,13 @@ def control_bulletin_export():
                 "═══════════════════════════════════════════════════════════\n"
                 "  BULLETIN MÉTÉOROLOGIQUE — ASTRO-SCAN / ORBITAL-CHOHRA\n"
                 "  Station : Tlemcen, Algérie\n"
+                "  ⚠️  DOCUMENT NON OFFICIEL — TITRE INDICATIF UNIQUEMENT\n"
                 "═══════════════════════════════════════════════════════════\n\n"
                 f"Date demandée : {requested_date or 'non spécifiée'}\n\n"
                 "Aucune donnée disponible pour cette date.\n"
                 "Veuillez choisir une date présente dans l'archive.\n\n"
+                "Pour des bulletins officiels, consultez l'ONM (Algérie)\n"
+                "ou les sources internationales (NOAA, Météo France).\n\n"
                 f"Généré le : {generated_at}\n"
             )
             filename = "bulletin-meteo-aucune-donnee.txt"
@@ -615,12 +618,28 @@ def control_bulletin_export():
                     f"{bulletin_text}\n\n"
                 )
 
-            source_text = (data.get("source") or "").strip()
-            if source_text:
-                content += f"Source : {source_text}\n"
-
+            source_text = (data.get("source") or "").strip() or "NOAA / Windy / ECMWF"
             content += (
-                f"Généré le : {generated_at}\n"
+                "─── SOURCE ───────────────────────────────────────────────\n"
+                f"{source_text}\n\n"
+                "═══════════════════════════════════════════════════════════\n"
+                "  ⚠️  DOCUMENT NON OFFICIEL\n"
+                "═══════════════════════════════════════════════════════════\n\n"
+                "Ce bulletin est généré automatiquement à partir de données\n"
+                "publiques (NOAA, Windy, ECMWF) à titre informatif uniquement.\n\n"
+                "Il NE remplace PAS les bulletins officiels émis par :\n"
+                "  • ONM — Office National de la Météorologie (Algérie)\n"
+                "  • Météo France, NOAA, ECMWF (sources internationales)\n\n"
+                "Pour toute décision opérationnelle (aviation, agriculture,\n"
+                "navigation, sécurité civile, événements publics), veuillez\n"
+                "consulter les sources météorologiques officielles.\n\n"
+                "L'auteur d'ASTRO-SCAN décline toute responsabilité quant à\n"
+                "l'utilisation de ces données.\n\n"
+                "─── INFORMATIONS TECHNIQUES ──────────────────────────────\n"
+                f"Généré le        : {generated_at}\n"
+                "Plateforme       : ASTRO-SCAN / ORBITAL-CHOHRA\n"
+                "Site             : https://astroscan.space\n"
+                "Licence          : CC BY-NC-SA 4.0\n"
                 "═══════════════════════════════════════════════════════════\n"
             )
             filename = f"bulletin-meteo-{date_str}.txt"
