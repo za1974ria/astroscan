@@ -118,7 +118,14 @@ There is no contributor's guide yet. For now, common sense and clear communicati
 
 This project is released under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)](LICENSE).
 
-In short: free for educational, scientific and personal use, with attribution and share-alike. Commercial use requires a separate license — see [LICENSE](LICENSE) for details.
+You are free to **share** and **adapt** the work for non-commercial purposes, as long as you:
+- 📌 Give appropriate **attribution** to the author
+- 🚫 Do not use it for **commercial purposes** without explicit permission
+- 🔄 Distribute derivative works under the **same license**
+
+For commercial use, hosted SaaS partnerships, or enterprise integration, please contact the maintainer via GitHub issues.
+
+Full license text: [https://creativecommons.org/licenses/by-nc-sa/4.0/](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 ---
 
