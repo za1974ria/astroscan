@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#03070f">
+  <title>Trajet protégé · Sentinel</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design_tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/orbital_command.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='sentinel/sentinel.css') }}">
+</head>
+<body class="sn-body sn-body--driver"
+      data-page="driver"
+      data-token="{{ driver_token }}"
+      data-label="{{ driver_label }}"
+      data-limit="{{ speed_limit_kmh }}"
+      data-ttl-min="{{ ttl_minutes }}"
+      data-sos-hold="{{ sos_hold_seconds }}"
+      data-interval="{{ update_interval }}"
+      data-initial-state="{{ initial_state }}">
+
+  <header class="sn-topbar sn-topbar--driver">
+    <span class="sn-module">TRAJET PROTÉGÉ</span>
+    <span id="sn-ttl" class="sn-pill">—:—</span>
+  </header>
+
+  <!-- ── Invite view (shown while state is PENDING_DRIVER) ── -->
+  <section id="sn-invite" class="sn-driver-invite"
+           {% if initial_state != 'PENDING_DRIVER' %}hidden{% endif %}>
+    <div class="sn-card sn-card--invite">
+      <p class="sn-eyebrow">Trajet protégé · Sentinel</p>
+      <h1>Bonjour {{ driver_label or 'à toi' }},</h1>
+      <p class="sn-lede">
+        On te propose un trajet protégé en famille. Pendant la durée
+        choisie, ton proche peut voir ta position en direct, pour
+        veiller à ta sécurité. Rien n'est enregistré, rien n'est partagé
+        ailleurs.
+      </p>
+
+      <ul class="sn-pillars">
+        <li><strong>Durée maximale</strong> · {{ ttl_minutes }} minutes</li>
+        <li><strong>Vitesse rassurante</strong> · {{ speed_limit_kmh }} km/h</li>
+        <li><strong>Bouton SOS</strong> · toujours visible, maintien {{ sos_hold_seconds }} s</li>
+        <li><strong>Arrêt à deux</strong> · tu peux demander la fin à tout moment, ton proche doit approuver</li>
+        <li><strong>Aucune trace</strong> · données effacées automatiquement après le trajet</li>
+      </ul>
+
+      <div class="sn-safety">
+        ⚠ Ne manipulez jamais ce téléphone en conduisant.
+        Installez-le sur un support avant le départ, ou demandez à un passager.
+      </div>
+
+      <button id="sn-accept-btn" class="sn-btn sn-btn--primary sn-btn--xl sn-btn--block" type="button">
+        ✓ J'accepte le trajet protégé
+      </button>
+      <button id="sn-refuse-btn" class="sn-btn sn-btn--ghost sn-btn--block" type="button">
+        Refuser
+      </button>
+
+      <p class="sn-muted sn-foot-note">
+        En acceptant, votre navigateur vous demandera l'autorisation de
+        géolocalisation. Vous gardez la main : vous pouvez la révoquer
+        à tout moment.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Cockpit view (shown after accept) ── -->
+  <section id="sn-cockpit" class="sn-cockpit"
+           {% if initial_state == 'PENDING_DRIVER' %}hidden{% endif %}>
+    <div class="sn-safety-banner" aria-live="polite">
+      ⚠ Ne manipulez jamais ce téléphone en conduisant.
+    </div>
+
+    <div class="sn-speedo">
+      <div class="sn-speedo-value" id="sn-speed">—</div>
+      <div class="sn-speedo-unit">km/h</div>
+      <div class="sn-speedo-limit">
+        Rassurante <span id="sn-limit">{{ speed_limit_kmh }}</span> km/h
+      </div>
+      <div class="sn-speedo-warn" id="sn-over-banner" hidden>
+        Vitesse élevée prolongée — ralentissez doucement
+      </div>
+    </div>
+
+    <button id="sn-sos-btn" class="sn-sos" type="button"
+            aria-label="SOS — maintenir {{ sos_hold_seconds }} secondes">
+      <span class="sn-sos-label">S O S</span>
+      <span class="sn-sos-hint">maintenir {{ sos_hold_seconds }} s</span>
+      <span class="sn-sos-ring" id="sn-sos-ring"></span>
+    </button>
+
+    <div class="sn-sos-active" id="sn-sos-active" hidden>
+      <strong>SOS envoyé · proche prévenu</strong>
+      <span id="sn-sos-ack-line" class="sn-muted">en attente de l'accusé de réception</span>
+    </div>
+
+    <button id="sn-stop-request" class="sn-btn sn-btn--ghost sn-btn--block" type="button">
+      Demander la fin du trajet
+    </button>
+
+    <div id="sn-stop-pending-driver" class="sn-notice" hidden>
+      Vous avez demandé la fin du trajet. En attente de l'accord du proche.
+    </div>
+    <div id="sn-stop-pending-parent" class="sn-notice sn-notice--action" hidden>
+      Le proche demande la fin du trajet.
+      <button id="sn-stop-approve" class="sn-btn sn-btn--primary" type="button">Approuver</button>
+    </div>
+    <div id="sn-ended" class="sn-notice sn-notice--end" hidden>
+      Trajet protégé terminé. Bonne route.
+    </div>
+
+    <div id="sn-error" class="sn-error" hidden></div>
+  </section>
+
+  <script src="{{ url_for('static', filename='sentinel/sentinel.js') }}" defer></script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#03070f">
+  <title>Trajet protégé · Sentinel</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design_tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/orbital_command.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='sentinel/sentinel.css') }}">
+</head>
+<body class="sn-body sn-body--parent"
+      data-page="parent"
+      data-token="{{ parent_token }}"
+      data-interval="{{ update_interval }}">
+
+  <header class="sn-topbar">
+    <a href="/" class="sn-brand">ASTRO·SCAN</a>
+    <span class="sn-module">SENTINEL · ÉCRAN PARENT</span>
+    <span id="sn-state-pill" class="sn-pill">connexion…</span>
+  </header>
+
+  <main class="sn-parent">
+
+    <section class="sn-side">
+      <div class="sn-card sn-card--summary">
+        <div class="sn-summary-head">
+          <p class="sn-eyebrow">Trajet protégé</p>
+          <h2 id="sn-driver-name">—</h2>
+        </div>
+        <div class="sn-speedo-hero">
+          <div class="sn-speedo-hero-val" id="sn-l-speed">—</div>
+          <div class="sn-speedo-hero-unit">km/h</div>
+        </div>
+        <div class="sn-speedo-hero-meta">
+          <span>Rassurante <span id="sn-l-limit">—</span> km/h</span>
+          <span class="sn-ttl-block">
+            <span class="sn-ttl-label">Fin dans</span>
+            <span class="sn-ttl-value" id="sn-l-ttl">—</span>
+          </span>
+        </div>
+        <div id="sn-l-over-banner" class="sn-over-banner" hidden>
+          Vitesse élevée prolongée
+        </div>
+      </div>
+
+      <dl class="sn-meters">
+        <div><dt>Moyenne</dt><dd id="sn-l-avg">—</dd></div>
+        <div><dt>Maximum</dt><dd id="sn-l-max">—</dd></div>
+        <div><dt>Cap</dt><dd id="sn-l-head">—</dd></div>
+        <div><dt>Précision GPS</dt><dd id="sn-l-acc">—</dd></div>
+        <div><dt>Signal</dt><dd id="sn-l-sig">—</dd></div>
+        <div><dt>Batterie</dt><dd id="sn-l-batt">—</dd></div>
+        <div><dt>Dernière position</dt><dd id="sn-l-age">—</dd></div>
+      </dl>
+
+      <section class="sn-card sn-card--events">
+        <h3>Journal du trajet</h3>
+        <ul id="sn-events" class="sn-events">
+          <li class="sn-events-empty">Aucune alerte pour le moment.</li>
+        </ul>
+      </section>
+
+      <div id="sn-sos-banner" class="sn-sos-banner" hidden>
+        <strong>SOS envoyé par <span id="sn-sos-by">le conducteur</span></strong>
+        <span>Restez en contact direct, le trajet reste en cours.</span>
+        <button id="sn-sos-ack" class="sn-btn sn-btn--primary" type="button">
+          J'ai compris, je gère
+        </button>
+      </div>
+
+      <div id="sn-stop-pending-parent" class="sn-notice" hidden>
+        Vous avez demandé la fin du trajet. En attente de l'accord du conducteur.
+      </div>
+      <div id="sn-stop-pending-driver" class="sn-notice sn-notice--action" hidden>
+        Le conducteur demande la fin du trajet.
+        <button id="sn-stop-approve" class="sn-btn sn-btn--primary" type="button">Approuver</button>
+      </div>
+      <div id="sn-ended" class="sn-notice sn-notice--end" hidden>
+        Trajet terminé. Données nettoyées automatiquement.
+      </div>
+
+      <button id="sn-stop-request" class="sn-btn sn-btn--ghost sn-btn--block" type="button">
+        Demander la fin du trajet
+      </button>
+
+      <p class="sn-muted sn-foot-note">
+        Sécurité familiale temporaire. La position n'est visible que
+        pendant le trajet, jamais conservée ensuite.
+      </p>
+      <div id="sn-error" class="sn-error" hidden></div>
+    </section>
+
+    <section class="sn-map-wrap">
+      <div id="sn-map" class="sn-map" aria-label="Carte du trajet"></div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="{{ url_for('static', filename='sentinel/sentinel.js') }}" defer></script>
+</body>
+</html>

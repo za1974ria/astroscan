@@ -165,6 +165,7 @@ def _register_blueprints(app: Flask) -> None:
     from app.blueprints.hilal import bp as hilal_bp
     from app.blueprints.maintenance import bp as maintenance_bp
     from app.blueprints.api.paris_weather import paris_weather_bp
+    from app.blueprints.sentinel import sentinel_bp
 
     app.register_blueprint(seo_bp)
     app.register_blueprint(apod_bp)
@@ -197,7 +198,8 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(hilal_bp)
     app.register_blueprint(maintenance_bp)
     app.register_blueprint(paris_weather_bp)
-    log.info("[Blueprints] 31 blueprints + 8 hooks enregistrés (sync station_web.py + hilal + maintenance + paris_weather)")
+    app.register_blueprint(sentinel_bp)
+    log.info("[Blueprints] 32 blueprints + 8 hooks enregistrés (sync station_web.py + hilal + maintenance + paris_weather + sentinel)")
 
 
 def register_all_for_fallback(app: Flask) -> None:

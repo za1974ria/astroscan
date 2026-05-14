@@ -1,6 +1,7 @@
 data/
 data_core/
 *.json
+!static/.well-known/assetlinks.json
 *.tle
 telescope_live/
 
@@ -51,6 +52,7 @@ de421.bsp
 .idea/
 *.iml
 .archive/
+.deprecated/
 RESUME_REPRISE_*.md
 
 # PASS 28 cleanup (2026-05-09) — anti-rechute

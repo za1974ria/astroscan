@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#03070f">
+  <title>AstroScan Sentinel — Family Safety</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/design_tokens.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/orbital_command.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='sentinel/sentinel.css') }}">
+</head>
+<body class="sn-body" data-page="landing">
+
+  <header class="sn-topbar">
+    <a href="/" class="sn-brand">ASTRO·SCAN</a>
+    <span class="sn-module">SENTINEL · FAMILY SAFETY</span>
+  </header>
+
+  <main class="sn-shell">
+    <section class="sn-hero">
+      <p class="sn-eyebrow">Astroscan Sentinel</p>
+      <h1>Protégez les trajets<br>de ceux que vous aimez.</h1>
+      <p class="sn-lede">
+        Une session de sécurité temporaire, totalement consentie,
+        partagée à deux. Ni surveillance, ni tracking : juste une ligne
+        de confiance pendant un trajet.
+      </p>
+
+      <div class="sn-trust-row">
+        <div class="sn-trust">
+          <span class="sn-trust-num">3</span>
+          <span class="sn-trust-lbl">clics pour démarrer</span>
+        </div>
+        <div class="sn-trust">
+          <span class="sn-trust-num">2</span>
+          <span class="sn-trust-lbl">touches pour le conducteur</span>
+        </div>
+        <div class="sn-trust">
+          <span class="sn-trust-num">0</span>
+          <span class="sn-trust-lbl">donnée conservée après le trajet</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="sn-card sn-card--setup" id="sn-setup">
+      <h2>Configurer un trajet protégé</h2>
+
+      <fieldset class="sn-field">
+        <legend>Durée du trajet</legend>
+        <div class="sn-chip-row">
+          <button type="button" class="sn-chip" data-ttl="1800">30 min</button>
+          <button type="button" class="sn-chip sn-chip--on" data-ttl="3600">60 min</button>
+          <button type="button" class="sn-chip" data-ttl="5400">90 min</button>
+        </div>
+      </fieldset>
+
+      <fieldset class="sn-field">
+        <legend>Vitesse rassurante</legend>
+        <div class="sn-chip-row">
+          <button type="button" class="sn-chip" data-limit="70">70 km/h</button>
+          <button type="button" class="sn-chip" data-limit="80">80 km/h</button>
+          <button type="button" class="sn-chip sn-chip--on" data-limit="90">90 km/h</button>
+          <input type="number" id="sn-limit-custom" class="sn-input sn-input--inline"
+                 min="30" max="200" placeholder="autre…" inputmode="numeric">
+        </div>
+      </fieldset>
+
+      <fieldset class="sn-field">
+        <legend>Prénom du conducteur <span class="sn-muted">(facultatif)</span></legend>
+        <input type="text" id="sn-driver-label" class="sn-input"
+               maxlength="24" placeholder="ex. Yacine">
+      </fieldset>
+
+      <details class="sn-advanced">
+        <summary>Ajouter une zone rassurante (optionnel)</summary>
+        <p class="sn-muted">
+          Définit un cercle géographique. Alerte uniquement si la
+          position s'en éloigne pendant plus d'une minute.
+        </p>
+        <div class="sn-zone-row">
+          <input type="number" id="sn-zone-lat" class="sn-input sn-input--small"
+                 step="0.0001" placeholder="latitude (ex. 34.8881)">
+          <input type="number" id="sn-zone-lon" class="sn-input sn-input--small"
+                 step="0.0001" placeholder="longitude (ex. -1.3155)">
+          <input type="number" id="sn-zone-radius" class="sn-input sn-input--small"
+                 min="50" max="50000" step="50" placeholder="rayon mètres">
+          <button type="button" class="sn-btn sn-btn--ghost" id="sn-zone-here">
+            Utiliser ma position
+          </button>
+        </div>
+      </details>
+
+      <button id="sn-create-btn" class="sn-btn sn-btn--primary sn-btn--xl sn-btn--block" type="button">
+        Créer l'invitation →
+      </button>
+
+      <p class="sn-muted sn-foot-note">
+        En créant la session, vous confirmez qu'elle sera utilisée avec
+        l'accord explicite du conducteur. Aucune donnée n'est conservée
+        après le trajet.
+      </p>
+
+      <div id="sn-result" class="sn-result" hidden>
+        <h3>Invitation prête</h3>
+        <p>Transmettez ce lien à votre conducteur :</p>
+        <div class="sn-link-row">
+          <input id="sn-invite-url" class="sn-input sn-input--mono" readonly>
+          <button class="sn-btn" data-copy="sn-invite-url" type="button">Copier</button>
+        </div>
+        <div class="sn-link-row">
+          <a id="sn-share-whatsapp" class="sn-btn" target="_blank" rel="noopener">WhatsApp</a>
+          <a id="sn-share-sms" class="sn-btn" rel="noopener">SMS</a>
+          <button id="sn-share-native" class="sn-btn" type="button" hidden>Partager…</button>
+        </div>
+        <a id="sn-parent-open" class="sn-btn sn-btn--primary sn-btn--block"
+           target="_blank" rel="noopener">
+          Ouvrir mon écran parent →
+        </a>
+      </div>
+
+      <div id="sn-error" class="sn-error" hidden></div>
+    </section>
+  </main>
+
+  <footer class="sn-foot">
+    <span>AstroScan Sentinel · sécurité familiale temporaire · expiration automatique</span>
+  </footer>
+
+  <script src="{{ url_for('static', filename='sentinel/sentinel.js') }}" defer></script>
+</body>
+</html>
