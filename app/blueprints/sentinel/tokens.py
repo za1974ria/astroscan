@@ -13,7 +13,13 @@ _SALT = "sentinel-v1"
 
 
 def _serializer() -> URLSafeTimedSerializer:
-    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt=_SALT)
+    """Return signer. Uses SENTINEL_SECRET_KEY if set in env,
+    else falls back to Flask SECRET_KEY (compat).
+    Isolation hardening: 2026-05-15 (audit P1-4)."""
+    import os
+    sentinel_key = os.environ.get("SENTINEL_SECRET_KEY", "").strip()
+    key = sentinel_key if sentinel_key else current_app.config["SECRET_KEY"]
+    return URLSafeTimedSerializer(key, salt=_SALT)
 
 
 def make_tokens(session_id: str) -> tuple[str, str]:
