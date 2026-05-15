@@ -194,6 +194,19 @@ def api_create():
     result["parent_url"] = _abs("sentinel.parent_page", token=result["parent_token"])
     result["invite_url"] = _abs("sentinel.driver_page", token=result["driver_token"])
     result["update_interval"] = UPDATE_INTERVAL_SECONDS
+    # Zero-knowledge analytics: country counter, IP never persisted.
+    try:
+        from app.services.geoip_counter import get_geoip_counter
+        client_ip = (request.headers.get("X-Forwarded-For")
+                     or request.remote_addr
+                     or "").split(",")[0].strip()
+        if client_ip:
+            country = get_geoip_counter().resolve_country(client_ip)
+            with store._connect() as _conn:
+                get_geoip_counter().increment_counter(country, _conn)
+            del client_ip
+    except Exception:
+        log.warning("geoip_counter failed (non-blocking)")
     return api_ok(**result)
 
 
@@ -407,6 +420,21 @@ def api_update_batch():
             # Stop on first irrecoverable state — return what we got.
             return api_error(e.error, code=e.code, accepted=accepted)
     return api_ok(status="ok", accepted=accepted, summary=last_summary)
+
+
+@sentinel_bp.route("/api/sentinel/stats", methods=["GET"])
+def api_sentinel_stats():
+    """Public zero-knowledge analytics dashboard.
+
+    Exposes ONLY aggregated country counters. No IP, no session id,
+    no token, no PII. Conforms to GDPR Article 89.
+    """
+    try:
+        from app.services.geoip_counter import get_geoip_counter
+        return api_ok(**get_geoip_counter().get_stats())
+    except Exception:
+        log.exception("[SENTINEL] stats unavailable")
+        return api_error("stats_unavailable", code=503)
 
 
 @sentinel_bp.route("/api/sentinel/health", methods=["GET"])

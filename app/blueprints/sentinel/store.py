@@ -109,6 +109,17 @@ def init_schema() -> None:
             "CREATE INDEX IF NOT EXISTS idx_sentinel_events_sid "
             "ON sentinel_events(session_id, created_at)"
         )
+        # Zero-knowledge GeoIP aggregate. No IP, no session link, no precise time.
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sentinel_country_counters (
+                country_iso2    TEXT PRIMARY KEY,
+                count           INTEGER NOT NULL DEFAULT 0,
+                first_seen_day  TEXT NOT NULL,
+                last_seen_day   TEXT NOT NULL
+            )
+            """
+        )
     _SCHEMA_INITIALIZED = True
 
 
