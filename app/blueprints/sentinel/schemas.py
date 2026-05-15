@@ -6,7 +6,11 @@ class ValidationError(ValueError):
     pass
 
 
-ALLOWED_DURATIONS = (30 * 60, 60 * 60, 90 * 60)
+# Acte 1 UX v2 (2026-05-15) — TTL passe du whitelist fixe à une plage
+# 1 min ≤ ttl ≤ 12 h. Les anciens presets (1800/3600/5400) restent dans
+# la plage et donc valides ; les nouveaux (10800/21600/43200) aussi.
+MIN_TTL_SECONDS = 60
+MAX_TTL_SECONDS = 720 * 60   # 12 hours
 SPEED_LIMIT_MIN = 30
 SPEED_LIMIT_MAX = 200
 DEFAULT_DURATION = 60 * 60
@@ -19,14 +23,14 @@ def validate_create(payload: dict) -> dict:
     if not isinstance(payload, dict):
         raise ValidationError("body_must_be_object")
 
-    # Duration
+    # Duration — range check (Acte 1 UX v2 : 1 min ≤ ttl ≤ 12 h).
     ttl = payload.get("ttl_seconds")
     try:
         ttl = int(ttl) if ttl is not None else DEFAULT_DURATION
     except (TypeError, ValueError):
         raise ValidationError("ttl_invalid")
-    if ttl not in ALLOWED_DURATIONS:
-        raise ValidationError("ttl_not_allowed")
+    if not (MIN_TTL_SECONDS <= ttl <= MAX_TTL_SECONDS):
+        raise ValidationError("ttl_out_of_range")
 
     # Speed limit
     limit = payload.get("speed_limit_kmh")

@@ -62,7 +62,9 @@ log = logging.getLogger("astroscan.sentinel")
 sentinel_bp = Blueprint("sentinel", __name__, url_prefix="")
 
 # Public constants (also exposed via /health for the frontend)
-MAX_TTL_SECONDS = 90 * 60
+# Acte 1 UX v2 (2026-05-15) — TTL plage 1 min ≤ ttl ≤ 12 h (was fixe 90 min).
+MAX_TTL_SECONDS = 720 * 60   # 12 hours
+MIN_TTL_SECONDS = 60         # 1 minute minimum
 SOS_HOLD_SECONDS = 3
 SIGNAL_LOSS_THRESHOLD = 30
 UPDATE_INTERVAL_SECONDS = 5

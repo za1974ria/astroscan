@@ -1498,3 +1498,62 @@ body[data-initial-state="PENDING_DRIVER"] #sn-ttl::before {
   box-shadow: 0 0 6px var(--sn-amber);
   animation: sn-pulse-soft 2s ease-in-out infinite;
 }
+
+/* === Sentinel UX v2 — Bouton retour portail (2026-05-15) === */
+.sn-back-portail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(0, 212, 255, 0.06);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 4px;
+  color: var(--sn-cyan, #00d4ff);
+  text-decoration: none;
+  font-family: var(--sn-mono, "JetBrains Mono", monospace);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.18s ease;
+  margin-left: 12px;
+}
+.sn-back-portail:hover {
+  background: rgba(0, 212, 255, 0.12);
+  border-color: rgba(0, 212, 255, 0.5);
+}
+.sn-back-portail svg {
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .sn-back-portail-label {
+    display: none;  /* mobile: icône seule */
+  }
+  .sn-back-portail {
+    padding: 6px 8px;
+  }
+}
+
+/* === Sentinel UX v2 — Bouton refresh forcé (2026-05-15) === */
+.sn-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: rgba(0, 212, 255, 0.04);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 50%;
+  color: var(--sn-cyan, #00d4ff);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 10px;
+}
+.sn-refresh-btn:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.4);
+  transform: rotate(180deg);
+}
+.sn-refresh-btn:active {
+  transform: rotate(360deg);
+}
