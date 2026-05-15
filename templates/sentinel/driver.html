@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#03070f">
   <title>Trajet protégé · Sentinel</title>
@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/orbital_command.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='sentinel/sentinel.css') }}">
 </head>
-<body class="sn-body sn-body--driver"
+<body class="sn-body sn-body sn-body--driver"
       data-page="driver"
       data-token="{{ driver_token }}"
       data-label="{{ driver_label }}"
@@ -21,15 +21,16 @@
       data-initial-state="{{ initial_state }}">
 
   <header class="sn-topbar sn-topbar--driver">
+    <span class="sn-brand">ASTRO·SCAN</span>
     <span class="sn-module">TRAJET PROTÉGÉ</span>
     <span id="sn-ttl" class="sn-pill">—:—</span>
   </header>
 
-  <!-- ── Invite view (shown while state is PENDING_DRIVER) ── -->
+  <!-- ── Invite view (PENDING_DRIVER) ── -->
   <section id="sn-invite" class="sn-driver-invite"
            {% if initial_state != 'PENDING_DRIVER' %}hidden{% endif %}>
     <div class="sn-card sn-card--invite">
-      <p class="sn-eyebrow">Trajet protégé · Sentinel</p>
+      <p class="sn-eyebrow">Mission Sentinel · pré-vol</p>
       <h1>Bonjour {{ driver_label or 'à toi' }},</h1>
       <p class="sn-lede">
         On te propose un trajet protégé en famille. Pendant la durée
@@ -47,8 +48,9 @@
       </ul>
 
       <div class="sn-safety">
-        ⚠ Ne manipulez jamais ce téléphone en conduisant.
-        Installez-le sur un support avant le départ, ou demandez à un passager.
+        <span class="sn-safety-icon" aria-hidden="true">⚠</span>
+        <span>Ne manipulez jamais ce téléphone en conduisant. Installez-le
+        sur un support avant le départ, ou demandez à un passager.</span>
       </div>
 
       <button id="sn-accept-btn" class="sn-btn sn-btn--primary sn-btn--xl sn-btn--block" type="button">
@@ -66,20 +68,39 @@
     </div>
   </section>
 
-  <!-- ── Cockpit view (shown after accept) ── -->
+  <!-- ── Cockpit view (ACTIVE) ── -->
   <section id="sn-cockpit" class="sn-cockpit"
            {% if initial_state == 'PENDING_DRIVER' %}hidden{% endif %}>
+
     <div class="sn-safety-banner" aria-live="polite">
-      ⚠ Ne manipulez jamais ce téléphone en conduisant.
+      <span aria-hidden="true">⚠</span>
+      <span>Ne manipulez jamais ce téléphone en conduisant.</span>
     </div>
 
-    <div class="sn-speedo">
+    <div class="sn-status-strip" aria-label="État du trajet">
+      <div class="sn-stat">
+        <span class="sn-stat-lbl">Limite</span>
+        <span class="sn-stat-val">{{ speed_limit_kmh }} km/h</span>
+      </div>
+      <div class="sn-stat">
+        <span class="sn-stat-lbl">Intervalle</span>
+        <span class="sn-stat-val">{{ update_interval }} s</span>
+      </div>
+      <div class="sn-stat">
+        <span class="sn-stat-lbl">SOS hold</span>
+        <span class="sn-stat-val">{{ sos_hold_seconds }} s</span>
+      </div>
+    </div>
+
+    <div class="sn-speedo" aria-label="Vitesse actuelle">
+      <div class="sn-speedo-arc" aria-hidden="true"></div>
       <div class="sn-speedo-value" id="sn-speed">—</div>
       <div class="sn-speedo-unit">km/h</div>
       <div class="sn-speedo-limit">
-        Rassurante <span id="sn-limit">{{ speed_limit_kmh }}</span> km/h
+        Rassurante · <strong id="sn-limit">{{ speed_limit_kmh }}</strong> km/h
       </div>
       <div class="sn-speedo-warn" id="sn-over-banner" hidden>
+        <span aria-hidden="true">▲</span>
         Vitesse élevée prolongée — ralentissez doucement
       </div>
     </div>

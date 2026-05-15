@@ -84,3 +84,10 @@ logs/archive_*/
 *.swp
 *.swo
 .DS_Store
+
+# Sentinel APK builds (binaires lourds, pas dans git)
+static/downloads/apk/*.apk
+static/downloads/*.apk
+
+# Dossiers vides
+modules/sentinel/apk/

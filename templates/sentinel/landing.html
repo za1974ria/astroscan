@@ -15,31 +15,50 @@
   <header class="sn-topbar">
     <a href="/" class="sn-brand">ASTRO·SCAN</a>
     <span class="sn-module">SENTINEL · FAMILY SAFETY</span>
+    <span class="sn-pill sn-pill--live">SYSTÈME OPÉRATIONNEL</span>
   </header>
 
   <main class="sn-shell">
-    <section class="sn-hero">
-      <p class="sn-eyebrow">Astroscan Sentinel</p>
-      <h1>Protégez les trajets<br>de ceux que vous aimez.</h1>
-      <p class="sn-lede">
-        Une session de sécurité temporaire, totalement consentie,
-        partagée à deux. Ni surveillance, ni tracking : juste une ligne
-        de confiance pendant un trajet.
-      </p>
 
-      <div class="sn-trust-row">
-        <div class="sn-trust">
-          <span class="sn-trust-num">3</span>
-          <span class="sn-trust-lbl">clics pour démarrer</span>
+    <section class="sn-hero">
+      <div class="sn-hero-text">
+        <p class="sn-eyebrow">Astroscan Sentinel · Mission Control</p>
+        <h1>Protégez les trajets<br>de ceux que vous <em>aimez</em>.</h1>
+        <p class="sn-lede">
+          Une session de sécurité temporaire, totalement consentie,
+          partagée à deux. Ni surveillance, ni tracking : juste une ligne
+          de confiance avec la précision d'un centre de contrôle, le temps
+          d'un trajet.
+        </p>
+
+        <div class="sn-trust-row">
+          <div class="sn-trust">
+            <span class="sn-trust-num">3</span>
+            <span class="sn-trust-lbl">clics pour démarrer</span>
+          </div>
+          <div class="sn-trust">
+            <span class="sn-trust-num">2</span>
+            <span class="sn-trust-lbl">touches côté conducteur</span>
+          </div>
+          <div class="sn-trust">
+            <span class="sn-trust-num">0</span>
+            <span class="sn-trust-lbl">donnée conservée ensuite</span>
+          </div>
         </div>
-        <div class="sn-trust">
-          <span class="sn-trust-num">2</span>
-          <span class="sn-trust-lbl">touches pour le conducteur</span>
-        </div>
-        <div class="sn-trust">
-          <span class="sn-trust-num">0</span>
-          <span class="sn-trust-lbl">donnée conservée après le trajet</span>
-        </div>
+      </div>
+
+      <div class="sn-hero-visual" aria-hidden="true">
+        <svg class="sn-hero-rings" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+          <g class="sn-ring-3"><circle cx="120" cy="120" r="115"/></g>
+          <g class="sn-ring-2"><circle cx="120" cy="120" r="92" stroke-dasharray="4 8"/></g>
+          <g class="sn-ring-1"><circle cx="120" cy="120" r="68" stroke-dasharray="2 6"/></g>
+          <circle cx="120" cy="120" r="38" fill="none" stroke="rgba(0,212,255,0.4)"/>
+          <line class="sn-ring-tick" x1="120" y1="2" x2="120" y2="14"/>
+          <line class="sn-ring-tick" x1="120" y1="226" x2="120" y2="238"/>
+          <line class="sn-ring-tick" x1="2" y1="120" x2="14" y2="120"/>
+          <line class="sn-ring-tick" x1="226" y1="120" x2="238" y2="120"/>
+          <circle class="sn-ring-core" cx="120" cy="120" r="5"/>
+        </svg>
       </div>
     </section>
 
@@ -73,10 +92,10 @@
       </fieldset>
 
       <details class="sn-advanced">
-        <summary>Ajouter une zone rassurante (optionnel)</summary>
+        <summary>Zone rassurante (optionnel)</summary>
         <p class="sn-muted">
-          Définit un cercle géographique. Alerte uniquement si la
-          position s'en éloigne pendant plus d'une minute.
+          Définit un cercle géographique. Une alerte se déclenche uniquement
+          si la position s'en éloigne pendant plus d'une minute.
         </p>
         <div class="sn-zone-row">
           <input type="number" id="sn-zone-lat" class="sn-input sn-input--small"
@@ -124,7 +143,7 @@
   </main>
 
   <footer class="sn-foot">
-    <span>AstroScan Sentinel · sécurité familiale temporaire · expiration automatique</span>
+    <span>AstroScan Sentinel · sécurité familiale temporaire · expiration automatique · aucune donnée conservée</span>
   </footer>
 
   <script src="{{ url_for('static', filename='sentinel/sentinel.js') }}" defer></script>

@@ -13,49 +13,51 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/orbital_command.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='sentinel/sentinel.css') }}">
 </head>
-<body class="sn-body sn-body--parent"
+<body class="sn-body sn-body sn-body--parent"
       data-page="parent"
       data-token="{{ parent_token }}"
       data-interval="{{ update_interval }}">
 
   <header class="sn-topbar">
     <a href="/" class="sn-brand">ASTRO·SCAN</a>
-    <span class="sn-module">SENTINEL · ÉCRAN PARENT</span>
+    <span class="sn-module">MISSION CONTROL · ÉCRAN PARENT</span>
     <span id="sn-state-pill" class="sn-pill">connexion…</span>
   </header>
 
   <main class="sn-parent">
 
     <section class="sn-side">
+
       <div class="sn-card sn-card--summary">
         <div class="sn-summary-head">
           <p class="sn-eyebrow">Trajet protégé</p>
           <h2 id="sn-driver-name">—</h2>
         </div>
         <div class="sn-speedo-hero">
-          <div class="sn-speedo-hero-val" id="sn-l-speed">—</div>
+          <div class="sn-speedo-hero-val" id="sn-l-speed"><span class="sn-skeleton">&nbsp;&nbsp;&nbsp;</span></div>
           <div class="sn-speedo-hero-unit">km/h</div>
         </div>
         <div class="sn-speedo-hero-meta">
-          <span>Rassurante <span id="sn-l-limit">—</span> km/h</span>
+          <span>Rassurante <strong id="sn-l-limit">—</strong> km/h</span>
           <span class="sn-ttl-block">
             <span class="sn-ttl-label">Fin dans</span>
-            <span class="sn-ttl-value" id="sn-l-ttl">—</span>
+            <span class="sn-ttl-value" id="sn-l-ttl"><span class="sn-skeleton">&nbsp;&nbsp;</span></span>
           </span>
         </div>
         <div id="sn-l-over-banner" class="sn-over-banner" hidden>
+          <span aria-hidden="true">▲</span>
           Vitesse élevée prolongée
         </div>
       </div>
 
-      <dl class="sn-meters">
-        <div><dt>Moyenne</dt><dd id="sn-l-avg">—</dd></div>
-        <div><dt>Maximum</dt><dd id="sn-l-max">—</dd></div>
-        <div><dt>Cap</dt><dd id="sn-l-head">—</dd></div>
-        <div><dt>Précision GPS</dt><dd id="sn-l-acc">—</dd></div>
-        <div><dt>Signal</dt><dd id="sn-l-sig">—</dd></div>
-        <div><dt>Batterie</dt><dd id="sn-l-batt">—</dd></div>
-        <div><dt>Dernière position</dt><dd id="sn-l-age">—</dd></div>
+      <dl class="sn-meters" aria-label="Télémétrie du trajet">
+        <div><dt>Moyenne</dt><dd id="sn-l-avg"><span class="sn-skeleton">&nbsp;&nbsp;&nbsp;</span></dd></div>
+        <div><dt>Maximum</dt><dd id="sn-l-max"><span class="sn-skeleton">&nbsp;&nbsp;&nbsp;</span></dd></div>
+        <div><dt>Cap</dt><dd id="sn-l-head"><span class="sn-skeleton">&nbsp;&nbsp;</span></dd></div>
+        <div><dt>Précision GPS</dt><dd id="sn-l-acc"><span class="sn-skeleton">&nbsp;&nbsp;&nbsp;</span></dd></div>
+        <div><dt>Signal</dt><dd id="sn-l-sig"><span class="sn-skeleton">&nbsp;&nbsp;</span></dd></div>
+        <div><dt>Batterie</dt><dd id="sn-l-batt"><span class="sn-skeleton">&nbsp;&nbsp;</span></dd></div>
+        <div><dt>Dernière position</dt><dd id="sn-l-age"><span class="sn-skeleton">&nbsp;&nbsp;</span></dd></div>
       </dl>
 
       <section class="sn-card sn-card--events">

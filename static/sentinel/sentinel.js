@@ -47,6 +47,31 @@
     });
   }
 
+  // FSM → pill mapper (Sentinel v2.1). Reads canonical state names from the
+  // /state polling response and projects them onto the unified pill UI.
+  function applyFSMStatus(state) {
+    var pill = document.getElementById('sn-state-pill') || document.getElementById('sn-ttl');
+    if (!pill) return;
+    pill.classList.remove(
+      'sn-pill--pending', 'sn-pill--live', 'sn-pill--warn',
+      'sn-pill--danger', 'sn-pill--stop', 'sn-pill--ended'
+    );
+    var map = {
+      'PENDING_DRIVER':      { cls: 'sn-pill--pending', text: 'EN ATTENTE' },
+      'ACTIVE':              { cls: 'sn-pill--live',    text: 'TRAJET ACTIF' },
+      'SOS_ACTIVE':          { cls: 'sn-pill--danger',  text: 'SOS' },
+      'STOP_PENDING_DRIVER': { cls: 'sn-pill--stop',    text: 'ARRÊT DEMANDÉ' },
+      'STOP_PENDING_PARENT': { cls: 'sn-pill--stop',    text: 'ARRÊT DEMANDÉ' },
+      'ENDED':               { cls: 'sn-pill--ended',   text: 'TERMINÉ' },
+      'EXPIRED':             { cls: 'sn-pill--ended',   text: 'EXPIRÉ' }
+    };
+    var entry = map[state] || { cls: '', text: state || '—' };
+    if (entry.cls) pill.classList.add(entry.cls);
+    pill.textContent = entry.text;
+  }
+  // Expose globally for ad-hoc wiring (debug + future hooks).
+  window.applyFSMStatus = applyFSMStatus;
+
   // ───────────────────────────────────────────────── LANDING
   function initLanding() {
     var ttl = 3600, limit = 90;
@@ -153,6 +178,8 @@
     var holdMs = (parseInt(document.body.getAttribute("data-sos-hold"), 10) || 3) * 1000;
     var interval = parseInt(document.body.getAttribute("data-interval"), 10) || 5;
     var initialState = document.body.getAttribute("data-initial-state") || "PENDING_DRIVER";
+  // Apply initial FSM status to pill on page load (driver page)
+  try { applyFSMStatus(initialState); } catch (e) { console.warn("applyFSMStatus init failed:", e); }
 
     var lastFix = null;
     var lastBattery = null;
@@ -254,6 +281,7 @@
         .then(function (res) {
           if (!res.ok) return;
           var b = res.body;
+          applyFSMStatus((b.sos_active && !b.sos_ack_at) ? 'SOS_ACTIVE' : b.state);
           $("sn-ttl").textContent = fmtCountdown(b.expires_at - b.server_time);
           $("sn-over-banner").hidden = !b.over_speed_active;
 
@@ -445,6 +473,7 @@
         .then(function (res) {
           if (!res.ok) { setPill(res.body.error || "erreur", "danger"); return; }
           var b = res.body;
+          applyFSMStatus((b.sos_active && !b.sos_ack_at) ? 'SOS_ACTIVE' : b.state);
           $("sn-driver-name").textContent =
             (b.driver_label || "Conducteur") + " · trajet protégé";
 
@@ -474,9 +503,6 @@
               ? (b.last_battery_pct + " %") : "—";
           $("sn-l-age").textContent = fmtAge(b.server_time, b.last_update_at);
           $("sn-l-ttl").textContent = fmtCountdown(b.expires_at - b.server_time);
-
-          setPill(stateLabel(b.state) + (b.sos_active ? " · SOS" : ""),
-                  pillKindFor(b.state, b.sos_active && !b.sos_ack_at));
 
           if (b.sos_active && !b.sos_ack_at) {
             $("sn-sos-banner").hidden = false;

@@ -43,7 +43,7 @@ import logging
 import json
 import os
 
-from flask import Blueprint, Response, abort, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, redirect, render_template, request, send_from_directory, url_for
 
 from app.blueprints.sentinel import (
     push_engine,
@@ -154,6 +154,30 @@ def assetlinks():
             return Response(f.read(), mimetype="application/json")
     except FileNotFoundError:
         return Response(json.dumps([]), mimetype="application/json"), 404
+
+
+# ─────────────────────────────────────────────────────── APK distribution
+# Serve the Android APKs at /modules/sentinel/<filename>.apk with the proper
+# package-archive mimetype so Chrome/Edge trigger the install flow on Android.
+# Files live in /root/astro_scan/static/downloads/ (no duplication).
+
+_APK_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+    "static", "downloads",
+)
+_APK_ALLOWED = frozenset({"sentinel-parent.apk", "sentinel-driver.apk"})
+
+
+@sentinel_bp.route("/modules/sentinel/<path:filename>", methods=["GET"])
+def sentinel_assets(filename: str):
+    if filename not in _APK_ALLOWED:
+        abort(404)
+    return send_from_directory(
+        _APK_DIR,
+        filename,
+        as_attachment=False,
+        mimetype="application/vnd.android.package-archive",
+    )
 
 
 # ─────────────────────────────────────────────────────── API
