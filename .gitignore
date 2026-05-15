@@ -91,3 +91,7 @@ static/downloads/*.apk
 
 # Dossiers vides
 modules/sentinel/apk/
+
+# MaxMind GeoLite2 binary database (downloaded monthly, not in git)
+data/geoip/*.mmdb
+data/geoip/GeoLite2-*.mmdb
