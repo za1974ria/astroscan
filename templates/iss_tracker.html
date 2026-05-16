@@ -6,6 +6,7 @@
 <meta name="robots" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstroScan-Chohra - ISS Tracker (live)</title>
+<meta name="description" content="Suivi temps réel ISS — position orbitale, prédictions passages, propagation SGP4.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
   html, body { height: 100%; margin: 0; background: #010108; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
@@ -62,6 +63,8 @@
 </style>
 </head>
 <body class="notranslate">
+<main role="main" id="main-content">
+
 <div class="live-badge">● LIVE</div>
 <div id="map"></div>
 <div class="iss-tile-toggle" role="group" aria-label="Style de carte">
@@ -335,5 +338,6 @@
   setInterval(loadCrew, 3600000);
 })();
 </script>
+</main>
 </body>
 </html>

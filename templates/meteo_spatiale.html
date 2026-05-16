@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstroScan-Chohra - Météo spatiale (live)</title>
+<meta name="description" content="Météo spatiale temps réel — éruptions solaires, vent solaire, Kp NOAA.">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root {
@@ -96,6 +97,8 @@ header h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.2em; color: var(--or
 </style>
 </head>
 <body>
+<main role="main" id="main-content">
+
 <header>
   <h1>⚡ LIVE MÉTÉO SPATIALE</h1>
   <div>
@@ -302,5 +305,6 @@ header h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.2em; color: var(--or
   setInterval(loadMeteo, 45000);
 })();
 </script>
+</main>
 </body>
 </html>

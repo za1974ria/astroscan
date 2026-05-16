@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 
 @apod_bp.route('/apod')
+@apod_bp.route('/api/apod')
 def apod_fr_json():
     return apod_fr_json_impl(jsonify=jsonify, log=log)
 

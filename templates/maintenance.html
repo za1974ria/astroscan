@@ -6,6 +6,7 @@
 <meta name="robots" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% if lang == 'en' %}Maintenance Control · ORBITAL-CHOHRA{% else %}Contrôle Maintenance · ORBITAL-CHOHRA{% endif %}</title>
+<meta name="description" content="Console maintenance ASTRO-SCAN — supervision services, logs, métriques système.">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -111,6 +112,8 @@ body { padding: 20px; overflow-x: hidden; }
 </style>
 </head>
 <body class="notranslate">
+<main role="main" id="main-content">
+
 
 {% if not request.args.get('embed') %}
 <canvas id="starfield-bg" aria-hidden="true"></canvas>
@@ -337,5 +340,6 @@ body { padding: 20px; overflow-x: hidden; }
   resetCountdown();
 })();
 </script>
+</main>
 </body>
 </html>

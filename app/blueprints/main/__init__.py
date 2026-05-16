@@ -34,7 +34,7 @@ def data_portal():
 def portail_en():
     resp = make_response(render_template("portail.html", lang="en"))
     resp.set_cookie("lang", "en", max_age=60 * 60 * 24 * 365, samesite="Lax")
-    resp.headers["Cache-Control"] = "no-store"
+    # Sprint 1 (2026-05-16) : no-store retiré pour permettre bfcache.
     return resp
 
 

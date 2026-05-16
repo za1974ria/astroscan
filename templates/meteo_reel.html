@@ -2,6 +2,7 @@
 <html>
 <head>
 <title>Météo Live</title>
+<meta name="description" content="Météo locale Tlemcen — bulletin temps réel, prévisions, vents, pression.">
 
 <style>
 body {
@@ -26,6 +27,8 @@ body {
 </head>
 
 <body>
+<main role="main" id="main-content">
+
 
 <div class="card">
     <h2 id="city">...</h2>
@@ -52,6 +55,6 @@ async function loadMeteo(){
 loadMeteo();
 setInterval(loadMeteo, 60000);
 </script>
-
+</main>
 </body>
 </html>

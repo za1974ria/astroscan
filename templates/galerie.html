@@ -6,6 +6,7 @@
 <meta name="robots" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstroScan-Chohra - Archive stellaire · ORBITAL-CHOHRA</title>
+<meta name="description" content="Galerie astronomique — meilleures images du ciel capturées par ASTRO-SCAN.">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style id="embed-style"></style>
 <script>
@@ -103,6 +104,8 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 </style>
 </head>
 <body class="notranslate">
+<main role="main" id="main-content">
+
 <div id="stars"></div>
 <div class="top-bar">
   <div class="tb-brand">◈ {% if lang == 'en' %}Stellar Archive{% else %}Archive Stellaire{% endif %} · ORBITAL-CHOHRA</div>
@@ -524,5 +527,7 @@ window.GALERIE_CLASSIFICATION = {{ classification_stats|tojson }};
     });
   } catch(e) {}
 })();
-</script></body>
+</script>
+</main>
+</body>
 </html>

@@ -16,6 +16,8 @@
 </style>
 </head>
 <body>
+<main role="main" id="main-content">
+
   <h1>{% if lang == 'en' %}HQ Dashboard Module{% else %}Module Dashboard QG{% endif %}</h1>
   <p>{% if lang == 'en' %}System active{% else %}Système actif{% endif %}</p>
 
@@ -33,5 +35,6 @@
   <a class="fab-btn" href="/portail">&#8962; {% if lang == 'en' %}Portal{% else %}Portail{% endif %}</a>
   <button class="fab-btn" onclick="location.reload()">&#8635; {% if lang == 'en' %}Refresh{% else %}Actualiser{% endif %}</button>
 </div>
+</main>
 </body>
 </html>

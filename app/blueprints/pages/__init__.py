@@ -73,9 +73,8 @@ def portail():
         lang=get_lang(),
         visitor_count=visitor_count,
     ))
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
+    # Sprint 1 (2026-05-16) : no-store retiré pour permettre bfcache.
+    # Headers de sécurité conservés (CSP/X-Frame).
     # Phase O-E (2026-05-07) : CSP préventif pour bloquer toute injection DOM
     # par extension de navigateur tierce (cause possible de sidebar fantôme).
     # 'unsafe-inline'/'unsafe-eval' conservés : le portail utilise du JS inline.
@@ -139,9 +138,7 @@ def overlord_live():
 def observatoire():
     # PASS 26.B — nasa_key no longer passed to template (proxy via /api/nasa/*)
     response = make_response(render_template("observatoire.html"))
-    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
+    # Sprint 1 (2026-05-16) : no-store retiré pour permettre bfcache.
     return response
 
 
