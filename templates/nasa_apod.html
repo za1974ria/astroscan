@@ -479,7 +479,7 @@ body::before {
       if (ytId) {
         mediaInner.innerHTML = '<iframe src="https://www.youtube.com/embed/' + ytId + '" allowfullscreen title="' + title + '"></iframe>';
       } else if (d.thumbnail_url) {
-        mediaInner.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener noreferrer"><img src="' + d.thumbnail_url + '" alt="' + title + '" style="width:100%;height:auto"></a>';
+        mediaInner.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener noreferrer"><img src="' + d.thumbnail_url + '" alt="' + title + '" style="width:100%;height:auto" loading="lazy" decoding="async"></a>';
       } else {
         mediaInner.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--gold);font-family:Orbitron,monospace;font-size:0.7rem;letter-spacing:0.1em">▶ VOIR LA VIDÉO →</a>';
       }
@@ -491,6 +491,9 @@ body::before {
         img.style.width = '100%';
         img.style.height = 'auto';
         img.style.display = 'block';
+        // Sprint 3 perf: LCP candidate — fetchpriority high + decoding async
+        img.fetchPriority = 'high';
+        img.decoding = 'async';
         img.onclick = function() { window.open(hdurl || url, '_blank', 'noopener'); };
         img.src = imgTarget;
         mediaInner.innerHTML = '';

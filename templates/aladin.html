@@ -9,10 +9,14 @@
 <link rel="canonical" href="https://astroscan.space/aladin">
 
 <!-- Aladin Lite v3 CDN officiel ESA/CDS -->
+<link rel="preconnect" href="https://aladin.cds.unistra.fr" crossorigin>
+<link rel="dns-prefetch" href="https://aladin.cds.unistra.fr">
+<link rel="preload" as="style" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.min.css">
 <link rel="stylesheet"
   href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.min.css"/>
+<!-- Sprint 3 perf: Aladin.js chargé en defer pour ne pas bloquer le FCP -->
 <script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js"
-  charset="utf-8"></script>
+  charset="utf-8" defer></script>
 
 <style>
 html.embed-portail .top-bar,html.embed-portail .topbar{display:none!important}
@@ -298,13 +302,18 @@ html.embed-portail body{padding-top:0!important}
 </div>
 
 <script>
-// ── Init Aladin Lite ──────────────────────────────────────────
+// ── Init Aladin Lite (Sprint 3: wrappé pour script deferred) ──
 var aladin;
 var messierLayer = null;
 var gridOn       = false;
 var messierOn    = false;
 
-A.init.then(function() {
+function _aladinInit() {
+  if (typeof A === 'undefined' || !A || !A.init) {
+    setTimeout(_aladinInit, 50);
+    return;
+  }
+  A.init.then(function() {
   aladin = A.aladin('#aladin-lite-div', {
     survey:    'CDS/P/DSS2/color',
     target:    'M42',
@@ -345,7 +354,13 @@ A.init.then(function() {
       '<div class="value">AR ' + (obj.ra  !== undefined ? obj.ra.toFixed(4)+'°'  : '—') + '</div>' +
       '<div class="value">DÉC ' + (obj.dec !== undefined ? obj.dec.toFixed(4)+'°' : '—') + '</div>';
   });
-});
+  });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _aladinInit);
+} else {
+  _aladinInit();
+}
 
 // ── Recherche ─────────────────────────────────────────────────
 function searchObject() {

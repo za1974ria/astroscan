@@ -38,19 +38,19 @@ button{background:rgba(0,255,136,0.1);border:1px solid var(--acid);color:var(--a
 <div class="grid">
   <div class="card">
     <div class="card-title">🛸 ISS — DONNÉES ORBITALES</div>
-    <div id="iss-sci">⟳ Chargement...</div>
+    <div id="iss-sci">⟳ Chargement…</div>
   </div>
   <div class="card">
     <div class="card-title">🌙 PHASE LUNAIRE</div>
-    <div id="moon-sci">⟳ Chargement...</div>
+    <div id="moon-sci">⟳ Chargement…</div>
   </div>
   <div class="card">
     <div class="card-title">☀️ MÉTÉO SOLAIRE</div>
-    <div id="solar-sci">⟳ Chargement...</div>
+    <div id="solar-sci">⟳ Chargement…</div>
   </div>
   <div class="card">
     <div class="card-title">🌙 CE SOIR — TLEMCEN</div>
-    <div id="tonight-sci">⟳ Chargement...</div>
+    <div id="tonight-sci" style="min-height: 140px;">⟳ Chargement…</div>
   </div>
 </div>
 
@@ -60,7 +60,7 @@ button{background:rgba(0,255,136,0.1);border:1px solid var(--acid);color:var(--a
   <button onclick="searchCatalog()">🔍 RECHERCHER</button>
   <button onclick="searchCatalog('')" style="margin-left:8px">📋 TOUT AFFICHER</button>
 </div>
-<div id="results"></div>
+<div id="results" style="min-height: 220px;"></div>
 
 <div style="margin:24px;background:rgba(0,20,40,0.8);border:1px solid #00ff8833;border-radius:8px;padding:20px">
   <div style="font-family:Orbitron,monospace;font-size:12px;color:#00d4ff;letter-spacing:2px;margin-bottom:16px">🔬 LABORATOIRE D'ANALYSE</div>
@@ -69,12 +69,12 @@ button{background:rgba(0,255,136,0.1);border:1px solid var(--acid);color:var(--a
 
     <div style="background:rgba(0,255,136,0.05);border:1px solid #00ff8833;border-radius:8px;padding:12px">
       <div style="font-size:10px;color:#00ff88;margin-bottom:8px">☄️ ASTÉROÏDES DU JOUR</div>
-      <div id="lab-asteroids">⟳ Chargement...</div>
+      <div id="lab-asteroids">⟳ Chargement…</div>
     </div>
 
     <div style="background:rgba(0,212,255,0.05);border:1px solid #00d4ff33;border-radius:8px;padding:12px">
       <div style="font-size:10px;color:#00d4ff;margin-bottom:8px">🚀 PROCHAINS LANCEMENTS SPACEX</div>
-      <div id="lab-spacex">⟳ Chargement...</div>
+      <div id="lab-spacex">⟳ Chargement…</div>
     </div>
 
     <div style="background:rgba(255,170,0,0.05);border:1px solid #ffaa0033;border-radius:8px;padding:12px">
