@@ -104,6 +104,22 @@ def landing():
     )
 
 
+@bp.route("/methodology")
+def methodology():
+    """Engineering methodology — principles, sources, derived signals.
+
+    Public-facing technical narrative explaining how ASTRO-SCAN is built:
+    honesty over decoration, microservices with zero coupling, public
+    sources only, transparent derived formulas. Targeted audience: ESA,
+    NASA, CNES recruiters and technical reviewers.
+    """
+    return render_template(
+        "methodology.html",
+        seo_title="Methodology - ASTRO-SCAN engineering principles",
+        seo_description="How ASTRO-SCAN is engineered. Principles, public data sources, transparent derived signals, and stack decisions.",
+    )
+
+
 @bp.route("/technical")
 def technical_page():
     return render_template("technical.html")

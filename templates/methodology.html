@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ seo_title | default("Methodology - ASTRO-SCAN") }}</title>
+  <meta name="description" content="{{ seo_description | default("How ASTRO-SCAN is engineered.") }}">
+  <link rel="icon" type="image/png" href="/static/favicon.png">
+  <style>
+    body {
+      margin: 0;
+      background: #0d1117;
+      color: #c9d1d9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      line-height: 1.7;
+    }
+    .nav-top {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-size: 0.95rem;
+    }
+    .nav-top a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+    .nav-top a:hover { text-decoration: underline; }
+    .nav-top .brand {
+      color: #c9d1d9;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .methodology-page {
+      max-width: 880px;
+      margin: 50px auto;
+      padding: 0 24px;
+    }
+    .methodology-page h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: #58a6ff;
+      margin: 0 0 8px;
+      letter-spacing: -0.5px;
+    }
+    .methodology-page .subtitle {
+      color: #8b949e;
+      font-size: 1.05rem;
+      margin-bottom: 48px;
+    }
+    .methodology-page h2 {
+      font-size: 1.5rem;
+      color: #c9d1d9;
+      margin-top: 56px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #30363d;
+    }
+    .methodology-page p { margin: 0 0 16px; }
+    .methodology-page ul { margin: 0 0 16px; padding-left: 24px; }
+    .methodology-page li { margin-bottom: 8px; }
+    .methodology-page code {
+      background: #161b22;
+      border: 1px solid #30363d;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "SF Mono", Monaco, "Courier New", monospace;
+      font-size: 0.92em;
+      color: #79c0ff;
+    }
+    .methodology-page pre {
+      background: #010409;
+      border: 1px solid #30363d;
+      padding: 16px 20px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-family: "SF Mono", Monaco, "Courier New", monospace;
+      font-size: 0.9rem;
+      color: #c9d1d9;
+      margin: 16px 0 24px;
+      line-height: 1.55;
+    }
+    .methodology-page .principle {
+      border-left: 3px solid #58a6ff;
+      padding: 12px 20px;
+      margin: 20px 0;
+      background: rgba(88, 166, 255, 0.05);
+      border-radius: 0 6px 6px 0;
+    }
+    .methodology-page .principle strong { color: #58a6ff; }
+    .methodology-page table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.95rem;
+    }
+    .methodology-page th, .methodology-page td {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1px solid #30363d;
+    }
+    .methodology-page th {
+      color: #58a6ff;
+      font-weight: 600;
+      background: rgba(88, 166, 255, 0.05);
+    }
+    .methodology-page a { color: #58a6ff; text-decoration: none; }
+    .methodology-page a:hover { text-decoration: underline; }
+    .methodology-page .footer-note {
+      margin: 64px 0 40px;
+      padding-top: 24px;
+      border-top: 1px solid #30363d;
+      color: #8b949e;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav-top">
+  <span class="brand">ASTRO-SCAN</span>
+  <a href="/portail">Portal</a>
+  <a href="/landing">Home</a>
+  <a href="/command/" target="_blank" rel="noopener">Situational Awareness</a>
+  <a href="https://github.com/za1974ria/astroscan" target="_blank" rel="noopener">GitHub</a>
+</nav>
+
+<main class="methodology-page">
+
+<h1>Methodology</h1>
+<p class="subtitle">How ASTRO-SCAN is engineered. Principles, sources, and decisions.</p>
+
+<h2>1. Project context</h2>
+<p>ASTRO-SCAN is an independent space observation platform engineered
+solo from Tlemcen, Algeria. It started as a personal sandbox for
+real-time astronomy and grew into a distributed system covering live
+spacecraft tracking, space weather, situational awareness, family
+safety telemetry, and astrophysical observation. Every component is
+deployed in production on a Hetzner VPS in Hillsboro, Oregon.</p>
+
+<p>The platform is built without external funding, without a team, and
+without proprietary data. All sources are public APIs from government
+agencies and open scientific networks.</p>
+
+<h2>2. Engineering principles</h2>
+
+<div class="principle">
+<strong>Honesty over decoration.</strong> Every metric shown to the user
+is either a live value streamed from a public upstream, or a derivation
+computed transparently from live values. No synthetic placeholder is
+ever presented as real data, even when masked with a "SIM" badge. In
+v2.7.0 alone, 253 lines of decorative HTML were deleted from the
+Situational Awareness module because they could not be wired to a real
+source.
+</div>
+
+<div class="principle">
+<strong>Sourced or removed.</strong> If a data point cannot be tied to
+a public, auditable upstream, it does not exist in the interface. This
+is not a UX choice. It is an engineering ethic. ESA-grade systems do
+not guess.
+</div>
+
+<div class="principle">
+<strong>Microservices with zero coupling.</strong> Each major module
+(Sentinel, Situational Awareness, AEGIS) runs as its own systemd
+service on its own port, behind nginx reverse-proxy. A failure in one
+module cannot cascade. A new module ships without touching legacy code.
+</div>
+
+<div class="principle">
+<strong>Privacy by design.</strong> Sentinel uses MaxMind GeoLite2
+locally (no third-party lookup), stores zero-knowledge country
+counters, and respects a hard TTL of 12 hours maximum on shared
+location data. No tracking pixels. No analytics from external providers.
+</div>
+
+<div class="principle">
+<strong>Hardening as default.</strong> Every systemd service runs with
+NoNewPrivileges, ProtectSystem=strict, PrivateTmp, ProtectHome, and
+explicit ReadWritePaths whitelists. SSH keys only, no passwords.
+Secrets exclusively via environment variables, never committed.
+</div>
+
+<h2>3. Data sources</h2>
+
+<p>All data displayed comes from one of the following public sources.
+Each source is cached server-side to respect upstream rate limits.</p>
+
+<table>
+<tr><th>Domain</th><th>Source</th><th>License</th></tr>
+<tr><td>ISS orbit (TLE)</td><td>AMSAT nasabare.txt</td><td>Public</td></tr>
+<tr><td>Geomagnetic Kp / F10.7 / X-Ray</td><td>NOAA SWPC</td><td>US Gov public domain</td></tr>
+<tr><td>Space weather alerts</td><td>NOAA SWPC Alerts</td><td>US Gov public domain</td></tr>
+<tr><td>Global earthquakes (24h)</td><td>USGS Earthquake Hazards</td><td>US Gov public domain</td></tr>
+<tr><td>Aircraft state vectors</td><td>OpenSky Network</td><td>CC-BY 4.0 (research)</td></tr>
+<tr><td>Astronomy picture of the day</td><td>NASA APOD</td><td>Public</td></tr>
+<tr><td>Earth imagery</td><td>NASA Blue Marble / Black Marble (GIBS)</td><td>Public</td></tr>
+<tr><td>GeoIP country resolution</td><td>MaxMind GeoLite2 (local)</td><td>CC-BY-SA 4.0</td></tr>
+</table>
+
+<h2>4. Derived signals</h2>
+
+<p>Some indicators are not directly streamed. They are computed in real
+time from live inputs. Every formula is documented, auditable, and
+deterministic. The Global Threat Index displayed in Situational
+Awareness is computed as follows:</p>
+
+<pre>threat_index =
+    0.35 * normalize(noaa_kp, 0, 9)              // Geomagnetic storm
+  + 0.20 * normalize(log10(xray_wm2), -8, -3)    // Solar flare X-ray
+  + 0.25 * seismic_score                         // USGS 24h aggregate
+  + 0.10 * air_traffic_density                   // OpenSky saturation
+  + 0.10 * min(48, tle_age_hours) / 48 * 100     // Data freshness</pre>
+
+<p>The seismic sub-score is itself a magnitude-weighted aggregate over
+the last 24 hours, with a tsunami flag multiplier:</p>
+
+<pre>seismic_score = sum( weight(magnitude) * tsunami_multiplier )
+weights: M4+ -> 1, M5+ -> 5, M6+ -> 20, M7+ -> 100
+tsunami_multiplier: 2.0 if NOAA tsunami flag is set, else 1.0</pre>
+
+<h2>5. Stack</h2>
+
+<ul>
+<li><strong>Backend</strong>: Python 3.12, Flask (main app), FastAPI (Situational Awareness microservice), httpx, asyncio, uvloop, gunicorn, uvicorn.</li>
+<li><strong>Frontend</strong>: vanilla JavaScript (no framework bloat), CesiumJS for 3D globes, Chart.js for time-series, WebSocket for real-time telemetry.</li>
+<li><strong>Astronomy</strong>: Skyfield (SGP4 propagation), Astropy (ephemerides), N2YO (ISS pass predictions).</li>
+<li><strong>Infrastructure</strong>: Hetzner VPS Hillsboro Oregon US-West, nginx (TLS via Porkbun DNS-01), systemd with hardening, Redis (caching facade).</li>
+<li><strong>Quality</strong>: pytest smoke + unit + coverage on Python 3.11 + 3.12, GitHub Actions CI on every push, semantic versioning with descriptive tags.</li>
+</ul>
+
+<h2>6. Versioning and operations</h2>
+
+<p>Releases follow semantic versioning. The current major release is
+<code>v2.7.0-mission-control-live</code>, which adds the Situational
+Awareness module. Each release tag carries a descriptive suffix so the
+git log itself reads as an engineering narrative.</p>
+
+<p>Production deployment is reproducible from the GitHub repository:
+clone, install dependencies, set environment variables, enable systemd
+units. The repository at <a href="https://github.com/za1974ria/astroscan">github.com/za1974ria/astroscan</a>
+is the single source of truth. CI runs on every push.</p>
+
+<h2>7. What this platform is not</h2>
+
+<p>ASTRO-SCAN is not a research instrument. It is not a substitute for
+ESA Space Safety Programme assets, NOAA real-time alerts, or USGS
+seismic monitoring. It is an aggregator and visualizer. Operational
+decisions should always be made against the upstream sources directly,
+which are listed and linked in this document.</p>
+
+<div class="footer-note">
+Methodology last revised: 16 May 2026 with the
+<code>v2.7.0-mission-control-live</code> release.
+Engineered by Zakaria Chohra from Tlemcen, Algeria.
+Contact via <a href="https://github.com/za1974ria">github.com/za1974ria</a>.
+</div>
+
+</main>
+
+</body>
+</html>
