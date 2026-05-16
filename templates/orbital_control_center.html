@@ -7,6 +7,7 @@
 <script>(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>AstroScan — Météo Center</title>
+<meta name="description" content="Centre de contrôle météo ASTRO-SCAN — bulletin local Tlemcen, prévisions, vents, pression atmosphérique.">
 <link rel="icon" href="/static/favicon.ico?v=2">
 <style>
 html.embed-portail .topbar{display:none!important}
@@ -66,6 +67,8 @@ html.embed-portail body{padding-top:0!important}
 </style>
 </head>
 <body>
+<main role="main" id="main-content">
+
 <div class="shell">
 
 <div class="topbar">
@@ -1123,5 +1126,6 @@ font-size: 10px;
   tick(); setInterval(tick, 1000);
 })();
 </script>
+</main>
 </body>
 </html>
