@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#02060b" />
+    <title>ASTROSCAN COMMAND // Mission Control</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      href="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Widgets/widgets.css"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="{{ url_for('static', path='css/main.css').path }}" />
+  </head>
+
+  <body class="boot-locked">
+    <!-- ================================================================== -->
+    <!--  BOOT SEQUENCE OVERLAY                                              -->
+    <!-- ================================================================== -->
+    <section id="boot-overlay" class="boot-overlay" aria-hidden="false">
+      <div class="boot-grid" aria-hidden="true"></div>
+      <div class="boot-scanlines" aria-hidden="true"></div>
+      <div class="boot-vignette" aria-hidden="true"></div>
+
+      <div class="boot-stage">
+        <div class="boot-brand">
+          <div class="boot-emblem">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="26" class="emblem-ring outer" />
+              <circle cx="32" cy="32" r="18" class="emblem-ring mid" />
+              <circle cx="32" cy="32" r="10" class="emblem-ring inner" />
+              <circle cx="32" cy="32" r="2.5" class="emblem-core" />
+              <path d="M6 32 H58 M32 6 V58" class="emblem-cross" />
+            </svg>
+          </div>
+          <div class="boot-titles">
+            <div class="boot-eyebrow">ASTROSCAN // BUILD {{ build_version }}</div>
+            <h1 class="boot-title">ASTROSCAN COMMAND</h1>
+            <div class="boot-subtitle">GLOBAL SITUATIONAL AWARENESS PLATFORM</div>
+          </div>
+        </div>
+
+        <div class="boot-progress">
+          <div class="boot-progress-track">
+            <div class="boot-progress-fill" id="boot-progress-fill"></div>
+          </div>
+          <div class="boot-progress-meta">
+            <span id="boot-progress-label">STANDBY</span>
+            <span id="boot-progress-pct">0%</span>
+          </div>
+        </div>
+
+        <ul id="boot-log" class="boot-log" aria-live="polite"></ul>
+
+        <div class="boot-footer">
+          <span>CALLSIGN // {{ callsign }}</span>
+          <span>SECURE LINK // AES-256</span>
+          <span>STATION // GROUND-01</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!--  MISSION CONTROL DASHBOARD                                          -->
+    <!-- ================================================================== -->
+    <main id="mission-control" class="mission-control" aria-hidden="true">
+      <!-- ============================== TOP BAR ============================ -->
+      <header class="status-bar">
+        <div class="status-bar__left">
+          <div class="brand-mark">
+            <svg viewBox="0 0 32 32" aria-hidden="true">
+              <circle cx="16" cy="16" r="13" class="brand-ring" />
+              <circle cx="16" cy="16" r="8" class="brand-ring brand-ring--mid" />
+              <circle cx="16" cy="16" r="1.6" class="brand-core" />
+              <path d="M2 16 H30 M16 2 V30" class="brand-cross" />
+            </svg>
+            <div class="brand-text">
+              <div class="brand-title">ASTROSCAN COMMAND</div>
+              <div class="brand-sub">MISSION CONTROL // v{{ build_version }}</div>
+            </div>
+          </div>
+        </div>
+
+        <nav class="status-bar__center">
+          <div class="status-chip" data-chip="link">
+            <span class="status-chip__dot"></span>
+            <span class="status-chip__label">UPLINK</span>
+            <span class="status-chip__value" id="chip-link">SYNCING</span>
+          </div>
+          <div class="status-chip" data-chip="defcon">
+            <span class="status-chip__dot"></span>
+            <span class="status-chip__label">POSTURE</span>
+            <span class="status-chip__value" id="chip-defcon">NOMINAL</span>
+          </div>
+          <div class="status-chip status-chip--sim" data-chip="mode">
+            <span class="status-chip__label">MODE</span>
+            <span class="status-chip__value">SIMULATION</span>
+          </div>
+        </nav>
+
+        <div class="status-bar__right">
+          <div class="system-control">
+            <button id="system-toggle" class="icon-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="system-panel" aria-label="System integrity">
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                <line x1="5"  y1="7"  x2="11" y2="7"  stroke="currentColor" stroke-width="1"/>
+                <line x1="5"  y1="10" x2="9"  y2="10" stroke="currentColor" stroke-width="1"/>
+              </svg>
+            </button>
+            <div class="system-panel" id="system-panel" role="dialog" aria-label="System integrity" hidden>
+              <div class="system-panel__head">
+                <span class="system-panel__title">SYSTEM INTEGRITY</span>
+                <button class="ghost-btn ghost-btn--mini" id="demo-narrative-btn" type="button">Start Demo</button>
+              </div>
+
+              <section class="sys-block">
+                <header class="sys-block__head">SOURCES</header>
+                <ul class="src-list">
+                  <li class="src-item" data-key="imagery" data-state="live">
+                    <span class="src-item__dot"></span>
+                    <span class="src-item__name">Imagery · NASA GIBS</span>
+                    <span class="src-item__state" id="src-imagery-state">Live</span>
+                    <span class="src-item__age" id="src-imagery-age">init</span>
+                  </li>
+                  <li class="src-item" data-key="night" data-state="live">
+                    <span class="src-item__dot"></span>
+                    <span class="src-item__name">Night · Black Marble VIIRS</span>
+                    <span class="src-item__state" id="src-night-state">Live</span>
+                    <span class="src-item__age" id="src-night-age">init</span>
+                  </li>
+                  <li class="src-item" data-key="tle" data-state="loading">
+                    <span class="src-item__dot"></span>
+                    <span class="src-item__name">Orbit · CelesTrak TLE</span>
+                    <span class="src-item__state" id="src-tle-state">Loading</span>
+                    <span class="src-item__age" id="src-tle-age">—</span>
+                  </li>
+                  <li class="src-item" data-key="swx" data-state="loading">
+                    <span class="src-item__dot"></span>
+                    <span class="src-item__name">Space WX · NOAA SWPC</span>
+                    <span class="src-item__state" id="src-swx-state">Loading</span>
+                    <span class="src-item__age" id="src-swx-age">—</span>
+                  </li>
+                  <li class="src-item" data-key="ws" data-state="loading">
+                    <span class="src-item__dot"></span>
+                    <span class="src-item__name">Telemetry · WebSocket</span>
+                    <span class="src-item__state" id="src-ws-state">Connecting</span>
+                    <span class="src-item__age" id="src-ws-age">—</span>
+                  </li>
+                </ul>
+              </section>
+
+              <section class="sys-block">
+                <header class="sys-block__head">INTEGRATION ROADMAP</header>
+                <ul class="roadmap-list">
+                  <li class="roadmap-item" data-state="live"><span class="roadmap-item__name">ISS Orbit</span><span class="roadmap-item__state">LIVE</span><span class="roadmap-item__src">CelesTrak</span></li>
+                  <li class="roadmap-item" data-state="live"><span class="roadmap-item__name">Space Weather</span><span class="roadmap-item__state">LIVE</span><span class="roadmap-item__src">NOAA SWPC</span></li>
+                  <li class="roadmap-item" data-state="planned"><span class="roadmap-item__name">Air Traffic</span><span class="roadmap-item__state">PLANNED</span><span class="roadmap-item__src">OpenSky Network</span></li>
+                  <li class="roadmap-item" data-state="planned"><span class="roadmap-item__name">Seismic</span><span class="roadmap-item__state">PLANNED</span><span class="roadmap-item__src">USGS GeoJSON</span></li>
+                  <li class="roadmap-item" data-state="planned"><span class="roadmap-item__name">Maritime AIS</span><span class="roadmap-item__state">PLANNED</span><span class="roadmap-item__src">AISHub</span></li>
+                  <li class="roadmap-item" data-state="planned"><span class="roadmap-item__name">Weather</span><span class="roadmap-item__state">PLANNED</span><span class="roadmap-item__src">NOAA · Open-Meteo</span></li>
+                </ul>
+              </section>
+
+              <section class="sys-block">
+                <header class="sys-block__head">RUNTIME</header>
+                <dl class="build-list">
+                  <dt>FPS</dt><dd id="run-fps">—</dd>
+                  <dt>Heap</dt><dd id="run-heap">—</dd>
+                  <dt>WS RTT</dt><dd id="run-rtt">— ms</dd>
+                  <dt>Cache</dt><dd id="run-cache">—</dd>
+                  <dt>Camera</dt><dd id="run-mode">command</dd>
+                </dl>
+              </section>
+
+              <section class="sys-block">
+                <header class="sys-block__head">BUILD</header>
+                <dl class="build-list">
+                  <dt>Version</dt><dd>v{{ build_version }}</dd>
+                  <dt>Runtime</dt><dd>FastAPI · Cesium 1.118 · satellite.js 5</dd>
+                  <dt>Mode</dt><dd id="build-mode">Mixed · Live + Sim</dd>
+                  <dt>Frame</dt><dd id="build-frame">0000</dd>
+                  <dt>Latency</dt><dd id="build-latency">— ms</dd>
+                  <dt>Render</dt><dd>MSAA 4× · HDR · Bloom</dd>
+                </dl>
+              </section>
+
+              <section class="sys-block sys-block--speculative">
+                <button class="speculative-toggle" id="speculative-toggle" type="button" aria-pressed="false">
+                  <span class="speculative-toggle__dot"></span>
+                  <span class="speculative-toggle__name">Black Orbit</span>
+                  <span class="speculative-toggle__tag">Speculative</span>
+                  <span class="speculative-toggle__state" id="speculative-state">Off</span>
+                </button>
+                <p class="speculative-note">Clearly fictional projections layer. Non-operational. For demonstration only.</p>
+              </section>
+            </div>
+          </div>
+
+          <div class="audio-control">
+            <button id="audio-mute" class="ghost-btn" type="button" aria-pressed="true" aria-label="Toggle audio">
+              <span class="ghost-btn__dot"></span>
+              <span>AUDIO</span>
+            </button>
+            <button id="audio-more" class="icon-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="audio-panel" aria-label="Audio settings">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="3" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="13" cy="8" r="1.3"/></svg>
+            </button>
+            <div class="audio-panel" id="audio-panel" role="dialog" aria-label="Audio settings" hidden>
+              <div class="audio-panel__head">
+                <span class="audio-panel__title">AUDIO</span>
+                <span class="audio-panel__hint">SESSION</span>
+              </div>
+              <div class="audio-panel__row">
+                <span class="audio-panel__label">VOLUME</span>
+                <div class="audio-panel__slider">
+                  <input id="audio-volume" type="range" min="0" max="100" value="80" />
+                  <span class="audio-panel__readout" id="audio-volume-readout">80</span>
+                </div>
+              </div>
+              <div class="audio-panel__row">
+                <span class="audio-panel__label">BALANCE</span>
+                <div class="audio-panel__slider">
+                  <input id="audio-balance" type="range" min="-100" max="100" value="0" />
+                  <span class="audio-panel__readout" id="audio-balance-readout">C</span>
+                </div>
+              </div>
+              <div class="audio-panel__row">
+                <span class="audio-panel__label">PROFILE</span>
+                <select id="audio-profile" class="audio-panel__select">
+                  <option value="mission">Mission Control</option>
+                  <option value="deep">Deep Space</option>
+                  <option value="cinematic">Cinematic</option>
+                  <option value="silent">Silent Ops</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="clock-block">
+            <div class="clock-block__label">UTC</div>
+            <div class="clock-block__value" id="clock-utc">--:--:--</div>
+          </div>
+          <div class="clock-block">
+            <div class="clock-block__label">LOCAL</div>
+            <div class="clock-block__value" id="clock-local">--:--:--</div>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============================== GRID ============================= -->
+      <section class="grid">
+        <!-- ------------------ LEFT // TELEMETRY ------------------------ -->
+        <aside class="panel panel--left" aria-label="Telemetry">
+          <header class="panel__head">
+            <div class="panel__title">
+              <span>TELEMETRY</span>
+            </div>
+            <span class="trust-badge" data-trust="live" title="Live data — AMSAT TLE, NOAA SWPC, USGS, OpenSky.">Live</span>
+          </header>
+
+          <section class="panel__section">
+            <div class="section-head">ORBITAL ASSET · ISS</div>
+            <div class="readout-grid readout-grid--duo">
+              <div class="readout">
+                <div class="readout__label">VELOCITY</div>
+                <div class="readout__value" id="t-iss-velocity">--</div>
+                <div class="readout__unit">km/s</div>
+              </div>
+              <div class="readout">
+                <div class="readout__label">ALTITUDE</div>
+                <div class="readout__value" id="t-iss-altitude">--</div>
+                <div class="readout__unit">km</div>
+              </div>
+              <div class="readout readout--wide">
+                <div class="readout__label">ORBITAL INTEGRITY</div>
+                <div class="readout__value" id="t-orbital">--</div>
+                <div class="readout__unit">%</div>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <!-- ------------------ CENTER // GLOBE -------------------------- -->
+        <section class="stage" aria-label="Earth Globe">
+          <div id="cesium-container" class="cesium-container"></div>
+          <div class="stage-frame" aria-hidden="true">
+            <div class="frame-corner frame-corner--tl"></div>
+            <div class="frame-corner frame-corner--tr"></div>
+            <div class="frame-corner frame-corner--bl"></div>
+            <div class="frame-corner frame-corner--br"></div>
+          </div>
+          <nav class="mode-strip" id="mode-strip" role="tablist" aria-label="Camera mode">
+            <button class="mode-pill is-active" data-mode="command"   type="button" role="tab" aria-selected="true">COMMAND</button>
+            <button class="mode-pill"           data-mode="orbital"   type="button" role="tab" aria-selected="false">ORBITAL</button>
+            <button class="mode-pill"           data-mode="cinematic" type="button" role="tab" aria-selected="false">CINEMATIC</button>
+            <button class="mode-pill"           data-mode="tactical"  type="button" role="tab" aria-selected="false">TACTICAL</button>
+          </nav>
+          <div class="stage-overlay-top">
+            <div class="overlay-chip">
+              <span class="overlay-chip__label">RANGE</span>
+              <span class="overlay-chip__value" id="stage-range">--</span>
+            </div>
+            <div class="overlay-trust">
+              <span class="trust-badge" data-trust="live" title="Imagery from NASA GIBS BlueMarble NG + Black Marble VIIRS (verified public sources).">Imagery · Live · NASA</span>
+              <span class="trust-badge" data-trust="estimated" id="iss-trust" title="ISS orbit — propagated from cached TLE while live feed loads.">Orbit · Estimated</span>
+              <button id="aux-orbits-toggle" class="overlay-toggle" type="button" aria-pressed="false" title="Show synthetic auxiliary orbit references">Aux Orbits</button>
+            </div>
+          </div>
+          <div class="stage-overlay-bottom">
+            <div class="advisor">
+              <div class="advisor__head">
+                <span class="advisor__label">MISSION ADVISOR</span>
+                <span class="trust-badge" data-trust="estimated" title="Heuristic rules engine — not predictive AI.">Rules engine</span>
+              </div>
+              <p class="advisor__msg" id="ai-msg">Establishing command channel.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ------------------ RIGHT // THREAT -------------------------- -->
+        <aside class="panel panel--right" aria-label="Threat Intelligence">
+          <header class="panel__head">
+            <div class="panel__title">
+              <span>THREAT INTELLIGENCE</span>
+            </div>
+            <span class="trust-badge" data-trust="live" title="Computed from NOAA Kp/X-Ray, USGS seismic, OpenSky aviation, AMSAT TLE freshness.">Live · derived</span>
+          </header>
+
+          <section class="panel__section panel__section--acq">
+            <div class="acq-strip" aria-label="Acquisition status">
+              <div class="acq-pill" data-state="syncing" id="acq-signal-pill">
+                <span class="acq-pill__dot"></span>
+                <span class="acq-pill__k">SIGNAL</span>
+                <span class="acq-pill__v" id="acq-signal">LOCKING</span>
+              </div>
+              <div class="acq-pill" data-state="syncing" id="acq-track-pill">
+                <span class="acq-pill__dot"></span>
+                <span class="acq-pill__k">TRACK</span>
+                <span class="acq-pill__v" id="acq-track">ACQUIRING</span>
+              </div>
+              <div class="acq-pill" data-state="syncing" id="acq-uplink-pill">
+                <span class="acq-pill__dot"></span>
+                <span class="acq-pill__k">UPLINK</span>
+                <span class="acq-pill__v" id="acq-uplink">—</span>
+              </div>
+            </div>
+            <div class="conf-grid" aria-label="Confidence matrix">
+              <div class="conf-cell">
+                <span class="conf-cell__k">SIGNAL</span>
+                <div class="conf-cell__bar"><span id="conf-signal-bar"></span></div>
+              </div>
+              <div class="conf-cell">
+                <span class="conf-cell__k">TRACK</span>
+                <div class="conf-cell__bar"><span id="conf-track-bar"></span></div>
+              </div>
+              <div class="conf-cell">
+                <span class="conf-cell__k">INTEGRITY</span>
+                <div class="conf-cell__bar"><span id="conf-integrity-bar"></span></div>
+              </div>
+              <div class="conf-cell">
+                <span class="conf-cell__k">UPLINK</span>
+                <div class="conf-cell__bar"><span id="conf-uplink-bar"></span></div>
+              </div>
+            </div>
+            <div class="conf-trust">
+              <span class="trust-badge" data-trust="estimated" title="Derived from data plane state and WS RTT.">Derived</span>
+            </div>
+          </section>
+
+          <section class="panel__section">
+            <div class="threat-headline">
+              <div class="threat-headline__label">GLOBAL THREAT INDEX</div>
+              <div class="threat-headline__value" id="threat-value">--</div>
+              <div class="threat-headline__band" id="threat-band">INITIALIZING</div>
+            </div>
+            <div class="threat-ring" id="threat-ring" aria-hidden="true">
+              <svg viewBox="0 0 120 120" class="threat-ring__svg">
+                <defs>
+                  <linearGradient id="threat-sweep-ok"   x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%"   stop-color="#7fd1e6" stop-opacity="0"/>
+                    <stop offset="100%" stop-color="#7fd1e6" stop-opacity="0.45"/>
+                  </linearGradient>
+                  <linearGradient id="threat-sweep-warn" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%"   stop-color="#f0b260" stop-opacity="0"/>
+                    <stop offset="100%" stop-color="#f0b260" stop-opacity="0.48"/>
+                  </linearGradient>
+                  <linearGradient id="threat-sweep-crit" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%"   stop-color="#f06070" stop-opacity="0"/>
+                    <stop offset="100%" stop-color="#f06070" stop-opacity="0.55"/>
+                  </linearGradient>
+                </defs>
+
+                <!-- L1: outer precision frame + cardinal + intermediate -->
+                <g class="threat-ring__frame">
+                  <circle cx="60" cy="60" r="56"/>
+                  <line class="card" x1="60" y1="2" x2="60" y2="8" transform="rotate(0   60 60)"/>
+                  <line class="card" x1="60" y1="2" x2="60" y2="8" transform="rotate(90  60 60)"/>
+                  <line class="card" x1="60" y1="2" x2="60" y2="8" transform="rotate(180 60 60)"/>
+                  <line class="card" x1="60" y1="2" x2="60" y2="8" transform="rotate(270 60 60)"/>
+                  <line x1="60" y1="3" x2="60" y2="7" transform="rotate(30  60 60)"/>
+                  <line x1="60" y1="3" x2="60" y2="7" transform="rotate(60  60 60)"/>
+                  <line x1="60" y1="3" x2="60" y2="7" transform="rotate(120 60 60)"/>
+                  <line x1="60" y1="3" x2="60" y2="7" transform="rotate(150 60 60)"/>
+                  <line x1="60" y1="3" x2="60" y2="7" transform="rotate(210 60 60)"/>
+                  <line x1="60" y1="3" x2="60" y2="7" transform="rotate(240 60 60)"/>
+                  <line x1="60" y1="3" x2="60" y2="7" transform="rotate(300 60 60)"/>
+                  <line x1="60" y1="3" x2="60" y2="7" transform="rotate(330 60 60)"/>
+                </g>
+
+                <!-- L2: rotating micro ticks (1 turn / 90s, counter-clockwise) -->
+                <g class="threat-ring__ticks-rotating">
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(0   60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(15  60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(30  60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(45  60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(60  60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(75  60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(90  60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(105 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(120 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(135 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(150 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(165 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(180 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(195 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(210 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(225 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(240 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(255 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(270 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(285 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(300 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(315 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(330 60 60)"/>
+                  <line x1="60" y1="14" x2="60" y2="17" transform="rotate(345 60 60)"/>
+                </g>
+
+                <!-- Range rings + bearing axes (structural lattice) -->
+                <g class="threat-ring__range">
+                  <circle cx="60" cy="60" r="22"/>
+                  <circle cx="60" cy="60" r="38"/>
+                </g>
+                <g class="threat-ring__axes">
+                  <line x1="60" y1="12"  x2="60" y2="20"/>
+                  <line x1="60" y1="100" x2="60" y2="108"/>
+                  <line x1="12" y1="60"  x2="20" y2="60"/>
+                  <line x1="100" y1="60" x2="108" y2="60"/>
+                </g>
+
+                <!-- Threat signature trace (subordinate, not a progress bar) -->
+                <circle cx="60" cy="60" r="46" class="threat-ring__bar" id="threat-ring-bar" pathLength="100"/>
+
+                <!-- L3: radar sweep beam -->
+                <g class="threat-ring__sweep">
+                  <path class="threat-ring__sweep-wedge" d="M 60 60 L 60 8 A 52 52 0 0 1 76 11 Z"/>
+                </g>
+
+                <!-- L4: acquisition scan line -->
+                <line x1="14" y1="60" x2="106" y2="60" class="threat-ring__scan"/>
+
+                <!-- L4b: pulse return — single radar ping expanding from centre per cycle -->
+                <circle cx="60" cy="60" r="10" class="threat-ring__pulse" fill="none"/>
+
+                <!-- L6: echo blips — centroid balanced to exact (60,60).
+                       NW (34,40) · NE (82,44) · SE (78,84) · SW (46,72)
+                       Σx=240, Σy=240 → centroid (60,60). Distances 32.8 / 27.2 / 30.0 / 18.4 (no pattern). -->
+                <g class="threat-ring__echoes">
+                  <circle cx="34" cy="40" r="1.3" class="threat-ring__echo" style="animation-delay: 0s"/>
+                  <circle cx="82" cy="44" r="1.3" class="threat-ring__echo" style="animation-delay: 2.1s"/>
+                  <circle cx="78" cy="84" r="1.3" class="threat-ring__echo" style="animation-delay: 3.9s"/>
+                  <circle cx="46" cy="72" r="1.3" class="threat-ring__echo" style="animation-delay: 5.6s"/>
+                </g>
+
+                <!-- L5: core intelligence (halo + breathing core) -->
+                <circle cx="60" cy="60" r="7"   class="threat-ring__core-halo"/>
+                <circle cx="60" cy="60" r="3.2" class="threat-ring__core"/>
+              </svg>
+            </div>
+          </section>
+
+          <section class="panel__section">
+            <div class="section-head">DOMAIN METRICS</div>
+            <div class="meter-stack">
+              <div class="meter" data-meter="air">
+                <div class="meter__row">
+                  <span class="meter__label">AIR TRAFFIC DENSITY</span>
+                  <span class="meter__valuegroup">
+                    <span class="meter__value" id="m-air">--</span>
+                    <span class="meter__trend" id="m-air-trend" aria-hidden="true">·</span>
+                  </span>
+                </div>
+                <div class="meter__bar"><span id="m-air-bar"></span></div>
+              </div>
+              <div class="meter meter--solar" data-meter="solar">
+                <div class="meter__row">
+                  <span class="meter__label">SOLAR ACTIVITY</span>
+                  <span class="meter__valuegroup">
+                    <span class="meter__value" id="m-solar">--</span>
+                    <span class="meter__trend" id="m-solar-trend" aria-hidden="true">·</span>
+                  </span>
+                </div>
+                <div class="meter__bar"><span id="m-solar-bar"></span></div>
+                <div class="solar-monitor" aria-hidden="true">
+                  <svg class="solar-monitor__wave" viewBox="0 0 200 60" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="solar-stroke" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%"   stop-color="#1aa6c8" stop-opacity="0.0"/>
+                        <stop offset="20%"  stop-color="#5be3ff" stop-opacity="0.95"/>
+                        <stop offset="80%"  stop-color="#5be3ff" stop-opacity="0.95"/>
+                        <stop offset="100%" stop-color="#1aa6c8" stop-opacity="0.0"/>
+                      </linearGradient>
+                      <linearGradient id="solar-fill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%"  stop-color="#5be3ff" stop-opacity="0.28"/>
+                        <stop offset="100%" stop-color="#5be3ff" stop-opacity="0.0"/>
+                      </linearGradient>
+                      <filter id="solar-glow" x="-10%" y="-50%" width="120%" height="200%">
+                        <feGaussianBlur stdDeviation="1.4" result="b"/>
+                        <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                      </filter>
+                    </defs>
+                    <g class="solar-monitor__grid">
+                      <line x1="0" y1="15"  x2="200" y2="15"/>
+                      <line x1="0" y1="30"  x2="200" y2="30"/>
+                      <line x1="0" y1="45"  x2="200" y2="45"/>
+                      <line x1="50"  y1="0" x2="50"  y2="60"/>
+                      <line x1="100" y1="0" x2="100" y2="60"/>
+                      <line x1="150" y1="0" x2="150" y2="60"/>
+                    </g>
+                    <polygon id="solar-area" class="solar-monitor__area" points=""/>
+                    <polyline id="solar-wave" class="solar-monitor__line" points=""/>
+                    <circle id="solar-head" class="solar-monitor__head" cx="200" cy="30" r="2.4"/>
+                  </svg>
+                  <div class="solar-monitor__nodes">
+                    <span></span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                  <div class="solar-monitor__meta">
+                    <span class="solar-monitor__k">FLUX</span>
+                    <span class="solar-monitor__v" id="solar-flux">--</span>
+                    <span class="solar-monitor__k">BAND</span>
+                    <span class="solar-monitor__v" id="solar-band">QUIET</span>
+                  </div>
+                </div>
+              </div>
+              <div class="meter" data-meter="seismic">
+                <div class="meter__row">
+                  <span class="meter__label">SEISMIC ACTIVITY</span>
+                  <span class="meter__valuegroup">
+                    <span class="meter__value" id="m-seismic">--</span>
+                    <span class="meter__trend" id="m-seismic-trend" aria-hidden="true">·</span>
+                  </span>
+                </div>
+                <div class="meter__bar"><span id="m-seismic-bar"></span></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel__section">
+            <div class="section-head">
+              <span>SPACE ENVIRONMENT</span>
+              <span class="trust-badge" data-trust="estimated" id="env-trust" title="NOAA Space Weather Prediction Center · cached every 5 min.">Loading · NOAA SWPC</span>
+            </div>
+            <div class="env-grid">
+              <div class="env-cell">
+                <div class="env-cell__k">Kp INDEX</div>
+                <div class="env-cell__v" id="env-kp">—</div>
+                <div class="env-cell__band" id="env-kp-band">—</div>
+              </div>
+              <div class="env-cell">
+                <div class="env-cell__k">F10.7</div>
+                <div class="env-cell__v" id="env-flux">—</div>
+                <div class="env-cell__band">SFU</div>
+              </div>
+              <div class="env-cell">
+                <div class="env-cell__k">X-RAY</div>
+                <div class="env-cell__v" id="env-xray">—</div>
+                <div class="env-cell__band" id="env-xray-band">—</div>
+              </div>
+            </div>
+          </section>
+
+        </aside>
+
+        <!-- ------------------ INTEL DRAWER (TABBED, COLLAPSIBLE) ------- -->
+        <section class="drawer" id="intel-drawer" aria-label="Intelligence Drawer">
+          <header class="drawer__head">
+            <nav class="drawer__tabs" role="tablist">
+              <button class="drawer-tab is-active" data-tab="alerts" role="tab" aria-selected="true" type="button">
+                <span class="drawer-tab__dot"></span>ALERTS
+              </button>
+
+            </nav>
+            <div class="drawer__meta">
+              <span class="drawer__meta-item"><span class="drawer__meta-k">FRAME</span><span class="drawer__meta-v" id="meta-frame">0000</span></span>
+              <span class="drawer__meta-item"><span class="drawer__meta-k">LATENCY</span><span class="drawer__meta-v" id="meta-latency">-- ms</span></span>
+              <button class="drawer__toggle" id="drawer-toggle" type="button" aria-expanded="true" aria-controls="drawer-body" aria-label="Collapse intelligence panel">
+                <svg viewBox="0 0 16 16" aria-hidden="true" class="drawer__chevron"><path d="M4 6 L8 10 L12 6" /></svg>
+              </button>
+            </div>
+          </header>
+
+          <div class="drawer__body" id="drawer-body">
+            <!-- ALERTS TAB ----------------------------------------------- -->
+            <article class="drawer-panel is-active" data-panel="alerts" role="tabpanel">
+              <ul class="alert-feed" id="alert-feed">
+                <li class="alert">
+                  <span class="alert__time">--:--:--</span>
+                  <span class="alert__tag alert__tag--info">INFO</span>
+                  <span class="alert__msg">Awaiting telemetry stream.</span>
+                </li>
+              </ul>
+            </article>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <!-- Speculative mode ribbon (shown only when Black Orbit is active) -->
+    <div class="speculative-ribbon" aria-hidden="true">
+      <span>SPECULATIVE</span>
+      <span class="speculative-ribbon__dot"></span>
+      <span>BLACK ORBIT</span>
+      <span class="speculative-ribbon__dot"></span>
+      <span>NON-OPERATIONAL</span>
+    </div>
+
+    <!-- Demo narrative overlay (guided walkthrough) -->
+    <div class="demo-banner" id="demo-banner" hidden aria-live="polite">
+      <div class="demo-banner__inner">
+        <span class="demo-banner__step" id="demo-banner-step">1 / 6</span>
+        <span class="demo-banner__msg"  id="demo-banner-msg"></span>
+        <div class="demo-banner__actions">
+          <button class="ghost-btn ghost-btn--mini" id="demo-skip"  type="button">Skip</button>
+          <button class="ghost-btn ghost-btn--mini" id="demo-next"  type="button">Next ›</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cesium runtime -->
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Cesium.js"></script>
+    <!-- SGP4 orbital propagator (real ISS trajectory from CelesTrak TLE) -->
+    <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+
+    <!-- Mission script -->
+    <script src="{{ url_for('static', path='js/app.js').path }}"></script>
+  </body>
+</html>

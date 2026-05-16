@@ -1500,6 +1500,16 @@ hr{
           <div class="nav-item nav-sub" id="nav-mission-control" onclick="navigate('mission-control')">
             <span class="nav-label" data-i18n="nav_mission">Contrôle Mission</span>
           </div>
+          <a class="nav-item nav-sub" id="nav-situational-awareness" href="/command/" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;">
+            <span class="nav-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 10v6m11-11h-6M7 12H1m17.07-7.07-4.24 4.24M9.17 14.83l-4.24 4.24m0-14.14 4.24 4.24m5.66 5.66 4.24 4.24"/>
+              </svg>
+            </span>
+            <span class="nav-label">{% if lang == 'en' %}Situational Awareness{% else %}Veille Spatiale{% endif %}</span>
+            <span class="nav-badge live">LIVE</span>
+          </a>
           <div class="nav-item nav-sub" id="nav-overlord" onclick="navigate('overlord')">
             <span class="nav-label" data-i18n="nav_overlord">Contrôle Overlord</span>
           </div>
