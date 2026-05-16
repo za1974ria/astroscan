@@ -535,7 +535,8 @@ function showHistory(i) {
 }
 
 // ── Mode simulation ──
-const FALLBACK_SIM_URL = 'https://apod.nasa.gov/apod/image/2401/OrionMolCloud_Addis_960.jpg';
+// Sprint 5: image APOD servie via proxy Flask /api/apod/proxy-image (fix CORS/cookies tiers)
+const FALLBACK_SIM_URL = '/api/apod/proxy-image?url=' + encodeURIComponent('https://apod.nasa.gov/apod/image/2401/OrionMolCloud_Addis_960.jpg');
 
 async function loadSimulation() {
   simMode = true;

@@ -85,6 +85,20 @@ def meteo_spatiale_page():
     return render_template("meteo_spatiale.html")
 
 
+@bp.route("/api/solar/image")
+def api_solar_image():
+    """Image SDO NASA — retourne l'URL de la dernière image solaire HMI continuum.
+
+    Endpoint ajouté Sprint 5 pour résoudre le 404 de /api/solar/image consommé
+    par templates/meteo_spatiale.html (loadSolarImage).
+    """
+    return jsonify({
+        "url": "https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_HMIIC.jpg",
+        "last_modified": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "source": "NASA SDO HMI Continuum",
+    })
+
+
 @bp.route("/api/space-weather")
 def api_space_weather():
     """Données météo spatiale — live NOAA + cache 60 s + fallback stale file."""

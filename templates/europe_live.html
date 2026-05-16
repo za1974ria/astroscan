@@ -207,7 +207,7 @@ html,body { background:var(--bg); color:var(--text); font-family:var(--mono); mi
         data-fallback-index="0"
         data-fallbacks='[{"id":"dfVK7ld38Ys","title":"TOKYO — Shibuya Crossing"},{"id":"H9BBwaT4Gug","title":"TOKYO — Yamanote Line"},{"id":"_Sof1oNx2mY","title":"NEW YORK — Times Square 4K"}]'
         title="Tokyo Shibuya Scramble Crossing live (city center)"
-        src="https://www.youtube.com/embed/dfVK7ld38Ys?autoplay=1&mute=1"
+        src="https://www.youtube-nocookie.com/embed/dfVK7ld38Ys?autoplay=1&mute=1"
         width="100%" height="300" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowfullscreen
@@ -283,7 +283,7 @@ function wlSwitchFallback(camId) {
   var next = fallbacks[nextIdx];
   iframe.setAttribute('data-fallback-index', String(nextIdx));
   wlLoadStatus[camId] = false;
-  iframe.src = 'https://www.youtube.com/embed/' + next.id + '?autoplay=1&mute=1';
+  iframe.src = 'https://www.youtube-nocookie.com/embed/' + next.id + '?autoplay=1&mute=1';
   if (titleEl) titleEl.textContent = next.title;
   wlArmTimer(camId);
 }

@@ -8,7 +8,8 @@ restent dans station_web.py car elles dépendent de helpers internes
 dans une étape ultérieure (B-cache).
 """
 import logging
-from flask import Blueprint, jsonify, render_template
+import requests
+from flask import Blueprint, Response, abort, jsonify, render_template, request
 from app.routes.apod import apod_fr_json_impl, apod_fr_view_impl
 
 apod_bp = Blueprint('apod', __name__)
@@ -29,3 +30,30 @@ def apod_fr_view():
 @apod_bp.route('/nasa-apod')
 def page_nasa_apod():
     return render_template('nasa_apod.html')
+
+
+@apod_bp.route('/api/apod/proxy-image')
+def apod_proxy_image():
+    """Proxy serveur pour images APOD NASA — contourne CORS / cookies tiers.
+
+    Usage: /api/apod/proxy-image?url=https://apod.nasa.gov/apod/image/...
+    Whitelist stricte: apod.nasa.gov uniquement.
+    """
+    url = (request.args.get('url') or '').strip()
+    if not url or not url.startswith('https://apod.nasa.gov/'):
+        abort(400, 'Invalid URL')
+    try:
+        r = requests.get(url, timeout=10, stream=True,
+                         headers={'User-Agent': 'AstroScan/1.0'})
+        r.raise_for_status()
+        return Response(
+            r.content,
+            mimetype=r.headers.get('Content-Type', 'image/jpeg'),
+            headers={
+                'Cache-Control': 'public, max-age=3600',
+                'Access-Control-Allow-Origin': '*',
+            }
+        )
+    except Exception as e:
+        log.error("APOD proxy error for %s: %s", url, e)
+        abort(502, 'Failed to fetch APOD image')

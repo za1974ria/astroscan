@@ -313,10 +313,20 @@ def api_audio_proxy():
 
 
 # ── PASS 15 — Sky Camera simulate (différé PASS 6 levé) ───────────────
+def _wrap_apod_url(url: str) -> str:
+    """Sprint 5 — wrappe les URLs apod.nasa.gov via le proxy Flask
+    /api/apod/proxy-image pour éviter CORS / cookies tiers côté navigateur."""
+    from urllib.parse import quote
+    if isinstance(url, str) and url.startswith("https://apod.nasa.gov/"):
+        return "/api/apod/proxy-image?url=" + quote(url, safe="")
+    return url
+
+
 @bp.route("/api/sky-camera/simulate")
 def api_sky_camera_simulate():
     """Retourne une image de ciel nocturne pour le mode simulation.
     Priorité : APOD NASA → image statique fallback.
+    URLs APOD wrappées via proxy Flask (Sprint 5, fix CORS).
     """
     from app.utils.cache import cache_get
     from app.services.http_client import _curl_get
@@ -333,7 +343,7 @@ def api_sky_camera_simulate():
                 if apod_data.get("media_type") == "image":
                     url = apod_data.get("hdurl") or apod_data.get("url", "")
                     return jsonify({
-                        "ok": True, "url": url,
+                        "ok": True, "url": _wrap_apod_url(url),
                         "title": apod_data.get("title", ""),
                         "source": "NASA APOD",
                     })
@@ -342,14 +352,14 @@ def api_sky_camera_simulate():
             url = inner.get("hdurl") or inner.get("url", "")
             if url:
                 return jsonify({
-                    "ok": True, "url": url,
+                    "ok": True, "url": _wrap_apod_url(url),
                     "source": "NASA APOD (cache)",
                 })
     except Exception as e:
         log.warning("sky_simulate APOD: %s", e)
     return jsonify({
         "ok": True,
-        "url": "https://apod.nasa.gov/apod/image/2401/OrionMolCloud_Addis_960.jpg",
+        "url": _wrap_apod_url("https://apod.nasa.gov/apod/image/2401/OrionMolCloud_Addis_960.jpg"),
         "title": "Orion Molecular Cloud",
         "source": "NASA APOD fallback",
     })
