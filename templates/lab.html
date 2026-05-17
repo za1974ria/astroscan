@@ -35,8 +35,8 @@ button:disabled{opacity:0.5;cursor:not-allowed}
   <div class="card">
     <div class="card-title">📤 TELEVERSEMENT IMAGE</div>
     <p style="font-size:11px;color:#8899aa;margin-bottom:8px">Televersez une image FITS ou raster (PNG, JPG) pour analyse. Stockage dans la base du laboratoire.</p>
-    <input type="file" id="file" accept="image/*,.fits,.fit" onchange="goToSkyViewFolderGlobal()">
-    <input type="file" id="astroFile" accept="image/*,.fits,.fit" style="margin-left:0" onchange="goToSkyViewFolderGlobal()">
+    <input type="file" id="file" accept="image/*,.fits,.fit" aria-label="Téléverser une image astronomique" onchange="goToSkyViewFolderGlobal()">
+    <input type="file" id="astroFile" accept="image/*,.fits,.fit" aria-label="Téléverser un fichier FITS" style="margin-left:0" onchange="goToSkyViewFolderGlobal()">
     <div><button type="button" id="btn-upload">Televerser (API)</button> <button type="button" onclick="uploadAstroImage()">Televerser</button></div>
     <div id="upload-msg" class="err"></div>
     <img id="preview" alt="Preview">

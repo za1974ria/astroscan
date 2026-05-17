@@ -892,7 +892,7 @@ if(ham && sb && ov) {
   function flagImg(code){
     if(!code || code.length!==2) return '';
     var lc = code.toLowerCase();
-    return '<img src="https://flagcdn.com/20x15/'+lc+'.png" '+
+    return '<img src="https://flagcdn.com/20x15/'+lc+'.png" alt="'+lc.toUpperCase()+'" '+
       'width="20" height="15" '+
       'style="border-radius:2px;vertical-align:middle;flex-shrink:0;" '+
       'alt="'+code+'" '+
@@ -944,7 +944,7 @@ if(ham && sb && ov) {
           return '<div class="ap-badge" style="animation-delay:'+delay+';'+
             'width:100%;justify-content:flex-start;">'+
             '<span class="ap-badge-rank">#'+(i+1)+'</span>'+
-            '<img class="ap-badge-flag" src="https://flagcdn.com/20x15/'+code+'.png"'+
+            '<img class="ap-badge-flag" alt="'+code.toUpperCase()+'" src="https://flagcdn.com/20x15/'+code+'.png"'+
             ' alt="'+code.toUpperCase()+'" onerror="this.style.display=\'none\'">'+
             '<span class="ap-badge-name" style="flex:1;">'+name+'</span>'+
             '<div style="width:50px;height:3px;background:rgba(0,212,255,.1);'+

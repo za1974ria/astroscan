@@ -206,7 +206,7 @@ html,body{background:var(--void);color:var(--text);font-family:var(--mono);min-h
   <div class="controls-bar">
     <div class="ctrl-group">
       <span class="ctrl-label">Objet</span>
-      <select id="sel-objet" class="ctrl-select">
+      <select id="sel-objet" class="ctrl-select" aria-label="Sélectionner un objet céleste">
         {% for o in objets %}
         <option value="{{ o.id }}" {% if o.id == 'M42' %}selected{% endif %}>{{ o.id }} — {{ o.nom }}</option>
         {% endfor %}
@@ -214,7 +214,7 @@ html,body{background:var(--void);color:var(--text);font-family:var(--mono);min-h
     </div>
     <div class="ctrl-group">
       <span class="ctrl-label">Longueur d'onde</span>
-      <select id="sel-survey" class="ctrl-select">
+      <select id="sel-survey" class="ctrl-select" aria-label="Sélectionner un relevé astronomique">
         {% for key, val in surveys.items() %}
         <option value="{{ val }}" {% if key == 'optique' %}selected{% endif %}>{{ key|capitalize }} — {{ val }}</option>
         {% endfor %}

@@ -377,7 +377,7 @@
   function flagHtml(code) {
     const c = (code || "XX").toLowerCase();
     if (c === "xx") return "<span>XX</span>";
-    return '<img src="https://flagcdn.com/24x18/' + c + '.png" width="24" height="18" style="border-radius:2px;vertical-align:middle">';
+    return '<img src="https://flagcdn.com/24x18/' + c + '.png" alt="' + c.toUpperCase() + '" width="24" height="18" style="border-radius:2px;vertical-align:middle">';
   }
 
   function connectionLevel(sec) {
