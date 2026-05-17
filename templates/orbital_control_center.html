@@ -153,7 +153,7 @@ html.embed-portail body{padding-top:0!important}
       <div class="weather-grid">
         <div class="weather-card">
         <div class="skeleton"></div>
-        <h3 class="weather-card-title">🌧 RADAR PLUIE — TEMPS RÉEL</h3>
+        <h2 class="weather-card-title">🌧 RADAR PLUIE — TEMPS RÉEL</h2>
           <iframe
             data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&zoom=5&level=surface&overlay=rain&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=36.75&detailLon=3.06&metricWind=km%2Fh&metricTemp=%C2%B0C"
             frameborder="0"
@@ -166,7 +166,7 @@ html.embed-portail body{padding-top:0!important}
         <div class="weather-card">
           <div class="skeleton"></div>
           <p style="font-size:12px;opacity:0.6;">Vue globale optimisée (Europe / Afrique / Atlantique)</p>
-          <h3 class="weather-card-title">🌍 MÉTÉO MONDIALE (PRÉCIPITATIONS)</h3>
+          <h2 class="weather-card-title">🌍 MÉTÉO MONDIALE (PRÉCIPITATIONS)</h2>
             <iframe
               data-src="https://embed.windy.com/embed2.html?lat=20&lon=10&zoom=3&level=surface&overlay=rain&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=20&detailLon=10&metricWind=km%2Fh&metricTemp=%C2%B0C"
               frameborder="0"
@@ -181,7 +181,7 @@ html.embed-portail body{padding-top:0!important}
       <div class="weather-grid">
         <div class="weather-card">
           <div class="skeleton"></div>
-          <h3 class="weather-card-title">💨 VENT (DYNAMIQUE GLOBALE)</h3>
+          <h2 class="weather-card-title">💨 VENT (DYNAMIQUE GLOBALE)</h2>
             <iframe
               data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&zoom=5&level=surface&overlay=wind&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=36.75&detailLon=3.06&metricWind=km%2Fh"
               frameborder="0"
@@ -192,7 +192,7 @@ html.embed-portail body{padding-top:0!important}
 
         <div class="weather-card">
         <div class="skeleton"></div>
-        <h3 class="weather-card-title">🌡 TEMPÉRATURE (THERMIQUE)</h3>
+        <h2 class="weather-card-title">🌡 TEMPÉRATURE (THERMIQUE)</h2>
           <iframe
             data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&zoom=5&level=surface&overlay=temp&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=36.75&detailLon=3.06&metricTemp=%C2%B0C"
             frameborder="0"
@@ -226,7 +226,7 @@ html.embed-portail body{padding-top:0!important}
       <h3>📜 BULLETIN MÉTÉOROLOGIQUE ARCHIVÉ</h3>
       <p id="weather-bulletin-text">Analyse en cours...</p>
       <form method="get" action="/control" id="bulletin-toolbar-form" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <input type="date" name="date" id="bulletin-date" value="{{ bulletin_date|default('', true) }}">
+        <input type="date" name="date" id="bulletin-date" aria-label="Date du bulletin météo" value="{{ bulletin_date|default('', true) }}">
         <button type="submit" class="astro-btn">Générer bulletin</button>
         <button type="submit" class="astro-btn" formaction="/control/bulletin-meteo.pdf" formmethod="get">Exporter PDF</button>
       </form>
