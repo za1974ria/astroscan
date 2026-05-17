@@ -1612,7 +1612,7 @@ function loadDeepSpace(){
       '<div class="card" style="margin-bottom:8px">'+
         '<div class="card-tag">☀️ MÉTÉO SOLAIRE — NOAA SWPC</div>'+
         '<div style="padding:8px">'+solarStatus+'</div>'+
-        '<div style="font-size:10px;color:#4a7a8a;padding:0 8px 8px">Densité: '+solar.density+' p/cm³ | Temp: '+Math.round((solar.temperature||0)/1000)+'K</div>'+
+        '<div style="font-size:10px;color:#7a9ab0;padding:0 8px 8px">Densité: '+solar.density+' p/cm³ | Temp: '+Math.round((solar.temperature||0)/1000)+'K</div>'+
       '</div>'+
       '<div class="card">'+
         '<div class="card-tag">☄️ ASTÉROÏDES — NASA NeoWs ('+asteroids.total_today+' aujourd\'hui)</div>'+
@@ -1882,7 +1882,7 @@ function loadAPOD(){
     launches.slice(0,3).map(function(l){
       return '<div class="card" style="margin-bottom:8px">'+
         '<div class="card-tag">🚀 '+l.name+'</div>'+
-        '<div style="font-size:10px;color:#4a7a8a;padding:4px 8px">📅 '+(l.date||'').substring(0,10)+'</div>'+
+        '<div style="font-size:10px;color:#7a9ab0;padding:4px 8px">📅 '+(l.date||'').substring(0,10)+'</div>'+
         '<div style="font-size:10px;color:#aaa;padding:0 8px 8px">'+l.details+'</div>'+
       '</div>';
     }).join('');
@@ -1908,7 +1908,7 @@ function loadAPOD(){
     articles.slice(0,5).map(function(a){
       return '<div class="card" style="margin-bottom:6px;cursor:pointer" onclick="window.open(\''+(a.url||'').replace(/'/g,"\\'")+'\',\'_blank\')">'+
         '<div class="card-tag">'+(a.title||'').substring(0,60)+'...</div>'+
-        '<div style="font-size:9px;color:#4a7a8a;padding:4px 8px">'+(a.published||'').substring(0,10)+'</div>'+
+        '<div style="font-size:9px;color:#7a9ab0;padding:4px 8px">'+(a.published||'').substring(0,10)+'</div>'+
       '</div>';
     }).join('');
   }).catch(function(){});
@@ -2173,17 +2173,17 @@ function openSondeModal(k){
       var distLight=((d.distance_au||163)*149597870.7/299792.458/3600).toFixed(1);
       html+='<div style="text-align:center;padding:24px;background:rgba(0,255,231,0.03);border:1px solid '+c+'22;border-radius:10px;margin-bottom:16px">';
       html+='<div style="font-size:2rem;margin-bottom:8px">🛸</div><div style="font-family:Orbitron;font-size:28px;color:'+c+'">'+(d.distance_au||0)+' AU</div>';
-      html+='<div style="font-size:10px;color:#4a7a8a">'+Number(d.distance_km||0).toLocaleString()+' km · Signal '+distLight+'h</div>';
+      html+='<div style="font-size:10px;color:#7a9ab0">'+Number(d.distance_km||0).toLocaleString()+' km · Signal '+distLight+'h</div>';
       html+='<div style="margin-top:14px;height:6px;background:rgba(0,255,231,0.08);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,(d.distance_au||163)/200*100)+'%;background:linear-gradient(90deg,'+c+',#00bfff);border-radius:3px"></div></div></div>';
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">';
-      [['VITESSE',(d.speed_kms||17)+' km/s'],['LANCÉE','1977'],['SIGNAL',distLight+'h']].forEach(function(row){ html+='<div style="background:rgba(0,20,40,0.8);border:1px solid '+c+'22;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8px;color:#4a7a8a">'+row[0]+'</div><div style="font-size:11px;color:'+c+'">'+row[1]+'</div></div>'; });
+      [['VITESSE',(d.speed_kms||17)+' km/s'],['LANCÉE','1977'],['SIGNAL',distLight+'h']].forEach(function(row){ html+='<div style="background:rgba(0,20,40,0.8);border:1px solid '+c+'22;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8px;color:#7a9ab0">'+row[0]+'</div><div style="font-size:11px;color:'+c+'">'+row[1]+'</div></div>'; });
       html+='</div>';
     } else if(k==='iss'){
       html+='<div style="text-align:center;font-size:40px;margin-bottom:10px">🛸</div>';
       html+='<div style="text-align:center;font-family:Orbitron,monospace;font-size:11px;color:#39ff14;letter-spacing:3px;margin-bottom:14px">STATION SPATIALE INTERNATIONALE</div>';
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px">';
       [['LAT',(d.lat||0).toFixed(2)+'°'],['LON',(d.lon||0).toFixed(2)+'°'],['ALT',parseFloat(d.altitude_km||408).toFixed(1)+' km'],['VITESSE',parseFloat(d.speed_kms||7.66).toFixed(2)+' km/s'],['ÉQUIPAGE','<span id="iss-crew-count">--</span> 👨‍🚀'],['ORBITE','LEO ~420 km']].forEach(function(r){
-      html+='<div style="background:rgba(57,255,20,0.05);border:1px solid #39ff1433;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8px;color:#4a7a8a;margin-bottom:4px">'+r[0]+'</div><div style="font-size:13px;color:#39ff14">'+r[1]+'</div></div>';
+      html+='<div style="background:rgba(57,255,20,0.05);border:1px solid #39ff1433;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8px;color:#7a9ab0;margin-bottom:4px">'+r[0]+'</div><div style="font-size:13px;color:#39ff14">'+r[1]+'</div></div>';
       });
       html+='</div>';
       html+='<div style="background:rgba(57,255,20,0.05);border:1px solid #39ff1433;border-radius:8px;padding:12px;margin-bottom:12px">';
@@ -2199,11 +2199,11 @@ function openSondeModal(k){
       html+='</div>';
       html+='<div style="text-align:center;margin:16px 0">';
       html+='<a href="https://www.n2yo.com/space-station/" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#39ff14,#00d4ff);color:#000;padding:14px 32px;border-radius:10px;font-family:Orbitron,monospace;font-size:13px;text-decoration:none;font-weight:bold;letter-spacing:2px;box-shadow:0 0 20px #39ff1466">🌍 OUVRIR TRACKER ISS + CAMÉRA EN DIRECT</a><div style="margin-top:10px;color:#7fdbff;font-size:10px;font-family:monospace;opacity:.78;font-style:italic;letter-spacing:.5px">&#9432; Site externe N2YO &mdash; La cam&eacute;ra live ISS d&eacute;pend de la NASA HDEV et peut &ecirc;tre indisponible</div>';
-      html+='<div style="color:#4a7a8a;font-size:9px;margin-top:6px;font-family:monospace">Carte Leaflet + NASA Live + Passages ISS</div>';
+      html+='<div style="color:#7a9ab0;font-size:9px;margin-top:6px;font-family:monospace">Carte Leaflet + NASA Live + Passages ISS</div>';
       html+='</div>';
     } else {
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px">';
-      Object.entries(d).filter(function(e){return !['name','status','crew'].includes(e[0]);}).slice(0,8).forEach(function(e){ html+='<div style="background:rgba(0,20,40,0.8);border:1px solid '+c+'22;border-radius:8px;padding:10px"><div style="font-size:8px;color:#4a7a8a">'+e[0].toUpperCase()+'</div><div style="font-size:11px;color:#fff">'+String(e[1]).substring(0,18)+'</div></div>'; });
+      Object.entries(d).filter(function(e){return !['name','status','crew'].includes(e[0]);}).slice(0,8).forEach(function(e){ html+='<div style="background:rgba(0,20,40,0.8);border:1px solid '+c+'22;border-radius:8px;padding:10px"><div style="font-size:8px;color:#7a9ab0">'+e[0].toUpperCase()+'</div><div style="font-size:11px;color:#fff">'+String(e[1]).substring(0,18)+'</div></div>'; });
       html+='</div>';
     }
     el.innerHTML=html;
@@ -2264,7 +2264,7 @@ function refreshIssCrewList(){
     } else {
       el.style.textAlign='center';
       el.innerHTML='<div style="color:#39ff14;font-size:13px">'+count+' astronautes à bord</div>'
-        +'<div style="color:#4a7a8a;font-size:9px;margin-top:4px;font-family:monospace">Liste détaillée temporairement indisponible — voir <a href="https://www.nasa.gov/international-space-station/space-station-crews/" target="_blank" style="color:#39ff14">nasa.gov</a></div>';
+        +'<div style="color:#7a9ab0;font-size:9px;margin-top:4px;font-family:monospace">Liste détaillée temporairement indisponible — voir <a href="https://www.nasa.gov/international-space-station/space-station-crews/" target="_blank" style="color:#39ff14">nasa.gov</a></div>';
     }
   }).catch(function(e){
     console.warn('[iss-crew-list] fetch failed:',e);
@@ -2278,7 +2278,7 @@ function renderSondesGrid(d,g){
   var html=''; Object.keys(d||{}).forEach(function(k){
     if(k==='generated_at'||!d[k])return; var v=d[k], c=C[k]||'var(--cyan)';
     var rows=''; Object.entries(v).filter(function(e){return!['name','status','crew','targets','img_url'].includes(e[0]);}).slice(0,4).forEach(function(e){
-      rows+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px"><span style="color:#4a7a8a">'+e[0].toUpperCase()+'</span><span style="color:#fff">'+String(e[1]).substring(0,22)+'</span></div>';
+      rows+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px"><span style="color:#7a9ab0">'+e[0].toUpperCase()+'</span><span style="color:#fff">'+String(e[1]).substring(0,22)+'</span></div>';
     });
     html+='<div onclick="openSondeModal(\''+k+'\')" style="cursor:pointer;background:rgba(4,16,32,.95);border:1px solid '+c+'22;border-top:2px solid '+c+';border-radius:8px;padding:14px;transition:all .2s" onmouseover="this.style.transform=\'translateY(-3px)\'" onmouseout="this.style.transform=\'\'">';
     html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="font-family:Orbitron;font-size:11px;color:#fff">'+(L[k]||v.name||k)+'</div><div style="margin-left:auto;font-size:8px;color:'+c+';border:1px solid '+c+'44;padding:2px 8px;border-radius:10px">▶</div></div>'+rows+'</div>';
