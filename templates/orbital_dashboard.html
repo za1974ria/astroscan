@@ -72,7 +72,7 @@ a{text-decoration:none;color:inherit}
 .tb-r2::-webkit-scrollbar{display:none}
 .tb-s{display:flex;flex-direction:column;padding:0 14px;border-right:1px solid rgba(0,234,255,.09);white-space:nowrap;min-width:fit-content}
 .tb-s:last-child{border-right:none}
-.tb-sl{font-size:.56rem;letter-spacing:.09em;color:rgba(0,234,255,.42);text-transform:uppercase;margin-bottom:1px}
+.tb-sl{font-size:.56rem;letter-spacing:.09em;color:rgba(0,234,255,.78);text-transform:uppercase;margin-bottom:1px}
 .tb-sv{font-size:1.2rem;font-weight:700;color:#fff;line-height:1.15}
 .tb-sv.ok{color:var(--green)}
 .tb-sd{font-size:.58rem;line-height:1}
@@ -125,7 +125,7 @@ a{text-decoration:none;color:inherit}
 /* TOP PAYS panel */
 @keyframes fadeInBadge{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 .map-right{min-width:170px;max-width:170px;display:flex;flex-direction:column;gap:3px}
-.pays-head{font-size:.6rem;letter-spacing:.12em;color:rgba(0,234,255,.42);text-transform:uppercase;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid rgba(0,234,255,.08)}
+.pays-head{font-size:.6rem;letter-spacing:.12em;color:rgba(0,234,255,.78);text-transform:uppercase;margin-bottom:5px;padding-bottom:5px;border-bottom:1px solid rgba(0,234,255,.08)}
 .orb-badge{display:flex;align-items:center;gap:5px;padding:4px 7px;background:rgba(0,20,40,.85);border:1px solid rgba(0,212,255,.18);border-radius:5px;position:relative;overflow:hidden;transition:border-color .2s,box-shadow .2s;animation:fadeInBadge .35s ease both;width:100%;box-sizing:border-box}
 .orb-badge::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,212,255,.05) 0%,transparent 55%);pointer-events:none}
 .orb-badge:hover{border-color:rgba(0,212,255,.5);background:rgba(0,30,55,.95);box-shadow:0 3px 10px rgba(0,212,255,.1)}
@@ -204,7 +204,7 @@ a{text-decoration:none;color:inherit}
 .sw-l{font-size:.56rem;letter-spacing:.09em;color:rgba(0,234,255,.45);text-transform:uppercase;margin-bottom:3px}
 .sw-v{font-size:.86rem;font-weight:700;color:var(--white)}
 .sw-sub{font-size:.6rem;color:var(--green);margin-top:2px}
-.aur-hd{display:flex;justify-content:space-between;font-size:.58rem;letter-spacing:.08em;color:rgba(0,234,255,.42);text-transform:uppercase;margin-bottom:5px}
+.aur-hd{display:flex;justify-content:space-between;font-size:.58rem;letter-spacing:.08em;color:rgba(0,234,255,.78);text-transform:uppercase;margin-bottom:5px}
 .aur-bar{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--green) 0%,#aaff00 28%,var(--warn) 64%,var(--red) 100%);position:relative;border:1px solid rgba(0,234,255,.13)}
 .aur-cur{position:absolute;top:-5px;left:14%;width:3px;height:19px;background:#fff;border-radius:2px;box-shadow:0 0 6px #fff}
 .aur-sc{display:flex;justify-content:space-between;font-size:.53rem;color:rgba(0,234,255,.27);margin-top:3px}
@@ -230,13 +230,13 @@ a{text-decoration:none;color:inherit}
 .arch-flow{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
 .arch-n{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-size:.65rem;text-align:center;color:var(--white);line-height:1.5}
 .arch-icon{font-size:.9rem;display:block;margin-bottom:2px}
-.arch-lbl{font-size:.53rem;color:rgba(0,234,255,.42);display:block}
+.arch-lbl{font-size:.53rem;color:rgba(0,234,255,.78);display:block}
 .arch-arr{color:rgba(0,234,255,.27);font-size:1rem;padding:0 3px}
 
 /* Gauge rings */
 .pg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pc{background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center}
-.pl{font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(0,234,255,.42);margin-bottom:6px}
+.pl{font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(0,234,255,.78);margin-bottom:6px}
 .ring{position:relative;width:58px;height:58px;margin:0 auto 5px}
 .ring svg{transform:rotate(-90deg)}
 .rbg{fill:none;stroke:rgba(0,234,255,.07);stroke-width:7}
@@ -246,7 +246,7 @@ a{text-decoration:none;color:inherit}
 .rd{stroke:var(--warn)}
 .rn{stroke:var(--cyan2)}
 .rlbl{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:.72rem;font-weight:700;color:var(--white)}
-.psub{font-size:.58rem;color:rgba(0,234,255,.4)}
+.psub{font-size:.58rem;color:rgba(0,234,255,.78)}
 
 /* About */
 .abt-logo{font-size:1.75rem;font-weight:900;letter-spacing:.1em;text-shadow:var(--glow-sm);color:var(--white);margin-bottom:7px}
@@ -462,7 +462,7 @@ a{text-decoration:none;color:inherit}
               <circle cx="30" cy="30" r="13" fill="none" stroke="#ffcc44" stroke-width="2" opacity=".25"/>
             </svg>
             <div>
-              <div style="font-size:.58rem;letter-spacing:.1em;color:rgba(0,234,255,.42);text-transform:uppercase;margin-bottom:4px">{% if lang == 'en' %}Solar Activity &mdash; Kp Index{% else %}Activit&eacute; Solaire &mdash; Kp Index{% endif %}</div>
+              <div style="font-size:.58rem;letter-spacing:.1em;color:rgba(0,234,255,.78);text-transform:uppercase;margin-bottom:4px">{% if lang == 'en' %}Solar Activity &mdash; Kp Index{% else %}Activit&eacute; Solaire &mdash; Kp Index{% endif %}</div>
               <div class="sw-kp">3</div>
               <div class="sw-calm">&#x2713; {% if lang == 'en' %}Calm{% else %}Calme{% endif %}</div>
             </div>
