@@ -95,3 +95,16 @@ modules/sentinel/apk/
 # MaxMind GeoLite2 binary database (downloaded monthly, not in git)
 data/geoip/*.mmdb
 data/geoip/GeoLite2-*.mmdb
+
+# Sprint Lighthouse audit reports (gros volume JSON, non versionné)
+audit/reports/
+audit/sprint*_backups/
+audit/sprint*_quick_check.sh
+audit/sprint*_quick_check_*/
+audit/sprint*_diagnostics/
+audit/sprint*_patch_templates.py
+audit/sprint*_ui_backups/
+audit/batch_log_*.log
+audit/last_reports_dir.txt
+audit/routes_not_found.txt
+audit/SPRINT*_NGINX_LOG.md
