@@ -259,10 +259,11 @@ a{text-decoration:none;color:inherit}
 .abt-desc { color: #7fc8e0 !important; }
 .abt-meta { color: #5aa8c0 !important; }
 </style>
-<style id="cls-fix">
-.pad, .g6535, .g2 { contain: layout; }
-.g6535 > * { min-height: 60px; contain: layout; }
-.g2 { min-height: 80px; }
+<style id="cls-fix-v2">
+.pad, .g6535 { contain: layout; }
+.g6535 > div { contain: layout; min-height: 80px; }
+.g2 { contain: layout; min-height: 80px; }
+.g6535 > div > .g2 { min-height: 100px; }
 main { contain: layout; }
 </style>
 </head>

@@ -287,8 +287,11 @@ html.embed-portail .shell { grid-template-rows:0 1fr !important; }
 }
 </style>
 <!-- GA4 -->
-<style id="cls-fix">
-main, .content, .grid, .panel { contain: layout; }
+<style id="cls-fix-v2">
+#main-grid, .main-grid { contain: layout; }
+#main-grid .panel, .panel.full, div.panel.full { contain: layout; min-height: 300px; }
+.shell, .content-area { contain: layout; }
+main, .content, .grid { contain: layout; }
 .card, .astro-card, .weather-card { contain: layout; min-height: 100px; }
 </style>
 </head>

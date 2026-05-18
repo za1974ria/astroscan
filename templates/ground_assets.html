@@ -32,6 +32,12 @@
     /* When embedded in the portal iframe, kill the browser default margins. */
     html, body { margin: 0; padding: 0; height: 100%; }
   </style>
+<style id="cls-fix-v2">
+.ga-shell { contain: layout; }
+#ga-focus, aside#ga-focus { contain: layout; min-height: 400px; }
+#ga-network-overview { contain: layout; min-height: 200px; }
+.ga-focus-section { contain: layout; min-height: 80px; }
+</style>
 </head>
 <body class="ga-app notranslate">
 <main role="main" id="main-content">

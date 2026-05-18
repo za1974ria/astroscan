@@ -262,9 +262,12 @@
 <!-- Google Analytics GA4 -->
 <script>
 </script>
-<style id="a11y-final-override-v4">
-section.cards { display: grid !important; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)) !important; gap: 28px !important; }
-section.cards article.card { display: flex !important; }
+<style id="cls-fix-v2">
+section.geo, section.geo .row, .row { contain: layout; min-height: 60px; }
+section.geo { min-height: 200px; }
+.geoTopCountries { min-height: 40px; contain: layout; }
+section.cards { display: grid !important; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)) !important; gap: 28px !important; contain: layout; }
+section.cards article.card { display: flex !important; contain: layout; }
 section.cards article.card > a {
   display: flex !important; flex: 1 !important; flex-direction: column !important;
   min-height: 64px !important; min-width: 64px !important;
