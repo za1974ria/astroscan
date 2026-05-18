@@ -914,23 +914,24 @@ body.embed-mode main {
   <link rel="stylesheet" href="/static/css/design_tokens.css">
   <link rel="stylesheet" href="/static/css/components.css">
   <link rel="stylesheet" href="/static/css/fixes.css">
-<style id="obs-final-fix">
-/* A11y color-contrast: analyse-box texte trop sombre */
-.analyse-box, .tele-layout .analyse-box { background: #020810 !important; }
-.analyse-box .analyse-tag, .analyse-tag { color: #00aaff !important; opacity: 1 !important; background: #020810 !important; }
-.analyse-box .analyse-text, #tp-analyse { color: #d4dde6 !important; opacity: 1 !important; background: #020810 !important; }
-.analyse-box * { background: transparent !important; }
-.analyse-box { background: #020810 !important; }
-
-/* CLS: nav tabs ne doivent pas bouger */
-body.notranslate > nav, body > nav { contain: layout; min-height: 48px; }
-body.notranslate > nav > button.tab, nav button.tab { contain: layout; min-height: 36px; min-width: 100px; }
-body.notranslate > header, header { contain: layout; min-height: 60px; }
-header > div { contain: layout; min-height: 48px; }
-
-/* Speed Index: priorité contenu critique */
-.tele-layout, .panel-scroll, aside.panel { contain: layout style; }
-#panel-telescope, #panel-telescope * { background: transparent !important; }
+<style id="obs-perf-fix">
+/* Speed Index: content-visibility pour différer le rendu des sections hors viewport */
+.tab-content, .panel-content, aside.panel, main > div.content > div { 
+  content-visibility: auto; 
+  contain-intrinsic-size: 600px;
+}
+/* Eviter le reflow des iframes */
+iframe, .iframe-wrap { 
+  content-visibility: auto; 
+  contain-intrinsic-size: 400px;
+}
+/* CLS button.tab */
+nav button.tab, body > nav button.tab { 
+  contain: layout; 
+  min-height: 36px;
+  min-width: 100px;
+}
+nav, body > nav { contain: layout; min-height: 48px; }
 </style>
 </head>
 <body class="notranslate">
