@@ -262,9 +262,15 @@
 <!-- Google Analytics GA4 -->
 <script>
 </script>
-<style id="a11y-final-override-v3">
-section.cards { display: grid !important; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)) !important; gap: 24px !important; }
-section.cards article.card a { display: block !important; min-height: 32px !important; padding: 8px !important; }
+<style id="a11y-final-override-v4">
+section.cards { display: grid !important; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)) !important; gap: 28px !important; }
+section.cards article.card { display: flex !important; }
+section.cards article.card > a {
+  display: flex !important; flex: 1 !important; flex-direction: column !important;
+  min-height: 64px !important; min-width: 64px !important;
+  padding: 16px !important; align-items: center !important; justify-content: center !important;
+  text-align: center !important;
+}
 </style>
 </head>
 <body>

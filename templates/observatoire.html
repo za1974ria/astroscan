@@ -921,6 +921,15 @@ body.embed-mode main {
 .analyse-box button#btn-translate-analyse { color: #00aaff !important; background: #020810 !important; }
 #panel-telescope, #panel-telescope * { background: transparent !important; }
 </style>
+<style id="perf-final-override">
+body.notranslate > nav button.tab, nav button.tab { min-height: 36px !important; contain: layout style; }
+body.notranslate > main, main { contain: layout; min-height: 100vh; }
+aside.panel { contain: layout; }
+header { contain: layout; min-height: 60px; }
+/* Speed up rendering */
+img, iframe, canvas { content-visibility: auto; }
+.tele-layout, .panel-scroll { contain: layout style paint; }
+</style>
 </head>
 <body class="notranslate">
 
