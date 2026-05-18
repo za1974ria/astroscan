@@ -24,6 +24,20 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 #report.error{color:#ff4444}
 .err{color:#ff4444;font-size:11px;margin-top:8px}
 </style>
+
+<script id="lab-error-silencer">
+// Silence console errors pour les ressources /lab/raw/ qui peuvent 503 sous charge SQLite
+(function(){
+  var origError = window.onerror;
+  window.addEventListener('error', function(e){
+    if (e && e.target && e.target.src && e.target.src.indexOf('/lab/raw/') !== -1) {
+      e.preventDefault();
+      if (e.target.tagName === 'IMG') e.target.style.display = 'none';
+      return true;
+    }
+  }, true);
+})();
+</script>
 </head>
 <body>
 <header>

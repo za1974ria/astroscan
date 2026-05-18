@@ -25,11 +25,16 @@
   <style>
     html, body { margin: 0; padding: 0; height: 100%; min-height: 100vh; }
   </style>
-<style id="a11y-final-override-v3">
-.leaflet-marker-icon.ss-obs-marker, .ss-obs-marker {
-  min-width: 28px !important; min-height: 28px !important;
-  width: 28px !important; height: 28px !important;
-  margin-left: -14px !important; margin-top: -14px !important;
+<style id="ss-marker-fix">
+.leaflet-marker-icon.ss-obs-marker {
+  transform: scale(2) translate(0, 0) !important;
+  transform-origin: center !important;
+}
+.ss-obs-marker { 
+  width: 14px !important; height: 14px !important;
+  padding: 14px !important;
+  margin-left: -21px !important; margin-top: -21px !important;
+  box-sizing: content-box !important;
 }
 </style>
 </head>
