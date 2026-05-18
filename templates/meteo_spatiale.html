@@ -95,6 +95,10 @@ header h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.2em; color: var(--or
 .btn-push:disabled { opacity: 0.45; cursor: not-allowed; }
 .err { color: #ff6b6b; font-size: 12px; margin-top: 8px; }
 </style>
+<style id="cls-fix">
+main#main-content > div.wrap, .wrap { min-height: 100vh !important; contain: layout; }
+.wrap > * { contain: layout style; }
+</style>
 </head>
 <body>
 <main role="main" id="main-content">
