@@ -24,6 +24,11 @@ main{padding:24px 28px;max-width:1200px;margin:0 auto;}
 .link-btn:hover{background:rgba(0,255,136,.15);}
 .err{color:var(--red);font-size:10px;}
 </style>
+<style id="cls-fix">
+section, .panel, .card, .dashboard-grid > * { contain: layout; min-height: 80px; }
+.dashboard-grid { contain: layout; }
+main { contain: layout; min-height: 100vh; }
+</style>
 </head>
 <body>
 <header>

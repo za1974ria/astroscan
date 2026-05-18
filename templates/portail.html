@@ -1368,6 +1368,13 @@ hr{
   <link rel="stylesheet" href="/static/css/design_tokens.css">
   <link rel="stylesheet" href="/static/css/components.css">
   <link rel="stylesheet" href="/static/css/fixes.css">
+<style id="cls-fix">
+.frame-wrap, iframe { min-height: 100vh; contain: layout; }
+.sidebar, #sidebar { contain: layout; min-height: 100vh; }
+#sidebar-hubble { contain: layout; min-height: 130px; }
+.content-area { contain: layout; }
+* { will-change: auto; }
+</style>
 </head>
 <body class="notranslate">
 <main role="main" id="main-content">
