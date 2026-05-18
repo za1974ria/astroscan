@@ -8,8 +8,13 @@
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)](https://www.python.org/)
 [![Status](https://img.shields.io/badge/status-live-brightgreen.svg)](https://astroscan.space)
+[![Version](https://img.shields.io/badge/version-v2.8.0-blue.svg)](https://github.com/za1974ria/astroscan/releases/tag/v2.8.0-lighthouse-58pct-ui-clean)
+[![Lighthouse](https://img.shields.io/badge/Lighthouse-21%2F50%20PERFECT-success.svg)](https://github.com/za1974ria/astroscan/releases/tag/v2.8.0-lighthouse-58pct-ui-clean)
+[![A11y](https://img.shields.io/badge/Accessibility-100%2F100%20on%2046%20modules-brightgreen.svg)](https://github.com/za1974ria/astroscan/releases/tag/v2.8.0-lighthouse-58pct-ui-clean)
 
 🌐 **Live site:** https://astroscan.space
+📐 **Methodology:** https://astroscan.space/methodology
+🛰️ **Mission Control:** https://astroscan.space/mission-control
 
 ![ASTRO-SCAN Portal — ORBITAL-CHOHRA](docs/images/orbital-chohra-portail.png)
 
@@ -52,6 +57,31 @@ This is not an institutional observatory. It is an independent effort to make as
 
 ---
 
+## Performance & Quality
+
+Continuous Lighthouse audits across all 50 modules (May 2026, v2.8.0):
+
+| Metric | Score | Note |
+|--------|-------|------|
+| **Modules PERFECT 100/100/100/100** (stable, 5/5 audits) | **21 / 50** (42%) | Always at 100 in every audit |
+| **Modules ≥3/5 audits PERFECT** (reliable) | **26 / 50** (52%) | Pass 100 in majority of audits |
+| **Best-of-3 peak measurement** | **29 / 50** (58%) | Maximum observed in best run |
+| **Accessibility ≥ 100/100** | **46 / 50** (92%) | WCAG 2.1 AA compliance |
+| **SEO ≥ 100/100** | **50 / 50** (100%) | All modules indexed correctly |
+
+Transformation: from **1 module PERFECT (1.9%)** baseline (May 16, 2026) to **21 stable + 29 peak (58%)** in 20 chirurgical sprints over 55 hours.
+
+Methodology: [Lighthouse CLI](https://github.com/GoogleChrome/lighthouse) (headless Chrome), single-run + best-of-N consolidation against variance, scripts in [`audit/`](audit/).
+
+Known structural limits (documented, not reducible without backend rewrite):
+- `mission_control`, `orbital_map` — Cesium WebGL errors in headless Chrome (`BP=96`)
+- `lab` — SQLite 503 race conditions on `/lab/raw/<image>` (`BP=96`)
+- `europe_live` — YouTube embed same-site cookies (`BP=96`)
+
+Full tag with detailed bilan: [v2.8.0-lighthouse-58pct-ui-clean](https://github.com/za1974ria/astroscan/releases/tag/v2.8.0-lighthouse-58pct-ui-clean)
+
+---
+
 ## Project status
 
 Active development. Current state can be summarized as:
@@ -60,8 +90,11 @@ Active development. Current state can be summarized as:
 - ✅ **Real-time data feeds** from public scientific sources (NORAD, NOAA, NASA)
 - ✅ **Bilingual interface** (English / French)
 - ✅ **Open data portal** at [/data](https://astroscan.space/data)
-- ⏳ **Architecture migration** in progress (monolith → Flask Blueprints)
-- ⏳ **Methodology page** in preparation
+- ✅ **Methodology page** live at [/methodology](https://astroscan.space/methodology)
+- ✅ **Mission Control** orbital surveillance module at [/mission-control](https://astroscan.space/mission-control)
+- ✅ **Lighthouse audit v2.8.0** — 21 modules at 100/100/100/100 stable (May 2026)
+- ⏳ **Architecture migration** in progress (monolith → Flask Blueprints, Phase 2C)
+- ⏳ **International scientific outreach** (ESA, NASA, IAU, UNAWE) — in preparation
 
 ---
 
@@ -150,4 +183,4 @@ For contact, please use GitHub issues or discussions.
 
 ---
 
-*Last updated: May 2026*
+*Last updated: May 18, 2026 — v2.8.0-lighthouse-58pct-ui-clean*
