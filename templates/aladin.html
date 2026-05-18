@@ -9,10 +9,14 @@
 <link rel="canonical" href="https://astroscan.space/aladin">
 
 <!-- Aladin Lite v3 CDN officiel ESA/CDS -->
+<link rel="preconnect" href="https://aladin.cds.unistra.fr" crossorigin>
+<link rel="dns-prefetch" href="https://aladin.cds.unistra.fr">
+<link rel="preload" as="style" href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.min.css">
 <link rel="stylesheet"
   href="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.min.css"/>
+<!-- Sprint 3 perf: Aladin.js chargé en defer pour ne pas bloquer le FCP -->
 <script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js"
-  charset="utf-8"></script>
+  charset="utf-8" defer></script>
 
 <style>
 html.embed-portail .top-bar,html.embed-portail .topbar{display:none!important}
@@ -145,6 +149,8 @@ html.embed-portail body{padding-top:0!important}
     #aladin-lite-div { left:0; top:250px; }
     .coords-bar { left:0; }
   }
+
+.credit-block, .credit-block * { color: #9aa9b6 !important; }
 </style>
 <style>
 .fab-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
@@ -152,8 +158,17 @@ html.embed-portail body{padding-top:0!important}
 .fab-btn:hover{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.6);box-shadow:0 0 14px rgba(0,212,255,0.2);}
 @media(max-width:600px){.fab-btn{font-size:0.38rem;padding:6px 10px;}}
 </style>
+<style id="a11y-final-override-v2">
+.credit-block, .credit-block *, .credit-txt, .credit-txt *,
+.controls .credit-block, .controls .credit-block * {
+  color: #e0e7ee !important;
+  opacity: 1 !important;
+}
+</style>
 </head>
 <body>
+<main role="main" id="main-content">
+
 
 <!-- TOP BAR -->
 <div class="top-bar">
@@ -296,13 +311,18 @@ html.embed-portail body{padding-top:0!important}
 </div>
 
 <script>
-// ── Init Aladin Lite ──────────────────────────────────────────
+// ── Init Aladin Lite (Sprint 3: wrappé pour script deferred) ──
 var aladin;
 var messierLayer = null;
 var gridOn       = false;
 var messierOn    = false;
 
-A.init.then(function() {
+function _aladinInit() {
+  if (typeof A === 'undefined' || !A || !A.init) {
+    setTimeout(_aladinInit, 50);
+    return;
+  }
+  A.init.then(function() {
   aladin = A.aladin('#aladin-lite-div', {
     survey:    'CDS/P/DSS2/color',
     target:    'M42',
@@ -343,7 +363,13 @@ A.init.then(function() {
       '<div class="value">AR ' + (obj.ra  !== undefined ? obj.ra.toFixed(4)+'°'  : '—') + '</div>' +
       '<div class="value">DÉC ' + (obj.dec !== undefined ? obj.dec.toFixed(4)+'°' : '—') + '</div>';
   });
-});
+  });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _aladinInit);
+} else {
+  _aladinInit();
+}
 
 // ── Recherche ─────────────────────────────────────────────────
 function searchObject() {
@@ -423,5 +449,6 @@ function toggleGrid() {
   <a class="fab-btn" href="/portail">&#8962; Portail</a>
   <button class="fab-btn" onclick="location.reload()">&#8635; Actualiser</button>
 </div>
+</main>
 </body>
 </html>

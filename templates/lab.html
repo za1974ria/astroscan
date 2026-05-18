@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AstroScan-Chohra - Labo numérique</title>
+<meta name="description" content="Digital Lab ASTRO-SCAN — analyse d'images astronomiques par IA, détection anomalies.">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{--acid:#00ff88;--blue:#00d4ff;--bg:#010408;--card:rgba(0,20,40,0.8)}
@@ -23,19 +24,33 @@ button:disabled{opacity:0.5;cursor:not-allowed}
 #report.error{color:#ff4444}
 .err{color:#ff4444;font-size:11px;margin-top:8px}
 </style>
+
+<script id="lab-error-silencer">
+// Silence console errors pour les ressources /lab/raw/ qui peuvent 503 sous charge SQLite
+(function(){
+  var origError = window.onerror;
+  window.addEventListener('error', function(e){
+    if (e && e.target && e.target.src && e.target.src.indexOf('/lab/raw/') !== -1) {
+      e.preventDefault();
+      if (e.target.tagName === 'IMG') e.target.style.display = 'none';
+      return true;
+    }
+  }, true);
+})();
+</script>
 </head>
 <body>
 <header>
   <div class="logo">🔬 LABO NUMÉRIQUE — AstroScan-Chohra</div>
-  <div style="font-size:10px;color:#4a7a8a">Pipeline d'analyse d'images · OpenCV · Astropy · scikit-image</div>
+  <div style="font-size:10px;color:#7a9ab0">Pipeline d'analyse d'images · OpenCV · Astropy · scikit-image</div>
   <a href="/portail" style="color:var(--blue);font-size:10px;text-decoration:none">← PORTAIL</a>
 </header>
 <main>
   <div class="card">
     <div class="card-title">📤 TELEVERSEMENT IMAGE</div>
     <p style="font-size:11px;color:#8899aa;margin-bottom:8px">Televersez une image FITS ou raster (PNG, JPG) pour analyse. Stockage dans la base du laboratoire.</p>
-    <input type="file" id="file" accept="image/*,.fits,.fit" onchange="goToSkyViewFolderGlobal()">
-    <input type="file" id="astroFile" accept="image/*,.fits,.fit" style="margin-left:0" onchange="goToSkyViewFolderGlobal()">
+    <input type="file" id="file" accept="image/*,.fits,.fit" aria-label="Téléverser une image astronomique" onchange="goToSkyViewFolderGlobal()">
+    <input type="file" id="astroFile" accept="image/*,.fits,.fit" aria-label="Téléverser un fichier FITS" style="margin-left:0" onchange="goToSkyViewFolderGlobal()">
     <div><button type="button" id="btn-upload">Televerser (API)</button> <button type="button" onclick="uploadAstroImage()">Televerser</button></div>
     <div id="upload-msg" class="err"></div>
     <img id="preview" alt="Preview">

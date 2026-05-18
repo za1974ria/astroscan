@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="google" content="notranslate">
   <meta name="robots" content="notranslate">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#05070A">
   <title>{% if lang == 'en' %}Ground Assets Network — ASTRO-SCAN{% else %}Réseau au sol — ASTRO-SCAN{% endif %}</title>
   <meta name="description" content="{% if lang == 'en' %}Live map of ASTRO-SCAN's distributed ground assets: observatories, field missions, stratospheric balloons.{% else %}Carte en direct du réseau au sol d'ASTRO-SCAN : observatoires, missions de terrain, ballons stratosphériques.{% endif %}">
@@ -32,8 +32,16 @@
     /* When embedded in the portal iframe, kill the browser default margins. */
     html, body { margin: 0; padding: 0; height: 100%; }
   </style>
+<style id="cls-fix-v2">
+.ga-shell { contain: layout; }
+#ga-focus, aside#ga-focus { contain: layout; min-height: 400px; }
+#ga-network-overview { contain: layout; min-height: 200px; }
+.ga-focus-section { contain: layout; min-height: 80px; }
+</style>
 </head>
 <body class="ga-app notranslate">
+<main role="main" id="main-content">
+
 
   <!-- ── BOOT SEQUENCE OVERLAY ──────────────────────────────────── -->
   <div class="ga-boot" id="ga-boot" role="status" aria-live="polite">
@@ -184,5 +192,6 @@
   <script src="/static/ground_assets/js/triangulation.js"></script>
   <script src="/static/ground_assets/js/render.js"></script>
   <script src="/static/ground_assets/js/ground_assets.js"></script>
+</main>
 </body>
 </html>

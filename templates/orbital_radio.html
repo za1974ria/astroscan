@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstroScan-Chohra - Orbital Radio</title>
+<meta name="description" content="Orbital Radio — écoute SDR satellites NOAA, ISS, balises spatiales en direct.">
 <style>
 :root {
   --bg: #000a14;
@@ -38,9 +39,21 @@ audio { width: 100%; margin-top: 4px; accent-color: var(--green); }
 audio::-webkit-media-controls-panel { background: #001428; }
 .info-box { max-width: 900px; margin: 24px auto 0; background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.15); border-left: 3px solid var(--cyan); border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 0.68rem; color: var(--text); line-height: 1.6; }
 .info-box strong { color: var(--bright); }
+
+.live-badge { color: #ffffff !important; text-shadow: 0 0 2px rgba(0,0,0,0.5); }
+</style>
+<style id="a11y-final-override-v2">
+.live-badge, span.live-badge {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  font-weight: 800 !important;
+  animation: none !important;
+}
 </style>
 </head>
 <body>
+<main role="main" id="main-content">
+
 <div class="header">
   <h1>🔊 ORBITAL-RADIO — Sons de l'Espace</h1>
   <span class="live-badge">● EN DIRECT</span>
@@ -170,6 +183,6 @@ audio::-webkit-media-controls-panel { background: #001428; }
 <div class="info-box">
   <strong>Sources &amp; technique.</strong> Les flux passent par <code>/api/audio-proxy</code> (même origine que le portail) pour éviter les blocs iframe / liens morts. Fichiers servis depuis les archives publiques du <strong>Radio and Plasma Wave Group, University of Iowa</strong> (Voyager PWS). Les anciennes URLs <code>nasa.gov/wp-content/…/2015</code> et le dépôt Archive.org « NasaSoundCollection » renvoient désormais 404 ou 503. Le canal Voyager interstellaire utilise la piste audio du fichier MP4 Iowa ; plusieurs autres canaux réutilisent volontairement le même extrait MP3 Jupiter (1979) en attendant d’autres masters accessibles.
 </div>
-
+</main>
 </body>
 </html>

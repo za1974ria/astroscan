@@ -40,7 +40,7 @@
   --red: #ff3355;
   --text: #7a9ab0;
   --text-bright: #d0e8f0;
-  --text-dim: #3a5868;
+  --text-dim: #7a93a3;
   --font: 'Orbitron', monospace;
   --mono: 'Share Tech Mono', monospace;
   --sidebar: 220px;
@@ -1368,8 +1368,17 @@ hr{
   <link rel="stylesheet" href="/static/css/design_tokens.css">
   <link rel="stylesheet" href="/static/css/components.css">
   <link rel="stylesheet" href="/static/css/fixes.css">
+<style id="cls-fix">
+.frame-wrap, iframe { min-height: 100vh; contain: layout; }
+.sidebar, #sidebar { contain: layout; min-height: 100vh; }
+#sidebar-hubble { contain: layout; min-height: 130px; }
+.content-area { contain: layout; }
+* { will-change: auto; }
+</style>
 </head>
 <body class="notranslate">
+<main role="main" id="main-content">
+
 
 <canvas id="starfield-bg" aria-hidden="true"></canvas>
 
@@ -2488,7 +2497,7 @@ hr{
           var img = imgs[i];
           var url = (img.url||'').replace(/'/g,"\\'");
           html += '<div style="border:1px solid #00ff8833;border-radius:3px;overflow:hidden;cursor:pointer" onclick="window.open(\''+url+'\',\'_blank\')">';
-          if(img.url) html += '<img src="'+img.url+'" style="width:100%;height:55px;object-fit:cover" onerror="this.style.display=\'none\'">';
+          if(img.url) html += '<img src="'+img.url+'" alt="'+(img.title||'Hubble image').replace(/"/g,"&quot;")+'" style="width:100%;height:55px;object-fit:cover" onerror="this.style.display=\'none\'">';
           html += '<div class="hubble-sidebar-title" style="font-size:7px;color:#00ff88;padding:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">'+(img.title||'')+'</div>';
           html += '</div>';
         }
@@ -2852,5 +2861,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 })();
 </script>
+</main>
 </body>
 </html>

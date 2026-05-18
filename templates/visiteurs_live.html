@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstroScan-Chohra - Carte visiteurs (live)</title>
+<meta name="description" content="Visiteurs live ASTRO-SCAN — statistiques temps réel des sessions actives.">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   :root{
@@ -71,8 +72,16 @@
   *::-webkit-scrollbar-track{background:#0a0a1a}
   *::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#00ffff,#7700ff);border-radius:3px}
 </style>
+<style id="cls-fix">
+aside.side, .side { contain: layout; min-height: 400px; }
+aside.side .body, .side .body { contain: layout; min-height: 350px; }
+aside.side .body .sec, .sec { contain: layout; min-height: 80px; }
+#panel-wrap { contain: layout; }
+</style>
 </head>
 <body>
+<main role="main" id="main-content">
+
 
 <div id="map"></div>
 
@@ -274,5 +283,6 @@ connectStream();
 setTimeout(function(){ try{ map.invalidateSize(); }catch(e){} }, 400);
 window.addEventListener('resize', ()=>{ try{ map.invalidateSize(); }catch(e){} });
 </script>
+</main>
 </body>
 </html>

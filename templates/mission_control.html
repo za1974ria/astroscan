@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
 <meta charset="utf-8">
 <title>AstroScan-Chohra - Contrôle mission</title>
+<meta name="description" content="Mission Control ASTRO-SCAN — sondes Voyager, Mars, JWST, télémétrie deep space.">
 
+<link rel="preconnect" href="https://cesium.com" crossorigin>
+<link rel="dns-prefetch" href="https://cesium.com">
 <script src="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Cesium.js"></script>
 <link href="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
 
@@ -18,6 +21,8 @@ background:black;
 </head>
 
 <body>
+<main role="main" id="main-content">
+
 
 <div id="cesiumContainer"></div>
 
@@ -277,5 +282,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
     });
   } catch(e) {}
 })();
-</script></body>
+</script>
+</main>
+</body>
 </html>

@@ -24,7 +24,7 @@
   --red: #ff3355;
   --text: #7a9ab0;
   --text-bright: #d0e8f0;
-  --text-dim: #3a5868;
+  --text-dim: #7a93a3;
   --font: 'Orbitron', monospace;
   --mono: 'Share Tech Mono', monospace;
   --sidebar-w: 220px;
@@ -296,10 +296,16 @@ html.embed-portail .topbar { grid-column:1 / -1 !important; }
 }
 </style>
 <!-- GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-1WNGPCCZNW');</script>
+<style id="cls-fix">
+.panel, .panel.full { min-height: 320px !important; contain: layout; }
+.main-grid { contain: layout; }
+.topbar-right { min-height: 32px; contain: layout; }
+.solar-bar .ti { min-height: 24px; contain: layout; }
+</style>
 </head>
 <body class="notranslate">
+<main role="main" id="main-content">
+
 
 <!-- Stars -->
 <div id="stars"></div>
@@ -1092,5 +1098,6 @@ function csRefresh(btn) {
 }
 
 </script>
+</main>
 </body>
 </html>

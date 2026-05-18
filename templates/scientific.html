@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AstroScan-Chohra - Mode scientifique</title>
+<meta name="description" content="Mode scientifique — interface technique avancée pour observateurs astronomiques.">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{--acid:#00ff88;--blue:#00d4ff;--bg:#010408;--card:rgba(0,20,40,0.8)}
@@ -15,7 +16,7 @@ header{background:rgba(0,5,15,0.95);border-bottom:1px solid #00ff8833;padding:12
 .card{background:var(--card);border:1px solid #00ff8833;border-radius:8px;padding:16px}
 .card-title{font-family:Orbitron,monospace;font-size:11px;color:var(--blue);letter-spacing:2px;margin-bottom:12px;border-bottom:1px solid #00ff8822;padding-bottom:8px}
 .data-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px}
-.data-key{color:#4a7a8a}
+.data-key{color:#7a9ab0}
 .data-val{color:var(--acid);font-weight:bold}
 .search-box{background:rgba(0,20,40,0.9);border:1px solid #00ff8833;border-radius:8px;padding:16px;margin:24px;margin-bottom:0}
 input{background:rgba(0,0,0,0.5);border:1px solid #00ff8833;color:var(--acid);padding:8px 12px;border-radius:4px;font-family:monospace;width:300px;margin-right:8px}
@@ -24,30 +25,36 @@ button{background:rgba(0,255,136,0.1);border:1px solid var(--acid);color:var(--a
 .obj-card{background:var(--card);border:1px solid #00ff8833;border-radius:8px;padding:12px;margin-bottom:8px;display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;align-items:center}
 .obj-id{font-family:Orbitron,monospace;font-size:14px;color:var(--acid)}
 </style>
+<style id="cls-fix">
+main#main-content > div { min-height: 600px; contain: layout; }
+#results { min-height: 220px; contain: layout; }
+</style>
 </head>
 <body>
+<main role="main" id="main-content">
+
 <header>
   <div class="logo">⚗️ AstroScan-Chohra — MODE SCIENTIFIQUE</div>
-  <div style="font-size:10px;color:#4a7a8a">STATION ORBITAL-CHOHRA | TLEMCEN, ALGÉRIE</div>
+  <div style="font-size:10px;color:#7a9ab0">STATION ORBITAL-CHOHRA | TLEMCEN, ALGÉRIE</div>
   <a href="/portail" style="color:var(--blue);font-size:10px;text-decoration:none">← PORTAIL</a>
 </header>
 
 <div class="grid">
   <div class="card">
     <div class="card-title">🛸 ISS — DONNÉES ORBITALES</div>
-    <div id="iss-sci">⟳ Chargement...</div>
+    <div id="iss-sci">⟳ Chargement…</div>
   </div>
   <div class="card">
     <div class="card-title">🌙 PHASE LUNAIRE</div>
-    <div id="moon-sci">⟳ Chargement...</div>
+    <div id="moon-sci">⟳ Chargement…</div>
   </div>
   <div class="card">
     <div class="card-title">☀️ MÉTÉO SOLAIRE</div>
-    <div id="solar-sci">⟳ Chargement...</div>
+    <div id="solar-sci">⟳ Chargement…</div>
   </div>
   <div class="card">
     <div class="card-title">🌙 CE SOIR — TLEMCEN</div>
-    <div id="tonight-sci">⟳ Chargement...</div>
+    <div id="tonight-sci" style="min-height: 140px;">⟳ Chargement…</div>
   </div>
 </div>
 
@@ -57,7 +64,7 @@ button{background:rgba(0,255,136,0.1);border:1px solid var(--acid);color:var(--a
   <button onclick="searchCatalog()">🔍 RECHERCHER</button>
   <button onclick="searchCatalog('')" style="margin-left:8px">📋 TOUT AFFICHER</button>
 </div>
-<div id="results"></div>
+<div id="results" style="min-height: 220px;"></div>
 
 <div style="margin:24px;background:rgba(0,20,40,0.8);border:1px solid #00ff8833;border-radius:8px;padding:20px">
   <div style="font-family:Orbitron,monospace;font-size:12px;color:#00d4ff;letter-spacing:2px;margin-bottom:16px">🔬 LABORATOIRE D'ANALYSE</div>
@@ -66,17 +73,17 @@ button{background:rgba(0,255,136,0.1);border:1px solid var(--acid);color:var(--a
 
     <div style="background:rgba(0,255,136,0.05);border:1px solid #00ff8833;border-radius:8px;padding:12px">
       <div style="font-size:10px;color:#00ff88;margin-bottom:8px">☄️ ASTÉROÏDES DU JOUR</div>
-      <div id="lab-asteroids">⟳ Chargement...</div>
+      <div id="lab-asteroids">⟳ Chargement…</div>
     </div>
 
     <div style="background:rgba(0,212,255,0.05);border:1px solid #00d4ff33;border-radius:8px;padding:12px">
       <div style="font-size:10px;color:#00d4ff;margin-bottom:8px">🚀 PROCHAINS LANCEMENTS SPACEX</div>
-      <div id="lab-spacex">⟳ Chargement...</div>
+      <div id="lab-spacex">⟳ Chargement…</div>
     </div>
 
     <div style="background:rgba(255,170,0,0.05);border:1px solid #ffaa0033;border-radius:8px;padding:12px">
       <div style="font-size:10px;color:#ffaa00;margin-bottom:8px">📡 API PUBLIQUE v1</div>
-      <div style="font-size:10px;color:#4a7a8a;line-height:1.8">
+      <div style="font-size:10px;color:#7a9ab0;line-height:1.8">
         <div>GET /api/v1/iss</div>
         <div>GET /api/v1/planets</div>
         <div>GET /api/v1/asteroids</div>
@@ -89,7 +96,7 @@ button{background:rgba(0,255,136,0.1);border:1px solid var(--acid);color:var(--a
   </div>
   <div style="margin-top:16px;padding-top:12px;border-top:1px solid #00ff8822;text-align:center">
     <a href="/portail" style="color:#00d4ff;font-size:11px;text-decoration:none">← Retour au portail AstroScan-Chohra</a>
-    <span style="color:#4a7a8a;margin:0 8px">|</span>
+    <span style="color:#7a9ab0;margin:0 8px">|</span>
     <a href="/observatoire" style="color:#00ff88;font-size:11px;text-decoration:none">Observatoire</a>
   </div>
 </div>
@@ -168,13 +175,13 @@ function searchCatalog(q){
       return;
     }
     document.getElementById('results').innerHTML =
-      '<div style="font-family:Orbitron,monospace;font-size:10px;color:#4a7a8a;padding:8px 0">'+results.length+' objet(s) trouvé(s)</div>'+
+      '<div style="font-family:Orbitron,monospace;font-size:10px;color:#7a9ab0;padding:8px 0">'+results.length+' objet(s) trouvé(s)</div>'+
       results.map(function(o){
         return '<div class="obj-card">'+
           '<div class="obj-id">'+o.id+'</div>'+
-          '<div><div style="color:var(--acid);font-size:11px">'+o.nom+'</div><div style="color:#4a7a8a;font-size:9px">'+o.type+'</div></div>'+
-          '<div><div style="font-size:10px">'+o.constellation+'</div><div style="color:#4a7a8a;font-size:9px">Mag: '+o.magnitude+'</div></div>'+
-          '<div><div style="font-size:10px;color:var(--blue)">RA: '+o.ra+'</div><div style="color:#4a7a8a;font-size:9px">DÉC: '+o.dec+'</div></div>'+
+          '<div><div style="color:var(--acid);font-size:11px">'+o.nom+'</div><div style="color:#7a9ab0;font-size:9px">'+o.type+'</div></div>'+
+          '<div><div style="font-size:10px">'+o.constellation+'</div><div style="color:#7a9ab0;font-size:9px">Mag: '+o.magnitude+'</div></div>'+
+          '<div><div style="font-size:10px;color:var(--blue)">RA: '+o.ra+'</div><div style="color:#7a9ab0;font-size:9px">DÉC: '+o.dec+'</div></div>'+
         '</div>';
       }).join('');
   });
@@ -198,7 +205,7 @@ function loadLab(){
     el.innerHTML = d.slice(0,3).map(function(l){
       return '<div style="font-size:10px;padding:3px 0;border-bottom:1px solid rgba(0,212,255,0.1)">'+
         '<span style="color:#00d4ff">'+(l.name||'').substring(0,20)+'</span>'+
-        '<span style="color:#4a7a8a;float:right">'+(l.date||'').substring(0,10)+'</span></div>';
+        '<span style="color:#7a9ab0;float:right">'+(l.date||'').substring(0,10)+'</span></div>';
     }).join('');
   }).catch(function(){ var e=document.getElementById('lab-spacex');if(e)e.textContent='Indisponible'; });
 }
@@ -221,5 +228,7 @@ setInterval(loadSolar, 60000);
     });
   } catch(e) {}
 })();
-</script></body>
+</script>
+</main>
+</body>
 </html>

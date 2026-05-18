@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstroScan-Chohra - Overlord Live · ORBITAL-CHOHRA</title>
+<meta name="description" content="Overlord Live — supervision temps réel de l'écosystème ASTRO-SCAN.">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
 <style id="embed-style">
 /* ─────────────────────────────────────────────────────────
@@ -134,6 +135,8 @@
 }
 
 
+
+.tag.star, span.tag.star { color: #b35a00 !important; }
 </style>
 <script>
 (function(){
@@ -157,7 +160,7 @@
   --purple: #9060ff;
   --text: #7a9ab0;
   --text-hi: #d0e8f5;
-  --text-lo: #2a4858;
+  --text-lo: #6a8898;
   --border: rgba(0,180,255,0.1);
   --border-hi: rgba(0,212,255,0.35);
   --panel: rgba(2,8,14,0.97);
@@ -542,8 +545,17 @@ body::before {
   #panel-right { order:3; }
 }
 </style>
+<style id="cls-fix">
+#report-text { min-height: 500px !important; contain: layout; }
+.analysis-section, .as-body { min-height: 540px; contain: layout; }
+.telem-body, .telem-body-inner { min-height: 300px; contain: layout; }
+.img-section, .img-scan { min-height: 200px; contain: layout; }
+.center-body, .panel-left, .panel-center { contain: layout; }
+</style>
 </head>
 <body>
+<main role="main" id="main-content">
+
 <div id="stars"></div>
 
 <div class="shell">
@@ -778,7 +790,7 @@ body::before {
           <span class="as-model" id="as-model">gemini-2.5-flash</span>
         </div>
         <div class="as-body">
-          <div id="report-text">Chargement du rapport AEGIS...</div>
+          <div id="report-text" style="min-height: 280px;">Chargement du rapport AEGIS...</div>
         </div>
       </div>
 
@@ -1289,7 +1301,7 @@ setInterval(loadSdr, 60000);
 setInterval(loadReport, 120000);
 setInterval(loadTelescopeHub, 60000);
 </script>
-<script src="/static/sondes_aegis.js"></script>
+<script src="/static/sondes_aegis.js" defer></script>
 
 <script>
 (function(){
@@ -1301,5 +1313,7 @@ setInterval(loadTelescopeHub, 60000);
     });
   } catch(e) {}
 })();
-</script></body>
+</script>
+</main>
+</body>
 </html>

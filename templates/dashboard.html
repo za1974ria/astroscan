@@ -14,8 +14,13 @@
 .fab-btn:hover{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.6);box-shadow:0 0 14px rgba(0,212,255,0.2);}
 @media(max-width:600px){.fab-btn{font-size:0.38rem;padding:6px 10px;}}
 </style>
+<style id="a11y-final-override">
+section.cards article.card a { display: block; min-height: 24px; min-width: 24px; padding: 6px; }
+</style>
 </head>
 <body>
+<main role="main" id="main-content">
+
   <h1>{% if lang == 'en' %}HQ Dashboard Module{% else %}Module Dashboard QG{% endif %}</h1>
   <p>{% if lang == 'en' %}System active{% else %}Système actif{% endif %}</p>
 
@@ -33,5 +38,6 @@
   <a class="fab-btn" href="/portail">&#8962; {% if lang == 'en' %}Portal{% else %}Portail{% endif %}</a>
   <button class="fab-btn" onclick="location.reload()">&#8635; {% if lang == 'en' %}Refresh{% else %}Actualiser{% endif %}</button>
 </div>
+</main>
 </body>
 </html>

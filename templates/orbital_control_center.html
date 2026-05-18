@@ -7,12 +7,13 @@
 <script>(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>AstroScan — Météo Center</title>
+<meta name="description" content="Centre de contrôle météo ASTRO-SCAN — bulletin local Tlemcen, prévisions, vents, pression atmosphérique.">
 <link rel="icon" href="/static/favicon.ico?v=2">
 <style>
 html.embed-portail .topbar{display:none!important}
 html.embed-portail .shell{grid-template-rows:0 1fr!important}
 html.embed-portail body{padding-top:0!important}
-:root{--sw:220px;--th:48px;--void:#010408;--border:rgba(0,180,255,.13);--border-bright:rgba(0,212,255,.4);--cyan:#00d4ff;--amber:#ff8c00;--green:#00ff88;--text:#7a9ab0;--text-bright:#d0e8f0;--text-dim:#3a5868;--font:'Orbitron',monospace;--mono:'Share Tech Mono',monospace}
+:root{--sw:220px;--th:48px;--void:#010408;--border:rgba(0,180,255,.13);--border-bright:rgba(0,212,255,.4);--cyan:#00d4ff;--amber:#ff8c00;--green:#00ff88;--text:#7a9ab0;--text-bright:#d0e8f0;--text-dim:#7a93a3;--font:'Orbitron',monospace;--mono:'Share Tech Mono',monospace}
 *,*::before,*::after{box-sizing:border-box}
 .shell{display:grid;grid-template-columns:1fr;grid-template-rows:var(--th) 1fr;min-height:100vh;position:relative;z-index:1}
 .topbar{grid-column:1/-1;grid-row:1;display:flex;align-items:center;justify-content:space-between;height:var(--th);padding:0 20px;background:rgba(1,4,8,.99);border-bottom:1px solid var(--border-bright);position:sticky;top:0;z-index:100}
@@ -64,8 +65,14 @@ html.embed-portail body{padding-top:0!important}
 #control-center{padding:28px !important;min-height:auto !important}
 .header-container{margin:0 -28px 28px !important}
 </style>
+<style id="cls-fix">
+main, .content, .grid, .panel { contain: layout; }
+.card, .astro-card, .weather-card { contain: layout; min-height: 100px; }
+</style>
 </head>
 <body>
+<main role="main" id="main-content">
+
 <div class="shell">
 
 <div class="topbar">
@@ -150,7 +157,7 @@ html.embed-portail body{padding-top:0!important}
       <div class="weather-grid">
         <div class="weather-card">
         <div class="skeleton"></div>
-        <h3 class="weather-card-title">🌧 RADAR PLUIE — TEMPS RÉEL</h3>
+        <h2 class="weather-card-title">🌧 RADAR PLUIE — TEMPS RÉEL</h2>
           <iframe
             data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&zoom=5&level=surface&overlay=rain&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=36.75&detailLon=3.06&metricWind=km%2Fh&metricTemp=%C2%B0C"
             frameborder="0"
@@ -163,7 +170,7 @@ html.embed-portail body{padding-top:0!important}
         <div class="weather-card">
           <div class="skeleton"></div>
           <p style="font-size:12px;opacity:0.6;">Vue globale optimisée (Europe / Afrique / Atlantique)</p>
-          <h3 class="weather-card-title">🌍 MÉTÉO MONDIALE (PRÉCIPITATIONS)</h3>
+          <h2 class="weather-card-title">🌍 MÉTÉO MONDIALE (PRÉCIPITATIONS)</h2>
             <iframe
               data-src="https://embed.windy.com/embed2.html?lat=20&lon=10&zoom=3&level=surface&overlay=rain&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=20&detailLon=10&metricWind=km%2Fh&metricTemp=%C2%B0C"
               frameborder="0"
@@ -178,7 +185,7 @@ html.embed-portail body{padding-top:0!important}
       <div class="weather-grid">
         <div class="weather-card">
           <div class="skeleton"></div>
-          <h3 class="weather-card-title">💨 VENT (DYNAMIQUE GLOBALE)</h3>
+          <h2 class="weather-card-title">💨 VENT (DYNAMIQUE GLOBALE)</h2>
             <iframe
               data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&zoom=5&level=surface&overlay=wind&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=36.75&detailLon=3.06&metricWind=km%2Fh"
               frameborder="0"
@@ -189,7 +196,7 @@ html.embed-portail body{padding-top:0!important}
 
         <div class="weather-card">
         <div class="skeleton"></div>
-        <h3 class="weather-card-title">🌡 TEMPÉRATURE (THERMIQUE)</h3>
+        <h2 class="weather-card-title">🌡 TEMPÉRATURE (THERMIQUE)</h2>
           <iframe
             data-src="https://embed.windy.com/embed2.html?lat=36.75&lon=3.06&zoom=5&level=surface&overlay=temp&menu=&message=&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=36.75&detailLon=3.06&metricTemp=%C2%B0C"
             frameborder="0"
@@ -223,7 +230,7 @@ html.embed-portail body{padding-top:0!important}
       <h3>📜 BULLETIN MÉTÉOROLOGIQUE ARCHIVÉ</h3>
       <p id="weather-bulletin-text">Analyse en cours...</p>
       <form method="get" action="/control" id="bulletin-toolbar-form" style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <input type="date" name="date" id="bulletin-date" value="{{ bulletin_date|default('', true) }}">
+        <input type="date" name="date" id="bulletin-date" aria-label="Date du bulletin météo" value="{{ bulletin_date|default('', true) }}">
         <button type="submit" class="astro-btn">Générer bulletin</button>
         <button type="submit" class="astro-btn" formaction="/control/bulletin-meteo.pdf" formmethod="get">Exporter PDF</button>
       </form>
@@ -1123,5 +1130,6 @@ font-size: 10px;
   tick(); setInterval(tick, 1000);
 })();
 </script>
+</main>
 </body>
 </html>

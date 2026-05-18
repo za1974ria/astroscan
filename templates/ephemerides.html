@@ -33,7 +33,7 @@
   --gold: #ffd166;
   --text: #7a9ab0;
   --text-bright: #d0e8f0;
-  --text-dim: #3a5868;
+  --text-dim: #7a93a3;
   --font: 'Orbitron', monospace;
   --mono: 'Share Tech Mono', monospace;
   --sidebar-w: 220px;
@@ -287,10 +287,17 @@ html.embed-portail .shell { grid-template-rows:0 1fr !important; }
 }
 </style>
 <!-- GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-1WNGPCCZNW');</script>
+<style id="cls-fix-v2">
+#main-grid, .main-grid { contain: layout; }
+#main-grid .panel, .panel.full, div.panel.full { contain: layout; min-height: 300px; }
+.shell, .content-area { contain: layout; }
+main, .content, .grid { contain: layout; }
+.card, .astro-card, .weather-card { contain: layout; min-height: 100px; }
+</style>
 </head>
 <body>
+<main role="main" id="main-content">
+
 
 <div id="stars"></div>
 <script>
@@ -664,6 +671,6 @@ if(ham && sb && ov) {
   ov.addEventListener('click', () => { sb.classList.remove('open'); ov.classList.remove('active'); });
 }
 </script>
-
+</main>
 </body>
 </html>

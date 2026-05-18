@@ -17,12 +17,12 @@ def robots_txt():
         "Disallow: /api/\n"
         "Disallow: /admin\n"
         "Disallow: /static/\n"
-        "Disallow: /analytics\n"
-        "Disallow: /overlord_live\n"
-        "Disallow: /visiteurs-live\n"
-        "Disallow: /dashboard\n"
+        # Sprint 2 (2026-05-16) : /analytics, /overlord_live, /visiteurs-live,
+        # /dashboard rendues crawlables — pages publiques de l'observatoire.
         "Disallow: /observatory/status\n"
-        "Disallow: /lab/\n"
+        "Disallow: /lab/upload\n"
+        "Disallow: /lab/analyze\n"
+        "Disallow: /lab/raw/\n"
         "Disallow: /demo\n"
         "Disallow: /health\n"
         "Disallow: /ready\n"

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstroScan-Chohra - Télémétrie sondes spatiales</title>
+<meta name="description" content="Télémétrie sondes profondes — Voyager 1&2, James Webb, New Horizons en direct.">
 <style>
 :root {
   --bg: #040914;
@@ -131,9 +132,24 @@ body::before{
 *::-webkit-scrollbar{width:6px}
 *::-webkit-scrollbar-track{background:#0a0a1a}
 *::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#00ffff,#7700ff);border-radius:3px}
+
+.badge-live, .card-live, #v1-badge, #v2-badge, #webb-badge { color: #ffffff !important; }
+</style>
+<style id="a11y-final-override-v3">
+.badge-live, .card-live, #v1-badge, #v2-badge, #webb-badge,
+.badge-live *, .card-live *, span.card-live {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  font-weight: 800 !important;
+  animation: none !important;
+  background: #c41030 !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6) !important;
+}
 </style>
 </head>
 <body>
+<main role="main" id="main-content">
+
 
 <div class="header">
   <div>
@@ -478,5 +494,6 @@ window.addEventListener('resize', () => {
   drawChart('chart-nh', history.nh, '#00ff88');
 });
 </script>
+</main>
 </body>
 </html>

@@ -6,6 +6,7 @@
 <meta name="robots" content="notranslate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstroScan-Chohra - Archive stellaire · ORBITAL-CHOHRA</title>
+<meta name="description" content="Galerie astronomique — meilleures images du ciel capturées par ASTRO-SCAN.">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style id="embed-style"></style>
 <script>
@@ -20,7 +21,7 @@
 :root {
   --void:#010408; --cyan:#00d4ff; --green:#00ff88; --amber:#ff8c00; --red:#ff2244;
   --emerald:#00dc96; --blue:#4090ff; --purple:#9060ff;
-  --text:#7a9ab0; --hi:#d0e8f5; --lo:#2a4858;
+  --text:#7a9ab0; --hi:#d0e8f5; --lo:#6a8898;
   --border:rgba(0,180,255,0.1); --borderhi:rgba(0,212,255,0.35);
   --panel:rgba(2,8,16,0.97);
   --F:'Orbitron',monospace; --M:'Share Tech Mono',monospace; --R:'Rajdhani',sans-serif;
@@ -101,8 +102,15 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 
 .translating{color:var(--lo);font-style:italic}
 </style>
+<style id="cls-fix-v2">
+#page-wrap, #card-grid { contain: layout; }
+#card-grid .card, .card { contain: layout; min-height: 280px; }
+.card-analyse { contain: layout; min-height: 60px; }
+</style>
 </head>
 <body class="notranslate">
+<main role="main" id="main-content">
+
 <div id="stars"></div>
 <div class="top-bar">
   <div class="tb-brand">◈ {% if lang == 'en' %}Stellar Archive{% else %}Archive Stellaire{% endif %} · ORBITAL-CHOHRA</div>
@@ -524,5 +532,7 @@ window.GALERIE_CLASSIFICATION = {{ classification_stats|tojson }};
     });
   } catch(e) {}
 })();
-</script></body>
+</script>
+</main>
+</body>
 </html>

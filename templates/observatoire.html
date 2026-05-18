@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="google" content="notranslate">
 <meta name="robots" content="notranslate">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 {% if lang == 'en' %}
 <title>Observatory — ORBITAL-CHOHRA | Live Space Station</title>
 <meta name="description" content="Live space observatory: NASA APOD, ISS tracker, Hubble/JWST stellar archives, Tlemcen ephemerides. Real-time astronomical data from Algeria.">
@@ -61,7 +61,7 @@ header{position:relative;z-index:10;border-bottom:1px solid rgba(0,212,255,.15);
 .logo{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;background:linear-gradient(135deg,#00d4ff,#00aaff,#aa44ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:glow 3s ease-in-out infinite;}
 .logo-sub{font-size:9px;color:#8899aa;margin-top:2px;}
 #clock{font-family:'Orbitron',monospace;font-size:18px;color:var(--cyan);text-align:right;}
-#clock-utc{font-size:9px;color:#556677;text-align:right;}
+#clock-utc{font-size:9px;color:#8a9bac;text-align:right;}
 nav{position:relative;z-index:10;display:flex;gap:2px;padding:8px 28px;background:rgba(2,8,16,.93);border-bottom:1px solid rgba(0,212,255,.08);flex-wrap:wrap;}
 .tab{background:transparent;border:1px solid rgba(0,212,255,.1);color:#667788;padding:6px 13px;cursor:pointer;font-family:inherit;font-size:10px;letter-spacing:2px;transition:.2s;}
 .tab:hover,.tab.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.05);}
@@ -221,7 +221,7 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
 @media (max-width:640px){header{flex-wrap:wrap;} .header-btns{margin-bottom:8px;} .header-btns .refresh-btn,.header-btns .disconnect-btn,.header-btns .back-to-portal-btn{min-width:100px;padding:12px 16px;font-size:12px;} .visits-counter.nav-visits{padding:5px 10px;}.visits-val{font-size:12px;}}
 /* Barre synchro /status — même source PC & mobile (pas de localStorage) */
 .asc-sync-strip{display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;padding:10px 20px;background:rgba(2,12,24,.96);border-bottom:1px solid rgba(0,212,255,.12);font-family:'Share Tech Mono',monospace;font-size:11px;z-index:9;position:relative;}
-.asc-sync-label{color:#556677;letter-spacing:3px;font-size:9px;}
+.asc-sync-label{color:#8a9bac;letter-spacing:3px;font-size:9px;}
 .asc-sync-badge{padding:6px 14px;border-radius:4px;font-weight:700;letter-spacing:2px;font-size:11px;min-height:44px;display:inline-flex;align-items:center;touch-action:manipulation;}
 .asc-sync-live{background:rgba(0,212,255,.15);color:#00d4ff;border:1px solid rgba(0,212,255,.35);}
 .asc-sync-demo{background:rgba(255,170,0,.12);color:#ffaa00;border:1px solid rgba(255,170,0,.3);}
@@ -258,6 +258,9 @@ body.embed-mode main {
   margin-left: 0 !important;
   width: 100% !important;
 }
+
+#panel-telescope, #panel-telescope * { background: transparent !important; }
+#panel-telescope div[style*='Orbitron'] { color: #00aaff !important; text-shadow: 0 0 6px #020810; }
 </style>
 <style id="mob">
 /* ===== OBSERVATOIRE — MOBILE FULL PARITY ===== */
@@ -632,7 +635,7 @@ body.embed-mode main {
   border-top: 1px solid rgba(0, 212, 255, 0.1);
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
-  color: #556677;
+  color: #8a9bac;
   letter-spacing: 0.1em;
   text-align: center;
 }
@@ -791,7 +794,7 @@ body.embed-mode main {
   border-top: 1px solid rgba(0, 212, 255, 0.1);
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
-  color: #556677;
+  color: #8a9bac;
   letter-spacing: 0.1em;
   text-align: center;
 }
@@ -895,7 +898,7 @@ body.embed-mode main {
   border-top: 1px solid rgba(0, 212, 255, 0.1);
   font-family: 'Share Tech Mono', monospace;
   font-size: 9px;
-  color: #556677;
+  color: #8a9bac;
   letter-spacing: 0.12em;
   text-align: center;
 }
@@ -906,16 +909,30 @@ body.embed-mode main {
 }
 </style>
 <!-- Google Analytics GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-1WNGPCCZNW');
 </script>
   <link rel="stylesheet" href="/static/css/design_tokens.css">
   <link rel="stylesheet" href="/static/css/components.css">
   <link rel="stylesheet" href="/static/css/fixes.css">
+<style id="obs-perf-fix">
+/* Speed Index: content-visibility pour différer le rendu des sections hors viewport */
+.tab-content, .panel-content, aside.panel, main > div.content > div { 
+  content-visibility: auto; 
+  contain-intrinsic-size: 600px;
+}
+/* Eviter le reflow des iframes */
+iframe, .iframe-wrap { 
+  content-visibility: auto; 
+  contain-intrinsic-size: 400px;
+}
+/* CLS button.tab */
+nav button.tab, body > nav button.tab { 
+  contain: layout; 
+  min-height: 36px;
+  min-width: 100px;
+}
+nav, body > nav { contain: layout; min-height: 48px; }
+</style>
 </head>
 <body class="notranslate">
 
@@ -960,7 +977,7 @@ body.embed-mode main {
       <a href="?lang={{ 'fr' if lang == 'en' else 'en' }}" class="refresh-btn" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;font-weight:700">{{ 'FR' if lang == 'en' else 'EN' }}</a>
     </div>
     <div>
-      <div style="font-size:8px;color:#556677;letter-spacing:2px;text-align:right">{% if lang == 'en' %}LOCAL TIME{% else %}TEMPS LOCAL{% endif %}</div>
+      <div style="font-size:8px;color:#8a9bac;letter-spacing:2px;text-align:right">{% if lang == 'en' %}LOCAL TIME{% else %}TEMPS LOCAL{% endif %}</div>
       <div id="clock">--:--:--</div>
       <div id="clock-utc">UTC --:--:--</div>
     </div>
@@ -980,7 +997,7 @@ body.embed-mode main {
     <span id="priority-object"></span><span id="priority-score"></span>
     <span id="response-time"></span>
   </div>
-  <span class="asc-view-mini" style="margin-left:14px;font-size:9px;color:#556677;letter-spacing:1px;white-space:nowrap;flex-wrap:wrap;display:inline-flex;align-items:center;gap:6px;max-width:100%;" title="{% if lang == 'en' %}View sync{% else %}Synchro vue{% endif %}">
+  <span class="asc-view-mini" style="margin-left:14px;font-size:9px;color:#8a9bac;letter-spacing:1px;white-space:nowrap;flex-wrap:wrap;display:inline-flex;align-items:center;gap:6px;max-width:100%;" title="{% if lang == 'en' %}View sync{% else %}Synchro vue{% endif %}">
     {% if lang == 'en' %}VIEW{% else %}VUE{% endif %} <span id="asc-view-sync-role" data-role="master">—</span> · <span id="asc-view-sync-session">—</span> · <span id="asc-view-sync-ws" data-state="open"><span style="color:#00ff9c; font-weight:bold;">ONLINE</span></span>
     <button type="button" id="asc-view-takeover" title="{% if lang == 'en' %}Take control (master inactive){% else %}Prendre le contrôle (master inactif){% endif %}" onclick="if(window.AstroScanViewSync)AstroScanViewSync.requestMaster();">{% if lang == 'en' %}Take control{% else %}Prendre le contrôle{% endif %}</button>
   </span>
@@ -1175,11 +1192,11 @@ body.embed-mode main {
     <div>
       <div style="font-family:Orbitron,monospace;font-size:0.9rem;color:#00d4ff;letter-spacing:2px">ZAKARIA CHOHRA</div>
       <div style="font-size:0.75rem;color:#00d4ff;letter-spacing:3px;margin:4px 0">{% if lang == 'en' %}DIRECTOR{% else %}DIRECTEUR{% endif %} — ORBITAL-CHOHRA</div>
-      <div style="font-size:0.7rem;color:#556677">📍 Tlemcen, {% if lang == 'en' %}Algeria{% else %}Algérie{% endif %} · 34.87°N · {% if lang == 'en' %}Station{% else %}Station{% endif %} 5.78.153.17</div>
-      <div style="font-size:0.7rem;color:#556677;margin-top:2px">🔭 {% if lang == 'en' %}Space observatory{% else %}Observatoire spatial{% endif %} · AEGIS {% if lang == 'en' %}AI{% else %}IA{% endif %} · PWA Android</div>
+      <div style="font-size:0.7rem;color:#8a9bac">📍 Tlemcen, {% if lang == 'en' %}Algeria{% else %}Algérie{% endif %} · 34.87°N · {% if lang == 'en' %}Station{% else %}Station{% endif %} 5.78.153.17</div>
+      <div style="font-size:0.7rem;color:#8a9bac;margin-top:2px">🔭 {% if lang == 'en' %}Space observatory{% else %}Observatoire spatial{% endif %} · AEGIS {% if lang == 'en' %}AI{% else %}IA{% endif %} · PWA Android</div>
     </div>
     <div style="margin-left:auto;text-align:right">
-      <div style="font-size:0.65rem;color:#445566;letter-spacing:2px">{% if lang == 'en' %}STATUS{% else %}STATUT{% endif %}</div>
+      <div style="font-size:0.65rem;color:#8896a6;letter-spacing:2px">{% if lang == 'en' %}STATUS{% else %}STATUT{% endif %}</div>
       <div style="color:#00d4ff;font-size:0.8rem;margin-top:4px">● {% if lang == 'en' %}ONLINE{% else %}EN LIGNE{% endif %}</div>
     </div>
   </div>
@@ -1269,14 +1286,14 @@ body.embed-mode main {
     <div class="card-tag" style="color:var(--cyan)">🛸 PASSAGES ISS — PRÉVISIONS TLEMCEN</div>
     <div style="display:flex;align-items:center;gap:10px;padding:6px 14px 0">
       <span style="font-size:10px;color:#7a8fa3">34.87°N · 1.32°E · Skyfield/SGP4</span>
-      <span style="margin-left:auto;font-size:9px;color:#334455" id="iss-passes-updated"></span>
+      <span style="margin-left:auto;font-size:9px;color:#7a8a9a" id="iss-passes-updated"></span>
     </div>
     <!-- Next pass countdown -->
     <div id="iss-next-pass-countdown" style="padding:10px 14px 4px;display:none">
       <div style="background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2);border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:12px">
         <div style="font-size:22px">⏱</div>
         <div>
-          <div style="font-size:9px;color:#556677;letter-spacing:2px;margin-bottom:2px">PROCHAIN PASSAGE</div>
+          <div style="font-size:9px;color:#8a9bac;letter-spacing:2px;margin-bottom:2px">PROCHAIN PASSAGE</div>
           <div id="iss-countdown-val" style="font-size:16px;color:#00d4ff;font-weight:bold;font-family:monospace">--</div>
           <div id="iss-countdown-meta" style="font-size:9px;color:#7a8fa3;margin-top:2px"></div>
         </div>
@@ -1284,7 +1301,7 @@ body.embed-mode main {
     </div>
     <!-- Passes table -->
     <div id="passages-iss-container" style="padding:8px 14px 16px;min-height:80px;overflow-x:auto" aria-live="polite">
-      <div style="color:#334455;font-size:10px;padding:20px;text-align:center">Chargement des passages ISS...</div>
+      <div style="color:#7a8a9a;font-size:10px;padding:20px;text-align:center">Chargement des passages ISS...</div>
     </div>
   </div>
   <div class="section-title">🗺️ TRAJECTOIRE ISS — TEMPS RÉEL</div>
@@ -1327,7 +1344,7 @@ text-decoration:none;font-weight:bold;letter-spacing:2px">
   <div class="section-title">📡 SONDES SPATIALES & DEEP SPACE NETWORK</div>
   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;">
     <button type="button" class="refresh-btn" onclick="if(typeof loadSondesData==='function')loadSondesData();" style="width:auto;">🔄 Actualiser Sondes & DSN</button>
-    <span id="dsn-update" style="font-size:9px;color:#556677;letter-spacing:2px;"></span>
+    <span id="dsn-update" style="font-size:9px;color:#8a9bac;letter-spacing:2px;"></span>
   </div>
   <div class="card" style="margin-bottom:14px">
     <div class="card-tag" style="color:var(--cyan)">🛸 VOYAGER · NEW HORIZONS · TÉLÉMÉTRIE NASA/JPL</div>
@@ -1351,7 +1368,7 @@ text-decoration:none;font-weight:bold;letter-spacing:2px">
     </div>
     <div id="live-objects-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1px;background:rgba(0,170,255,.04);margin-bottom:18px"></div>
   </div>
-  <div style="font-size:9px;letter-spacing:3px;color:#445566;margin-bottom:12px">CATALOGUE DE RÉFÉRENCE</div>
+  <div style="font-size:9px;letter-spacing:3px;color:#8896a6;margin-bottom:12px">CATALOGUE DE RÉFÉRENCE</div>
   <div class="grid-dso" id="dso-grid"></div>
 </div>
 
@@ -1427,7 +1444,7 @@ text-decoration:none;font-weight:bold;letter-spacing:2px">
   <div class="card" style="margin-bottom:14px">
     <div class="card-tag" style="color:var(--cyan)">🔭 NASA APOD ET WEBB — DERNIÈRES IMAGES</div>
     <div id="deep-hubble" class="grid2" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;min-height:100px;">
-      <div style="color:#556677;font-size:11px;padding:20px;">Chargement...</div>
+      <div style="color:#8a9bac;font-size:11px;padding:20px;">Chargement...</div>
     </div>
   </div>
   <div class="card" style="margin-bottom:14px">
@@ -1447,12 +1464,12 @@ text-decoration:none;font-weight:bold;letter-spacing:2px">
   <div class="section-title" style="border-left:3px solid #c084fc;padding-left:10px">🔭 JAMES WEBB — IMAGES LIVE</div>
   <div style="font-size:10px;color:#9a80cc;margin-bottom:14px;letter-spacing:1px">NASA/ESA/CSA · Observatoire Spatial James Webb · Infrarouge</div>
   <div id="jwst-panel-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;min-height:200px">
-    <div style="color:#556677;font-size:11px;padding:30px;text-align:center;grid-column:1/-1">
+    <div style="color:#8a9bac;font-size:11px;padding:30px;text-align:center;grid-column:1/-1">
       <div style="font-size:24px;margin-bottom:10px">🔭</div>
       Chargement des images JWST...
     </div>
   </div>
-  <div id="jwst-panel-status" style="margin-top:10px;font-size:9px;color:#556677;text-align:right"></div>
+  <div id="jwst-panel-status" style="margin-top:10px;font-size:9px;color:#8a9bac;text-align:right"></div>
 </div>
 
 <!-- Modal JWST -->
@@ -1461,7 +1478,7 @@ text-decoration:none;font-weight:bold;letter-spacing:2px">
     <img id="jwst-modal-img" src="" alt="" style="max-width:90vw;max-height:80vh;object-fit:contain;border:1px solid #c084fc22;border-radius:4px">
     <div id="jwst-modal-title" style="color:#c084fc;font-size:12px;margin-top:8px;text-align:center;letter-spacing:1px"></div>
     <div id="jwst-modal-desc" style="color:#aabbcc;font-size:10px;margin-top:6px;max-width:700px;line-height:1.6;text-align:center"></div>
-    <div id="jwst-modal-credits" style="color:#556677;font-size:9px;margin-top:4px;text-align:center"></div>
+    <div id="jwst-modal-credits" style="color:#8a9bac;font-size:9px;margin-top:4px;text-align:center"></div>
     <button onclick="document.getElementById('jwst-modal').style.display='none'" style="position:absolute;top:-10px;right:-10px;background:#c084fc;border:none;color:#000;width:24px;height:24px;border-radius:50%;cursor:pointer;font-weight:bold;font-size:14px">×</button>
   </div>
 </div>
@@ -1617,7 +1634,7 @@ function loadDeepSpace(){
       '<div class="card" style="margin-bottom:8px">'+
         '<div class="card-tag">☀️ MÉTÉO SOLAIRE — NOAA SWPC</div>'+
         '<div style="padding:8px">'+solarStatus+'</div>'+
-        '<div style="font-size:10px;color:#4a7a8a;padding:0 8px 8px">Densité: '+solar.density+' p/cm³ | Temp: '+Math.round((solar.temperature||0)/1000)+'K</div>'+
+        '<div style="font-size:10px;color:#7a9ab0;padding:0 8px 8px">Densité: '+solar.density+' p/cm³ | Temp: '+Math.round((solar.temperature||0)/1000)+'K</div>'+
       '</div>'+
       '<div class="card">'+
         '<div class="card-tag">☄️ ASTÉROÏDES — NASA NeoWs ('+asteroids.total_today+' aujourd\'hui)</div>'+
@@ -1675,7 +1692,7 @@ function loadJWSTPanel() {
   if (!grid) return;
   fetch('/api/jwst/images').then(function(r){ return r.json(); }).then(function(imgs) {
     if (!Array.isArray(imgs) || !imgs.length) {
-      grid.innerHTML = '<div style="color:#556677;font-size:11px;padding:30px;text-align:center;grid-column:1/-1">Aucune image JWST disponible</div>';
+      grid.innerHTML = '<div style="color:#8a9bac;font-size:11px;padding:30px;text-align:center;grid-column:1/-1">Aucune image JWST disponible</div>';
       return;
     }
     grid.innerHTML = '';
@@ -1694,14 +1711,14 @@ function loadJWSTPanel() {
         + '<img src="' + url + '" alt="' + title.replace(/"/g,'') + '" loading="lazy" '
         + 'style="width:100%;height:180px;object-fit:cover;transition:transform 0.3s" '
         + 'onmouseenter="this.style.transform=\'scale(1.04)\'" onmouseleave="this.style.transform=\'scale(1)\'" '
-        + 'onerror="this.parentElement.innerHTML=\'<div style=\\\"color:#556677;font-size:10px;padding:20px;text-align:center\\\">Image non disponible</div>\'">'
+        + 'onerror="this.parentElement.innerHTML=\'<div style=\\\"color:#8a9bac;font-size:10px;padding:20px;text-align:center\\\">Image non disponible</div>\'">'
         + '</div>';
       var body = '<div style="padding:10px">'
         + '<div style="color:#c084fc;font-size:10px;font-weight:bold;letter-spacing:0.5px;margin-bottom:4px">' + title + '</div>'
-        + (date ? '<div style="color:#556677;font-size:9px;margin-bottom:6px">' + date + '</div>' : '')
+        + (date ? '<div style="color:#8a9bac;font-size:9px;margin-bottom:6px">' + date + '</div>' : '')
         + (desc ? '<div style="color:#8899aa;font-size:9px;line-height:1.5;margin-bottom:6px">' + desc.substring(0,120) + (desc.length>120?'…':'') + '</div>' : '')
         + '<div style="display:flex;align-items:center;gap:6px;margin-top:4px">'
-        + '<span style="font-size:8px;color:#556677">' + credits + '</span>'
+        + '<span style="font-size:8px;color:#8a9bac">' + credits + '</span>'
         + (desc ? '<span style="font-size:8px;color:#9a80cc;margin-left:auto">🧠 Claude AI</span>' : '')
         + '</div>'
         + '</div>';
@@ -1730,7 +1747,7 @@ function loadHubble(){
     var c=document.getElementById('deep-hubble');if(!c)return;
     var list=Array.isArray(d)?d:(d.images||d.items||[]);if(!list.length&&d.title)list=[d];
     list=list.slice(0,3);
-    if(!list.length){ c.innerHTML='<div style="color:#556677;font-size:11px;padding:20px">Aucune image Hubble disponible</div>'; return; }
+    if(!list.length){ c.innerHTML='<div style="color:#8a9bac;font-size:11px;padding:20px">Aucune image Hubble disponible</div>'; return; }
     c.innerHTML=list.map(function(o){
       var title=(o.title||o.name||'Hubble').slice(0,40);
       var url=o.url||(o.image&&o.image.url)||(o.files&&o.files[0]&&o.files[0].file_url)||'';
@@ -1833,7 +1850,7 @@ function renderObs(obs,cid){
     const ok=txt.length>20&&!txt.includes('Echec');
     const ts=(o.timestamp||'').slice(11,19);
     const src=(o.source||'EN DIRECT').replace('Source: ','');
-    d.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:9px;color:var(--blue)">#${o.id} — ${src}</span><span style="font-size:9px;color:#556677">${ts}</span></div><div class="analyse-text" style="font-size:11px;color:${ok?'#aabbcc':'#556677'};margin-bottom:8px;line-height:1.5">${ok?txt.slice(0,130)+'...':'[En attente analyse Gemini]'}</div><span class="badge ${o.anomalie?'badge-alert':'badge-ok'}">${o.anomalie?'⚠ ANOMALIE':'✓ NORMAL'}</span>`;
+    d.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:9px;color:var(--blue)">#${o.id} — ${src}</span><span style="font-size:9px;color:#8a9bac">${ts}</span></div><div class="analyse-text" style="font-size:11px;color:${ok?'#aabbcc':'#8a9bac'};margin-bottom:8px;line-height:1.5">${ok?txt.slice(0,130)+'...':'[En attente analyse Gemini]'}</div><span class="badge ${o.anomalie?'badge-alert':'badge-ok'}">${o.anomalie?'⚠ ANOMALIE':'✓ NORMAL'}</span>`;
     c.appendChild(d);
   });
 }
@@ -1887,7 +1904,7 @@ function loadAPOD(){
     launches.slice(0,3).map(function(l){
       return '<div class="card" style="margin-bottom:8px">'+
         '<div class="card-tag">🚀 '+l.name+'</div>'+
-        '<div style="font-size:10px;color:#4a7a8a;padding:4px 8px">📅 '+(l.date||'').substring(0,10)+'</div>'+
+        '<div style="font-size:10px;color:#7a9ab0;padding:4px 8px">📅 '+(l.date||'').substring(0,10)+'</div>'+
         '<div style="font-size:10px;color:#aaa;padding:0 8px 8px">'+l.details+'</div>'+
       '</div>';
     }).join('');
@@ -1913,7 +1930,7 @@ function loadAPOD(){
     articles.slice(0,5).map(function(a){
       return '<div class="card" style="margin-bottom:6px;cursor:pointer" onclick="window.open(\''+(a.url||'').replace(/'/g,"\\'")+'\',\'_blank\')">'+
         '<div class="card-tag">'+(a.title||'').substring(0,60)+'...</div>'+
-        '<div style="font-size:9px;color:#4a7a8a;padding:4px 8px">'+(a.published||'').substring(0,10)+'</div>'+
+        '<div style="font-size:9px;color:#7a9ab0;padding:4px 8px">'+(a.published||'').substring(0,10)+'</div>'+
       '</div>';
     }).join('');
   }).catch(function(){});
@@ -2051,11 +2068,11 @@ function loadISSPasses() {
   var countdownVal = document.getElementById('iss-countdown-val');
   var countdownMeta = document.getElementById('iss-countdown-meta');
   if (!container) return;
-  container.innerHTML = '<div style="color:#334455;font-size:10px;padding:16px;text-align:center">Calcul en cours (SGP4)...</div>';
+  container.innerHTML = '<div style="color:#7a8a9a;font-size:10px;padding:16px;text-align:center">Calcul en cours (SGP4)...</div>';
 
   fetch('/api/iss/passes').then(function(r){ return r.json(); }).then(function(passes) {
     if (!Array.isArray(passes) || !passes.length) {
-      container.innerHTML = '<div style="color:#334455;font-size:10px;padding:16px;text-align:center">Aucun passage calculé</div>';
+      container.innerHTML = '<div style="color:#7a8a9a;font-size:10px;padding:16px;text-align:center">Aucun passage calculé</div>';
       return;
     }
     if (updEl) updEl.textContent = 'Mis à jour ' + new Date().toLocaleTimeString('fr-FR');
@@ -2079,10 +2096,10 @@ function loadISSPasses() {
     }
 
     // Table
-    var visColor = {'excellent':'#00d4ff','good':'#ffa500','fair':'#556677'};
+    var visColor = {'excellent':'#00d4ff','good':'#ffa500','fair':'#8a9bac'};
     var visLabel = {'excellent':'EXCELLENT','good':'BON','fair':'FAIBLE'};
     var html = '<table style="width:100%;border-collapse:collapse;font-size:10px">'
-      + '<thead><tr style="color:#334455;font-size:9px;letter-spacing:1px;border-bottom:1px solid #1a2535">'
+      + '<thead><tr style="color:#7a8a9a;font-size:9px;letter-spacing:1px;border-bottom:1px solid #1a2535">'
       + '<th style="text-align:left;padding:4px 6px">DATE / HEURE UTC</th>'
       + '<th style="text-align:center;padding:4px 6px">DURÉE</th>'
       + '<th style="text-align:center;padding:4px 6px">ÉLÉV. MAX</th>'
@@ -2096,13 +2113,13 @@ function loadISSPasses() {
       var leftBorder = p.visibility === 'excellent' ? 'border-left:2px solid #00d4ff;' : 'border-left:2px solid #1a2535;';
       var dateStr = dt.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'});
       var timeStr = dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-      var vc = visColor[p.visibility] || '#556677';
+      var vc = visColor[p.visibility] || '#8a9bac';
       var vl = visLabel[p.visibility] || p.visibility;
       html += '<tr style="background:' + bgRow + ';' + leftBorder + 'border-bottom:1px solid #0d1520">'
         + '<td style="padding:7px 6px;color:#aabbcc">' + (i===0?'<b>':'' )+ dateStr + ' <span style="color:#00d4ff">' + timeStr + '</span>' + (i===0?'</b>':'') + '</td>'
         + '<td style="text-align:center;padding:7px 6px;color:#7a8fa3">' + p.duration_min + ' min</td>'
         + '<td style="text-align:center;padding:7px 6px;color:' + vc + ';font-weight:bold">' + p.max_elevation_deg + '°</td>'
-        + '<td style="text-align:center;padding:7px 6px;color:#556677">' + p.direction_start + '→' + p.direction_end + '</td>'
+        + '<td style="text-align:center;padding:7px 6px;color:#8a9bac">' + p.direction_start + '→' + p.direction_end + '</td>'
         + '<td style="text-align:center;padding:7px 6px"><span style="color:' + vc + ';font-size:9px;letter-spacing:1px">' + vl + '</span></td>'
         + '</tr>';
     });
@@ -2158,7 +2175,7 @@ async function loadRadio(){
     const stList=document.getElementById('sdr-stations-list');
     stList.innerHTML=(stations.stations||[]).map(s=>`<div class="info-cell"><div class="info-key">${s.flag||''} ${s.name}</div><div class="info-val">${s.country} — ${s.freq}</div></div>`).join('')||'--';
     const capList=document.getElementById('sdr-captures-list');
-    capList.innerHTML=(captures.captures||[]).map(c=>`<div class="obs-card normal"><div style="font-size:9px;color:var(--blue)">#${c.id}</div><div style="font-size:11px;margin-top:4px">${(c.title||'').slice(0,40)}</div><div style="font-size:9px;color:#556677;margin-top:4px">${(c.timestamp||'').slice(0,19)}</div></div>`).join('')||'<div style="padding:20px;color:#8899aa">Aucune capture récente.</div>';
+    capList.innerHTML=(captures.captures||[]).map(c=>`<div class="obs-card normal"><div style="font-size:9px;color:var(--blue)">#${c.id}</div><div style="font-size:11px;margin-top:4px">${(c.title||'').slice(0,40)}</div><div style="font-size:9px;color:#8a9bac;margin-top:4px">${(c.timestamp||'').slice(0,19)}</div></div>`).join('')||'<div style="padding:20px;color:#8899aa">Aucune capture récente.</div>';
     if(!window._sdrCountdownInterval) window._sdrCountdownInterval=setInterval(updateSdrCountdown,1000);
   }catch(e){ console.error(e); document.getElementById('sdr-passes-list').textContent='Erreur chargement.'; }
 }
@@ -2178,17 +2195,17 @@ function openSondeModal(k){
       var distLight=((d.distance_au||163)*149597870.7/299792.458/3600).toFixed(1);
       html+='<div style="text-align:center;padding:24px;background:rgba(0,255,231,0.03);border:1px solid '+c+'22;border-radius:10px;margin-bottom:16px">';
       html+='<div style="font-size:2rem;margin-bottom:8px">🛸</div><div style="font-family:Orbitron;font-size:28px;color:'+c+'">'+(d.distance_au||0)+' AU</div>';
-      html+='<div style="font-size:10px;color:#4a7a8a">'+Number(d.distance_km||0).toLocaleString()+' km · Signal '+distLight+'h</div>';
+      html+='<div style="font-size:10px;color:#7a9ab0">'+Number(d.distance_km||0).toLocaleString()+' km · Signal '+distLight+'h</div>';
       html+='<div style="margin-top:14px;height:6px;background:rgba(0,255,231,0.08);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,(d.distance_au||163)/200*100)+'%;background:linear-gradient(90deg,'+c+',#00bfff);border-radius:3px"></div></div></div>';
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">';
-      [['VITESSE',(d.speed_kms||17)+' km/s'],['LANCÉE','1977'],['SIGNAL',distLight+'h']].forEach(function(row){ html+='<div style="background:rgba(0,20,40,0.8);border:1px solid '+c+'22;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8px;color:#4a7a8a">'+row[0]+'</div><div style="font-size:11px;color:'+c+'">'+row[1]+'</div></div>'; });
+      [['VITESSE',(d.speed_kms||17)+' km/s'],['LANCÉE','1977'],['SIGNAL',distLight+'h']].forEach(function(row){ html+='<div style="background:rgba(0,20,40,0.8);border:1px solid '+c+'22;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8px;color:#7a9ab0">'+row[0]+'</div><div style="font-size:11px;color:'+c+'">'+row[1]+'</div></div>'; });
       html+='</div>';
     } else if(k==='iss'){
       html+='<div style="text-align:center;font-size:40px;margin-bottom:10px">🛸</div>';
       html+='<div style="text-align:center;font-family:Orbitron,monospace;font-size:11px;color:#39ff14;letter-spacing:3px;margin-bottom:14px">STATION SPATIALE INTERNATIONALE</div>';
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:14px">';
       [['LAT',(d.lat||0).toFixed(2)+'°'],['LON',(d.lon||0).toFixed(2)+'°'],['ALT',parseFloat(d.altitude_km||408).toFixed(1)+' km'],['VITESSE',parseFloat(d.speed_kms||7.66).toFixed(2)+' km/s'],['ÉQUIPAGE','<span id="iss-crew-count">--</span> 👨‍🚀'],['ORBITE','LEO ~420 km']].forEach(function(r){
-      html+='<div style="background:rgba(57,255,20,0.05);border:1px solid #39ff1433;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8px;color:#4a7a8a;margin-bottom:4px">'+r[0]+'</div><div style="font-size:13px;color:#39ff14">'+r[1]+'</div></div>';
+      html+='<div style="background:rgba(57,255,20,0.05);border:1px solid #39ff1433;border-radius:8px;padding:10px;text-align:center"><div style="font-size:8px;color:#7a9ab0;margin-bottom:4px">'+r[0]+'</div><div style="font-size:13px;color:#39ff14">'+r[1]+'</div></div>';
       });
       html+='</div>';
       html+='<div style="background:rgba(57,255,20,0.05);border:1px solid #39ff1433;border-radius:8px;padding:12px;margin-bottom:12px">';
@@ -2204,11 +2221,11 @@ function openSondeModal(k){
       html+='</div>';
       html+='<div style="text-align:center;margin:16px 0">';
       html+='<a href="https://www.n2yo.com/space-station/" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#39ff14,#00d4ff);color:#000;padding:14px 32px;border-radius:10px;font-family:Orbitron,monospace;font-size:13px;text-decoration:none;font-weight:bold;letter-spacing:2px;box-shadow:0 0 20px #39ff1466">🌍 OUVRIR TRACKER ISS + CAMÉRA EN DIRECT</a><div style="margin-top:10px;color:#7fdbff;font-size:10px;font-family:monospace;opacity:.78;font-style:italic;letter-spacing:.5px">&#9432; Site externe N2YO &mdash; La cam&eacute;ra live ISS d&eacute;pend de la NASA HDEV et peut &ecirc;tre indisponible</div>';
-      html+='<div style="color:#4a7a8a;font-size:9px;margin-top:6px;font-family:monospace">Carte Leaflet + NASA Live + Passages ISS</div>';
+      html+='<div style="color:#7a9ab0;font-size:9px;margin-top:6px;font-family:monospace">Carte Leaflet + NASA Live + Passages ISS</div>';
       html+='</div>';
     } else {
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px">';
-      Object.entries(d).filter(function(e){return !['name','status','crew'].includes(e[0]);}).slice(0,8).forEach(function(e){ html+='<div style="background:rgba(0,20,40,0.8);border:1px solid '+c+'22;border-radius:8px;padding:10px"><div style="font-size:8px;color:#4a7a8a">'+e[0].toUpperCase()+'</div><div style="font-size:11px;color:#fff">'+String(e[1]).substring(0,18)+'</div></div>'; });
+      Object.entries(d).filter(function(e){return !['name','status','crew'].includes(e[0]);}).slice(0,8).forEach(function(e){ html+='<div style="background:rgba(0,20,40,0.8);border:1px solid '+c+'22;border-radius:8px;padding:10px"><div style="font-size:8px;color:#7a9ab0">'+e[0].toUpperCase()+'</div><div style="font-size:11px;color:#fff">'+String(e[1]).substring(0,18)+'</div></div>'; });
       html+='</div>';
     }
     el.innerHTML=html;
@@ -2269,7 +2286,7 @@ function refreshIssCrewList(){
     } else {
       el.style.textAlign='center';
       el.innerHTML='<div style="color:#39ff14;font-size:13px">'+count+' astronautes à bord</div>'
-        +'<div style="color:#4a7a8a;font-size:9px;margin-top:4px;font-family:monospace">Liste détaillée temporairement indisponible — voir <a href="https://www.nasa.gov/international-space-station/space-station-crews/" target="_blank" style="color:#39ff14">nasa.gov</a></div>';
+        +'<div style="color:#7a9ab0;font-size:9px;margin-top:4px;font-family:monospace">Liste détaillée temporairement indisponible — voir <a href="https://www.nasa.gov/international-space-station/space-station-crews/" target="_blank" style="color:#39ff14">nasa.gov</a></div>';
     }
   }).catch(function(e){
     console.warn('[iss-crew-list] fetch failed:',e);
@@ -2283,12 +2300,12 @@ function renderSondesGrid(d,g){
   var html=''; Object.keys(d||{}).forEach(function(k){
     if(k==='generated_at'||!d[k])return; var v=d[k], c=C[k]||'var(--cyan)';
     var rows=''; Object.entries(v).filter(function(e){return!['name','status','crew','targets','img_url'].includes(e[0]);}).slice(0,4).forEach(function(e){
-      rows+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px"><span style="color:#4a7a8a">'+e[0].toUpperCase()+'</span><span style="color:#fff">'+String(e[1]).substring(0,22)+'</span></div>';
+      rows+='<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px"><span style="color:#7a9ab0">'+e[0].toUpperCase()+'</span><span style="color:#fff">'+String(e[1]).substring(0,22)+'</span></div>';
     });
     html+='<div onclick="openSondeModal(\''+k+'\')" style="cursor:pointer;background:rgba(4,16,32,.95);border:1px solid '+c+'22;border-top:2px solid '+c+';border-radius:8px;padding:14px;transition:all .2s" onmouseover="this.style.transform=\'translateY(-3px)\'" onmouseout="this.style.transform=\'\'">';
     html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><div style="font-family:Orbitron;font-size:11px;color:#fff">'+(L[k]||v.name||k)+'</div><div style="margin-left:auto;font-size:8px;color:'+c+';border:1px solid '+c+'44;padding:2px 8px;border-radius:10px">▶</div></div>'+rows+'</div>';
   });
-  g.innerHTML=html||'<div style="color:#556677;font-size:11px;padding:20px">Aucune donnée. Cliquez Actualiser.</div>';
+  g.innerHTML=html||'<div style="color:#8a9bac;font-size:11px;padding:20px">Aucune donnée. Cliquez Actualiser.</div>';
 }
 async function loadSondesData(){
   var g=document.getElementById('sondes-grid'); if(!g)return;
@@ -2380,11 +2397,11 @@ DSO.forEach(o=>{
       `<span style="font-family:Orbitron,monospace;font-size:12px;color:#e0e8ff">${moon.phase||'—'}</span>` +
       `<span style="font-size:10px;color:#8899aa">Illumination&nbsp;<span style="color:var(--blue);font-weight:700">${moon.illumination_pct??'?'}%</span></span>` +
       `<span style="font-size:10px;color:#8899aa">Cycle&nbsp;<span style="color:#e0e8ff">${moon.cycle_jour??'?'}&nbsp;j</span></span>` +
-      `<span style="margin-left:auto;font-size:8px;color:#334455">${d.source||''}</span>`;
+      `<span style="margin-left:auto;font-size:8px;color:#7a8a9a">${d.source||''}</span>`;
     const objets = d.objets || [];
     const grid = document.getElementById('live-objects-grid');
     if (!objets.length) {
-      grid.innerHTML = '<div style="padding:14px;color:#556677;font-size:11px;grid-column:1/-1">Aucun objet &gt; 15° visible en ce moment depuis Tlemcen</div>';
+      grid.innerHTML = '<div style="padding:14px;color:#8a9bac;font-size:11px;grid-column:1/-1">Aucun objet &gt; 15° visible en ce moment depuis Tlemcen</div>';
       return;
     }
     grid.innerHTML = objets.map(o =>
@@ -2397,7 +2414,7 @@ DSO.forEach(o=>{
     ).join('');
   } catch(e) {
     const el = document.getElementById('moon-banner');
-    if (el) el.innerHTML = '<span style="font-size:10px;color:#445566">Données temps réel indisponibles</span>';
+    if (el) el.innerHTML = '<span style="font-size:10px;color:#8896a6">Données temps réel indisponibles</span>';
   }
 })();
 
@@ -2610,7 +2627,7 @@ function loadEphemerides(){
             ? planetes.map(p=>row(p.name, p.alt+'° alt · '+dirAz(p.az)+' ('+p.az+'°)')).join('')
             : '<div style="color:#667788;font-size:11px">Aucune planète visible actuellement</div>'
         ) +
-        '<div style="font-size:9px;color:#445566;margin-top:8px;letter-spacing:2px">Mise à jour : '+d.date+' · '+d.timezone+'</div>';
+        '<div style="font-size:9px;color:#8896a6;margin-top:8px;letter-spacing:2px">Mise à jour : '+d.date+' · '+d.timezone+'</div>';
       _ephLoaded = false; // allow refresh on next tab switch
     })
     .catch(()=>{ c.innerHTML='<div style="color:#ff5555;font-size:11px">Erreur réseau</div>'; _ephLoaded=false; });
@@ -2678,7 +2695,7 @@ function loadEphemerides(){
       <div class="card-tag">VUE NASA SKYVIEW</div>
       <div class="tele-screen" style="height:280px;background:#000;">
         <img id="sv-img" src="" alt="SkyView" style="width:100%;height:100%;object-fit:contain;display:none;">
-        <div id="sv-placeholder" style="padding:40px;text-align:center;color:#556677;font-size:12px;">Choisis une cible et clique CAPTURER</div>
+        <div id="sv-placeholder" style="padding:40px;text-align:center;color:#8a9bac;font-size:12px;">Choisis une cible et clique CAPTURER</div>
       </div>
       <div id="sv-meta" class="tele-stat" style="margin-top:10px;display:none;">
         <div class="tele-stat-key">Cible · Survey · Taille</div>
@@ -2767,10 +2784,10 @@ function loadEphemerides(){
   };
 })();
 </script>
-<script src="/static/sondes_aegis.js"></script>
-<script src="/static/js/astroscan_status_sync.js"></script>
-<script src="/static/js/astroscan_status_ui.js"></script>
-<script src="/static/js/astroscan_view_sync.js"></script>
+<script src="/static/sondes_aegis.js" defer></script>
+<script src="/static/js/astroscan_status_sync.js" defer></script>
+<script src="/static/js/astroscan_status_ui.js" defer></script>
+<script src="/static/js/astroscan_view_sync.js" defer></script>
 <script>
 (function(){
   if(window.AstroScanViewSync) AstroScanViewSync.start({});
@@ -2833,8 +2850,8 @@ function loadEphemerides(){
 </script>
 
 <!-- AEGIS Chat Widget -->
-<script src="/static/js/astro_notifications.js"></script>
-<script src="/static/js/aegis_chat_widget.js"></script>
+<script src="/static/js/astro_notifications.js" defer></script>
+<script src="/static/js/aegis_chat_widget.js" defer></script>
 
 <script>
 /* PASS UI O-F FIX 3 (2026-05-07) — Cosmic Live Dashboard refresh.

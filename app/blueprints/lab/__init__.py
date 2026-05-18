@@ -199,6 +199,7 @@ def lab_analyze():
 
 
 @bp.route("/lab/dashboard")
+@bp.route("/api/lab/dashboard")
 def lab_dashboard():
     """Dashboard: number_of_images, latest_images, sources (from metadata)."""
     from station_web import SPACE_IMAGE_DB, METADATA_DB

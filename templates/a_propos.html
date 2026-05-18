@@ -37,7 +37,7 @@
   --gold: #ffd166;
   --text: #7a9ab0;
   --text-bright: #d0e8f0;
-  --text-dim: #3a5868;
+  --text-dim: #7a93a3;
   --font: 'Orbitron', monospace;
   --mono: 'Share Tech Mono', monospace;
   --sidebar-w: 220px;
@@ -314,13 +314,13 @@ html.embed-portail .topbar { grid-column:1/-1 !important; }
 }
 </style>
 <!-- GA4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-1WNGPCCZNW"></script>
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-1WNGPCCZNW');</script>
   <link rel="stylesheet" href="/static/css/design_tokens.css">
   <link rel="stylesheet" href="/static/css/components.css">
   <link rel="stylesheet" href="/static/css/fixes.css">
 </head>
 <body>
+<main role="main" id="main-content">
+
 
 <div id="stars"></div>
 <script>
@@ -466,7 +466,8 @@ html.embed-portail .topbar { grid-column:1/-1 !important; }
                         border-radius:6px;overflow:hidden;
                         border:1px solid rgba(0,212,255,.15);
                         background:rgba(0,5,15,.9);">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/The_earth_at_night.jpg/1280px-The_earth_at_night.jpg"
+                        <!-- Source: Wikimedia Commons - The earth at night.jpg (NASA), license CC BY-SA -->
+                        <img src="/static/img/external/earth_at_night_wikipedia.jpg"
                           style="position:absolute;top:0;left:0;width:100%;height:100%;
                           object-fit:cover;opacity:.6;" alt="carte nuit"/>
                         <div style="position:absolute;inset:0;
@@ -891,7 +892,7 @@ if(ham && sb && ov) {
   function flagImg(code){
     if(!code || code.length!==2) return '';
     var lc = code.toLowerCase();
-    return '<img src="https://flagcdn.com/20x15/'+lc+'.png" '+
+    return '<img src="https://flagcdn.com/20x15/'+lc+'.png" alt="'+lc.toUpperCase()+'" '+
       'width="20" height="15" '+
       'style="border-radius:2px;vertical-align:middle;flex-shrink:0;" '+
       'alt="'+code+'" '+
@@ -943,7 +944,7 @@ if(ham && sb && ov) {
           return '<div class="ap-badge" style="animation-delay:'+delay+';'+
             'width:100%;justify-content:flex-start;">'+
             '<span class="ap-badge-rank">#'+(i+1)+'</span>'+
-            '<img class="ap-badge-flag" src="https://flagcdn.com/20x15/'+code+'.png"'+
+            '<img class="ap-badge-flag" alt="'+code.toUpperCase()+'" src="https://flagcdn.com/20x15/'+code+'.png"'+
             ' alt="'+code.toUpperCase()+'" onerror="this.style.display=\'none\'">'+
             '<span class="ap-badge-name" style="flex:1;">'+name+'</span>'+
             '<div style="width:50px;height:3px;background:rgba(0,212,255,.1);'+
@@ -1018,6 +1019,6 @@ if(ham && sb && ov) {
   window.addEventListener('resize', ()=>{ resize(); initStars(); });
 })();
 </script>
-
+</main>
 </body>
 </html>

@@ -2,7 +2,7 @@
 <html lang="{{ lang or 'fr' }}" data-lang="{{ lang or 'fr' }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#02060A">
   <title>{% if lang == 'en' %}FLIGHT RADAR — ATC TOWER{% else %}FLIGHT RADAR — TOUR DE CONTRÔLE{% endif %}</title>
   <meta name="description" content="{% if lang == 'en' %}Live aircraft tracking via OpenSky Network ADS-B feed. ATC-grade tower control panel.{% else %}Suivi avions en direct via le réseau OpenSky ADS-B. Panneau tour de contrôle ATC.{% endif %}">
@@ -25,8 +25,17 @@
   <style>
     html, body { margin: 0; padding: 0; height: 100%; min-height: 100vh; }
   </style>
+<style id="a11y-final-override-v3">
+.fr-filters { display: flex !important; gap: 12px !important; flex-wrap: wrap !important; }
+button.fr-fchip, .fr-fchip {
+  min-height: 32px !important; min-width: 44px !important; height: auto !important;
+  padding: 8px 14px !important; margin: 2px !important;
+}
+</style>
 </head>
 <body class="fr-app">
+<main role="main" id="main-content">
+
 
 <style>
 .btn-portail-back {
@@ -160,5 +169,6 @@
   <script src="/static/flight_radar/js/atc_render.js?v=20260505c" defer></script>
   <script src="/static/flight_radar/js/airport_render.js?v=20260505c" defer></script>
   <script src="/static/flight_radar/js/flight_radar.js?v=20260505c" defer></script>
+</main>
 </body>
 </html>
