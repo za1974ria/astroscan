@@ -626,12 +626,12 @@ a{text-decoration:none;color:inherit}
     var c=color==='green'?'#00ff88':'#00eaff';
     return L.divIcon({
       className:'',
-      html:'<div style="position:relative;width:24px;height:24px">'
+      html:'<div role="img" aria-label="Marker satellite" style="position:relative;width:28px;height:28px">'
         +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;background:'+c+';border-radius:50%;box-shadow:0 0 8px '+c+'"></div>'
         +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:22px;height:22px;border:2px solid '+c+';border-radius:50%;animation:pring 2.2s ease-out infinite"></div>'
         +'</div>',
-      iconSize:[24,24],
-      iconAnchor:[12,12]
+      iconSize:[28,28],
+      iconAnchor:[14,14]
     });
   }
 
