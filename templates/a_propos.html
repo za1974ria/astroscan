@@ -317,6 +317,11 @@ html.embed-portail .topbar { grid-column:1/-1 !important; }
   <link rel="stylesheet" href="/static/css/design_tokens.css">
   <link rel="stylesheet" href="/static/css/components.css">
   <link rel="stylesheet" href="/static/css/fixes.css">
+<style id="cls-fix-v3-propos">
+.shell, .content-area, .main-grid { contain: layout; }
+#panel-stats, div#panel-stats { contain: layout; min-height: 280px !important; }
+.main-grid > * { contain: layout; }
+</style>
 </head>
 <body>
 <main role="main" id="main-content">

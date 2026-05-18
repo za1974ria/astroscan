@@ -266,6 +266,13 @@ a{text-decoration:none;color:inherit}
 .g6535 > div > .g2 { min-height: 100px; }
 main { contain: layout; }
 </style>
+<style id="cls-fix-v3-g2">
+.pad, .g6535 { contain: layout; }
+.g6535 > div { contain: layout; min-height: 100px !important; }
+.g6535 > div > .g2, .g2 { contain: layout; min-height: 120px !important; }
+.g6535 > div > * { min-height: 60px; }
+main { contain: layout; }
+</style>
 </head>
 <body>
 <main role="main" id="main-content">

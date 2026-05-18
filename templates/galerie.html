@@ -107,6 +107,12 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 #card-grid .card, .card { contain: layout; min-height: 280px; }
 .card-analyse { contain: layout; min-height: 60px; }
 </style>
+<style id="cls-fix-v3-galerie">
+#page-wrap, #card-grid { contain: layout; }
+#card-grid .card, .card { contain: layout; min-height: 320px !important; }
+.card-analyse { contain: layout; min-height: 100px !important; }
+.card .card-analyse { min-height: 100px !important; }
+</style>
 </head>
 <body class="notranslate">
 <main role="main" id="main-content">

@@ -318,6 +318,17 @@ section.cards article.card.actions a button {
   text-align: center !important;
 }
 </style>
+<style id="cls-fix-v3-geo">
+#geoVisitors, section.geo #geoVisitors { 
+  contain: layout style; 
+  min-height: 220px !important;
+  display: block !important;
+}
+section.geo { contain: layout; min-height: 280px; }
+section.geo .row, section.geo .geo-grid { contain: layout; min-height: 40px; }
+.geoTopCountries, #geoTopCountries { contain: layout; min-height: 80px; }
+.geoVisitorsList, #geoVisitorsList { contain: layout; min-height: 120px; }
+</style>
 </head>
 <body>
 <main role="main" id="main-content">
