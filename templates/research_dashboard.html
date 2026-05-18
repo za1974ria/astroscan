@@ -266,12 +266,55 @@
 section.geo, section.geo .row, .row { contain: layout; min-height: 60px; }
 section.geo { min-height: 200px; }
 .geoTopCountries { min-height: 40px; contain: layout; }
-section.cards { display: grid !important; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)) !important; gap: 28px !important; contain: layout; }
-section.cards article.card { display: flex !important; contain: layout; }
-section.cards article.card > a {
-  display: flex !important; flex: 1 !important; flex-direction: column !important;
-  min-height: 64px !important; min-width: 64px !important;
-  padding: 16px !important; align-items: center !important; justify-content: center !important;
+section.cards { 
+  display: grid !important; 
+  grid-template-columns: repeat(auto-fill,minmax(220px,1fr)) !important; 
+  gap: 16px !important;
+  contain: layout;
+}
+section.cards article.card { 
+  display: flex !important; 
+  flex-direction: column !important;
+  gap: 8px !important;
+  padding: 16px !important;
+  contain: layout;
+  overflow: hidden;
+}
+section.cards article.card h2 {
+  margin: 0 0 8px 0 !important;
+}
+section.cards article.card .value {
+  font-size: 2rem !important;
+  line-height: 1.1 !important;
+}
+section.cards article.card .small,
+section.cards article.card .row {
+  font-size: 0.85rem !important;
+  word-wrap: break-word !important;
+}
+section.cards article.card .btn {
+  align-self: flex-start !important;
+  margin-top: auto !important;
+  padding: 8px 14px !important;
+  min-height: 36px !important;
+  width: auto !important;
+  display: inline-block !important;
+}
+/* Card "actions" spécial: les a wrappent des boutons */
+section.cards article.card.actions {
+  gap: 10px !important;
+}
+section.cards article.card.actions a {
+  display: block !important;
+  text-decoration: none !important;
+  margin: 0 !important;
+}
+section.cards article.card.actions a .btn,
+section.cards article.card.actions a button {
+  width: 100% !important;
+  min-height: 36px !important;
+  padding: 8px 14px !important;
+  display: block !important;
   text-align: center !important;
 }
 </style>
