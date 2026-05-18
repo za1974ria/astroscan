@@ -113,6 +113,20 @@ body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .card-analyse { contain: layout; min-height: 100px !important; }
 .card .card-analyse { min-height: 100px !important; }
 </style>
+<style id="cls-fix-v4-galerie">
+#page-wrap { contain: layout; }
+#card-grid { contain: layout; }
+#card-grid .card, .card { 
+  contain: layout style; 
+  min-height: 360px !important;
+}
+.card-analyse { 
+  contain: layout size; 
+  min-height: 120px !important;
+  height: 120px;
+}
+.card > .card-analyse { height: 120px !important; }
+</style>
 </head>
 <body class="notranslate">
 <main role="main" id="main-content">

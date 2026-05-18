@@ -273,6 +273,23 @@ main { contain: layout; }
 .g6535 > div > * { min-height: 60px; }
 main { contain: layout; }
 </style>
+<style id="cls-fix-v4-grid">
+/* orbital_dashboard: bloquer CLS du grid .g2 et son parent */
+.pad { contain: layout; min-height: 100vh; }
+.g6535 { contain: layout; display: grid; }
+.g6535 > div { 
+  contain: layout style; 
+  min-height: 180px !important;
+}
+.g6535 > div > .g2 { 
+  contain: layout size; 
+  min-height: 160px !important;
+  height: 160px;
+}
+.g2 > * { contain: layout; min-height: 60px; }
+.g6535 > div > * { min-height: 80px; contain: layout; }
+main { contain: layout; }
+</style>
 </head>
 <body>
 <main role="main" id="main-content">

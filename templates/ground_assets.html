@@ -45,6 +45,23 @@
 .ga-focus-section { contain: layout; min-height: 100px !important; }
 .ga-focus-section + .ga-focus-section { min-height: 60px; }
 </style>
+<style id="cls-fix-v4-ga">
+.ga-shell { contain: layout; }
+aside#ga-focus, #ga-focus { 
+  contain: layout style; 
+  min-height: 480px !important;
+}
+#ga-network-overview { 
+  contain: layout size; 
+  min-height: 280px !important;
+  height: 280px;
+}
+.ga-focus-section { 
+  contain: layout; 
+  min-height: 130px !important;
+}
+#ga-network-overview > .ga-focus-section:first-child { min-height: 90px !important; }
+</style>
 </head>
 <body class="ga-app notranslate">
 <main role="main" id="main-content">
