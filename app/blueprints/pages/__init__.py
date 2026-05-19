@@ -73,12 +73,14 @@ def portail():
         lang=get_lang(),
         visitor_count=visitor_count,
     ))
-    # Sprint 1 (2026-05-16) : no-store retiré pour permettre bfcache.
-    # Headers de sécurité conservés (CSP/X-Frame).
+    # Bug #1 (KNOWN_ISSUES) — sidebar fantôme : on FORCE le réseau pour
+    # le HTML du portail. Annule la concession bfcache de Sprint 1 — les
+    # évaluateurs ESA/NASA ne doivent jamais voir un état stale.
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     # Phase O-E (2026-05-07) : CSP préventif pour bloquer toute injection DOM
     # par extension de navigateur tierce (cause possible de sidebar fantôme).
-    # 'unsafe-inline'/'unsafe-eval' conservés : le portail utilise du JS inline.
-    # frame-ancestors 'self' empêche un éventuel embed cyclique.
     response.headers["Content-Security-Policy"] = (
         "default-src 'self' https: data: blob:; "
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "

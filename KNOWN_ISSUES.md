@@ -7,19 +7,19 @@ Date : 2026-05-07
 ## Issues UI
 
 ### #1 — Sidebar fantôme apparente sur /portail
-**Statut** : Cache navigateur soupçonné (non reproductible côté serveur)
+**Statut** : ✅ MITIGÉ — 2026-05-19 (branche ui/bugs-portail-cleanup)
 **Reproduction observée** : observatoire → ◄ PORTAIL en mode normal Chrome
-**Vérification serveur** : HTML servi par /portail = PROPRE
-- 1 seule `<div class="sidebar">` ✓
-- 1 seul `<div class="topbar">` ✓
-- 1 seule marque cliquable ✓
-- 0 duplication HTML
-- 0 cycle iframe
-**Fixes appliqués (sans résoudre côté navigateur normal)** :
+**Vérification serveur** : HTML servi par /portail = PROPRE (1 sidebar, 1 topbar, 1 brand, 0 cycle iframe)
+**Fixes successifs** :
 - Phase O-C : cache-bust `onclick="this.href='/portail?_t='+Date.now()"` (commit 1a53e9d)
 - Phase O-D : `?embed=1` sur iframe + CSS `body.embed-mode` (commit 864937f)
-**Workaround utilisateur** : Ctrl+Shift+R (hard refresh)
-**Action différée** : Si reproduit en navigation privée Chrome, investiguer extensions/OS/cookie. Sinon non-bloquant.
+- Phase O-E : MutationObserver anti-doublons + CSP préventif
+- **2026-05-19** :
+  1. Headers serveur stricts `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` + `Pragma: no-cache` + `Expires: 0` sur /portail (override Sprint 1 bfcache)
+  2. SW unregister proactif inline en début de body (déregistre tout SW + purge `caches`) — annule l'effet d'un sw.js antérieur ayant pré-caché /portail
+  3. Cache name bumpé `astroscan-v190` → `astroscan-v191` (force `activate` → purge anciens caches même chez utilisateurs non-/portail)
+  4. Asset versioning `?v={{ config.ASSET_VERSION }}` (timestamp de boot) sur les 3 CSS critiques (design_tokens, components, fixes)
+**Workaround restant** : Ctrl+Shift+R reste utile si l'utilisateur a un proxy d'entreprise très agressif (hors de notre contrôle).
 
 ---
 

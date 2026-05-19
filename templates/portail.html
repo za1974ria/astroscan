@@ -1365,9 +1365,9 @@ hr{
 }
 /* ═══ END AURORA MAGIC ═══ */
 </style>
-  <link rel="stylesheet" href="/static/css/design_tokens.css">
-  <link rel="stylesheet" href="/static/css/components.css">
-  <link rel="stylesheet" href="/static/css/fixes.css">
+  <link rel="stylesheet" href="/static/css/design_tokens.css?v={{ config.ASSET_VERSION | default('1') }}">
+  <link rel="stylesheet" href="/static/css/components.css?v={{ config.ASSET_VERSION | default('1') }}">
+  <link rel="stylesheet" href="/static/css/fixes.css?v={{ config.ASSET_VERSION | default('1') }}">
 <style id="cls-fix">
 .frame-wrap, iframe { min-height: 100vh; contain: layout; }
 .sidebar, #sidebar { contain: layout; min-height: 100vh; }
@@ -1381,6 +1381,32 @@ hr{
 
 
 <canvas id="starfield-bg" aria-hidden="true"></canvas>
+
+<script>
+/* Bug #1 (KNOWN_ISSUES) — Kill switch Service Worker au load.
+   Le SW (astroscan-vN) a pré-caché /portail dans des versions antérieures.
+   On déregistre proactivement pour neutraliser le rendu fantôme. Le SW se
+   ré-installera depuis /index.html ou /meteo-spatiale au besoin. */
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      if (!regs || !regs.length) return;
+      for (var i = 0; i < regs.length; i++) {
+        try { regs[i].unregister(); } catch (e) {}
+      }
+    });
+  } catch (e) {}
+  try {
+    if (window.caches && caches.keys) {
+      caches.keys().then(function (keys) {
+        if (!keys || !keys.length) return;
+        keys.forEach(function (k) { try { caches.delete(k); } catch (e) {} });
+      });
+    }
+  } catch (e2) {}
+})();
+</script>
 
 <script>
 /* Phase O-E (2026-05-07) — Garde-fou anti-doublons.
