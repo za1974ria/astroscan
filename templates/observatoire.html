@@ -2787,10 +2787,15 @@ function loadEphemerides(){
 <script src="/static/sondes_aegis.js" defer></script>
 <script src="/static/js/astroscan_status_sync.js" defer></script>
 <script src="/static/js/astroscan_status_ui.js" defer></script>
+<!-- WS view-sync désactivé : voir KNOWN_ISSUES #3 (Bug #3) — STATION SOLO actif -->
+{% if config.FEATURE_WS_VIEW_SYNC %}
 <script src="/static/js/astroscan_view_sync.js" defer></script>
+{% endif %}
 <script>
 (function(){
+  {% if config.FEATURE_WS_VIEW_SYNC %}
   if(window.AstroScanViewSync) AstroScanViewSync.start({});
+  {% endif %}
   window.addEventListener('astroscan:view-state',function(ev){
     var env=ev.detail;
     if(!env||!env.payload) return;

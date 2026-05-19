@@ -32,10 +32,11 @@ Date : 2026-05-07
 ---
 
 ### #3 — WebSocket /ws/view-sync : erreurs console répétées
-**Statut** : Bruit console — non bloquant
-**Cause probable** : Routes Sock-WS définies dans station_web.py:3853 mais non démarrées via gunicorn worker config, OU non exposées via nginx upstream
-**Fonctionnement actuel** : Le widget VUE MASTER affiche STATION SOLO en cyan dim (Phase O-B FIX 2 OK)
-**Action différée** : Configurer nginx WS upstream OU désactiver le client si la sync multi-observateurs n'est pas un priorité
+**Statut** : ✅ RÉSOLU — 2026-05-19 (branche ui/bugs-portail-cleanup)
+**Cause** : Routes Sock-WS définies dans station_web.py:3853 mais non démarrées via gunicorn worker config, ET non exposées via nginx upstream
+**Résolution** : Client WS désactivé proprement côté frontend via feature flag `FEATURE_WS_VIEW_SYNC=False` (`app/__init__.py`). Le script `astroscan_view_sync.js` n'est plus chargé sur /observatoire (ni sur /portail via iframe). Commentaire HTML inséré : `<!-- WS view-sync désactivé : voir KNOWN_ISSUES #3 -->`
+**État UI conservé** : VUE MASTER affiche STATION SOLO en cyan dim (HUD statique, data-state="open" hard-codé) — pas de régression visuelle.
+**Réactivation future** : Configurer nginx WS upstream (proxy_pass + Upgrade headers) + basculer le flag à True.
 
 ---
 
