@@ -139,7 +139,18 @@ def overlord_live():
 @bp.route("/observatoire")
 def observatoire():
     # PASS 26.B — nasa_key no longer passed to template (proxy via /api/nasa/*)
-    response = make_response(render_template("observatoire.html"))
+    # Bug #2 (KNOWN_ISSUES) — Phase O-E preview : conditions Tlemcen depuis
+    # source unique de vérité (app/constants/observatory.py — pas de hardcode).
+    from app.constants.observatory import (
+        OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M, OBSERVER_CITY,
+    )
+    response = make_response(render_template(
+        "observatoire.html",
+        observer_lat=OBSERVER_LAT,
+        observer_lon=OBSERVER_LON,
+        observer_alt_m=OBSERVER_ALT_M,
+        observer_city=OBSERVER_CITY,
+    ))
     # Sprint 1 (2026-05-16) : no-store retiré pour permettre bfcache.
     return response
 

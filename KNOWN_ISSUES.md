@@ -24,10 +24,15 @@ Date : 2026-05-07
 ---
 
 ### #2 — Vide central dans observatoire
-**Statut** : Esthétique — non bloquant fonctionnellement
+**Statut** : ✅ COMBLÉ (placeholder Phase O-E preview) — 2026-05-19 (branche ui/bugs-portail-cleanup)
 **Description** : Espace noir entre image APOD et bloc suivant, sur la zone scrollée
-**Plan futur** : Phase O-E "Habiter le vide" — widget `visibility_score` hyperlocal Tlemcen
-**Lien stratégique** : Préfigure le Chemin B (donnée unique scientifique pour validation CRAAG)
+**Résolution minimale** : Insertion d'une section `<section class="conditions-tlemcen">` juste après `.bottom-facts` dans observatoire.html :
+- 3 metrics : Coordonnées (34.8753°N / 1.3167°W) · Altitude station (816 m) · Visibility score hyperlocal ("En cours de calibration")
+- Footnote : "Module v2 — agrégation Bortle + couverture nuageuse + altitude ISS en développement (Phase O-E)"
+- CSS sobre, palette Mission Control existante. Aucune fake data.
+- Coordonnées injectées via context_processor `_inject_observer_constants` (`app/hooks.py`) depuis source unique `app/constants/observatory.py`
+**Plan futur (Chemin B)** : Phase O-E complète — widget `visibility_score` hyperlocal Tlemcen (Bortle + couverture nuageuse + altitude ISS).
+**Lien stratégique** : Préfigure le Chemin B (donnée unique scientifique pour validation CRAAG). Le placeholder est HONNÊTE et déjà compréhensible par un évaluateur ESA/NASA.
 
 ---
 

@@ -185,6 +185,15 @@ main{position:relative;z-index:5;padding:20px 28px;max-height:none;overflow-y:vi
 .bottom-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:16px;}
 .fact-card{background:rgba(4,16,32,.95);border:1px solid rgba(0,212,255,.07);padding:14px;text-align:center;}
 .fact-num{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;margin-bottom:5px;}
+/* Bug #2 / Phase O-E preview — Conditions d'observation Tlemcen */
+.conditions-tlemcen{margin-top:18px;padding:16px 18px;background:rgba(3,12,22,.92);border:1px solid rgba(0,212,255,.18);border-radius:6px;}
+.conditions-tlemcen h3{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2.5px;color:var(--cyan);margin:0 0 12px 0;text-transform:uppercase;font-weight:700;}
+.conditions-tlemcen .conditions-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;}
+.conditions-tlemcen .metric{display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.10);border-radius:4px;}
+.conditions-tlemcen .metric .label{font-size:8px;letter-spacing:2px;color:#8899aa;text-transform:uppercase;}
+.conditions-tlemcen .metric .value{font-family:'Share Tech Mono',monospace;font-size:14px;color:#d0e8f0;}
+.conditions-tlemcen .metric .value.status-pending{color:var(--amber);font-style:italic;font-size:12px;}
+.conditions-tlemcen .footnote{margin:12px 0 0 0;font-size:9px;color:#7a8fa3;letter-spacing:0.5px;font-style:italic;}
 ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:#020810;}::-webkit-scrollbar-thumb{background:var(--cyan);}
 .badge{display:inline-block;padding:2px 7px;font-size:9px;letter-spacing:1px;border-radius:2px;}
 .badge-ok{border:1px solid rgba(0,212,255,.3);color:var(--cyan);}
@@ -1228,6 +1237,35 @@ nav, body > nav { contain: layout; min-height: 48px; }
     <div class="fact-card"><div class="fact-num" style="color:var(--cyan)">4.24 al</div><div style="font-size:10px;color:#aabbcc;margin:5px 0">Étoile la plus proche</div><div style="font-size:8px;color:#8899aa">Proxima Centauri</div></div>
     <div class="fact-card"><div class="fact-num" style="color:var(--blue)">5 700+</div><div style="font-size:10px;color:#aabbcc;margin:5px 0">Exoplanètes confirmées</div><div style="font-size:8px;color:#8899aa">Catalogue NASA</div></div>
   </div>
+
+  <!-- Bug #2 / Phase O-E preview — placeholder Conditions d'observation Tlemcen
+       Comble le vide central entre APOD et blocs dynamiques. Source unique :
+       app/constants/observatory.py — injectée via context_processor app-level
+       (_inject_observer_constants). Les |default(...) ne servent qu'à éviter
+       un 500 si le context processor n'a pas tourné (bootstrap partiel) ;
+       les valeurs DOIVENT rester strictement synchronisées avec observatory.py. -->
+  {% set _olat = observer_lat | default(34.8753) %}
+  {% set _olon = observer_lon | default(-1.3167) %}
+  {% set _oalt = observer_alt_m | default(816) %}
+  <section class="conditions-tlemcen">
+    <h3>{% if lang == 'en' %}Observation conditions — Tlemcen Observatory{% else %}Conditions d'observation — Observatoire Tlemcen{% endif %}</h3>
+    <div class="conditions-grid">
+      <div class="metric">
+        <span class="label">{% if lang == 'en' %}Coordinates{% else %}Coordonnées{% endif %}</span>
+        <span class="value">{{ "%.4f"|format(_olat) }}°N, {{ "%.4f"|format(_olon|abs) }}°W</span>
+      </div>
+      <div class="metric">
+        <span class="label">{% if lang == 'en' %}Station altitude{% else %}Altitude station{% endif %}</span>
+        <span class="value">{{ _oalt }} m</span>
+      </div>
+      <div class="metric">
+        <span class="label">{% if lang == 'en' %}Hyperlocal visibility score{% else %}Visibility score hyperlocal{% endif %}</span>
+        <span class="value status-pending">{% if lang == 'en' %}Under calibration{% else %}En cours de calibration{% endif %}</span>
+      </div>
+    </div>
+    <p class="footnote">{% if lang == 'en' %}v2 module — Bortle aggregation + cloud cover + ISS altitude under development (Phase O-E).{% else %}Module v2 — agrégation Bortle + couverture nuageuse + altitude ISS en développement (Phase O-E).{% endif %}</p>
+  </section>
+
   <div id="spacex-launches" style="margin-top:16px"></div>
   <div id="hubble-live" style="margin-top:16px"></div>
   <div id="space-news" style="margin-top:16px"></div>
