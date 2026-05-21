@@ -134,3 +134,25 @@ def test_export_observations_blueprint(new_client):
 def test_robots_txt_blueprint(new_client):
     resp = new_client.get('/robots.txt')
     assert resp.status_code == 200
+
+
+def test_methodology_page_smoke(new_client):
+    """Axe 1 — /methodology must render with ESA-relevant keywords.
+
+    The page is the public engineering narrative for ESA / NASA / CNES
+    reviewers; the content is locked at the SEO meta layer."""
+    resp = new_client.get('/methodology')
+    assert resp.status_code == 200
+    body = resp.data.lower()
+    assert b'methodology' in body
+
+
+def test_sentinel_health_smoke(new_client):
+    """Axe 1 — /api/sentinel/health returns the public health envelope."""
+    resp = new_client.get('/api/sentinel/health')
+    assert resp.status_code in (200, 503)
+    data = json.loads(resp.data)
+    if resp.status_code == 200:
+        assert data.get('ok') is True
+        assert data.get('module') == 'astroscan_sentinel'
+        assert 'max_ttl_seconds' in data
