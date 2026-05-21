@@ -12,6 +12,7 @@ This layer is the ONLY place where business rules live. Routes are I/O
 glue, llm_client is provider glue, prompts.py is content. Keep service.py
 the brain.
 """
+
 from __future__ import annotations
 
 import json
@@ -118,13 +119,21 @@ class AstroBrainService:
 
     # ─── Internal dispatch ─────────────────────────────────────────────────
 
-    def _dispatch(self, messages: list[dict[str, str]], model: str, method: str) -> dict:
+    def _dispatch(
+        self,
+        messages: list[dict[str, str]],
+        model: str,
+        method: str,
+        max_tokens: int = 2000,
+    ) -> dict:
         estimated = _estimate_tokens(messages)
         ok, remaining, snapshot = rate_limit.check_budget(estimated)
         if not ok:
             log.warning(
                 "[astrobrain] budget exceeded — method=%s estimated=%d remaining=%d",
-                method, estimated, remaining,
+                method,
+                estimated,
+                remaining,
             )
             return {
                 "ok": False,
@@ -135,7 +144,7 @@ class AstroBrainService:
                 "budget": snapshot,
             }
 
-        resp = self.client.chat(messages, model=model, max_tokens=1500, temperature=0.2)
+        resp = self.client.chat(messages, model=model, max_tokens=max_tokens, temperature=0.2)
 
         # Record real usage (or estimate if upstream didn't return one).
         total = (resp.tokens_in or 0) + (resp.tokens_out or 0)
