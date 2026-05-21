@@ -17,6 +17,7 @@ Public surface:
 Coexists with the existing Anthropic/Groq stack in app/services/ai_translate.py
 without touching it.
 """
+
 from __future__ import annotations
 
 import json
@@ -74,6 +75,7 @@ class LLMResponse:
         attempts: Number of attempts made (1 on first success).
         dry_run: True when the response was generated in dry-run mode (no API call).
     """
+
     ok: bool
     text: str | None = None
     model: str = ""
@@ -113,7 +115,9 @@ class LLMClient:
         timeout: float = 20.0,
         dry_run: bool | None = None,
     ) -> None:
-        self.api_key = api_key if api_key is not None else os.environ.get("OPENAI_API_KEY", "").strip()
+        self.api_key = (
+            api_key if api_key is not None else os.environ.get("OPENAI_API_KEY", "").strip()
+        )
         self.base_url = base_url or os.environ.get("OPENAI_BASE_URL") or None
         self.timeout = timeout
         # Dry-run resolution: explicit arg > env var > absence of api_key
@@ -190,8 +194,10 @@ class LLMClient:
                     "messages": messages,
                     "max_completion_tokens": max_tokens,
                 }
-                # temperature is optional — some GPT-5 family models reject custom values
-                if temperature is not None:
+                # GPT-5 / o-series reasoning models reject custom temperature.
+                # Detect & force temperature=None for these to avoid 400 Bad Request.
+                _is_reasoning = model.startswith(("gpt-5", "o1", "o3", "o4", "o5"))
+                if temperature is not None and not _is_reasoning:
                     payload["temperature"] = temperature
                 if extra:
                     payload.update(extra)
@@ -217,30 +223,34 @@ class LLMClient:
                     latency_ms=latency_ms,
                     attempts=attempt,
                 )
-                _log_jsonl({
-                    "ts": _iso_now(),
-                    "level": "info",
-                    "model": model_used,
-                    "tokens_in": tokens_in,
-                    "tokens_out": tokens_out,
-                    "latency_ms": latency_ms,
-                    "status": "ok",
-                    "attempts": attempt,
-                })
+                _log_jsonl(
+                    {
+                        "ts": _iso_now(),
+                        "level": "info",
+                        "model": model_used,
+                        "tokens_in": tokens_in,
+                        "tokens_out": tokens_out,
+                        "latency_ms": latency_ms,
+                        "status": "ok",
+                        "attempts": attempt,
+                    }
+                )
                 return result
 
             except retriable as exc:
                 last_exc = exc
                 latency_ms = int((time.monotonic() - t0) * 1000)
-                _log_jsonl({
-                    "ts": _iso_now(),
-                    "level": "warn",
-                    "model": model,
-                    "latency_ms": latency_ms,
-                    "status": "retriable_error",
-                    "exc_type": type(exc).__name__,
-                    "attempt": attempt,
-                })
+                _log_jsonl(
+                    {
+                        "ts": _iso_now(),
+                        "level": "warn",
+                        "model": model,
+                        "latency_ms": latency_ms,
+                        "status": "retriable_error",
+                        "exc_type": type(exc).__name__,
+                        "attempt": attempt,
+                    }
+                )
                 if attempt < self.MAX_ATTEMPTS:
                     time.sleep(min(backoff, self.MAX_BACKOFF_SEC))
                     backoff = min(backoff * 2, self.MAX_BACKOFF_SEC)
@@ -250,15 +260,17 @@ class LLMClient:
                 latency_ms = int((time.monotonic() - t0) * 1000)
                 # NEVER log the exception's message verbatim — it can contain
                 # the API key in some OpenAI error variants. Log only type + short class name.
-                _log_jsonl({
-                    "ts": _iso_now(),
-                    "level": "error",
-                    "model": model,
-                    "latency_ms": latency_ms,
-                    "status": "non_retriable_error",
-                    "exc_type": type(exc).__name__,
-                    "attempt": attempt,
-                })
+                _log_jsonl(
+                    {
+                        "ts": _iso_now(),
+                        "level": "error",
+                        "model": model,
+                        "latency_ms": latency_ms,
+                        "status": "non_retriable_error",
+                        "exc_type": type(exc).__name__,
+                        "attempt": attempt,
+                    }
+                )
                 return LLMResponse(
                     ok=False,
                     text=None,
@@ -272,15 +284,17 @@ class LLMClient:
             except Exception as exc:  # noqa: BLE001 — defensive catch-all
                 latency_ms = int((time.monotonic() - t0) * 1000)
                 last_exc = exc
-                _log_jsonl({
-                    "ts": _iso_now(),
-                    "level": "error",
-                    "model": model,
-                    "latency_ms": latency_ms,
-                    "status": "unexpected_error",
-                    "exc_type": type(exc).__name__,
-                    "attempt": attempt,
-                })
+                _log_jsonl(
+                    {
+                        "ts": _iso_now(),
+                        "level": "error",
+                        "model": model,
+                        "latency_ms": latency_ms,
+                        "status": "unexpected_error",
+                        "exc_type": type(exc).__name__,
+                        "attempt": attempt,
+                    }
+                )
                 # Defensive: don't retry on unknown exception classes.
                 break
 
@@ -321,6 +335,7 @@ class LLMClient:
 
 def _iso_now() -> str:
     from datetime import UTC, datetime
+
     return datetime.now(UTC).isoformat()
 
 
