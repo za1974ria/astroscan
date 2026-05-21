@@ -1,7 +1,6 @@
 """Unit tests — guardian.agent thread lifecycle + health()."""
 from __future__ import annotations
 
-import threading
 import time
 
 import pytest

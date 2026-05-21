@@ -6,8 +6,6 @@ from Axe 1).
 """
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from app.blueprints.astrobrain import rate_limit

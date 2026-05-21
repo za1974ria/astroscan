@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from app.blueprints.guardian.rules import (
-    Incident,
     Rule,
     _lookup_metric,
     evaluate,

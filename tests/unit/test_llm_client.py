@@ -1,7 +1,6 @@
 """Unit tests for services.llm_client (AstroBrain LLM wrapper)."""
 from __future__ import annotations
 
-import os
 from unittest.mock import MagicMock, patch
 
 import pytest

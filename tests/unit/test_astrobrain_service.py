@@ -1,8 +1,6 @@
 """Unit tests — AstroBrainService business layer (uses LLM_DRY_RUN)."""
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from app.blueprints.astrobrain import rate_limit
