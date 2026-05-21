@@ -1,0 +1,120 @@
+# Guardian Agent — declarative rules (Session 1)
+#
+# Each rule references a metric via dotted-path notation against the
+# collector snapshot map: "<collector_name>.<field>".
+# Example: "disk.percent_used" → looks up the "disk" collector's
+# value["percent_used"].
+#
+# Supported operators: > >= < <= == !=
+# Threshold OR value:
+#   - threshold: numeric comparison
+#   - value:     equality/inequality (bool, str, int)
+#
+# Cooldown protects against alert spam: once an incident fires for a
+# rule, the same rule won't fire again until <cooldown_minutes> elapse.
+
+rules:
+  - name: "disk_usage_critical"
+    metric: "disk.percent_used"
+    operator: ">"
+    threshold: 90
+    severity: "critical"
+    cooldown_minutes: 30
+
+  - name: "disk_usage_warn"
+    metric: "disk.percent_used"
+    operator: ">"
+    threshold: 80
+    severity: "warn"
+    cooldown_minutes: 60
+
+  - name: "service_down"
+    metric: "systemd_astroscan.active"
+    operator: "=="
+    value: false
+    severity: "critical"
+    cooldown_minutes: 5
+
+  - name: "nginx_down"
+    metric: "nginx.active"
+    operator: "=="
+    value: false
+    severity: "critical"
+    cooldown_minutes: 5
+
+  - name: "http_root_down"
+    metric: "http_root.status"
+    operator: ">="
+    threshold: 500
+    severity: "critical"
+    cooldown_minutes: 5
+
+  - name: "sentinel_health_down"
+    metric: "http_sentinel_health.status"
+    operator: ">="
+    threshold: 500
+    severity: "critical"
+    cooldown_minutes: 5
+
+  - name: "ssl_expiry_critical"
+    metric: "ssl_expiry.days_until_expiry"
+    operator: "<"
+    threshold: 3
+    severity: "critical"
+    cooldown_minutes: 360
+
+  - name: "ssl_expiry_soon"
+    metric: "ssl_expiry.days_until_expiry"
+    operator: "<"
+    threshold: 14
+    severity: "warn"
+    cooldown_minutes: 1440
+
+  - name: "ram_critical"
+    metric: "ram.percent_used"
+    operator: ">"
+    threshold: 92
+    severity: "critical"
+    cooldown_minutes: 30
+
+  - name: "ram_warn"
+    metric: "ram.percent_used"
+    operator: ">"
+    threshold: 80
+    severity: "warn"
+    cooldown_minutes: 60
+
+  - name: "cpu_load_critical"
+    metric: "cpu_load.load_5m"
+    operator: ">"
+    threshold: 8.0
+    severity: "critical"
+    cooldown_minutes: 15
+
+  - name: "cpu_load_warn"
+    metric: "cpu_load.load_5m"
+    operator: ">"
+    threshold: 4.0
+    severity: "warn"
+    cooldown_minutes: 30
+
+  - name: "http_500_burst"
+    metric: "log_anomalies.http_500_count_last_100"
+    operator: ">"
+    threshold: 5
+    severity: "warn"
+    cooldown_minutes: 15
+
+  - name: "error_log_burst"
+    metric: "log_anomalies.error_count"
+    operator: ">"
+    threshold: 50
+    severity: "warn"
+    cooldown_minutes: 30
+
+  - name: "iss_feed_stale"
+    metric: "iss_feed_freshness.age_seconds"
+    operator: ">"
+    threshold: 3600
+    severity: "warn"
+    cooldown_minutes: 60

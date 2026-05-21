@@ -78,6 +78,10 @@ requirements.txt.root_owned
 logs/astrobrain/
 logs/guardian/
 data/astrobrain_budget.json
+
+# Env backups — never commit (contain secrets)
+.env.backup-*
+.env.bak-*
 .snapshots_sentinel/
 audit/lighthouse_routes.txt
 htmlcov/
