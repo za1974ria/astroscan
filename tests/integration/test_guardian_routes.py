@@ -1,4 +1,5 @@
 """Integration tests — Guardian HTTP routes."""
+
 from __future__ import annotations
 
 import pytest
@@ -108,14 +109,19 @@ def test_incidents_external_returns_403(factory_client):
 
 
 def test_incidents_returned_after_writing(factory_client):
-    audit_log.write_incident({
-        "ts": "2026-05-21T20:00:00+00:00",
-        "rule": "test_rule", "severity": "warn",
-        "metric": "x.y", "operator": ">", "threshold": 1,
-        "actual": 99, "cooldown_until": "2026-05-21T20:30:00+00:00",
-    })
-    resp = factory_client.get("/api/guardian/incidents?since=24h",
-                              environ_overrides=_local_env())
+    audit_log.write_incident(
+        {
+            "ts": "2026-05-21T20:00:00+00:00",
+            "rule": "test_rule",
+            "severity": "warn",
+            "metric": "x.y",
+            "operator": ">",
+            "threshold": 1,
+            "actual": 99,
+            "cooldown_until": "2026-05-21T20:30:00+00:00",
+        }
+    )
+    resp = factory_client.get("/api/guardian/incidents?since=24h", environ_overrides=_local_env())
     body = resp.get_json()
     rules = [i["rule"] for i in body["incidents"]]
     assert "test_rule" in rules

@@ -1,4 +1,5 @@
 """Unit tests — AstroBrain prompts (presence + char-cap)."""
+
 from __future__ import annotations
 
 import pytest
@@ -33,8 +34,10 @@ def test_prompt_under_char_cap(name):
 
 def test_prompts_dict_contains_all_four():
     assert set(prompts.PROMPTS.keys()) == {
-        "mission_assistant", "telemetry_explainer",
-        "health_summarizer", "anomaly_analyzer",
+        "mission_assistant",
+        "telemetry_explainer",
+        "health_summarizer",
+        "anomaly_analyzer",
     }
 
 

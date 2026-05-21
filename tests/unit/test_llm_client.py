@@ -1,4 +1,5 @@
 """Unit tests for services.llm_client (AstroBrain LLM wrapper)."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -208,11 +209,22 @@ def test_safe_error_message_known_classes():
         RateLimitError,
     )
 
-    assert _safe_error_message(RateLimitError("x", response=MagicMock(status_code=429), body=None)) == "rate_limited"
+    assert (
+        _safe_error_message(RateLimitError("x", response=MagicMock(status_code=429), body=None))
+        == "rate_limited"
+    )
     assert _safe_error_message(APIConnectionError(request=MagicMock())) == "connection_error"
     assert _safe_error_message(APITimeoutError(MagicMock())) == "timeout"
-    assert _safe_error_message(AuthenticationError("x", response=MagicMock(status_code=401), body=None)) == "auth_error"
-    assert _safe_error_message(BadRequestError("x", response=MagicMock(status_code=400), body=None)) == "bad_request"
+    assert (
+        _safe_error_message(
+            AuthenticationError("x", response=MagicMock(status_code=401), body=None)
+        )
+        == "auth_error"
+    )
+    assert (
+        _safe_error_message(BadRequestError("x", response=MagicMock(status_code=400), body=None))
+        == "bad_request"
+    )
 
 
 def test_safe_error_message_none_returns_unknown():

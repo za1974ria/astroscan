@@ -1,4 +1,5 @@
 """Unit tests — guardian.rules evaluator + cooldown."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -88,8 +89,14 @@ def test_lookup_metric_no_dot():
 
 
 def _make_rule(**overrides):
-    base = {"name": "r1", "metric": "disk.percent_used", "operator": ">",
-            "threshold": 80, "severity": "warn", "cooldown_minutes": 5}
+    base = {
+        "name": "r1",
+        "metric": "disk.percent_used",
+        "operator": ">",
+        "threshold": 80,
+        "severity": "warn",
+        "cooldown_minutes": 5,
+    }
     base.update(overrides)
     return Rule(**base)
 
@@ -137,8 +144,9 @@ def test_evaluate_cooldown_expires_allows_fire():
 
 
 def test_evaluate_equality_operator_bool():
-    rules = [Rule(name="down", metric="svc.active", operator="==",
-                  value=False, severity="critical")]
+    rules = [
+        Rule(name="down", metric="svc.active", operator="==", value=False, severity="critical")
+    ]
     snaps = [_snap("svc", {"active": False})]
     incidents, _ = evaluate(rules, snaps)
     assert len(incidents) == 1
@@ -146,8 +154,9 @@ def test_evaluate_equality_operator_bool():
 
 
 def test_evaluate_equality_no_match():
-    rules = [Rule(name="down", metric="svc.active", operator="==",
-                  value=False, severity="critical")]
+    rules = [
+        Rule(name="down", metric="svc.active", operator="==", value=False, severity="critical")
+    ]
     snaps = [_snap("svc", {"active": True})]
     incidents, _ = evaluate(rules, snaps)
     assert incidents == []

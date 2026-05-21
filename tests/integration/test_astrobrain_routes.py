@@ -4,6 +4,7 @@ Uses LLM_DRY_RUN=1 so no API call. Requires the conftest.py monkey-patch
 on builtins.open to swallow PermissionError on .env (already in place
 from Axe 1).
 """
+
 from __future__ import annotations
 
 import pytest

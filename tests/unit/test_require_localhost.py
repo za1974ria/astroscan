@@ -1,4 +1,5 @@
 """Unit tests — @require_localhost decorator (security)."""
+
 from __future__ import annotations
 
 import pytest

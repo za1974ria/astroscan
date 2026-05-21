@@ -1,4 +1,5 @@
 """Unit tests — AstroBrain rate_limit (budget guard, reset, concurrency-safe)."""
+
 from __future__ import annotations
 
 import threading

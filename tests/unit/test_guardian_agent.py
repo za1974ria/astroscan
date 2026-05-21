@@ -1,4 +1,5 @@
 """Unit tests — guardian.agent thread lifecycle + health()."""
+
 from __future__ import annotations
 
 import time
@@ -81,27 +82,21 @@ def test_thread_runs_at_least_one_tick(monkeypatch):
 def test_llm_summarize_skipped_in_dry_run(monkeypatch):
     monkeypatch.setenv("LLM_DRY_RUN", "1")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-x")
-    res = agent._maybe_llm_summarize(
-        {"severity": "critical"}, snapshot_map={}
-    )
+    res = agent._maybe_llm_summarize({"severity": "critical"}, snapshot_map={})
     assert res is None
 
 
 def test_llm_summarize_skipped_when_no_key(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setenv("LLM_DRY_RUN", "0")
-    res = agent._maybe_llm_summarize(
-        {"severity": "critical"}, snapshot_map={}
-    )
+    res = agent._maybe_llm_summarize({"severity": "critical"}, snapshot_map={})
     assert res is None
 
 
 def test_llm_summarize_skipped_when_severity_not_critical(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-x")
     monkeypatch.setenv("LLM_DRY_RUN", "0")
-    res = agent._maybe_llm_summarize(
-        {"severity": "warn"}, snapshot_map={}
-    )
+    res = agent._maybe_llm_summarize({"severity": "warn"}, snapshot_map={})
     assert res is None
 
 

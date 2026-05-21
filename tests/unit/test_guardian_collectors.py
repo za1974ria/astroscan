@@ -1,4 +1,5 @@
 """Unit tests — guardian.collectors (mocks subprocess / urllib / fs)."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -54,8 +55,7 @@ def test_safe_subprocess_real_echo():
 
 
 def test_systemd_astroscan_active(monkeypatch):
-    monkeypatch.setattr(collectors, "_safe_subprocess",
-                        lambda *a, **kw: (True, "active\n", ""))
+    monkeypatch.setattr(collectors, "_safe_subprocess", lambda *a, **kw: (True, "active\n", ""))
     r = collectors.collect_systemd_astroscan()
     assert r["name"] == "systemd_astroscan"
     assert r["value"]["active"] is True
@@ -63,8 +63,7 @@ def test_systemd_astroscan_active(monkeypatch):
 
 
 def test_systemd_astroscan_inactive(monkeypatch):
-    monkeypatch.setattr(collectors, "_safe_subprocess",
-                        lambda *a, **kw: (False, "inactive\n", ""))
+    monkeypatch.setattr(collectors, "_safe_subprocess", lambda *a, **kw: (False, "inactive\n", ""))
     r = collectors.collect_systemd_astroscan()
     assert r["value"]["active"] is False
     assert r["severity"] == "critical"
@@ -78,8 +77,9 @@ def test_http_root_ok(monkeypatch):
     fake_resp.__enter__ = lambda s: fake_resp
     fake_resp.__exit__ = lambda *a: None
     fake_resp.status = 200
-    monkeypatch.setattr("app.blueprints.guardian.collectors.urllib_request.urlopen",
-                        lambda *a, **kw: fake_resp)
+    monkeypatch.setattr(
+        "app.blueprints.guardian.collectors.urllib_request.urlopen", lambda *a, **kw: fake_resp
+    )
     r = collectors.collect_http_root()
     assert r["ok"] is True
     assert r["value"]["status"] == 200
@@ -91,8 +91,9 @@ def test_http_root_500_critical(monkeypatch):
     fake_resp.__enter__ = lambda s: fake_resp
     fake_resp.__exit__ = lambda *a: None
     fake_resp.status = 503
-    monkeypatch.setattr("app.blueprints.guardian.collectors.urllib_request.urlopen",
-                        lambda *a, **kw: fake_resp)
+    monkeypatch.setattr(
+        "app.blueprints.guardian.collectors.urllib_request.urlopen", lambda *a, **kw: fake_resp
+    )
     r = collectors.collect_http_root()
     assert r["severity"] == "critical"
 
@@ -100,6 +101,7 @@ def test_http_root_500_critical(monkeypatch):
 def test_http_root_connection_refused(monkeypatch):
     def boom(*a, **kw):
         raise ConnectionRefusedError("nope")
+
     monkeypatch.setattr("app.blueprints.guardian.collectors.urllib_request.urlopen", boom)
     r = collectors.collect_http_root()
     assert r["ok"] is False
@@ -111,8 +113,7 @@ def test_http_root_connection_refused(monkeypatch):
 
 def test_disk_normal(monkeypatch):
     out = "Filesystem     1024-blocks   Used Available Capacity Mounted on\n/dev/sda1   10000000 2500000  7500000      25% /\n"
-    monkeypatch.setattr(collectors, "_safe_subprocess",
-                        lambda *a, **kw: (True, out, ""))
+    monkeypatch.setattr(collectors, "_safe_subprocess", lambda *a, **kw: (True, out, ""))
     r = collectors.collect_disk()
     assert r["ok"] is True
     assert r["value"]["percent_used"] == 25
@@ -121,8 +122,7 @@ def test_disk_normal(monkeypatch):
 
 def test_disk_warn(monkeypatch):
     out = "F  B U Av Cap M\n/x 1 1 1 85% /\n"
-    monkeypatch.setattr(collectors, "_safe_subprocess",
-                        lambda *a, **kw: (True, out, ""))
+    monkeypatch.setattr(collectors, "_safe_subprocess", lambda *a, **kw: (True, out, ""))
     r = collectors.collect_disk()
     assert r["severity"] == "warn"
     assert r["value"]["percent_used"] == 85
@@ -130,15 +130,15 @@ def test_disk_warn(monkeypatch):
 
 def test_disk_critical(monkeypatch):
     out = "F  B U Av Cap M\n/x 1 1 1 95% /\n"
-    monkeypatch.setattr(collectors, "_safe_subprocess",
-                        lambda *a, **kw: (True, out, ""))
+    monkeypatch.setattr(collectors, "_safe_subprocess", lambda *a, **kw: (True, out, ""))
     r = collectors.collect_disk()
     assert r["severity"] == "critical"
 
 
 def test_disk_subprocess_failed(monkeypatch):
-    monkeypatch.setattr(collectors, "_safe_subprocess",
-                        lambda *a, **kw: (False, "", "binary_not_found"))
+    monkeypatch.setattr(
+        collectors, "_safe_subprocess", lambda *a, **kw: (False, "", "binary_not_found")
+    )
     r = collectors.collect_disk()
     assert r["ok"] is False
 
@@ -195,16 +195,14 @@ def test_cpu_load_missing_file():
 
 
 def test_nginx_active(monkeypatch):
-    monkeypatch.setattr(collectors, "_safe_subprocess",
-                        lambda *a, **kw: (True, "active\n", ""))
+    monkeypatch.setattr(collectors, "_safe_subprocess", lambda *a, **kw: (True, "active\n", ""))
     r = collectors.collect_nginx()
     assert r["value"]["active"] is True
     assert r["severity"] == "info"
 
 
 def test_nginx_inactive(monkeypatch):
-    monkeypatch.setattr(collectors, "_safe_subprocess",
-                        lambda *a, **kw: (False, "inactive\n", ""))
+    monkeypatch.setattr(collectors, "_safe_subprocess", lambda *a, **kw: (False, "inactive\n", ""))
     r = collectors.collect_nginx()
     assert r["value"]["active"] is False
     assert r["severity"] == "critical"
@@ -262,8 +260,9 @@ def test_weather_freshness_with_fresh_file(tmp_path):
 def test_collect_all_returns_list_of_envelopes(monkeypatch):
     # Stub each collector to return a tiny dict so we don't touch the system
     for c in collectors.ALL_COLLECTORS:
-        monkeypatch.setattr(collectors, c.__name__,
-                            lambda _c=c: collectors._envelope(_c.__name__, True))
+        monkeypatch.setattr(
+            collectors, c.__name__, lambda _c=c: collectors._envelope(_c.__name__, True)
+        )
     out = collectors.collect_all()
     assert isinstance(out, list)
     # Each entry has the required shape
@@ -276,6 +275,7 @@ def test_collect_all_returns_list_of_envelopes(monkeypatch):
 def test_collect_all_crashed_collector_is_caught(monkeypatch):
     def bad():
         raise RuntimeError("kaboom")
+
     # Inject a bad collector into ALL_COLLECTORS for this test
     monkeypatch.setattr(collectors, "ALL_COLLECTORS", [bad])
     out = collectors.collect_all()

@@ -1,4 +1,5 @@
 """Unit tests — AstroBrainService business layer (uses LLM_DRY_RUN)."""
+
 from __future__ import annotations
 
 import pytest
