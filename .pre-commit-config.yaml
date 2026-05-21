@@ -1,0 +1,49 @@
+# Pre-commit hooks — Axe 1 (pytest + CI/CD hardening)
+#
+# Install once locally:
+#   make install-dev   # or: pip install pre-commit && pre-commit install
+#
+# Run manually on all files:
+#   pre-commit run --all-files
+#
+# Axe 1 scope discipline:
+# - ruff (lint + format) is the single source of truth — black is NOT used
+#   (would double-format and conflict). ruff-format is the formatter.
+# - Hooks are scoped to the Axe 1 perimeter: new tests + CI/config files.
+#   Legacy tests (root-owned) and the rest of the repo are NOT touched.
+
+# Apply most hooks only to the files Axe 1 actually owns.
+files: |
+  (?x)^(
+    tests/(unit|smoke)/(test_observatory_constants|test_cache_utils|test_db_utils|
+                        test_circuit_breaker|test_config_constants|test_cache_service|
+                        test_responses_and_llm_errors|test_sentinel_schemas|
+                        test_sentinel_tokens|test_sentinel_engines|
+                        test_services_utils_full|test_legacy_architecture)\.py|
+    tests/conftest\.py|
+    pyproject\.toml|
+    \.pre-commit-config\.yaml|
+    Makefile|
+    \.github/workflows/test\.yml
+  )$
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.14
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format

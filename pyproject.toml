@@ -1,0 +1,91 @@
+# pyproject.toml — Axe 1 (pytest + CI/CD hardening)
+#
+# Scope:
+#   ruff  → lint + format
+#   black → format (line-length harmonised with ruff)
+#
+# IMPORTANT — Axe 1 invariant ("zero touch to application code"):
+#   ruff/black are configured to operate ONLY on tests/ for now. The
+#   existing app/, services/, station_web.py, app/blueprints/* are
+#   excluded from formatting/lint to keep this hardening pass risk-free.
+#   Future passes can incrementally widen the include scope.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+# Only lint/format the NEW test files added in Axe 1 (pytest+CI hardening).
+# Legacy test files (pre-Axe-1) are excluded to keep this pass risk-free:
+# they were committed root-owned, were not subject to style rules, and
+# changing them now would risk breaking the existing baseline.
+include = ["tests/**/*.py"]
+exclude = [
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+    "__pycache__",
+    "*.bak*",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    "node_modules",
+    ".github.root_owned",
+    "app",
+    "services",
+    "scripts",
+    "station_web.py",
+    # Legacy tests (pre-Axe-1) — out of scope for this pass.
+    "tests/__init__.py",
+    "tests/integration/__init__.py",
+    "tests/integration/test_circuit_breakers.py",
+    "tests/integration/test_database.py",
+    "tests/smoke/__init__.py",
+    "tests/smoke/test_critical_endpoints.py",
+    "tests/smoke/test_factory.py",
+    "tests/smoke/test_legacy_api_json.py",
+    "tests/smoke/test_legacy_critiques.py",
+    "tests/smoke/test_legacy_routes.py",
+    "tests/smoke/test_wsgi.py",
+    "tests/unit/__init__.py",
+    "tests/unit/test_blueprints.py",
+    "tests/unit/test_pure_services.py",
+    "tests/unit/test_security.py",
+    "tests/unit/test_services.py",
+]
+
+[tool.ruff.lint]
+# Conservative ruleset — keep it green on day one.
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long — handled by formatter
+    "B008",  # function call in default arg (FastAPI / pytest fixtures)
+    "B904",  # raise ... from err  (legacy test style)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.black]
+line-length = 100
+target-version = ["py311", "py312"]
+include = '^tests/.*\.py$'
+extend-exclude = '''
+(
+    ^/venv
+  | ^/\.venv
+  | ^/app
+  | ^/services
+  | ^/station_web\.py$
+  | ^/\.github\.root_owned
+)
+'''

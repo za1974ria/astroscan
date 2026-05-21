@@ -11,6 +11,8 @@
 [![Version](https://img.shields.io/badge/version-v2.8.0-blue.svg)](https://github.com/za1974ria/astroscan/releases/tag/v2.8.0-lighthouse-58pct-ui-clean)
 [![Lighthouse](https://img.shields.io/badge/Lighthouse-21%2F50%20PERFECT-success.svg)](https://github.com/za1974ria/astroscan/releases/tag/v2.8.0-lighthouse-58pct-ui-clean)
 [![A11y](https://img.shields.io/badge/Accessibility-100%2F100%20on%2046%20modules-brightgreen.svg)](https://github.com/za1974ria/astroscan/releases/tag/v2.8.0-lighthouse-58pct-ui-clean)
+[![CI](https://github.com/za1974ria/astroscan/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/za1974ria/astroscan/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/badge/coverage-25%25%20%E2%86%92%20%E2%89%A560%25%20target-yellow.svg)](#development)
 
 🌐 **Live site:** https://astroscan.space
 📐 **Methodology:** https://astroscan.space/methodology
@@ -132,6 +134,32 @@ Current priorities (open to suggestions):
 - Performance optimization for low-bandwidth users
 - Expanded coverage of North African observation conditions
 - Better mobile experience
+
+---
+
+## Development
+
+Setup once:
+
+```bash
+make install-dev    # installs dev deps + pre-commit hooks
+```
+
+Day-to-day:
+
+```bash
+make test           # all tests
+make test-smoke     # smoke tests (no external deps)
+make test-unit      # unit tests (pure logic)
+make test-cov       # full suite with coverage report (term + HTML)
+make lint           # ruff lint on tests/
+make format         # ruff format + autofix on tests/
+make precommit      # run all pre-commit hooks on all files
+```
+
+CI runs Python 3.11 + 3.12 matrix, ruff lint/format check, pytest, and a coverage gate (`--cov-fail-under=20`). The threshold is conservative — it tracks the worst-case attainable level without app-code changes — and is raised as new tests land. See `.github/workflows/test.yml`.
+
+`pytest.ini` defines markers (`smoke`, `unit`, `integration`, `slow`) for filtering. `tests/conftest.py` provides Flask app fixtures and gracefully skips runs without read access to `.env` or writable `data/` (production runs as root and is unaffected).
 
 ---
 

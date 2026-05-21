@@ -67,6 +67,16 @@ RESUME_REPRISE_*.md
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Axe 1 — local dev artifacts
+.github.root_owned/
+Makefile.root_owned
+README.md.root_owned
+.snapshots_sentinel/
+audit/lighthouse_routes.txt
+htmlcov/
+coverage.xml
+.coverage
 .coverage
 htmlcov/
 
