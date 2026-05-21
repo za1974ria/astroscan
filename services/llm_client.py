@@ -194,9 +194,15 @@ class LLMClient:
                     "messages": messages,
                     "max_completion_tokens": max_tokens,
                 }
-                # GPT-5 / o-series reasoning models reject custom temperature.
-                # Detect & force temperature=None for these to avoid 400 Bad Request.
+                # GPT-5 / o-series reasoning models reject custom temperature
+                # AND consume hidden "thinking tokens" before producing an answer.
+                # The `max_completion_tokens` cap covers BOTH thinking + answer,
+                # so we double the budget for reasoning models to leave room for the
+                # actual response (otherwise the model burns the budget thinking and
+                # returns an empty `text` — observed on gpt-5-mini-2025-08-07).
                 _is_reasoning = model.startswith(("gpt-5", "o1", "o3", "o4", "o5"))
+                if _is_reasoning:
+                    payload["max_completion_tokens"] = max_tokens * 2
                 if temperature is not None and not _is_reasoning:
                     payload["temperature"] = temperature
                 if extra:
