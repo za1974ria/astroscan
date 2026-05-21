@@ -1,10 +1,10 @@
 """Unit tests — services.config (constantes pures, validations sanity)."""
+
 from __future__ import annotations
 
 import pytest
 
 from services import config as cfg
-
 
 pytestmark = pytest.mark.unit
 
@@ -57,9 +57,19 @@ def test_tle_cooldown_window_ordered():
 @pytest.mark.parametrize(
     "name",
     [
-        "TTL_IMAGE_CACHE", "TTL_JWST", "TTL_APOD", "TTL_NEO", "TTL_NASA_SOLAR",
-        "TTL_ASTEROIDS", "TTL_SOLAR_WEATHER", "TTL_SPACEX", "TTL_SPACE_NEWS",
-        "TTL_MARS_WEATHER", "TTL_ISS_PASSES", "TTL_VOYAGER", "TTL_PLANETS_V1",
+        "TTL_IMAGE_CACHE",
+        "TTL_JWST",
+        "TTL_APOD",
+        "TTL_NEO",
+        "TTL_NASA_SOLAR",
+        "TTL_ASTEROIDS",
+        "TTL_SOLAR_WEATHER",
+        "TTL_SPACEX",
+        "TTL_SPACE_NEWS",
+        "TTL_MARS_WEATHER",
+        "TTL_ISS_PASSES",
+        "TTL_VOYAGER",
+        "TTL_PLANETS_V1",
         "TTL_EPH_TLEMCEN",
     ],
 )
@@ -76,12 +86,17 @@ def test_ttl_positive(name):
 @pytest.mark.parametrize(
     "name",
     [
-        "NASA_APOD_URL", "NASA_NEO_URL", "NASA_DONKI_URL",
-        "NOAA_KP_URL", "NOAA_ALERTS_URL",
+        "NASA_APOD_URL",
+        "NASA_NEO_URL",
+        "NASA_DONKI_URL",
+        "NOAA_KP_URL",
+        "NOAA_ALERTS_URL",
         "ISS_WHERETHEISS_URL",
-        "CELESTRAK_GP_URL", "SATNOGS_TLE_URL",
+        "CELESTRAK_GP_URL",
+        "SATNOGS_TLE_URL",
         "OPEN_METEO_URL",
-        "MO_DIR_URL", "MO_DL_BASE",
+        "MO_DIR_URL",
+        "MO_DL_BASE",
     ],
 )
 def test_external_urls_https(name):

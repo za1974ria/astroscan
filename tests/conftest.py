@@ -15,6 +15,7 @@ PASS 2D (2026-05-07) — Project root is now resolved dynamically from
 ``__file__`` so that the suite works in any environment (Hetzner, GitHub
 Actions, local dev, Docker), not only ``/root/astro_scan``.
 """
+
 from __future__ import annotations
 
 import builtins
@@ -71,9 +72,7 @@ def app():
     env_path = os.path.join(_PROJECT_ROOT, ".env")
     # Skip cleanly if .env is missing (CI) or not readable (unprivileged user)
     if not os.path.exists(env_path) or not os.access(env_path, os.R_OK):
-        pytest.skip(
-            f"app skipped — {env_path} is missing or not readable by the current user."
-        )
+        pytest.skip(f"app skipped — {env_path} is missing or not readable by the current user.")
 
     os.environ["TESTING"] = "1"
     os.environ.setdefault("SENTRY_DSN", "")
@@ -118,7 +117,6 @@ def factory_app():
     # the factory imports the blueprints that lazy-import from it.
     try:
         import station_web  # noqa: F401  — side effects required
-
         from app import create_app
 
         flask_app = create_app("testing")

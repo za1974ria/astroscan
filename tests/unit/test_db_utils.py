@@ -1,4 +1,5 @@
 """Unit tests — app.utils.db (façade DB Blueprints)."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -7,7 +8,6 @@ import pytest
 from flask import Flask, g
 
 from app.utils import db as db_mod
-
 
 pytestmark = pytest.mark.unit
 
@@ -154,9 +154,7 @@ def test_fetch_one_bad_sql_returns_none(tmp_path):
 def test_execute_query_insert(tmp_path):
     path = _tmp_db(tmp_path)
     with db_mod.db_session(path) as conn:
-        cur = db_mod.execute_query(
-            conn, "INSERT INTO t (name) VALUES (?)", ("z",), commit=True
-        )
+        cur = db_mod.execute_query(conn, "INSERT INTO t (name) VALUES (?)", ("z",), commit=True)
         assert cur is not None
         assert cur.rowcount == 1
         rows = db_mod.fetch_all(conn, "SELECT name FROM t WHERE name = 'z'")

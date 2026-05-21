@@ -3,6 +3,7 @@
 Uses a FakeRedis stub so tests run without a live Redis. Exercises all 3
 prefixes (api / feeds / analytics) plus the fallback when Redis is down.
 """
+
 from __future__ import annotations
 
 import json
@@ -10,7 +11,6 @@ import json
 import pytest
 
 from services import cache_service as cs
-
 
 pytestmark = pytest.mark.unit
 

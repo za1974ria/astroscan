@@ -3,6 +3,7 @@
 Couvre MemoryCache, memoize_ttl, et les ré-exports Redis (mode no-op si
 services.cache_service indisponible).
 """
+
 from __future__ import annotations
 
 import time
@@ -10,7 +11,6 @@ import time
 import pytest
 
 from app.utils import cache as cache_mod
-
 
 pytestmark = pytest.mark.unit
 
@@ -205,9 +205,7 @@ def test_invalidate_alias_invokable():
 
 def test_get_cached_callable():
     """get_cached is the documented entry point — call it with a fetcher."""
-    val = cache_mod.get_cached(
-        "axe1-test-key-getcached", ttl=5, fetch_fn=lambda: {"ok": True}
-    )
+    val = cache_mod.get_cached("axe1-test-key-getcached", ttl=5, fetch_fn=lambda: {"ok": True})
     assert val is None or val == {"ok": True}
 
 

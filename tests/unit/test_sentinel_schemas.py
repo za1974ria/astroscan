@@ -1,10 +1,10 @@
 """Unit tests — app.blueprints.sentinel.schemas (input validation)."""
+
 from __future__ import annotations
 
 import pytest
 
 from app.blueprints.sentinel import schemas
-
 
 pytestmark = pytest.mark.unit
 
@@ -71,9 +71,7 @@ def test_create_driver_label_too_long():
 
 
 def test_create_safe_zone_complete():
-    out = schemas.validate_create({
-        "safe_zone": {"lat": 34.8, "lon": -1.3, "radius_m": 500}
-    })
+    out = schemas.validate_create({"safe_zone": {"lat": 34.8, "lon": -1.3, "radius_m": 500}})
     assert out["safe_zone_lat"] == 34.8
     assert out["safe_zone_lon"] == -1.3
     assert out["safe_zone_radius_m"] == 500
@@ -123,11 +121,16 @@ def test_position_minimal_ok():
 
 
 def test_position_full_payload():
-    out = schemas.validate_position({
-        "lat": 34.0, "lon": -1.0,
-        "accuracy": 12.5, "speed_kmh": 60.0,
-        "heading_deg": 180.0, "battery_pct": 75,
-    })
+    out = schemas.validate_position(
+        {
+            "lat": 34.0,
+            "lon": -1.0,
+            "accuracy": 12.5,
+            "speed_kmh": 60.0,
+            "heading_deg": 180.0,
+            "battery_pct": 75,
+        }
+    )
     assert out["accuracy"] == 12.5
     assert out["speed_kmh"] == 60.0
     assert out["heading_deg"] == 180.0
@@ -188,9 +191,7 @@ def test_position_empty_string_optional_treated_as_none():
 
 
 def test_push_register_ok():
-    fcm, platform = schemas.validate_push_register(
-        {"fcm_token": "abc123", "platform": "android"}
-    )
+    fcm, platform = schemas.validate_push_register({"fcm_token": "abc123", "platform": "android"})
     assert fcm == "abc123"
     assert platform == "android"
 
@@ -224,12 +225,14 @@ def test_push_register_not_dict():
 
 
 def test_batch_ok():
-    out = schemas.validate_batch({
-        "positions": [
-            {"lat": 1.0, "lon": 2.0},
-            {"lat": 3.0, "lon": 4.0},
-        ]
-    })
+    out = schemas.validate_batch(
+        {
+            "positions": [
+                {"lat": 1.0, "lon": 2.0},
+                {"lat": 3.0, "lon": 4.0},
+            ]
+        }
+    )
     assert len(out) == 2
     assert out[0]["lat"] == 1.0
     assert out[1]["lon"] == 4.0

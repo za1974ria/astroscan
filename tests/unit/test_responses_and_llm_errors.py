@@ -1,4 +1,5 @@
 """Unit tests — app.utils.responses + app.utils.llm_errors."""
+
 from __future__ import annotations
 
 import json
@@ -6,9 +7,7 @@ import json
 import pytest
 from flask import Flask
 
-from app.utils import responses
-from app.utils import llm_errors
-
+from app.utils import llm_errors, responses
 
 pytestmark = pytest.mark.unit
 
@@ -148,9 +147,7 @@ def test_friendly_message_for_credit_balance_does_not_leak_raw():
 
 def test_llm_error_response_shape_unavailable():
     with _flask_ctx():
-        resp, code = llm_errors.llm_error_response(
-            "credit balance too low", provider="Anthropic"
-        )
+        resp, code = llm_errors.llm_error_response("credit balance too low", provider="Anthropic")
         body = json.loads(resp.get_data(as_text=True))
     assert code == 503
     assert body["ok"] is False

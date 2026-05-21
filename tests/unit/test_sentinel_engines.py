@@ -1,8 +1,7 @@
 """Unit tests — sentinel pure engines (state_machine, speed, battery,
 anti_cut, geo). All pure logic, no I/O, no DB."""
-from __future__ import annotations
 
-import math
+from __future__ import annotations
 
 import pytest
 
@@ -10,6 +9,8 @@ from app.blueprints.sentinel import (
     battery_engine,
     geo_engine,
     speed_engine,
+)
+from app.blueprints.sentinel import (
     state_machine as fsm,
 )
 from app.blueprints.sentinel.anti_cut_engine import (
@@ -17,7 +18,6 @@ from app.blueprints.sentinel.anti_cut_engine import (
     assert_no_silent_deletion,
     assert_no_unilateral_termination,
 )
-
 
 pytestmark = pytest.mark.unit
 
@@ -68,8 +68,11 @@ def test_approver_for():
 
 def test_speed_below_limit_no_event():
     out = speed_engine.evaluate(
-        speed_kmh=80, limit_kmh=90, now_ts=1000,
-        streak_started_at=None, over_speed_active=False,
+        speed_kmh=80,
+        limit_kmh=90,
+        now_ts=1000,
+        streak_started_at=None,
+        over_speed_active=False,
     )
     assert out["event"] is None
     assert out["over_speed_active"] is False
@@ -78,8 +81,11 @@ def test_speed_below_limit_no_event():
 
 def test_speed_just_above_starts_streak():
     out = speed_engine.evaluate(
-        speed_kmh=95, limit_kmh=90, now_ts=1000,
-        streak_started_at=None, over_speed_active=False,
+        speed_kmh=95,
+        limit_kmh=90,
+        now_ts=1000,
+        streak_started_at=None,
+        over_speed_active=False,
     )
     assert out["event"] is None
     assert out["streak_started_at"] == 1000
@@ -87,8 +93,11 @@ def test_speed_just_above_starts_streak():
 
 def test_speed_streak_too_short_no_alert():
     out = speed_engine.evaluate(
-        speed_kmh=95, limit_kmh=90, now_ts=1005,
-        streak_started_at=1000, over_speed_active=False,
+        speed_kmh=95,
+        limit_kmh=90,
+        now_ts=1005,
+        streak_started_at=1000,
+        over_speed_active=False,
     )
     assert out["event"] is None
     assert out["streak_started_at"] == 1000
@@ -98,8 +107,11 @@ def test_speed_streak_completes_fires_alert():
     streak_start = 1000
     now = streak_start + speed_engine.STREAK_REQUIRED_SECONDS
     out = speed_engine.evaluate(
-        speed_kmh=95, limit_kmh=90, now_ts=now,
-        streak_started_at=streak_start, over_speed_active=False,
+        speed_kmh=95,
+        limit_kmh=90,
+        now_ts=now,
+        streak_started_at=streak_start,
+        over_speed_active=False,
     )
     assert out["event"] == "over_speed"
     assert out["over_speed_active"] is True
@@ -107,16 +119,22 @@ def test_speed_streak_completes_fires_alert():
 
 def test_speed_drops_resets_streak():
     out = speed_engine.evaluate(
-        speed_kmh=80, limit_kmh=90, now_ts=1010,
-        streak_started_at=1000, over_speed_active=False,
+        speed_kmh=80,
+        limit_kmh=90,
+        now_ts=1010,
+        streak_started_at=1000,
+        over_speed_active=False,
     )
     assert out["streak_started_at"] is None
 
 
 def test_speed_clears_after_alert_via_hysteresis():
     out = speed_engine.evaluate(
-        speed_kmh=85, limit_kmh=90, now_ts=2000,
-        streak_started_at=1000, over_speed_active=True,
+        speed_kmh=85,
+        limit_kmh=90,
+        now_ts=2000,
+        streak_started_at=1000,
+        over_speed_active=True,
     )
     assert out["event"] == "over_speed_cleared"
     assert out["over_speed_active"] is False
@@ -124,8 +142,11 @@ def test_speed_clears_after_alert_via_hysteresis():
 
 def test_speed_does_not_clear_within_margin():
     out = speed_engine.evaluate(
-        speed_kmh=87, limit_kmh=90, now_ts=2000,
-        streak_started_at=1000, over_speed_active=True,
+        speed_kmh=87,
+        limit_kmh=90,
+        now_ts=2000,
+        streak_started_at=1000,
+        over_speed_active=True,
     )
     # 87 > 90-5 (clear) → still active
     assert out["event"] is None
@@ -134,7 +155,10 @@ def test_speed_does_not_clear_within_margin():
 
 def test_running_stats_update():
     mx, sm, n = speed_engine.update_running_stats(
-        speed_kmh=60.0, max_so_far=50.0, sum_so_far=100.0, samples_so_far=2,
+        speed_kmh=60.0,
+        max_so_far=50.0,
+        sum_so_far=100.0,
+        samples_so_far=2,
     )
     assert mx == 60.0
     assert sm == 160.0
@@ -143,7 +167,10 @@ def test_running_stats_update():
 
 def test_running_stats_max_preserved():
     mx, *_ = speed_engine.update_running_stats(
-        speed_kmh=40.0, max_so_far=80.0, sum_so_far=0.0, samples_so_far=0,
+        speed_kmh=40.0,
+        max_so_far=80.0,
+        sum_so_far=0.0,
+        samples_so_far=0,
     )
     assert mx == 80.0
 
@@ -211,9 +238,14 @@ def test_signal_quality_buckets():
 
 def test_safe_zone_disabled_when_no_config():
     out = geo_engine.evaluate_safe_zone(
-        lat=0.0, lon=0.0,
-        sz_lat=None, sz_lon=None, sz_radius_m=None,
-        now_ts=1000, outside_streak_start=None, safe_zone_exit_active=False,
+        lat=0.0,
+        lon=0.0,
+        sz_lat=None,
+        sz_lon=None,
+        sz_radius_m=None,
+        now_ts=1000,
+        outside_streak_start=None,
+        safe_zone_exit_active=False,
     )
     assert out["event"] is None
     assert out["safe_zone_exit_active"] is False
@@ -222,9 +254,14 @@ def test_safe_zone_disabled_when_no_config():
 
 def test_safe_zone_inside_no_event():
     out = geo_engine.evaluate_safe_zone(
-        lat=34.8, lon=-1.3,
-        sz_lat=34.8, sz_lon=-1.3, sz_radius_m=500,
-        now_ts=1000, outside_streak_start=None, safe_zone_exit_active=False,
+        lat=34.8,
+        lon=-1.3,
+        sz_lat=34.8,
+        sz_lon=-1.3,
+        sz_radius_m=500,
+        now_ts=1000,
+        outside_streak_start=None,
+        safe_zone_exit_active=False,
     )
     assert out["event"] is None
     assert out["distance_m"] == pytest.approx(0.0, abs=1.0)
@@ -232,9 +269,14 @@ def test_safe_zone_inside_no_event():
 
 def test_safe_zone_outside_starts_streak():
     out = geo_engine.evaluate_safe_zone(
-        lat=35.0, lon=-1.3,  # ~22km from origin
-        sz_lat=34.8, sz_lon=-1.3, sz_radius_m=500,
-        now_ts=1000, outside_streak_start=None, safe_zone_exit_active=False,
+        lat=35.0,
+        lon=-1.3,  # ~22km from origin
+        sz_lat=34.8,
+        sz_lon=-1.3,
+        sz_radius_m=500,
+        now_ts=1000,
+        outside_streak_start=None,
+        safe_zone_exit_active=False,
     )
     assert out["event"] is None
     assert out["outside_streak_start"] == 1000
@@ -244,9 +286,14 @@ def test_safe_zone_exit_fires_after_streak():
     streak_start = 1000
     now = streak_start + geo_engine.SAFE_ZONE_STREAK_SECONDS
     out = geo_engine.evaluate_safe_zone(
-        lat=35.0, lon=-1.3,
-        sz_lat=34.8, sz_lon=-1.3, sz_radius_m=500,
-        now_ts=now, outside_streak_start=streak_start, safe_zone_exit_active=False,
+        lat=35.0,
+        lon=-1.3,
+        sz_lat=34.8,
+        sz_lon=-1.3,
+        sz_radius_m=500,
+        now_ts=now,
+        outside_streak_start=streak_start,
+        safe_zone_exit_active=False,
     )
     assert out["event"] == "safe_zone_exit"
     assert out["safe_zone_exit_active"] is True
@@ -254,9 +301,14 @@ def test_safe_zone_exit_fires_after_streak():
 
 def test_safe_zone_return_immediate():
     out = geo_engine.evaluate_safe_zone(
-        lat=34.8, lon=-1.3,
-        sz_lat=34.8, sz_lon=-1.3, sz_radius_m=500,
-        now_ts=2000, outside_streak_start=1000, safe_zone_exit_active=True,
+        lat=34.8,
+        lon=-1.3,
+        sz_lat=34.8,
+        sz_lon=-1.3,
+        sz_radius_m=500,
+        now_ts=2000,
+        outside_streak_start=1000,
+        safe_zone_exit_active=True,
     )
     assert out["event"] == "safe_zone_return"
     assert out["safe_zone_exit_active"] is False
@@ -264,9 +316,14 @@ def test_safe_zone_return_immediate():
 
 def test_safe_zone_re_entry_resets_streak():
     out = geo_engine.evaluate_safe_zone(
-        lat=34.8, lon=-1.3,
-        sz_lat=34.8, sz_lon=-1.3, sz_radius_m=500,
-        now_ts=1100, outside_streak_start=1000, safe_zone_exit_active=False,
+        lat=34.8,
+        lon=-1.3,
+        sz_lat=34.8,
+        sz_lon=-1.3,
+        sz_radius_m=500,
+        now_ts=1100,
+        outside_streak_start=1000,
+        safe_zone_exit_active=False,
     )
     assert out["event"] is None
     assert out["outside_streak_start"] is None
@@ -282,7 +339,9 @@ def _stub_audit_logger(monkeypatch):
     from app.blueprints.sentinel import audit_logger as al
 
     calls = []
-    monkeypatch.setattr(al, "anti_cut_blocked", lambda sid, reason: calls.append((sid, reason)) or 1)
+    monkeypatch.setattr(
+        al, "anti_cut_blocked", lambda sid, reason: calls.append((sid, reason)) or 1
+    )
     return calls
 
 

@@ -3,6 +3,7 @@
 Mocks Redis via monkeypatching _get_redis to avoid network. Verifies the
 state machine: CLOSED → OPEN → HALF_OPEN → CLOSED.
 """
+
 from __future__ import annotations
 
 import time
@@ -10,7 +11,6 @@ import time
 import pytest
 
 from services import circuit_breaker as cb_mod
-
 
 pytestmark = pytest.mark.unit
 

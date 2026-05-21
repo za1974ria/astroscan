@@ -3,6 +3,7 @@
 Bug historique : longitude écrite +1.32°E (Tiaret, ~300 km est) au lieu de
 -1.3167°W (Tlemcen). Ces tests verrouillent la valeur correcte.
 """
+
 from __future__ import annotations
 
 import math
@@ -10,7 +11,6 @@ import math
 import pytest
 
 from app.constants import observatory as obs
-
 
 pytestmark = pytest.mark.unit
 

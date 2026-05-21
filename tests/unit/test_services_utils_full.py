@@ -1,13 +1,12 @@
 """Unit tests — services.utils missing branches (PASS 4 backfill)."""
+
 from __future__ import annotations
 
-import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 from services import utils as su
-
 
 pytestmark = pytest.mark.unit
 
@@ -17,17 +16,17 @@ pytestmark = pytest.mark.unit
 
 def test_parse_iso_z_suffix():
     epoch = su._parse_iso_to_epoch_seconds("2026-01-01T00:00:00Z")
-    assert epoch == int(datetime(2026, 1, 1, tzinfo=timezone.utc).timestamp())
+    assert epoch == int(datetime(2026, 1, 1, tzinfo=UTC).timestamp())
 
 
 def test_parse_iso_with_offset():
     epoch = su._parse_iso_to_epoch_seconds("2026-01-01T01:00:00+01:00")
-    assert epoch == int(datetime(2026, 1, 1, tzinfo=timezone.utc).timestamp())
+    assert epoch == int(datetime(2026, 1, 1, tzinfo=UTC).timestamp())
 
 
 def test_parse_iso_naive_assumes_utc():
     epoch = su._parse_iso_to_epoch_seconds("2026-01-01T00:00:00")
-    assert epoch == int(datetime(2026, 1, 1, tzinfo=timezone.utc).timestamp())
+    assert epoch == int(datetime(2026, 1, 1, tzinfo=UTC).timestamp())
 
 
 def test_parse_iso_integer_passthrough():
