@@ -7,35 +7,41 @@ Date : 2026-05-07
 ## Issues UI
 
 ### #1 — Sidebar fantôme apparente sur /portail
-**Statut** : Cache navigateur soupçonné (non reproductible côté serveur)
+**Statut** : ✅ MITIGÉ — 2026-05-19 (branche ui/bugs-portail-cleanup)
 **Reproduction observée** : observatoire → ◄ PORTAIL en mode normal Chrome
-**Vérification serveur** : HTML servi par /portail = PROPRE
-- 1 seule `<div class="sidebar">` ✓
-- 1 seul `<div class="topbar">` ✓
-- 1 seule marque cliquable ✓
-- 0 duplication HTML
-- 0 cycle iframe
-**Fixes appliqués (sans résoudre côté navigateur normal)** :
+**Vérification serveur** : HTML servi par /portail = PROPRE (1 sidebar, 1 topbar, 1 brand, 0 cycle iframe)
+**Fixes successifs** :
 - Phase O-C : cache-bust `onclick="this.href='/portail?_t='+Date.now()"` (commit 1a53e9d)
 - Phase O-D : `?embed=1` sur iframe + CSS `body.embed-mode` (commit 864937f)
-**Workaround utilisateur** : Ctrl+Shift+R (hard refresh)
-**Action différée** : Si reproduit en navigation privée Chrome, investiguer extensions/OS/cookie. Sinon non-bloquant.
+- Phase O-E : MutationObserver anti-doublons + CSP préventif
+- **2026-05-19** :
+  1. Headers serveur stricts `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` + `Pragma: no-cache` + `Expires: 0` sur /portail (override Sprint 1 bfcache)
+  2. SW unregister proactif inline en début de body (déregistre tout SW + purge `caches`) — annule l'effet d'un sw.js antérieur ayant pré-caché /portail
+  3. Cache name bumpé `astroscan-v190` → `astroscan-v191` (force `activate` → purge anciens caches même chez utilisateurs non-/portail)
+  4. Asset versioning `?v={{ config.ASSET_VERSION }}` (timestamp de boot) sur les 3 CSS critiques (design_tokens, components, fixes)
+**Workaround restant** : Ctrl+Shift+R reste utile si l'utilisateur a un proxy d'entreprise très agressif (hors de notre contrôle).
 
 ---
 
 ### #2 — Vide central dans observatoire
-**Statut** : Esthétique — non bloquant fonctionnellement
+**Statut** : ✅ COMBLÉ (placeholder Phase O-E preview) — 2026-05-19 (branche ui/bugs-portail-cleanup)
 **Description** : Espace noir entre image APOD et bloc suivant, sur la zone scrollée
-**Plan futur** : Phase O-E "Habiter le vide" — widget `visibility_score` hyperlocal Tlemcen
-**Lien stratégique** : Préfigure le Chemin B (donnée unique scientifique pour validation CRAAG)
+**Résolution minimale** : Insertion d'une section `<section class="conditions-tlemcen">` juste après `.bottom-facts` dans observatoire.html :
+- 3 metrics : Coordonnées (34.8753°N / 1.3167°W) · Altitude station (816 m) · Visibility score hyperlocal ("En cours de calibration")
+- Footnote : "Module v2 — agrégation Bortle + couverture nuageuse + altitude ISS en développement (Phase O-E)"
+- CSS sobre, palette Mission Control existante. Aucune fake data.
+- Coordonnées injectées via context_processor `_inject_observer_constants` (`app/hooks.py`) depuis source unique `app/constants/observatory.py`
+**Plan futur (Chemin B)** : Phase O-E complète — widget `visibility_score` hyperlocal Tlemcen (Bortle + couverture nuageuse + altitude ISS).
+**Lien stratégique** : Préfigure le Chemin B (donnée unique scientifique pour validation CRAAG). Le placeholder est HONNÊTE et déjà compréhensible par un évaluateur ESA/NASA.
 
 ---
 
 ### #3 — WebSocket /ws/view-sync : erreurs console répétées
-**Statut** : Bruit console — non bloquant
-**Cause probable** : Routes Sock-WS définies dans station_web.py:3853 mais non démarrées via gunicorn worker config, OU non exposées via nginx upstream
-**Fonctionnement actuel** : Le widget VUE MASTER affiche STATION SOLO en cyan dim (Phase O-B FIX 2 OK)
-**Action différée** : Configurer nginx WS upstream OU désactiver le client si la sync multi-observateurs n'est pas un priorité
+**Statut** : ✅ RÉSOLU — 2026-05-19 (branche ui/bugs-portail-cleanup)
+**Cause** : Routes Sock-WS définies dans station_web.py:3853 mais non démarrées via gunicorn worker config, ET non exposées via nginx upstream
+**Résolution** : Client WS désactivé proprement côté frontend via feature flag `FEATURE_WS_VIEW_SYNC=False` (`app/__init__.py`). Le script `astroscan_view_sync.js` n'est plus chargé sur /observatoire (ni sur /portail via iframe). Commentaire HTML inséré : `<!-- WS view-sync désactivé : voir KNOWN_ISSUES #3 -->`
+**État UI conservé** : VUE MASTER affiche STATION SOLO en cyan dim (HUD statique, data-state="open" hard-codé) — pas de régression visuelle.
+**Réactivation future** : Configurer nginx WS upstream (proxy_pass + Upgrade headers) + basculer le flag à True.
 
 ---
 

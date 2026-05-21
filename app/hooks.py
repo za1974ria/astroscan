@@ -41,6 +41,20 @@ def _inject_seo_site_description():
     return {'seo_site_description': SEO_HOME_DESCRIPTION}
 
 
+def _inject_observer_constants():
+    """Bug #2 (KNOWN_ISSUES) — Coordonnées Tlemcen disponibles dans tous les
+    templates, depuis source unique app/constants/observatory.py."""
+    from app.constants.observatory import (
+        OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M, OBSERVER_CITY,
+    )
+    return {
+        'observer_lat': OBSERVER_LAT,
+        'observer_lon': OBSERVER_LON,
+        'observer_alt_m': OBSERVER_ALT_M,
+        'observer_city': OBSERVER_CITY,
+    }
+
+
 # ─── @errorhandler(404) ───────────────────────────────────────────────────────
 def _astroscan_404(e):
     if request.path.startswith('/api/'):
@@ -292,3 +306,4 @@ def register_hooks(app: Flask) -> None:
     app.register_error_handler(500, _astroscan_500)
 
     app.context_processor(_inject_seo_site_description)
+    app.context_processor(_inject_observer_constants)

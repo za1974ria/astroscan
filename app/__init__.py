@@ -50,6 +50,11 @@ def create_app(config_name: str = "production") -> Flask:
         static_folder=os.path.join(os.path.dirname(__file__), '..', 'static'),
     )
 
+    # ASSET_VERSION : timestamp de boot — busting cache navigateur sur assets
+    # critiques (CSS/JS du portail). Bug #1 : sidebar fantôme persistante.
+    import time as _t
+    _asset_version = str(int(_t.time()))
+
     app.config.update(
         SECRET_KEY=_resolve_secret_key(config_name),
         TESTING=os.environ.get("TESTING", "0") == "1",
@@ -60,6 +65,10 @@ def create_app(config_name: str = "production") -> Flask:
         DEFAULT_LANG="fr",
         TEMPLATES_AUTO_RELOAD=True,
         SEND_FILE_MAX_AGE_DEFAULT=0,
+        # Bug #3 (KNOWN_ISSUES) : client WS /ws/view-sync désactivé tant que
+        # nginx upstream n'est pas configuré. STATION SOLO reste affiché.
+        FEATURE_WS_VIEW_SYNC=False,
+        ASSET_VERSION=_asset_version,
     )
     # Force Jinja to re-check template mtime on every render across workers.
     app.jinja_env.auto_reload = True
