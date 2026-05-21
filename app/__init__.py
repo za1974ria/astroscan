@@ -210,6 +210,24 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(sentinel_bp)
     log.info("[Blueprints] 32 blueprints + 8 hooks enregistrés (sync station_web.py + hilal + maintenance + paris_weather + sentinel)")
 
+    # ── Axe Astro Brain + Guardian (Session 1, 2026-05-21) ──────────────
+    # Additive registrations isolated by try/except: if either blueprint
+    # fails to import or register, the app continues to boot normally.
+    # Endpoints are localhost-only (@require_localhost). No Nginx exposure.
+    try:
+        from app.blueprints.astrobrain import bp as astrobrain_bp
+        app.register_blueprint(astrobrain_bp, url_prefix="/api/astrobrain")
+        log.info("[astrobrain] blueprint registered")
+    except Exception as e:  # noqa: BLE001 — boot must never fail on optional bp
+        log.warning("[astrobrain] registration failed (continuing): %s", e)
+
+    try:
+        from app.blueprints.guardian import bp as guardian_bp
+        app.register_blueprint(guardian_bp, url_prefix="/api/guardian")
+        log.info("[guardian] blueprint registered")
+    except Exception as e:  # noqa: BLE001 — boot must never fail on optional bp
+        log.warning("[guardian] registration failed (continuing): %s", e)
+
 
 def register_all_for_fallback(app: Flask) -> None:
     """Enregistre TOUS les blueprints + hooks sur une instance Flask externe.

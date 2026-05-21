@@ -72,6 +72,16 @@ RESUME_REPRISE_*.md
 .github.root_owned/
 Makefile.root_owned
 README.md.root_owned
+requirements.txt.root_owned
+
+# Astro Brain + Guardian (Session 1) — runtime artifacts
+logs/astrobrain/
+logs/guardian/
+data/astrobrain_budget.json
+
+# Env backups — never commit (contain secrets)
+.env.backup-*
+.env.bak-*
 .snapshots_sentinel/
 audit/lighthouse_routes.txt
 htmlcov/
