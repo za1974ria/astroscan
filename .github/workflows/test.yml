@@ -2,12 +2,40 @@ name: Tests
 
 on:
   push:
-    branches: [main, migration/phase-2c]
+    branches: [main, "ci/**", migration/phase-2c]
   pull_request:
     branches: [main, migration/phase-2c]
 
+# Cancel in-progress runs on new pushes to the same branch.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Ruff lint
+        run: ruff check tests/
+
+      - name: Ruff format check
+        run: ruff format --check tests/
+
   test:
+    name: pytest (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -36,24 +64,19 @@ jobs:
           TESTING: "1"
           SECRET_KEY: "ci-test-key-not-for-prod"
           SENTRY_DSN: ""
-        run: |
-          pytest tests/smoke/ -m "not integration" --tb=short
+        run: pytest tests/smoke/ -m "not integration" --tb=short
 
       - name: Run unit tests
         env:
           TESTING: "1"
           SECRET_KEY: "ci-test-key-not-for-prod"
           SENTRY_DSN: ""
-        run: |
-          pytest tests/unit/ --tb=short
-
-      # Integration tests require DB / network and are not run in CI.
-      # They can be invoked locally with: make test-integration
+        run: pytest tests/unit/ --tb=short
 
   coverage:
+    name: Coverage (py3.12)
     runs-on: ubuntu-latest
     needs: test
-    if: github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v4
@@ -69,7 +92,13 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
-      - name: Generate coverage report
+      # Axe 1 — coverage floor enforced.
+      # Threshold tracks the attainable level without app-code changes.
+      # Local dev (unprivileged, data/ read-only) sees ~25%. CI checkout
+      # has writable data/, route smoke tests run, expected uplift +5–10
+      # pts. Floor set conservatively below the worst-case so the gate is
+      # real but unflaky. Raise as new tests land.
+      - name: Run pytest with coverage (fail under 20%)
         env:
           TESTING: "1"
           SECRET_KEY: "ci-test-key-not-for-prod"
@@ -77,12 +106,32 @@ jobs:
         run: |
           pytest tests/smoke/ tests/unit/ \
             --cov=app --cov=services \
-            --cov-report=xml --cov-report=term \
+            --cov-report=xml \
+            --cov-report=html:htmlcov \
+            --cov-report=term \
+            --cov-fail-under=20 \
             --tb=short
 
-      - name: Upload coverage artifact
+      - name: Upload coverage XML
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
+          name: coverage-xml-py3.12
           path: coverage.xml
-          retention-days: 14
+          retention-days: 30
+
+      - name: Upload coverage HTML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-py3.12
+          path: htmlcov/
+          retention-days: 30
+
+      # Activate Codecov once CODECOV_TOKEN is added to repo secrets.
+      # - name: Upload to Codecov
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     files: coverage.xml
+      #     fail_ci_if_error: false
