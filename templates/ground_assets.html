@@ -32,35 +32,14 @@
     /* When embedded in the portal iframe, kill the browser default margins. */
     html, body { margin: 0; padding: 0; height: 100%; }
   </style>
-<style id="cls-fix-v2">
-.ga-shell { contain: layout; }
-#ga-focus, aside#ga-focus { contain: layout; min-height: 400px; }
-#ga-network-overview { contain: layout; min-height: 200px; }
-.ga-focus-section { contain: layout; min-height: 80px; }
-</style>
-<style id="cls-fix-v3-ga">
-.ga-shell { contain: layout; }
-#ga-focus, aside#ga-focus { contain: layout; min-height: 400px; }
-#ga-network-overview { contain: layout; min-height: 240px !important; }
-.ga-focus-section { contain: layout; min-height: 100px !important; }
-.ga-focus-section + .ga-focus-section { min-height: 60px; }
-</style>
-<style id="cls-fix-v4-ga">
-.ga-shell { contain: layout; }
-aside#ga-focus, #ga-focus { 
-  contain: layout style; 
-  min-height: 480px !important;
-}
-#ga-network-overview { 
-  contain: layout size; 
-  min-height: 280px !important;
-  height: 280px;
-}
-.ga-focus-section { 
-  contain: layout; 
-  min-height: 130px !important;
-}
-#ga-network-overview > .ga-focus-section:first-child { min-height: 90px !important; }
+<style id="cls-fix-ga">
+  /* CLS reservation only — keep ~90px per right-pane section reserved so
+     the layout doesn't shift visibly while render.js injects the station
+     and event lists. NO fixed height + NO contain:size on the wrapper:
+     those were inherited from earlier CLS-fix iterations and caused the
+     children to overflow onto each other (stations overlapping events).
+     Layout grid + flex flow are defined in ground_assets.css + panels.css. */
+  .ga-focus-section { min-height: 90px; }
 </style>
 </head>
 <body class="ga-app notranslate">
