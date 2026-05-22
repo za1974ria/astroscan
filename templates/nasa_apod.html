@@ -15,6 +15,8 @@
 <link rel="icon" href="/static/favicon.ico?v=2">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- LCP boost: preload API APOD pour discovery anticipee de l'image hero -->
+<link rel="preload" as="fetch" href="/api/apod" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 html.embed-portail .topbar{display:none!important}
@@ -495,8 +497,12 @@ body::before {
         img.style.height = 'auto';
         img.style.display = 'block';
         // Sprint 3 perf: LCP candidate — fetchpriority high + decoding async
+        // Session 22/05: + loading=eager explicite + width/height pour fixer unsized-images
         img.fetchPriority = 'high';
         img.decoding = 'async';
+        img.loading = 'eager';
+        img.width = (d.image_width || 1920);
+        img.height = (d.image_height || 1080);
         img.onclick = function() { window.open(hdurl || url, '_blank', 'noopener'); };
         img.src = imgTarget;
         mediaInner.innerHTML = '';

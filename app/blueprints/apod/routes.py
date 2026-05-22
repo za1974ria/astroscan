@@ -50,7 +50,7 @@ def apod_proxy_image():
             r.content,
             mimetype=r.headers.get('Content-Type', 'image/jpeg'),
             headers={
-                'Cache-Control': 'public, max-age=3600',
+                'Cache-Control': 'public, max-age=86400, immutable',
                 'Access-Control-Allow-Origin': '*',
             }
         )
