@@ -3,360 +3,710 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AstroScan-Chohra - Analytics</title>
-<meta name="description" content="Analytics ASTRO-SCAN — visiteurs uniques, sessions, IPs propriétaires, métriques temps réel.">
+<title>Mission Control · Visitors Analytics — ASTRO-SCAN</title>
+<meta name="description" content="Cockpit ORBITAL-CHOHRA — analytics visiteurs ASTRO-SCAN : KPIs temps réel, timelines, heatmap monde, top pays et pages.">
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="preload" as="font" href="https://fonts.gstatic.com/s/orbitron/v31/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nyGy6BoWg1.woff2" type="font/woff2" crossorigin>
+<link rel="preload" as="font" href="https://fonts.gstatic.com/s/sharetechmono/v15/J7aHnp1uDWRBEqV98dVQztYldFcLowEFA87Heg.woff2" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap">
 <style>
   :root {
-    --bg: #0a0c10;
-    --panel: #12161c;
-    --border: rgba(100, 180, 255, 0.22);
-    --text: #e8eef6;
-    --muted: #8a9aab;
-    --accent: #5eb3ff;
+    --void: #010408;
+    --void-2: #04080e;
+    --panel: rgba(6, 14, 24, 0.78);
+    --panel-2: rgba(8, 18, 30, 0.92);
+    --border: rgba(0, 180, 255, 0.13);
+    --border-strong: rgba(0, 212, 255, 0.32);
+    --cyan: #00d4ff;
+    --cyan-2: #5ee8ff;
+    --cyan-dim: rgba(0, 212, 255, 0.62);
     --green: #3dd68c;
+    --amber: #ffb547;
+    --text: #e8f3ff;
+    --muted: #6b7e93;
+    --muted-2: #95a8bd;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
   body {
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
+    font-family: "Share Tech Mono", ui-monospace, monospace;
+    background: var(--void);
     color: var(--text);
     min-height: 100vh;
-    line-height: 1.45;
+    line-height: 1.5;
     font-size: 14px;
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(0,212,255,0.05), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(0,180,255,0.04), transparent 45%),
+      linear-gradient(rgba(0,212,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.018) 1px, transparent 1px);
+    background-size: auto, auto, 56px 56px, 56px 56px;
+    background-attachment: fixed;
   }
-  .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 20px 40px; }
-  header {
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 18px;
-    margin-bottom: 22px;
-  }
-  h1 {
-    font-size: 1.15rem;
-    font-weight: 600;
-    letter-spacing: 0.28em;
-    color: var(--accent);
-  }
-  .sub { margin-top: 8px; font-size: 0.78rem; color: var(--muted); letter-spacing: 0.12em; }
-  .kpis {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-    margin-bottom: 26px;
-  }
-  .kpi {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 16px 18px;
-  }
-  .kpi-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); }
-  .kpi-value { margin-top: 8px; font-size: 1.55rem; font-weight: 600; color: var(--green); font-variant-numeric: tabular-nums; }
-  .kpi-value.sm { font-size: 1rem; color: var(--text); word-break: break-all; }
-  section {
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover, a:focus-visible { color: var(--cyan-2); text-decoration: underline; outline: none; }
+
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 56px; }
+
+  /* HEADER ----------------------------------------------------------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px);
+    background: linear-gradient(180deg, rgba(1,4,8,0.96) 0%, rgba(1,4,8,0.82) 100%);
+    border-bottom: 1px solid var(--border-strong);
+    padding: 18px 24px 14px;
     margin-bottom: 28px;
   }
-  h2 {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    color: var(--accent);
-    margin-bottom: 10px;
+  .topbar-inner { max-width: 1400px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .brand-mark {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    background: radial-gradient(circle at 30% 30%, rgba(0,212,255,0.35), transparent 60%);
+    box-shadow: 0 0 22px rgba(0, 212, 255, 0.18) inset, 0 0 18px rgba(0,212,255,0.12);
+    position: relative; flex-shrink: 0;
   }
-  .table-wrap {
+  .brand-mark::before {
+    content: ""; position: absolute; inset: 8px; border-radius: 50%;
+    border: 1px dashed rgba(0,212,255,0.4); animation: spin 18s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .brand h1 {
+    font-family: "Orbitron", sans-serif; font-weight: 700;
+    font-size: clamp(0.92rem, 1.6vw, 1.15rem); letter-spacing: 0.22em; color: var(--cyan);
+    text-shadow: 0 0 12px rgba(0,212,255,0.4);
+    text-transform: uppercase;
+  }
+  .brand p { font-size: 0.72rem; color: var(--muted-2); letter-spacing: 0.18em; margin-top: 2px; text-transform: uppercase; }
+
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid rgba(61, 214, 140, 0.35);
+    background: rgba(61, 214, 140, 0.08);
+    font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--green);
+  }
+  .live-badge.off { color: var(--muted-2); border-color: rgba(149,168,189,0.25); background: rgba(149,168,189,0.05); }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .live-badge.off .live-dot { background: var(--muted-2); box-shadow: none; animation: none; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.35); }
+  }
+
+  .window-toggle { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+  .window-toggle a {
+    padding: 7px 14px; font-size: 0.72rem; letter-spacing: 0.14em; color: var(--muted-2);
+    border-right: 1px solid var(--border); text-transform: uppercase;
+    transition: background 0.18s, color 0.18s;
+  }
+  .window-toggle a:last-child { border-right: none; }
+  .window-toggle a:hover { background: rgba(0,212,255,0.08); color: var(--cyan-2); text-decoration: none; }
+  .window-toggle a.active { background: rgba(0,212,255,0.16); color: var(--cyan); box-shadow: inset 0 0 12px rgba(0,212,255,0.18); }
+
+  /* KPI CARDS -------------------------------------------------------- */
+  .kpis {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-bottom: 28px;
+  }
+  .kpi {
+    position: relative;
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: auto;
-    max-width: 100%;
+    border-radius: 12px;
+    padding: 20px 22px;
+    overflow: hidden;
+    transition: transform 0.22s, border-color 0.22s, box-shadow 0.22s;
   }
-  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  th, td {
-    text-align: left;
-    padding: 10px 14px;
-    border-bottom: 1px solid rgba(100, 180, 255, 0.1);
+  .kpi::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0.55;
   }
-  th {
-    font-size: 0.68rem;
+  .kpi::after {
+    content: ""; position: absolute; top: -40%; right: -20%; width: 160px; height: 160px;
+    background: radial-gradient(circle, rgba(0,212,255,0.16), transparent 70%);
+    pointer-events: none;
+  }
+  .kpi:hover { transform: translateY(-2px); border-color: var(--border-strong); box-shadow: 0 8px 28px rgba(0,212,255,0.08); }
+  .kpi-label {
+    font-family: "Orbitron", sans-serif;
+    font-size: 0.66rem; letter-spacing: 0.22em; color: var(--cyan-dim);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--muted);
-    font-weight: 500;
-    white-space: nowrap;
   }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(94, 179, 255, 0.05); }
-  .num { font-variant-numeric: tabular-nums; text-align: right; }
-  .empty { color: var(--muted); padding: 16px; font-size: 0.85rem; }
-  .journey-cell { font-size: 0.78rem; line-height: 1.35; color: var(--text); max-width: 420px; word-break: break-word; }
-  .sess-id { font-size: 0.72rem; max-width: 140px; word-break: break-all; color: var(--muted); }
-  .telemetry-wrap {
-    background: #06080d;
-    border: 1px solid rgba(61, 214, 140, 0.2);
-    border-radius: 6px;
-    padding: 18px 16px;
-    font-family: "Consolas", "DejaVu Sans Mono", ui-monospace, monospace;
+  .kpi-value {
+    font-family: "Orbitron", sans-serif; font-weight: 700;
+    font-size: 2rem; color: var(--cyan); margin-top: 12px;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 18px rgba(0,212,255,0.28);
   }
-  .telemetry-intro { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.12em; margin-bottom: 16px; }
-  .session-summary {
-    font-size: 14px;
-    color: #00ffd5;
-    margin-bottom: 8px;
-    font-weight: bold;
-    border-bottom: 1px solid rgba(0, 255, 213, 0.2);
-    padding-bottom: 4px;
+  .kpi-value.sm { font-size: 1.25rem; }
+  .kpi-sub { margin-top: 6px; font-size: 0.74rem; color: var(--muted-2); letter-spacing: 0.06em; }
+  .kpi-icon {
+    position: absolute; bottom: 14px; right: 16px;
+    width: 28px; height: 28px; opacity: 0.55;
+    color: var(--cyan);
   }
-  .telemetry-session {
+
+  /* PANEL GENERIC ---------------------------------------------------- */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px;
     margin-bottom: 22px;
-    padding: 14px 14px 12px;
-    background: rgba(8, 12, 18, 0.95);
-    border: 1px solid rgba(100, 180, 255, 0.12);
-    border-left: 3px solid var(--green);
-    border-radius: 4px;
+    position: relative;
   }
-  .telemetry-session:last-child { margin-bottom: 0; }
-  .telemetry-head { font-size: 0.88rem; color: var(--text); margin-bottom: 4px; line-height: 1.5; }
-  .telemetry-head .hl { color: var(--green); }
-  .telemetry-sub { font-size: 0.78rem; color: #7a9aaf; margin-bottom: 12px; }
-  .telemetry-kv {
-    font-size: 0.78rem;
-    color: #9ec5e0;
-    line-height: 1.55;
-    margin-bottom: 6px;
-    word-break: break-word;
+  .panel h2 {
+    font-family: "Orbitron", sans-serif; font-weight: 500;
+    font-size: 0.78rem; letter-spacing: 0.22em;
+    color: var(--cyan); margin-bottom: 18px;
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 12px;
   }
-  .telemetry-kv .lkv { color: var(--muted); font-weight: 500; }
-  .telemetry-kv .profil { color: var(--green); font-weight: 600; }
-  .telemetry-mods { font-size: 0.76rem; color: #b8dcf5; margin: 8px 0 14px; padding: 8px 10px; background: rgba(0,0,0,.25); border-radius: 4px; }
-  .telemetry-mods .lkv { color: var(--muted); display: block; margin-bottom: 4px; }
-  .telemetry-line {
-    font-size: 0.82rem;
-    color: #b8e0ff;
-    line-height: 1.7;
-    padding: 2px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  .panel h2::before {
+    content: ""; width: 6px; height: 14px;
+    background: var(--cyan); box-shadow: 0 0 10px var(--cyan);
+    border-radius: 1px;
   }
-  .telemetry-line:first-of-type { border-top: none; padding-top: 0; }
-  .telemetry-line .t { color: #5eb3ff; }
-  .telemetry-line .p { color: #e8eef6; }
-  .telemetry-line .d { color: var(--muted); }
-  footer { margin-top: 32px; font-size: 0.72rem; color: var(--muted); }
-  footer a { color: var(--accent); text-decoration: none; }
-  footer a:hover { text-decoration: underline; }
+  .panel h2 .panel-tag {
+    margin-left: auto; font-family: "Share Tech Mono", monospace;
+    font-size: 0.62rem; color: var(--muted-2); letter-spacing: 0.14em;
+  }
+
+  .row-2 { display: grid; gap: 22px; grid-template-columns: 1fr 1fr; margin-bottom: 22px; }
+  .row-2 > .panel { margin-bottom: 0; }
+  @media (max-width: 900px) { .row-2 { grid-template-columns: 1fr; } }
+
+  /* CHART CONTAINERS -------------------------------------------------- */
+  .chart-box { position: relative; width: 100%; min-height: 240px; }
+  .chart-box.tall { min-height: 320px; }
+  .chart-box.short { min-height: 200px; }
+
+  /* COUNTRY TABLE ---------------------------------------------------- */
+  .country-list { list-style: none; }
+  .country-row {
+    display: grid;
+    grid-template-columns: 32px 1fr auto 60px;
+    align-items: center; gap: 12px;
+    padding: 10px 4px; border-bottom: 1px solid rgba(0,180,255,0.06);
+  }
+  .country-row:last-child { border-bottom: none; }
+  .country-flag { font-size: 1.3rem; line-height: 1; }
+  .country-name { font-size: 0.85rem; color: var(--text); }
+  .country-name .code { color: var(--muted); font-size: 0.72rem; margin-left: 6px; }
+  .country-bar {
+    position: relative; height: 6px; border-radius: 3px;
+    background: rgba(0,212,255,0.07); min-width: 80px; width: 100%;
+    grid-column: 2 / 3; margin-top: 4px;
+    overflow: hidden;
+  }
+  .country-bar::after {
+    content: ""; position: absolute; inset: 0 auto 0 0;
+    background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
+    width: var(--w, 0%);
+    box-shadow: 0 0 8px rgba(0,212,255,0.4);
+  }
+  .country-count { font-family: "Orbitron", sans-serif; font-weight: 700; color: var(--cyan); font-variant-numeric: tabular-nums; font-size: 0.92rem; }
+  .country-pct { font-size: 0.72rem; color: var(--muted-2); text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* LIVE FEED -------------------------------------------------------- */
+  .feed { display: flex; flex-direction: column; gap: 8px; }
+  .feed-row {
+    display: grid; grid-template-columns: 28px 80px 64px 1fr; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--cyan);
+    border-radius: 6px;
+    background: var(--void-2);
+    font-size: 0.84rem;
+    transition: background 0.18s, border-color 0.18s;
+  }
+  .feed-row:hover { background: rgba(0,212,255,0.06); border-color: var(--border-strong); }
+  .feed-flag { font-size: 1.1rem; line-height: 1; }
+  .feed-cc { color: var(--cyan-2); letter-spacing: 0.16em; font-size: 0.72rem; }
+  .feed-time { color: var(--muted-2); font-variant-numeric: tabular-nums; font-size: 0.78rem; }
+  .feed-path { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* MAP -------------------------------------------------------------- */
+  #worldMap { width: 100%; height: 360px; }
+
+  /* TOPLEVEL --------------------------------------------------------- */
+  .empty { color: var(--muted); padding: 28px; font-size: 0.88rem; text-align: center; }
+  footer { margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 0.74rem; color: var(--muted-2); letter-spacing: 0.1em; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
+
   @media (max-width: 640px) {
-    h1 { letter-spacing: 0.15em; font-size: 1rem; }
-    th, td { padding: 8px 10px; }
+    .wrap { padding: 0 14px 40px; }
+    .topbar { padding: 14px 14px 12px; }
+    .kpi-value { font-size: 1.55rem; }
+    .panel { padding: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .brand-mark::before, .live-dot { animation: none; }
+    html { scroll-behavior: auto; }
   }
 </style>
 </head>
 <body>
-<main role="main" id="main-content">
-
-<div style="color:red;font-size:20px;font-weight:bold;">
-TEST 999 ASTRO
-</div>
-<div class="wrap">
-  <header>
-    <h1>AstroScan-Chohra ANALYTICS</h1>
-    <p class="sub">Lecture seule · SQLite · visites &amp; durées de page</p>
-  </header>
-
-  <div class="kpis">
-    <div class="kpi">
-      <div class="kpi-label">Total visites</div>
-      <div class="kpi-value">{{ total_visits }}</div>
+<a href="#main" class="visually-hidden" style="position:absolute;left:-9999px">Aller au contenu</a>
+<header class="topbar" role="banner">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div>
+        <h1>Mission Control · Visitors Analytics</h1>
+        <p>ORBITAL-CHOHRA · ASTRO-SCAN telemetry · fenêtre {{ window_days }}j</p>
+      </div>
     </div>
-    <div class="kpi">
-      <div class="kpi-label">IPs uniques</div>
-      <div class="kpi-value">{{ unique_ips }}</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Événements temps</div>
-      <div class="kpi-value">{{ total_tracked_events }}</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Dernière activité</div>
-      <div class="kpi-value sm">{{ last_activity }}</div>
+    <div class="controls">
+      <span class="live-badge {% if not is_live %}off{% endif %}" aria-live="polite" title="Activité &lt; 5 min">
+        <span class="live-dot" aria-hidden="true"></span>{% if is_live %}LIVE{% else %}IDLE{% endif %}
+      </span>
+      <nav class="window-toggle" aria-label="Fenêtre temporelle">
+        <a href="?window=7"   class="{% if window_days == 7  %}active{% endif %}">7 j</a>
+        <a href="?window=30"  class="{% if window_days == 30 %}active{% endif %}">30 j</a>
+        <a href="?window=90"  class="{% if window_days == 90 %}active{% endif %}">90 j</a>
+        <a href="?window=365" class="{% if window_days == 365 %}active{% endif %}">All</a>
+      </nav>
     </div>
   </div>
+</header>
 
-  <section>
-    <h2>Top pays</h2>
-    <div class="table-wrap">
+<main role="main" id="main" class="wrap">
+
+  <!-- ROW 1 — KPIs -->
+  <section class="kpis" aria-label="Indicateurs clés">
+    <div class="kpi" role="group" aria-labelledby="kpi-vis-label">
+      <div class="kpi-label" id="kpi-vis-label">Visiteurs uniques</div>
+      <div class="kpi-value" data-countup="{{ total_unique_visitors }}" aria-label="{{ total_unique_visitors }} visiteurs uniques">0</div>
+      <div class="kpi-sub">sessions humaines · hors owner</div>
+    </div>
+    <div class="kpi" role="group" aria-labelledby="kpi-ip-label">
+      <div class="kpi-label" id="kpi-ip-label">IPs uniques</div>
+      <div class="kpi-value" data-countup="{{ unique_ips_count }}" aria-label="{{ unique_ips_count }} IPs uniques">0</div>
+      <div class="kpi-sub">adresses distinctes filtrées</div>
+    </div>
+    <div class="kpi" role="group" aria-labelledby="kpi-co-label">
+      <div class="kpi-label" id="kpi-co-label">Pays</div>
+      <div class="kpi-value" data-countup="{{ countries_count }}" aria-label="{{ countries_count }} pays">0</div>
+      <div class="kpi-sub">couverture géographique</div>
+    </div>
+    <div class="kpi" role="group" aria-labelledby="kpi-dur-label">
+      <div class="kpi-label" id="kpi-dur-label">Durée moy session</div>
+      <div class="kpi-value sm">{{ avg_session_duration_fmt }}</div>
+      <div class="kpi-sub">{{ pages_per_session }} pages/session · pic {{ peak_hour_utc }} UTC</div>
+    </div>
+  </section>
+
+  <!-- ROW 2 — Timeline -->
+  <section class="panel" aria-labelledby="timeline-h">
+    <h2 id="timeline-h">Timeline visiteurs
+      <span class="panel-tag">sessions/jour · UTC</span>
+    </h2>
+    <div class="controls" style="margin-bottom:14px">
+      <div class="window-toggle" role="tablist" aria-label="Période timeline">
+        <a href="#" role="tab" class="active" data-range="7" aria-selected="true">7 jours</a>
+        <a href="#" role="tab" data-range="30" aria-selected="false">30 jours</a>
+      </div>
+    </div>
+    <div class="chart-box tall">
+      <canvas id="chartTimeline" aria-label="Graphique des visites par jour"></canvas>
+    </div>
+  </section>
+
+  <!-- ROW 3 — Map + Donut -->
+  <div class="row-2">
+    <section class="panel" aria-labelledby="map-h">
+      <h2 id="map-h">Heatmap monde
+        <span class="panel-tag">top {{ top_countries|length }} pays · {{ window_days }}j</span>
+      </h2>
+      <div class="chart-box tall" id="worldMap" role="img" aria-label="Carte du monde des visites par pays"></div>
+    </section>
+    <section class="panel" aria-labelledby="pages-h">
+      <h2 id="pages-h">Pages les plus visitées
+        <span class="panel-tag">top 8 · {{ window_days }}j</span>
+      </h2>
+      <div class="chart-box tall">
+        <canvas id="chartPages" aria-label="Répartition des pages visitées"></canvas>
+      </div>
+    </section>
+  </div>
+
+  <!-- ROW 4 — Countries + Hours -->
+  <div class="row-2">
+    <section class="panel" aria-labelledby="countries-h">
+      <h2 id="countries-h">Top 10 pays
+        <span class="panel-tag">fenêtre {{ window_days }}j</span>
+      </h2>
       {% if top_countries %}
-      <table>
-        <thead><tr><th>Pays</th><th>Code</th><th class="num">Visites</th></tr></thead>
-        <tbody>
-          {% for r in top_countries %}
-          <tr><td>{{ r.country }}</td><td>{{ r.code }}</td><td class="num">{{ r.count }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
-    </div>
-  </section>
-
-  <section>
-    <h2>Top villes</h2>
-    <div class="table-wrap">
-      {% if top_cities %}
-      <table>
-        <thead><tr><th>Pays</th><th>Ville</th><th class="num">Visites</th></tr></thead>
-        <tbody>
-          {% for r in top_cities %}
-          <tr><td>{{ r.country }}</td><td>{{ r.city }}</td><td class="num">{{ r.count }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
-    </div>
-  </section>
-
-  <section>
-    <h2>Top pages par temps cumulé</h2>
-    <div class="table-wrap">
-      {% if top_pages_by_time %}
-      <table>
-        <thead><tr><th>Chemin</th><th class="num">Secondes cumulées</th></tr></thead>
-        <tbody>
-          {% for r in top_pages_by_time %}
-          <tr><td>{{ r.path }}</td><td class="num">{{ r.total_seconds }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
-    </div>
-  </section>
-
-  <section>
-    <h2>Durée moyenne par page</h2>
-    <div class="table-wrap">
-      {% if avg_duration_by_page %}
-      <table>
-        <thead><tr><th>Chemin</th><th class="num">Moyenne (s)</th></tr></thead>
-        <tbody>
-          {% for r in avg_duration_by_page %}
-          <tr><td>{{ r.path }}</td><td class="num">{{ r.avg_seconds }}</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
-    </div>
-  </section>
-
-  <section>
-    <h2>Sessions les plus longues (événements)</h2>
-    <div class="table-wrap">
-      {% if longest_sessions %}
-      <table>
-        <thead><tr><th>Session</th><th>Page</th><th class="num">Durée (s)</th><th>Horodatage</th></tr></thead>
-        <tbody>
-          {% for r in longest_sessions %}
-          <tr>
-            <td style="max-width:180px;word-break:break-all">{{ r.session_id }}</td>
-            <td>{{ r.path }}</td>
-            <td class="num">{{ r.duration }}</td>
-            <td style="font-size:0.8rem;color:var(--muted)">{{ r.created_at }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
-    </div>
-  </section>
-
-  <section>
-    <h2>Visiteurs détaillés (session)</h2>
-    <p class="sub" style="margin-bottom:10px">Jusqu’à 20 sessions · temps cumulé · parcours chronologique · heure locale (US/DZ/BR)</p>
-    <div class="table-wrap">
-      {% if session_visitors_detail %}
-      <table>
-        <thead>
-          <tr>
-            <th>Session</th>
-            <th>Pays</th>
-            <th>Ville</th>
-            <th class="num">Temps total</th>
-            <th class="num">Pages</th>
-            <th>Parcours</th>
-            <th>Heure locale</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in session_visitors_detail %}
-          <tr>
-            <td class="sess-id">{{ r.session_id }}</td>
-            <td>{{ r.country }}</td>
-            <td>{{ r.city }}</td>
-            <td class="num">{{ r.total_time_fmt }}</td>
-            <td class="num">{{ r.pages_count }}</td>
-            <td class="journey-cell">{{ r.journey }}</td>
-            <td style="font-size:0.8rem;color:var(--muted);white-space:nowrap">{{ r.start_local }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}<div class="empty">Aucune donnée session</div>{% endif %}
-    </div>
-  </section>
-
-  <section>
-    <h2>Télémetrie des sessions</h2>
-    <div class="telemetry-wrap">
-      <p class="telemetry-intro">10 sessions max · tri par dernière activité · lecture seule · chrono par événement</p>
-      {% if sessions_timeline %}
-        {% for block in sessions_timeline %}
-        <div class="telemetry-session">
-          <div class="session-summary">
-            {{ block.summary_line }}
+      <ol class="country-list">
+        {% for c in top_countries %}
+        <li class="country-row" style="grid-template-columns: 32px 1fr 90px 60px;">
+          <span class="country-flag" aria-hidden="true">{{ c.flag }}</span>
+          <div>
+            <div class="country-name">{{ c.country }}<span class="code">· {{ c.code }}</span></div>
+            <div class="country-bar" role="presentation" style="--w: {{ c.pct }}%;"></div>
           </div>
-          <div class="telemetry-head">
-            <span class="hl">🌍</span> {{ block.country }} – {{ block.city }}
-          </div>
-          <div class="telemetry-sub"><span class="hl">🕒</span> Début session (local) : {{ block.start_local }}</div>
-          <div class="telemetry-kv"><span class="lkv">IP :</span> {{ block.ip }}</div>
-          <div class="telemetry-kv"><span class="lkv">User-Agent :</span> {{ block.ua }}</div>
-          <div class="telemetry-kv"><span class="lkv">Temps total :</span> {{ block.total_time_fmt }}</div>
-          <div class="telemetry-kv"><span class="lkv">Profil :</span> <span class="profil">{{ block.classification }}</span></div>
-          <div class="telemetry-mods"><span class="lkv">Modules visités :</span> {% if block.modules %}{{ block.modules | join(', ') }}{% else %}—{% endif %}</div>
-          {% for ev in block.events %}
-          <div class="telemetry-line">
-            <span class="t">[{{ ev.time_local }}]</span> <span class="p">→ {{ ev.path }}</span> <span class="d">({{ ev.duration_fmt }})</span>
-          </div>
-          {% endfor %}
-        </div>
+          <span class="country-count">{{ c.count }}</span>
+          <span class="country-pct">{{ c.pct }}%</span>
+        </li>
         {% endfor %}
+      </ol>
       {% else %}
-        <div class="empty" style="padding:0">Aucune télémétrie de session</div>
+      <div class="empty">Aucune donnée géographique pour cette fenêtre.</div>
       {% endif %}
-    </div>
-  </section>
+    </section>
+    <section class="panel" aria-labelledby="hours-h">
+      <h2 id="hours-h">Heures de pointe
+        <span class="panel-tag">distribution 24 h UTC</span>
+      </h2>
+      <div class="chart-box">
+        <canvas id="chartHours" aria-label="Distribution des visites par heure UTC"></canvas>
+      </div>
+    </section>
+  </div>
 
-  <section>
-    <h2>Dernières visites</h2>
-    <div class="table-wrap">
-      {% if latest_visits %}
-      <table>
-        <thead><tr><th>IP</th><th>Pays</th><th>Ville</th><th>Chemin</th><th>Date</th></tr></thead>
-        <tbody>
-          {% for r in latest_visits %}
-          <tr>
-            <td style="font-size:0.8rem">{{ r.ip }}</td>
-            <td>{{ r.country }}</td>
-            <td>{{ r.city }}</td>
-            <td>{{ r.path }}</td>
-            <td style="font-size:0.8rem;color:var(--muted)">{{ r.visited_at }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}<div class="empty">Aucune donnée</div>{% endif %}
+  <!-- ROW 5 — Live feed -->
+  <section class="panel" aria-labelledby="feed-h">
+    <h2 id="feed-h">Live feed visiteurs
+      <span class="panel-tag">10 derniers · auto-refresh 30s</span>
+    </h2>
+    {% if recent_visitors %}
+    <div class="feed" id="liveFeed" aria-live="polite">
+      {% for v in recent_visitors %}
+      <div class="feed-row">
+        <span class="feed-flag" aria-hidden="true">{{ v.flag }}</span>
+        <span class="feed-cc">{{ v.code }} · {{ v.country }}</span>
+        <span class="feed-time">{{ v.time_utc }} UTC</span>
+        <span class="feed-path">{{ v.path }}</span>
+      </div>
+      {% endfor %}
     </div>
+    {% else %}
+    <div class="empty" id="liveFeed">Aucun visiteur récent.</div>
+    {% endif %}
   </section>
 
   <footer>
-    <a href="/portail">← Portail</a>
+    <span><a href="/portail">← Portail ORBITAL-CHOHRA</a></span>
+    <span>Filtrage owner actif · 144 IPs exclues · range 105.235.13.0/24</span>
+    <span>{{ visits_counter }} visites totales · {{ bot_count }} bots filtrés</span>
   </footer>
-</div>
 </main>
+
+<script>
+  // ── Données serveur sérialisées ─────────────────────────────────────
+  const A = Object.freeze({
+    timeline7: {{ timeline_7d|tojson }},
+    timeline30: {{ timeline_30d|tojson }},
+    topPages: {{ top_pages|tojson }},
+    topCountries: {{ top_countries|tojson }},
+    hours: {{ hour_distribution|tojson }},
+  });
+  const CYAN = "#00d4ff";
+  const CYAN_DIM = "rgba(0,212,255,0.18)";
+  const TEXT = "#e8f3ff";
+  const MUTED = "#6b7e93";
+
+  // ── Count-up animation sur scroll ──────────────────────────────────
+  function countUp(el, target, duration = 1100) {
+    target = Number(target) || 0;
+    if (target === 0) { el.textContent = "0"; return; }
+    const start = performance.now();
+    const fmt = new Intl.NumberFormat("fr-FR");
+    function tick(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = fmt.format(Math.round(target * eased));
+      if (t < 1) requestAnimationFrame(tick);
+      else el.textContent = fmt.format(target);
+    }
+    requestAnimationFrame(tick);
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        const el = e.target;
+        countUp(el, el.dataset.countup);
+        io.unobserve(el);
+      }
+    });
+  }, { threshold: 0.4 });
+  document.querySelectorAll("[data-countup]").forEach((el) => io.observe(el));
+
+  // ── Lazy load Chart.js + topojson seulement quand visible ──────────
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src; s.async = true;
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  let chartsReady = null;
+  function ensureCharts() {
+    if (chartsReady) return chartsReady;
+    chartsReady = loadScript("https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js")
+      .then(() => loadScript("https://cdn.jsdelivr.net/npm/chartjs-chart-geo@4.3.4/build/index.umd.min.js"))
+      .then(() => loadScript("https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"));
+    return chartsReady;
+  }
+
+  // ── Timeline chart (toggle 7 / 30) ─────────────────────────────────
+  let timelineChart = null;
+  function makeGradient(ctx, color) {
+    const g = ctx.createLinearGradient(0, 0, 0, 240);
+    g.addColorStop(0, "rgba(0,212,255,0.42)");
+    g.addColorStop(1, "rgba(0,212,255,0)");
+    return g;
+  }
+  function buildTimeline(range = 7) {
+    const src = range === 30 ? A.timeline30 : A.timeline7;
+    const canvas = document.getElementById("chartTimeline");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (timelineChart) timelineChart.destroy();
+    timelineChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: src.labels,
+        datasets: [{
+          label: "Sessions uniques",
+          data: src.data,
+          borderColor: CYAN,
+          borderWidth: 2,
+          tension: 0.36,
+          fill: true,
+          backgroundColor: makeGradient(ctx, CYAN),
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: CYAN,
+          pointBorderColor: "#01121a",
+          pointBorderWidth: 2,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "rgba(1,12,22,0.95)", titleColor: CYAN, bodyColor: TEXT,
+            borderColor: "rgba(0,212,255,0.4)", borderWidth: 1, padding: 12, displayColors: false,
+            callbacks: { label: (it) => `${it.parsed.y} session${it.parsed.y > 1 ? "s" : ""}` },
+          },
+        },
+        scales: {
+          x: { grid: { color: "rgba(0,180,255,0.06)" }, ticks: { color: MUTED, font: { family: "Share Tech Mono" } } },
+          y: { grid: { color: "rgba(0,180,255,0.06)" }, ticks: { color: MUTED, font: { family: "Share Tech Mono" }, precision: 0 }, beginAtZero: true },
+        },
+      },
+    });
+  }
+
+  // ── Donut pages ────────────────────────────────────────────────────
+  function buildPages() {
+    const canvas = document.getElementById("chartPages");
+    if (!canvas) return;
+    const top = (A.topPages || []).slice(0, 8);
+    if (top.length === 0) {
+      canvas.replaceWith(Object.assign(document.createElement("div"), { className: "empty", textContent: "Aucune page tracée pour cette fenêtre." }));
+      return;
+    }
+    const ctx = canvas.getContext("2d");
+    const palette = ["#00d4ff", "#5ee8ff", "#3dd68c", "#7d9eff", "#b89cff", "#ff7ed1", "#ffb547", "#88e0a7"];
+    new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: top.map((p) => p.path),
+        datasets: [{
+          data: top.map((p) => p.count),
+          backgroundColor: palette.slice(0, top.length),
+          borderColor: "rgba(1,4,8,0.9)", borderWidth: 2,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: "62%",
+        plugins: {
+          legend: { position: "bottom", labels: { color: TEXT, font: { family: "Share Tech Mono", size: 11 }, padding: 12, boxWidth: 12 } },
+          tooltip: {
+            backgroundColor: "rgba(1,12,22,0.95)", titleColor: CYAN, bodyColor: TEXT,
+            borderColor: "rgba(0,212,255,0.4)", borderWidth: 1, padding: 12,
+            callbacks: { label: (it) => `${it.label} — ${it.parsed} vues` },
+          },
+        },
+      },
+    });
+  }
+
+  // ── Bar 24h ─────────────────────────────────────────────────────────
+  function buildHours() {
+    const canvas = document.getElementById("chartHours");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const labels = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0") + "h");
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          data: A.hours,
+          backgroundColor: A.hours.map((v) => {
+            const max = Math.max(...A.hours, 1);
+            const alpha = 0.35 + 0.6 * (v / max);
+            return `rgba(0,212,255,${alpha.toFixed(2)})`;
+          }),
+          borderColor: CYAN, borderWidth: 1, borderRadius: 3,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "rgba(1,12,22,0.95)", titleColor: CYAN, bodyColor: TEXT,
+            borderColor: "rgba(0,212,255,0.4)", borderWidth: 1, padding: 10, displayColors: false,
+            callbacks: { label: (it) => `${it.parsed.y} visite${it.parsed.y > 1 ? "s" : ""}` },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: MUTED, font: { family: "Share Tech Mono", size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 } },
+          y: { grid: { color: "rgba(0,180,255,0.06)" }, ticks: { color: MUTED, font: { family: "Share Tech Mono" }, precision: 0 }, beginAtZero: true },
+        },
+      },
+    });
+  }
+
+  // ── Map monde (chartjs-chart-geo) ──────────────────────────────────
+  async function buildMap() {
+    const el = document.getElementById("worldMap");
+    if (!el || !A.topCountries.length) { if (el) el.innerHTML = '<div class="empty">Aucune donnée pour la carte.</div>'; return; }
+    let topoData;
+    try {
+      const res = await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json");
+      topoData = await res.json();
+    } catch (_) {
+      el.innerHTML = '<div class="empty">Carte indisponible (offline).</div>';
+      return;
+    }
+    const countries = ChartGeo.topojson.feature(topoData, topoData.objects.countries).features;
+    const lookup = {};
+    A.topCountries.forEach((c) => { lookup[c.code.toUpperCase()] = c.count; });
+    const numericToIso2 = {
+      "004":"AF","008":"AL","012":"DZ","020":"AD","024":"AO","028":"AG","031":"AZ","032":"AR","036":"AU","040":"AT","044":"BS","048":"BH","050":"BD","051":"AM","052":"BB","056":"BE","060":"BM","064":"BT","068":"BO","070":"BA","072":"BW","076":"BR","084":"BZ","090":"SB","092":"VG","096":"BN","100":"BG","104":"MM","108":"BI","112":"BY","116":"KH","120":"CM","124":"CA","132":"CV","140":"CF","144":"LK","148":"TD","152":"CL","156":"CN","158":"TW","170":"CO","174":"KM","178":"CG","180":"CD","188":"CR","191":"HR","192":"CU","196":"CY","203":"CZ","204":"BJ","208":"DK","212":"DM","214":"DO","218":"EC","222":"SV","226":"GQ","231":"ET","232":"ER","233":"EE","242":"FJ","246":"FI","250":"FR","258":"PF","262":"DJ","266":"GA","268":"GE","270":"GM","275":"PS","276":"DE","288":"GH","292":"GI","296":"KI","300":"GR","308":"GD","320":"GT","324":"GN","328":"GY","332":"HT","336":"VA","340":"HN","344":"HK","348":"HU","352":"IS","356":"IN","360":"ID","364":"IR","368":"IQ","372":"IE","376":"IL","380":"IT","384":"CI","388":"JM","392":"JP","398":"KZ","400":"JO","404":"KE","408":"KP","410":"KR","414":"KW","417":"KG","418":"LA","422":"LB","426":"LS","428":"LV","430":"LR","434":"LY","438":"LI","440":"LT","442":"LU","446":"MO","450":"MG","454":"MW","458":"MY","462":"MV","466":"ML","470":"MT","478":"MR","480":"MU","484":"MX","492":"MC","496":"MN","498":"MD","499":"ME","504":"MA","508":"MZ","512":"OM","516":"NA","520":"NR","524":"NP","528":"NL","540":"NC","548":"VU","554":"NZ","558":"NI","562":"NE","566":"NG","578":"NO","583":"FM","584":"MH","585":"PW","586":"PK","591":"PA","598":"PG","600":"PY","604":"PE","608":"PH","616":"PL","620":"PT","624":"GW","626":"TL","630":"PR","634":"QA","642":"RO","643":"RU","646":"RW","662":"LC","670":"VC","678":"ST","682":"SA","686":"SN","688":"RS","690":"SC","694":"SL","702":"SG","703":"SK","704":"VN","705":"SI","706":"SO","710":"ZA","716":"ZW","724":"ES","728":"SS","729":"SD","740":"SR","748":"SZ","752":"SE","756":"CH","760":"SY","762":"TJ","764":"TH","768":"TG","776":"TO","780":"TT","784":"AE","788":"TN","792":"TR","795":"TM","800":"UG","804":"UA","807":"MK","818":"EG","826":"GB","834":"TZ","840":"US","854":"BF","858":"UY","860":"UZ","862":"VE","882":"WS","887":"YE","894":"ZM"
+    };
+    const max = Math.max(...A.topCountries.map((c) => c.count), 1);
+    const dataPoints = countries.map((f) => {
+      const iso2 = numericToIso2[f.id] || "";
+      return { feature: f, value: lookup[iso2] || 0 };
+    });
+    const ctx = document.createElement("canvas");
+    el.innerHTML = ""; el.appendChild(ctx);
+    new Chart(ctx, {
+      type: "choropleth",
+      data: {
+        labels: countries.map((f) => f.properties.name),
+        datasets: [{
+          label: "Visites",
+          data: dataPoints,
+          backgroundColor: (c) => {
+            if (!c.raw || !c.raw.value) return "rgba(20,40,60,0.55)";
+            const r = c.raw.value / max;
+            const alpha = 0.18 + 0.78 * Math.sqrt(r);
+            return `rgba(0,212,255,${alpha.toFixed(2)})`;
+          },
+          borderColor: "rgba(0,212,255,0.22)", borderWidth: 0.5,
+          outline: countries,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        showOutline: true, showGraticule: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "rgba(1,12,22,0.95)", titleColor: CYAN, bodyColor: TEXT,
+            borderColor: "rgba(0,212,255,0.4)", borderWidth: 1,
+            callbacks: {
+              title: (items) => items[0].label,
+              label: (it) => `${it.raw.value || 0} visite${(it.raw.value || 0) > 1 ? "s" : ""}`,
+            },
+          },
+        },
+        scales: { projection: { axis: "x", projection: "equalEarth" } },
+      },
+    });
+  }
+
+  // ── Init quand visible ─────────────────────────────────────────────
+  const chartObserver = new IntersectionObserver(async (entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const el = e.target;
+      chartObserver.unobserve(el);
+      await ensureCharts();
+      if (el.id === "chartTimeline") buildTimeline(7);
+      else if (el.id === "chartPages") buildPages();
+      else if (el.id === "chartHours") buildHours();
+      else if (el.id === "worldMap") buildMap();
+    }
+  }, { rootMargin: "150px" });
+  ["chartTimeline", "chartPages", "chartHours", "worldMap"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) chartObserver.observe(el);
+  });
+
+  // ── Timeline toggle ────────────────────────────────────────────────
+  document.querySelectorAll(".window-toggle [data-range]").forEach((a) => {
+    a.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      const range = Number(a.dataset.range);
+      document.querySelectorAll(".window-toggle [data-range]").forEach((x) => { x.classList.remove("active"); x.setAttribute("aria-selected", "false"); });
+      a.classList.add("active"); a.setAttribute("aria-selected", "true");
+      if (timelineChart) buildTimeline(range);
+      else ensureCharts().then(() => buildTimeline(range));
+    });
+  });
+
+  // ── Live feed refresh ──────────────────────────────────────────────
+  async function refreshFeed() {
+    try {
+      const r = await fetch("/api/visitors/stream", { headers: { "Accept": "application/json" } });
+      if (!r.ok) return;
+      const j = await r.json();
+      const items = (j && j.items) || [];
+      if (!items.length) return;
+      const feed = document.getElementById("liveFeed");
+      if (!feed || feed.classList.contains("empty")) return;
+      const flag = (cc) => {
+        if (!cc || cc.length !== 2) return "🏳";
+        const base = 0x1F1E6;
+        return String.fromCodePoint(base + cc.toUpperCase().charCodeAt(0) - 65) +
+               String.fromCodePoint(base + cc.toUpperCase().charCodeAt(1) - 65);
+      };
+      const html = items.slice(0, 10).map((v) => {
+        const cc = (v.country_code || "XX").toUpperCase();
+        const path = (v.path || "/").length > 32 ? (v.path || "/").slice(0, 29) + "…" : (v.path || "/");
+        let hhmm = "—";
+        try {
+          const dt = new Date((v.visited_at || "").replace(" ", "T") + "Z");
+          if (!isNaN(dt)) hhmm = dt.toISOString().slice(11, 16);
+        } catch (_) {}
+        const cn = (v.country || "—").replace(/[<>&"]/g, "");
+        return `<div class="feed-row"><span class="feed-flag" aria-hidden="true">${flag(cc)}</span><span class="feed-cc">${cc} · ${cn}</span><span class="feed-time">${hhmm} UTC</span><span class="feed-path">${path.replace(/[<>&"]/g, "")}</span></div>`;
+      }).join("");
+      if (html) feed.innerHTML = html;
+    } catch (_) { /* silent */ }
+  }
+  setInterval(refreshFeed, 30000);
+</script>
 </body>
 </html>

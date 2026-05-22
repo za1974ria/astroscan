@@ -762,148 +762,32 @@ def api_visitors_connection_time():
         return jsonify({"ok": False, "error": str(e), "items": []}), 500
 
 
-# ── PASS 16 — /analytics dashboard page (différé PASS 12 levé) ────────
+# ── PASS COCKPIT (2026-05-22) — Refonte /analytics en cockpit ORBITAL ──
 @bp.route("/analytics")
 def analytics_dashboard():
-    """Dashboard analytics complet : sessions, page_views, human_score, owner IPs."""
-    from app.services.db_visitors import _get_db_visitors
-    from app.services.analytics_dashboard import (
-        load_analytics_readonly, analytics_empty_payload,
-    )
+    """Dashboard cockpit cyan : KPIs cohérents avec visits.count, top
+    pays/pages, timelines 7j/30j, peak hour, recent visitors. Toutes les
+    agrégations excluent les IPs propriétaire (env + range + DB)."""
+    from app.services.db_visitors import _load_owner_ips
+    from app.services.analytics_dashboard import load_cockpit_payload
+
     try:
-        data = load_analytics_readonly()
+        owner_ips = _load_owner_ips()
     except Exception:
-        data = analytics_empty_payload()
+        owner_ips = set()
 
-    total_page_views = 0
-    human_count = 0
-    suspect_count = 0
-    top_pages = []
-    owner_visits = []
-    db_ips = []
-    env_ips = [
-        x.strip()
-        for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(",")
-        if x.strip()
-    ]
-    avg_human_score = 0.0
+    window = request.args.get("window", "30")
     try:
-        conn = _get_db_visitors()
-        conn.row_factory = sqlite3.Row
+        window_days = int(window)
+        if window_days not in (7, 30, 90, 365):
+            window_days = 30
+    except Exception:
+        window_days = 30
 
-        total_page_views = (
-            conn.execute("SELECT COUNT(*) FROM page_views").fetchone()[0] or 0
-        )
+    try:
+        data = load_cockpit_payload(window_days=window_days, owner_ips=owner_ips)
+    except Exception as exc:
+        log.warning("analytics_dashboard cockpit: %s", exc)
+        data = {}
 
-        human_count = (conn.execute(
-            "SELECT COUNT(*) FROM visitor_log "
-            "WHERE is_bot=0 AND is_owner=0 AND human_score >= 60"
-        ).fetchone()[0] or 0)
-        suspect_count = (conn.execute(
-            "SELECT COUNT(*) FROM visitor_log "
-            "WHERE is_bot=0 AND is_owner=0 AND human_score >= 20 AND human_score < 60"
-        ).fetchone()[0] or 0)
-        avg_row = conn.execute(
-            "SELECT ROUND(AVG(human_score),1) FROM visitor_log "
-            "WHERE is_bot=0 AND is_owner=0 AND human_score >= 0"
-        ).fetchone()
-        avg_human_score = float(avg_row[0] or 0)
-
-        top_page_rows = conn.execute(
-            "SELECT path, COUNT(*) as cnt FROM page_views "
-            "WHERE path NOT LIKE '/static%' "
-            "GROUP BY path ORDER BY cnt DESC LIMIT 10"
-        ).fetchall()
-        top_pages = [{"path": r["path"], "count": r["cnt"]} for r in top_page_rows]
-
-        ov_rows = conn.execute(
-            "SELECT ip, COALESCE(country,'?') as country, COALESCE(city,'?') as city, "
-            "COALESCE(isp,'') as isp, MAX(visited_at) as last_visit, COUNT(*) as sessions "
-            "FROM visitor_log WHERE is_owner=1 GROUP BY ip "
-            "ORDER BY last_visit DESC LIMIT 20"
-        ).fetchall()
-        owner_visits = [dict(r) for r in ov_rows]
-
-        city_rows = conn.execute(
-            "SELECT country, city, COALESCE(region,'') as region, "
-            "COALESCE(isp,'') as isp, COUNT(*) as cnt "
-            "FROM visitor_log WHERE is_bot=0 AND is_owner=0 "
-            "AND city != 'Unknown' AND city != '' "
-            "GROUP BY city ORDER BY cnt DESC LIMIT 15"
-        ).fetchall()
-        data["top_cities"] = [
-            {"country": r["country"], "city": r["city"], "region": r["region"],
-             "isp": r["isp"], "count": r["cnt"]}
-            for r in city_rows
-        ]
-
-        last_rows = conn.execute(
-            "SELECT ip, country, city, path, visited_at, isp, "
-            "human_score, is_bot, is_owner "
-            "FROM visitor_log ORDER BY id DESC LIMIT 30"
-        ).fetchall()
-        data["latest_visits"] = [dict(r) for r in last_rows]
-
-        for block in data.get("sessions_timeline", []):
-            try:
-                ip = block.get("ip", "")
-                if ip:
-                    vrow = conn.execute(
-                        "SELECT isp, human_score FROM visitor_log WHERE ip=? LIMIT 1",
-                        (ip,),
-                    ).fetchone()
-                    block["isp"] = vrow["isp"] if vrow else ""
-                    block["human_score"] = int(vrow["human_score"] or -1) if vrow else -1
-                else:
-                    block["isp"] = ""
-                    block["human_score"] = -1
-            except Exception:
-                block["isp"] = ""
-                block["human_score"] = -1
-
-        db_ip_rows = conn.execute(
-            "SELECT id, ip, label, added_at FROM owner_ips ORDER BY added_at DESC"
-        ).fetchall()
-        db_ips = [dict(r) for r in db_ip_rows]
-
-        conn.close()
-    except Exception as ex:
-        log.warning("analytics_dashboard extra: %s", ex)
-
-    bot_count = data.get("bot_count", 0)
-    if not bot_count:
-        try:
-            conn2 = _get_db_visitors()
-            bot_count = (conn2.execute(
-                "SELECT COUNT(*) FROM visitor_log WHERE is_bot=1"
-            ).fetchone()[0] or 0)
-            conn2.close()
-        except Exception:
-            bot_count = 0
-
-    return render_template(
-        "analytics.html",
-        total_visits=data.get("total_visits", 0),
-        unique_ips=data.get("unique_ips", 0),
-        total_tracked_events=data.get("total_tracked_events", 0),
-        last_activity=data.get("last_activity", "—"),
-        total_sessions=data.get("total_visits", 0),
-        total_page_views=int(total_page_views),
-        human_count=int(human_count),
-        suspect_count=int(suspect_count),
-        bot_count=int(bot_count),
-        human_pct=round(100 * human_count / max(1, data.get("total_visits", 1)), 1),
-        avg_human_score=round(avg_human_score, 1),
-        owner_count=len(owner_visits),
-        top_pages=top_pages,
-        top_countries=data.get("top_countries", []),
-        top_cities=data.get("top_cities", []),
-        top_pages_by_time=data.get("top_pages_by_time", []),
-        avg_duration_by_page=data.get("avg_duration_by_page", []),
-        latest_visits=data.get("latest_visits", []),
-        sessions_timeline=data.get("sessions_timeline", []),
-        session_visitors_detail=data.get("session_visitors_detail", []),
-        owner_visits=owner_visits,
-        db_ips=db_ips,
-        env_ips=env_ips,
-    )
+    return render_template("analytics.html", window_days=window_days, **data)

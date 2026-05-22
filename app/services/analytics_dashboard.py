@@ -1,37 +1,32 @@
 """Analytics dashboard helpers — readonly snapshot pour /analytics page.
 
-Extrait de station_web.py (PASS 16) pour permettre l'utilisation
-par analytics_bp sans dépendance circulaire.
-
-PASS 27.7 (2026-05-09) — Ajout des 6 helpers `_analytics_*` (déplacés
-verbatim depuis station_web.py L825-912). Avant ce PASS, ces helpers
-étaient utilisés mais non importés ici, ce qui aurait provoqué un
-NameError au runtime sur la route /analytics. Le déplacement résout ce
-bug latent et fait de ce module la source de vérité unique.
+PASS COCKPIT (2026-05-22) — Refonte complète des agrégations pour
+exclure systématiquement les IPs propriétaire (env ASTROSCAN_OWNER_IPS
++ table owner_ips + range 105.235.13.0/24). Ajout de `load_cockpit_payload`
+qui sert toutes les données du nouveau dashboard cyan ORBITAL-CHOHRA :
+KPIs cohérents avec visits.count, timeline 7j/30j/90j, peak_hour,
+top_countries/pages, recent_visitors anonymisés.
 
 Fonctions exposées :
     analytics_empty_payload() -> dict
-    load_analytics_readonly() -> dict        # Lecture seule visitor_log + session_time
-    _analytics_tz_for_country_code(code)
-    _analytics_fmt_duration_sec(sec)
-    _analytics_journey_display(journey_raw)
-    _analytics_start_local_display(start_iso, country_code)
-    _analytics_time_hms_local(iso_str, country_code)
-    _analytics_session_classification(total_sec, page_count)
+    load_analytics_readonly() -> dict        # legacy (conservé)
+    load_cockpit_payload(window_days=30)     # nouveau dashboard
+    owner_ip_sql_filter() -> tuple(str, list)  # snippet WHERE + params
 """
 from __future__ import annotations
 
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.config import DB_PATH
 
 log = logging.getLogger(__name__)
 
+OWNER_IP_LIKE_PREFIXES = ("105.235.13.%",)
+
 
 def _analytics_tz_for_country_code(code):
-    """Fuseau indicatif pour heure locale (US / DZ / BR)."""
     c = (code or "").strip().upper()
     if c == "US":
         return "America/Los_Angeles"
@@ -43,7 +38,6 @@ def _analytics_tz_for_country_code(code):
 
 
 def _analytics_fmt_duration_sec(sec):
-    """Ex. 125 → 2m05."""
     try:
         s = int(sec)
     except Exception:
@@ -68,10 +62,8 @@ def _analytics_journey_display(journey_raw):
 
 
 def _analytics_start_local_display(start_iso, country_code):
-    """Heure locale au début de session selon country_code."""
     try:
         from zoneinfo import ZoneInfo
-
         raw = (start_iso or "").strip()
         if not raw:
             return "—"
@@ -86,10 +78,8 @@ def _analytics_start_local_display(start_iso, country_code):
 
 
 def _analytics_time_hms_local(iso_str, country_code):
-    """Heure locale HH:MM:SS pour une ligne de timeline."""
     try:
         from zoneinfo import ZoneInfo
-
         raw = (iso_str or "").strip()
         if not raw:
             return "—"
@@ -104,7 +94,6 @@ def _analytics_time_hms_local(iso_str, country_code):
 
 
 def _analytics_session_classification(total_sec, page_count):
-    """Profil comportemental (nombre de vues = lignes session_time)."""
     try:
         t = int(total_sec)
     except Exception:
@@ -138,8 +127,38 @@ def analytics_empty_payload():
     }
 
 
+def _country_flag_emoji(code: str) -> str:
+    c = (code or "").strip().upper()
+    if len(c) != 2 or not c.isalpha():
+        return "🏳"
+    base = 0x1F1E6
+    return chr(base + ord(c[0]) - ord("A")) + chr(base + ord(c[1]) - ord("A"))
+
+
+def owner_ip_sql_filter(owner_ips: set | None = None) -> tuple[str, list]:
+    """Retourne un fragment SQL (clause AND ...) + params pour exclure
+    les IPs propriétaire. Filtre cumulatif :
+      - is_bot=0 AND is_owner=0 (flags stockés à l'insert)
+      - ip NOT LIKE chaque préfixe (range 105.235.13.0/24)
+      - ip NOT IN (owner_ips chargées à chaud)
+    Le second filtre attrape les IPs récemment ajoutées qui n'avaient pas
+    is_owner=1 au moment de l'insertion historique."""
+    fragments = ["is_bot = 0", "is_owner = 0"]
+    params: list = []
+    for pref in OWNER_IP_LIKE_PREFIXES:
+        fragments.append("ip NOT LIKE ?")
+        params.append(pref)
+    if owner_ips:
+        placeholders = ",".join(["?"] * len(owner_ips))
+        fragments.append(f"ip NOT IN ({placeholders})")
+        params.extend(sorted(owner_ips))
+    return " AND ".join(fragments), params
+
+
 def load_analytics_readonly():
-    """Lecture seule SQLite (visitor_log, session_time). Jamais de levée vers l'utilisateur."""
+    """Lecture seule SQLite (visitor_log, session_time). Conservée pour compat
+    avec d'éventuels callers legacy ; le dashboard cockpit utilise désormais
+    `load_cockpit_payload`."""
     out = analytics_empty_payload()
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -161,40 +180,6 @@ def load_analytics_readonly():
                 "WHERE ip NOT IN ('127.0.0.1', '::1')"
             ).fetchone()
             out["unique_ips"] = int(r["c"] if r else 0)
-            # PASS 27 — Normalize NL duplicate at query time.
-            out["top_countries"] = [
-                {"country": row[0], "code": row[1] or "", "count": row[2]}
-                for row in cur.execute(
-                    "SELECT CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country, "
-                    "country_code, COUNT(*) AS cnt FROM visitor_log "
-                    "WHERE country != 'Unknown' "
-                    "GROUP BY CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END, country_code "
-                    "ORDER BY cnt DESC LIMIT 15"
-                ).fetchall()
-            ]
-            out["top_cities"] = [
-                {"country": row[0], "city": row[1], "count": row[2]}
-                for row in cur.execute(
-                    "SELECT CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country, "
-                    "city, COUNT(*) AS cnt FROM visitor_log "
-                    "WHERE ip NOT IN ('127.0.0.1', '::1') "
-                    "GROUP BY CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END, city "
-                    "ORDER BY cnt DESC LIMIT 15"
-                ).fetchall()
-            ]
-            out["latest_visits"] = [
-                {
-                    "ip": row["ip"],
-                    "country": row["country"],
-                    "city": row["city"],
-                    "path": row["path"],
-                    "visited_at": row["visited_at"],
-                }
-                for row in cur.execute(
-                    "SELECT ip, country, city, path, visited_at "
-                    "FROM visitor_log ORDER BY id DESC LIMIT 10"
-                )
-            ]
             m = cur.execute("SELECT MAX(visited_at) AS m FROM visitor_log").fetchone()
             if m and m["m"]:
                 last_candidates.append(str(m["m"]))
@@ -202,214 +187,6 @@ def load_analytics_readonly():
         if "session_time" in tables:
             r = cur.execute("SELECT COUNT(*) AS c FROM session_time").fetchone()
             out["total_tracked_events"] = int(r["c"] if r else 0)
-            out["top_pages_by_time"] = [
-                {"path": row[0] or "", "total_seconds": int(row[1] or 0)}
-                for row in cur.execute(
-                    "SELECT path, COALESCE(SUM(duration), 0) AS s FROM session_time "
-                    "GROUP BY path ORDER BY s DESC LIMIT 15"
-                ).fetchall()
-            ]
-            out["avg_duration_by_page"] = [
-                {"path": row[0] or "", "avg_seconds": round(float(row[1] or 0), 2)}
-                for row in cur.execute(
-                    "SELECT path, AVG(duration) AS a FROM session_time "
-                    "GROUP BY path ORDER BY a DESC LIMIT 15"
-                ).fetchall()
-            ]
-            out["longest_sessions"] = [
-                {
-                    "session_id": row["session_id"] or "",
-                    "path": row["path"] or "",
-                    "duration": int(row["duration"] or 0),
-                    "created_at": row["created_at"] or "",
-                }
-                for row in cur.execute(
-                    "SELECT session_id, path, duration, created_at FROM session_time "
-                    "ORDER BY duration DESC LIMIT 10"
-                )
-            ]
-            out["session_visitors_detail"] = []
-            try:
-                if "visitor_log" in tables:
-                    detail_rows = cur.execute(
-                        """
-                        SELECT
-                          st.session_id AS sid,
-                          COALESCE(SUM(st.duration), 0) AS total_time,
-                          COUNT(*) AS pages_count,
-                          GROUP_CONCAT(st.path ORDER BY st.created_at) AS journey,
-                          MIN(st.created_at) AS start_time,
-                          MAX(st.created_at) AS end_time,
-                          (SELECT country FROM visitor_log v
-                           WHERE v.session_id = st.session_id
-                           ORDER BY v.id DESC LIMIT 1) AS country,
-                          (SELECT city FROM visitor_log v
-                           WHERE v.session_id = st.session_id
-                           ORDER BY v.id DESC LIMIT 1) AS city,
-                          (SELECT country_code FROM visitor_log v
-                           WHERE v.session_id = st.session_id
-                           ORDER BY v.id DESC LIMIT 1) AS country_code
-                        FROM session_time st
-                        WHERE st.session_id IS NOT NULL AND TRIM(st.session_id) != ''
-                        GROUP BY st.session_id
-                        ORDER BY COALESCE(SUM(st.duration), 0) DESC
-                        LIMIT 20
-                        """
-                    ).fetchall()
-                else:
-                    detail_rows = cur.execute(
-                        """
-                        SELECT
-                          st.session_id AS sid,
-                          COALESCE(SUM(st.duration), 0) AS total_time,
-                          COUNT(*) AS pages_count,
-                          GROUP_CONCAT(st.path ORDER BY st.created_at) AS journey,
-                          MIN(st.created_at) AS start_time,
-                          MAX(st.created_at) AS end_time,
-                          NULL AS country,
-                          NULL AS city,
-                          NULL AS country_code
-                        FROM session_time st
-                        WHERE st.session_id IS NOT NULL AND TRIM(st.session_id) != ''
-                        GROUP BY st.session_id
-                        ORDER BY COALESCE(SUM(st.duration), 0) DESC
-                        LIMIT 20
-                        """
-                    ).fetchall()
-                for dr in detail_rows:
-                    cc = dr["country_code"] if dr["country_code"] is not None else ""
-                    st_iso = dr["start_time"]
-                    out["session_visitors_detail"].append(
-                        {
-                            "session_id": dr["sid"] or "",
-                            "country": dr["country"] or "—",
-                            "city": dr["city"] or "—",
-                            "total_time_fmt": _analytics_fmt_duration_sec(dr["total_time"]),
-                            "pages_count": int(dr["pages_count"] or 0),
-                            "journey": _analytics_journey_display(dr["journey"]),
-                            "start_time": st_iso or "—",
-                            "end_time": dr["end_time"] or "—",
-                            "start_local": _analytics_start_local_display(st_iso, cc),
-                        }
-                    )
-            except Exception:
-                out["session_visitors_detail"] = []
-            out["sessions_timeline"] = []
-            try:
-                t_rows = cur.execute(
-                    "SELECT session_id, path, duration, created_at FROM session_time "
-                    "WHERE session_id IS NOT NULL AND TRIM(session_id) != '' "
-                    "ORDER BY session_id ASC, created_at ASC"
-                ).fetchall()
-                sessions_detail = {}
-                for tr in t_rows:
-                    sid = tr["session_id"]
-                    if sid not in sessions_detail:
-                        sessions_detail[sid] = {"events": []}
-                    sessions_detail[sid]["events"].append(
-                        {
-                            "path": tr["path"] or "",
-                            "duration": tr["duration"],
-                            "time": tr["created_at"],
-                        }
-                    )
-                if sessions_detail:
-                    sids_ordered = sorted(
-                        sessions_detail.keys(),
-                        key=lambda s: max(
-                            str(e["time"]) for e in sessions_detail[s]["events"]
-                        ),
-                        reverse=True,
-                    )[:10]
-                    for sid in sids_ordered:
-                        country = city = ip = ua = ""
-                        cc = ""
-                        if "visitor_log" in tables:
-                            gr = cur.execute(
-                                "SELECT country, city, country_code, ip, user_agent "
-                                "FROM visitor_log "
-                                "WHERE session_id = ? ORDER BY id DESC LIMIT 1",
-                                (sid,),
-                            ).fetchone()
-                            if gr:
-                                country = gr["country"] or ""
-                                city = gr["city"] or ""
-                                cc = gr["country_code"] or ""
-                                ip = gr["ip"] or ""
-                                _ua = gr["user_agent"] or ""
-                                ua = (
-                                    _ua
-                                    if len(_ua) <= 220
-                                    else _ua[:217] + "..."
-                                )
-                        evlist = sessions_detail[sid]["events"]
-                        first_t = min(str(e["time"]) for e in evlist)
-                        total_time = 0
-                        for e in evlist:
-                            try:
-                                total_time += int(e["duration"] or 0)
-                            except Exception:
-                                pass
-                        n_events = len(evlist)
-                        seen_paths = set()
-                        modules = []
-                        for e in evlist:
-                            p = (e["path"] or "").strip()
-                            if p and p not in seen_paths:
-                                seen_paths.add(p)
-                                modules.append(p)
-                        sess = {
-                            "session_id": sid,
-                            "country": country or "—",
-                            "city": city or "—",
-                            "ip": ip or "—",
-                            "ua": ua or "—",
-                            "total_time": total_time,
-                            "total_time_fmt": _analytics_fmt_duration_sec(
-                                total_time
-                            ),
-                            "classification": _analytics_session_classification(
-                                total_time, n_events
-                            ),
-                            "modules": modules,
-                            "start_local": _analytics_start_local_display(
-                                first_t, cc
-                            ),
-                            "events": [
-                                {
-                                    "time_local": _analytics_time_hms_local(
-                                        e["time"], cc
-                                    ),
-                                    "path": e["path"],
-                                    "duration_fmt": _analytics_fmt_duration_sec(
-                                        e["duration"]
-                                    ),
-                                }
-                                for e in evlist
-                            ],
-                        }
-                        ip = sess.get("ip")
-                        geo = get_geo_from_ip(ip)
-                        sess["country"] = geo.get("country")
-                        sess["city"] = geo.get("city")
-                        if not sess.get("country"):
-                            sess["country"] = country or "—"
-                        if not sess.get("city"):
-                            sess["city"] = city or "—"
-                        visit_count = len(sess["events"])
-                        modules_str = ", ".join(sess["modules"][:4])
-                        if len(sess["modules"]) > 4:
-                            modules_str += "..."
-                        sess["summary_line"] = (
-                            f"🌍 {sess.get('country', '—')} - {sess.get('city', '—')} | "
-                            f"🕒 {sess.get('start_local', '—')} | "
-                            f"👁 {visit_count} visites | "
-                            f"⏱ {sess.get('total_time_fmt', '—')} | "
-                            f"📊 {modules_str if modules_str else '—'}"
-                        )
-                        out["sessions_timeline"].append(sess)
-            except Exception:
-                out["sessions_timeline"] = []
             m = cur.execute("SELECT MAX(created_at) AS m FROM session_time").fetchone()
             if m and m["m"]:
                 last_candidates.append(str(m["m"]))
@@ -422,6 +199,231 @@ def load_analytics_readonly():
         return analytics_empty_payload()
     return out
 
-# Compat aliases
+
+def load_cockpit_payload(window_days: int = 30, owner_ips: set | None = None) -> dict:
+    """Charge tout le payload du dashboard cockpit cyan.
+
+    Args:
+        window_days: fenêtre temporelle pour top_countries / top_pages /
+            recent_visitors (par défaut 30 jours). Les timelines 7j et 30j
+            sont toujours calculées en parallèle.
+        owner_ips: ensemble d'IPs propriétaire à exclure (chargé via
+            db_visitors._load_owner_ips()). Peut être None.
+
+    Returns:
+        dict avec les clés attendues par templates/analytics.html.
+    """
+    payload = {
+        "total_unique_visitors": 0,
+        "visits_counter": 0,
+        "unique_ips_count": 0,
+        "countries_count": 0,
+        "avg_session_duration_sec": 0,
+        "avg_session_duration_fmt": "—",
+        "pages_per_session": 0.0,
+        "peak_hour_utc": "—",
+        "peak_hour_count": 0,
+        "bot_count": 0,
+        "last_activity": "—",
+        "is_live": False,
+        "top_countries": [],
+        "top_pages": [],
+        "timeline_7d": {"labels": [], "data": []},
+        "timeline_30d": {"labels": [], "data": []},
+        "hour_distribution": [0] * 24,
+        "recent_visitors": [],
+    }
+
+    owner_ips = owner_ips or set()
+    where_owner, params_owner = owner_ip_sql_filter(owner_ips)
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        # ── Compteur prod (source de vérité)
+        row = cur.execute("SELECT count FROM visits WHERE id=1").fetchone()
+        payload["visits_counter"] = int(row["count"]) if row else 0
+
+        # ── Total uniques (sessions humaines hors owner)
+        row = cur.execute(
+            f"SELECT COUNT(DISTINCT session_id) AS c FROM visitor_log WHERE {where_owner}",
+            params_owner,
+        ).fetchone()
+        sessions_count = int(row["c"] or 0) if row else 0
+        payload["total_unique_visitors"] = payload["visits_counter"] or sessions_count
+
+        row = cur.execute(
+            f"SELECT COUNT(DISTINCT ip) AS c FROM visitor_log WHERE {where_owner}",
+            params_owner,
+        ).fetchone()
+        payload["unique_ips_count"] = int(row["c"] or 0) if row else 0
+
+        row = cur.execute(
+            f"SELECT COUNT(DISTINCT country_code) AS c FROM visitor_log "
+            f"WHERE {where_owner} AND country_code != '' AND country_code != 'XX' "
+            f"AND country != 'Unknown'",
+            params_owner,
+        ).fetchone()
+        payload["countries_count"] = int(row["c"] or 0) if row else 0
+
+        row = cur.execute(
+            "SELECT COUNT(*) AS c FROM visitor_log WHERE is_bot=1"
+        ).fetchone()
+        payload["bot_count"] = int(row["c"] or 0) if row else 0
+
+        # ── Durée moyenne de session
+        row = cur.execute(
+            "SELECT AVG(total) AS a FROM ("
+            "  SELECT SUM(duration) AS total FROM session_time "
+            "  WHERE duration > 0 AND duration < 3600 "
+            "  GROUP BY session_id"
+            ")"
+        ).fetchone()
+        avg_dur = int(row["a"] or 0) if row else 0
+        payload["avg_session_duration_sec"] = avg_dur
+        payload["avg_session_duration_fmt"] = _analytics_fmt_duration_sec(avg_dur)
+
+        # ── Pages par session (page_views joinTable visitor_log filtré)
+        row = cur.execute(
+            f"SELECT COUNT(*) AS pv FROM page_views pv "
+            f"WHERE EXISTS (SELECT 1 FROM visitor_log vl "
+            f"  WHERE vl.session_id = pv.session_id AND {where_owner})",
+            params_owner,
+        ).fetchone()
+        total_pv = int(row["pv"] or 0) if row else 0
+        if sessions_count > 0:
+            payload["pages_per_session"] = round(total_pv / sessions_count, 2)
+
+        # ── Top countries (window_days)
+        rows = cur.execute(
+            f"SELECT "
+            f"  CASE WHEN country_code='NL' THEN 'Netherlands' ELSE country END AS country, "
+            f"  country_code, COUNT(*) AS c "
+            f"FROM visitor_log "
+            f"WHERE {where_owner} AND country != 'Unknown' AND country_code != 'XX' "
+            f"  AND visited_at >= datetime('now', '-{int(window_days)} days') "
+            f"GROUP BY country, country_code "
+            f"ORDER BY c DESC LIMIT 10",
+            params_owner,
+        ).fetchall()
+        top_countries = []
+        max_c = max((r["c"] for r in rows), default=1) or 1
+        for r in rows:
+            top_countries.append({
+                "country": r["country"],
+                "code": r["country_code"] or "XX",
+                "flag": _country_flag_emoji(r["country_code"] or ""),
+                "count": int(r["c"]),
+                "pct": round(100.0 * int(r["c"]) / max_c, 1),
+            })
+        payload["top_countries"] = top_countries
+
+        # ── Top pages (page_views joinTable visitor_log filtré, hors /static)
+        rows = cur.execute(
+            f"SELECT pv.path AS path, COUNT(*) AS c FROM page_views pv "
+            f"WHERE pv.path NOT LIKE '/static%' AND pv.path NOT LIKE '/api/%' "
+            f"  AND pv.visited_at >= datetime('now', '-{int(window_days)} days') "
+            f"  AND EXISTS (SELECT 1 FROM visitor_log vl "
+            f"    WHERE vl.session_id = pv.session_id AND {where_owner}) "
+            f"GROUP BY pv.path ORDER BY c DESC LIMIT 10",
+            params_owner,
+        ).fetchall()
+        payload["top_pages"] = [
+            {"path": r["path"] or "/", "count": int(r["c"])} for r in rows
+        ]
+
+        # ── Timeline 7d et 30d (DATE(visited_at) GROUP BY)
+        for window in (7, 30):
+            rows = cur.execute(
+                f"SELECT DATE(visited_at) AS d, COUNT(DISTINCT session_id) AS c "
+                f"FROM visitor_log "
+                f"WHERE {where_owner} "
+                f"  AND visited_at >= datetime('now', '-{window} days') "
+                f"GROUP BY DATE(visited_at) ORDER BY d ASC",
+                params_owner,
+            ).fetchall()
+            day_map = {r["d"]: int(r["c"]) for r in rows}
+            labels = []
+            data = []
+            today = datetime.now(timezone.utc).date()
+            for i in range(window - 1, -1, -1):
+                d = today - timedelta(days=i)
+                key = d.isoformat()
+                labels.append(d.strftime("%d/%m"))
+                data.append(day_map.get(key, 0))
+            payload[f"timeline_{window}d"] = {"labels": labels, "data": data}
+
+        # ── Distribution horaire (peak_hour)
+        rows = cur.execute(
+            f"SELECT CAST(strftime('%H', visited_at) AS INTEGER) AS h, COUNT(*) AS c "
+            f"FROM visitor_log WHERE {where_owner} "
+            f"GROUP BY h ORDER BY h ASC",
+            params_owner,
+        ).fetchall()
+        hours = [0] * 24
+        peak_h = 0
+        peak_c = 0
+        for r in rows:
+            h = int(r["h"] or 0)
+            if 0 <= h < 24:
+                hours[h] = int(r["c"])
+                if hours[h] > peak_c:
+                    peak_c = hours[h]
+                    peak_h = h
+        payload["hour_distribution"] = hours
+        payload["peak_hour_utc"] = f"{peak_h:02d}h" if peak_c > 0 else "—"
+        payload["peak_hour_count"] = peak_c
+
+        # ── Recent visitors (10 derniers, anonymisés)
+        rows = cur.execute(
+            f"SELECT country, country_code, path, visited_at FROM visitor_log "
+            f"WHERE {where_owner} "
+            f"ORDER BY id DESC LIMIT 10",
+            params_owner,
+        ).fetchall()
+        recent = []
+        last_iso = None
+        for r in rows:
+            cc = (r["country_code"] or "XX").upper()
+            visited = (r["visited_at"] or "").strip()
+            if not last_iso and visited:
+                last_iso = visited
+            try:
+                dt = datetime.fromisoformat(visited.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                hhmm = dt.astimezone(timezone.utc).strftime("%H:%M")
+            except Exception:
+                hhmm = "—"
+            path = (r["path"] or "/")
+            if len(path) > 32:
+                path = path[:29] + "…"
+            recent.append({
+                "flag": _country_flag_emoji(cc),
+                "code": cc,
+                "country": r["country"] or "—",
+                "time_utc": hhmm,
+                "path": path,
+            })
+        payload["recent_visitors"] = recent
+        if last_iso:
+            payload["last_activity"] = last_iso
+            try:
+                dt = datetime.fromisoformat(last_iso.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                delta = datetime.now(timezone.utc) - dt
+                payload["is_live"] = delta.total_seconds() < 300
+            except Exception:
+                pass
+
+        conn.close()
+    except Exception as exc:
+        log.warning("load_cockpit_payload: %s", exc)
+    return payload
+
+
 _analytics_empty_payload = analytics_empty_payload
 _load_analytics_readonly = load_analytics_readonly
