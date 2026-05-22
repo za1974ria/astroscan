@@ -7,8 +7,29 @@
 
 <link rel="preconnect" href="https://cesium.com" crossorigin>
 <link rel="dns-prefetch" href="https://cesium.com">
-<script src="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Cesium.js"></script>
-<link href="https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<script>
+  // Lazy-load Cesium quand #cesiumContainer entre dans le viewport
+  window.__cesiumReady = new Promise((resolve) => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const target = document.getElementById('cesiumContainer');
+      if (!target) return;
+      const trigger = () => {
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = 'https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Widgets/widgets.css';
+        document.head.appendChild(css);
+        const s = document.createElement('script');
+        s.src = 'https://cesium.com/downloads/cesiumjs/releases/1.118/Build/Cesium/Cesium.js';
+        s.onload = () => resolve();
+        document.head.appendChild(s);
+      };
+      const io = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) { trigger(); io.disconnect(); }
+      }, { rootMargin: '300px' });
+      io.observe(target);
+    });
+  });
+</script>
 
 <style>
 html,body,#cesiumContainer{
@@ -28,7 +49,10 @@ background:black;
 
 <script>
 
-Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
+(async function initCesium() {
+  await window.__cesiumReady;
+
+  Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
 
 (async function() {
   // ═══════════════════════════════════════════════════════
@@ -269,6 +293,7 @@ Cesium.Ion.defaultAccessToken = "{{ cesium_token | default('') }}";
   document.body.appendChild(toggleBtn);
 })();
 
+})(); // close async initCesium wrapper
 </script>
 
 
