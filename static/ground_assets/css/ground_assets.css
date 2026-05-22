@@ -989,3 +989,14 @@ path.ga-radar-circle {
 .ga-basemap-btn + .ga-basemap-btn {
   border-left: 1px solid rgba(0, 229, 255, 0.25);
 }
+
+/* Perf 2026-05-22 — content-visibility skip offscreen, restore CLS.
+   Replaces the removed cls-fix v2/v3/v4 inline blocks (PR #6) with a
+   modern, non-bug-prone equivalent: the browser reserves intrinsic size
+   for each row offscreen, killing CLS without capping wrapper height. */
+.ga-station-row, .ga-recent-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 56px;
+}
+.ga-focus-section { contain: layout; }
+.ga-shell { contain: layout; }
