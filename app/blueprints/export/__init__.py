@@ -12,11 +12,14 @@ Routes globales (sans préfixe) :
 import csv
 import io
 import json
+import logging
 import sqlite3
 from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, jsonify
 
 from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M
+
+log = logging.getLogger(__name__)
 
 bp = Blueprint("export", __name__, url_prefix="/api/export")
 # Sous-blueprint pour les routes export hors-préfixe (globales).
