@@ -7,13 +7,13 @@
 
 <!--
   WORLD LIVE ENGINE — AstroScan Orbital
-  Architecture vidéo HLS native (hls.js) + fallback image.
+  Architecture mixte : iframe YouTube live (par défaut) + vidéo HLS native (hls.js, optionnel).
 
-  Pour activer un flux réel sur une carte :
-    1. Récupérer une URL HLS publique (.m3u8) — ex: webcam de ville, RTSP relayée HLS.
-    2. Renseigner data-hls="https://…/index.m3u8" sur la balise <video data-card>.
-    3. Renseigner data-poster avec une image d'attente cohérente (déjà fourni).
-  Tant que data-hls est vide : badge STANDBY + poster affiché, aucun bruit réseau.
+  Pour activer une carte en YouTube live :
+    <iframe src="https://www.youtube.com/embed/live_stream?channel=UC..." ...></iframe>
+  Pour activer une carte en HLS direct :
+    <video data-card data-hls="https://.../index.m3u8" autoplay muted loop playsinline></video>
+  Tant qu'aucune source n'est branchée : badge SOON + poster affiché, aucun bruit réseau.
 -->
 
 <style>
@@ -143,6 +143,16 @@ body{
     display:block;
 }
 
+.stage iframe{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    border:0;
+    z-index:2;
+    display:block;
+}
+
 .stage .poster{
     z-index:1;
     transition:opacity .4s ease;
@@ -203,7 +213,7 @@ body{
 <div class="wrap">
 
     <div class="title">WORLD LIVE ENGINE</div>
-    <div class="subtitle">ASTROSCAN ORBITAL · HLS NATIVE STREAM</div>
+    <div class="subtitle">ASTROSCAN ORBITAL · LIVE STREAMS</div>
 
     <div class="grid">
 
@@ -217,41 +227,35 @@ body{
                      data-poster
                      src="https://images.unsplash.com/photo-1542051841857-5f90071e7989?q=80&w=1600&auto=format&fit=crop"
                      alt="Tokyo skyline standby">
-                <!-- TODO: renseigner data-hls avec une URL .m3u8 réelle (webcam Tokyo) -->
-                <video data-card
-                       data-hls=""
-                       autoplay muted loop playsinline
-                       preload="none"
-                       crossorigin="anonymous"></video>
+                <iframe src="https://www.youtube.com/embed/live_stream?channel=UCbTLJi8lXWIt_d1AtRv4Nmw&autoplay=1&mute=1"
+                        title="Tokyo Live Camera"
+                        loading="lazy"
+                        allow="autoplay; encrypted-media; picture-in-picture"
+                        allowfullscreen
+                        referrerpolicy="strict-origin-when-cross-origin"></iframe>
                 <div class="scan"></div>
             </div>
             <div class="footer">
-                <span>Tokyo Skyline · JST</span>
+                <span>Live city view · JST</span>
                 <span class="clock" data-clock="Asia/Tokyo"></span>
             </div>
         </article>
 
         <article class="card">
             <div class="head">
-                <div class="city">SHIBUYA CROSSING</div>
-                <div class="badge" data-badge><span class="dot"></span><span data-badge-label>LIVE</span></div>
+                <div class="city">PARIS</div>
+                <div class="badge" data-badge data-state="standby"><span class="dot"></span><span data-badge-label>SOON</span></div>
             </div>
             <div class="stage" data-stage>
                 <img class="poster"
                      data-poster
-                     src="https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=1600&auto=format&fit=crop"
-                     alt="Shibuya crossing standby">
-                <!-- TODO: renseigner data-hls avec une URL .m3u8 réelle (Shibuya scramble) -->
-                <video data-card
-                       data-hls=""
-                       autoplay muted loop playsinline
-                       preload="none"
-                       crossorigin="anonymous"></video>
+                     src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1600&auto=format&fit=crop"
+                     alt="Paris Eiffel Tower standby">
                 <div class="scan"></div>
             </div>
             <div class="footer">
-                <span>Shibuya Crossing · JST</span>
-                <span class="clock" data-clock="Asia/Tokyo"></span>
+                <span>Eiffel Tower · CET</span>
+                <span class="clock" data-clock="Europe/Paris"></span>
             </div>
         </article>
 
