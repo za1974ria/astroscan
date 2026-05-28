@@ -4,6 +4,7 @@ from services.cache_service import cache_status
 from services.circuit_breaker import all_status as cb_all_status
 import os
 from flask import request
+from app.services.security import require_admin
 
 bp = Blueprint("api_docs", __name__)
 
@@ -109,12 +110,10 @@ def api_cache_status():
 
 
 @bp.route("/api/admin/circuit-breakers")
+@require_admin
 def api_admin_circuit_breakers():
-    """Etat des circuit breakers - Bearer token requis (ASTROSCAN_ADMIN_TOKEN)."""
-    auth = request.headers.get("Authorization", "")
-    expected = (os.environ.get("ASTROSCAN_ADMIN_TOKEN") or "").strip()
-    if expected and auth != f"Bearer {expected}":
-        return jsonify({"error": "Unauthorized"}), 401
+    """Etat des circuit breakers — fail-closed via @require_admin
+    (ADMIN_TOKEN ou ASTROSCAN_ADMIN_TOKEN obligatoire ; 503 si non configuré, 401 si invalide)."""
     statuses = cb_all_status()
     return jsonify({
         "ok": True,

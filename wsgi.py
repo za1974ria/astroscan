@@ -31,6 +31,13 @@ log = logging.getLogger("astroscan.wsgi")
 _FORCE_MONOLITH = os.environ.get("ASTROSCAN_FORCE_MONOLITH", "").strip() in (
     "1", "true", "yes", "on",
 )
+# CHANTIER 2 (2026-05-23) : fallback monolithe désormais opt-in explicite.
+# Par défaut, si create_app() échoue, l'exception est ré-élevée → systemd voit
+# FAILED → restart loop visible. Cette variable permet la bascule legacy en
+# secours manuel (debug, rollback contrôlé).
+_ALLOW_MONOLITH_FALLBACK = os.environ.get(
+    "ASTROSCAN_ALLOW_MONOLITH_FALLBACK", "0"
+).strip() in ("1", "true", "yes", "on")
 
 
 def _build_app():
@@ -42,9 +49,13 @@ def _build_app():
     (`from station_web import X`).
     """
     if _FORCE_MONOLITH:
-        log.warning("[WSGI] ASTROSCAN_FORCE_MONOLITH=1 — bypass create_app()")
+        log.critical(
+            "[WSGI][BOOT_MODE=monolith_forced] ASTROSCAN_FORCE_MONOLITH=1 — "
+            "bypass create_app(). Production tourne sur le legacy station_web.app."
+        )
         from station_web import app as _app
-        log.info("[WSGI] Monolith loaded (forced) — %d routes",
+        _app.config["ASTROSCAN_BOOT_MODE"] = "monolith_forced"
+        log.info("[WSGI][BOOT_MODE=monolith_forced] %d routes",
                  len(list(_app.url_map.iter_rules())))
         return _app
 
@@ -57,29 +68,72 @@ def _build_app():
         # 2. Factory : crée l'app propre avec 21 BPs registered.
         from app import create_app
         _app = create_app("production")
+        _app.config["ASTROSCAN_BOOT_MODE"] = "factory"
         log.info(
-            "[WSGI] create_app() loaded successfully — %d routes",
+            "[WSGI][BOOT_MODE=factory] create_app() loaded successfully — %d routes",
             len(list(_app.url_map.iter_rules())),
         )
         return _app
     except Exception as e:
         err = str(e).strip()
+        # Trace systématique pour Sentry / journald avant toute décision.
+        log.exception("[WSGI] create_app() exception trace:")
+
+        # CHANTIER 2 (2026-05-23) : gated fallback. Sans opt-in explicite,
+        # l'exception est ré-élevée → gunicorn refuse de démarrer → systemd
+        # détecte FAILED → restart loop visible → opérateur alerté.
+        if not _ALLOW_MONOLITH_FALLBACK:
+            log.critical(
+                "[WSGI][BOOT_MODE=hard_fail] create_app() FAILED and "
+                "ASTROSCAN_ALLOW_MONOLITH_FALLBACK is OFF. "
+                "Refusing to start on legacy monolith — fix the root cause: %s",
+                err or repr(e)[:200],
+            )
+            # Sentry breadcrumb explicite si SDK chargé.
+            try:
+                import sentry_sdk
+                sentry_sdk.capture_message(
+                    f"AstroScan boot HARD FAIL (fallback disabled): {err or repr(e)[:200]}",
+                    level="fatal",
+                )
+            except Exception:
+                pass
+            raise
+
+        # Fallback explicitement autorisé par opérateur (mode secours).
         if err in ("SECRET_KEY", "NASA_API_KEY"):
-            log.error(
-                "[WSGI] create_app() aborted on env guard variable %s — "
-                "fix .env before relying on monolith fallback (degraded routes).",
+            log.critical(
+                "[WSGI][BOOT_MODE=monolith_fallback] create_app() aborted on env "
+                "guard variable %s — fix .env immediately. Production runs in "
+                "DEGRADED MODE on legacy station_web.app "
+                "(ASTROSCAN_ALLOW_MONOLITH_FALLBACK=1).",
                 err,
             )
-        log.exception(
-            "[WSGI] create_app() FAILED at import — fallback to monolith: %s", e,
-        )
+        else:
+            log.critical(
+                "[WSGI][BOOT_MODE=monolith_fallback] create_app() FAILED at import "
+                "— production runs on the LEGACY MONOLITH "
+                "(ASTROSCAN_ALLOW_MONOLITH_FALLBACK=1). Investigate and fix: %s",
+                e,
+            )
         # Fallback intentionnel : si la factory casse, le monolithe charge
         # toujours ses 21 BPs via station_web.py L501+.
         from station_web import app as _app
-        log.warning(
-            "[WSGI] Monolith fallback loaded — %d routes",
+        _app.config["ASTROSCAN_BOOT_MODE"] = "monolith_fallback"
+        _app.config["ASTROSCAN_BOOT_FAILURE"] = err or repr(e)[:200]
+        log.critical(
+            "[WSGI][BOOT_MODE=monolith_fallback] Monolith loaded — %d routes. "
+            "ALERT: this is NOT the standard boot path.",
             len(list(_app.url_map.iter_rules())),
         )
+        try:
+            import sentry_sdk
+            sentry_sdk.capture_message(
+                f"AstroScan boot fallback to monolith: {err or repr(e)[:200]}",
+                level="error",
+            )
+        except Exception:
+            pass
         return _app
 
 

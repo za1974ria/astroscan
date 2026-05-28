@@ -276,6 +276,7 @@ def _astroscan_session_cookie_and_time_script(response):
                 samesite="Lax",
                 path="/",
                 secure=secure,
+                httponly=True,
             )
         ct = (response.headers.get("Content-Type") or "").lower()
         if response.status_code >= 400 or "text/html" not in ct:
@@ -290,9 +291,48 @@ def _astroscan_session_cookie_and_time_script(response):
     return response
 
 
+# ─── @after_request — security headers globaux (CSP HTML, nosniff partout) ────
+def _astroscan_security_headers(response):
+    """Pose les headers de sécurité globaux en défense en profondeur.
+
+    - `X-Content-Type-Options: nosniff` : sur TOUTES les réponses (HTML, API, images).
+    - `Content-Security-Policy` : appliquée aux réponses HTML uniquement.
+      Politique permissive compatible Cesium/Chart.js (worker-src blob:,
+      script-src 'unsafe-inline' 'unsafe-eval' requis par Cesium WebGL/AMD).
+      Reprend la politique éprouvée sur /portail (blueprint pages).
+    - `Referrer-Policy` + `X-Frame-Options` : redondance nginx → Flask en
+      defense-in-depth (cas d'un changement de reverse-proxy).
+
+    Utilise `setdefault` pour ne PAS écraser un header déjà posé par un
+    blueprint (ex : CSP plus stricte sur /portail)."""
+    try:
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        ct = (response.headers.get("Content-Type") or "").lower()
+        if "text/html" in ct:
+            response.headers.setdefault(
+                "Content-Security-Policy",
+                "default-src 'self' https: data: blob:; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; "
+                "style-src 'self' 'unsafe-inline' https:; "
+                "img-src 'self' data: blob: https:; "
+                "font-src 'self' data: https:; "
+                "connect-src 'self' https: wss:; "
+                "worker-src 'self' blob:; "
+                "frame-ancestors 'self'; "
+                "base-uri 'self'",
+            )
+            response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+            response.headers.setdefault(
+                "Referrer-Policy", "strict-origin-when-cross-origin"
+            )
+    except Exception:
+        pass
+    return response
+
+
 # ─── Registration entry point ─────────────────────────────────────────────────
 def register_hooks(app: Flask) -> None:
-    """Attache les 8 hooks app-level au Flask `app` (factory)."""
+    """Attache les hooks app-level au Flask `app` (factory)."""
     # Ordre des before_request : préserve la chaîne historique
     # (timing_start → visitor_session → increment_visits).
     app.before_request(_astroscan_request_timing_start)
@@ -301,6 +341,9 @@ def register_hooks(app: Flask) -> None:
 
     app.after_request(_astroscan_struct_log_response)
     app.after_request(_astroscan_session_cookie_and_time_script)
+    # PASS HARDEN (2026-05-23) : security headers globaux. Registered en dernier
+    # pour que setdefault() respecte les overrides éventuels des blueprints.
+    app.after_request(_astroscan_security_headers)
 
     app.register_error_handler(404, _astroscan_404)
     app.register_error_handler(500, _astroscan_500)

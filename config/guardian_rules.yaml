@@ -12,6 +12,12 @@
 #
 # Cooldown protects against alert spam: once an incident fires for a
 # rule, the same rule won't fire again until <cooldown_minutes> elapse.
+#
+# CHANTIER 5 (2026-05-23) — Discipline pass:
+#   - service_down / http_root_down / nginx_down / sentinel_health_down /
+#     http_500_burst : cooldown élevé de 5 → 10 minutes (anti-spam restart loop).
+#   - Restart grace 90s appliqué côté agent.py (avant tout fire service_down).
+#   - Confirmation N>=2 fire avant escalade LLM (côté agent.py).
 
 rules:
   - name: "disk_usage_critical"
@@ -33,28 +39,28 @@ rules:
     operator: "=="
     value: false
     severity: "critical"
-    cooldown_minutes: 5
+    cooldown_minutes: 10
 
   - name: "nginx_down"
     metric: "nginx.active"
     operator: "=="
     value: false
     severity: "critical"
-    cooldown_minutes: 5
+    cooldown_minutes: 10
 
   - name: "http_root_down"
     metric: "http_root.status"
     operator: ">="
     threshold: 500
     severity: "critical"
-    cooldown_minutes: 5
+    cooldown_minutes: 10
 
   - name: "sentinel_health_down"
     metric: "http_sentinel_health.status"
     operator: ">="
     threshold: 500
     severity: "critical"
-    cooldown_minutes: 5
+    cooldown_minutes: 10
 
   - name: "ssl_expiry_critical"
     metric: "ssl_expiry.days_until_expiry"

@@ -532,10 +532,10 @@ def _cam_fetch_url(url):
         timeout=(5, 12), headers=_CAM_FETCH_HEADERS,
         allow_redirects=True, stream=False,
     )
-    try:
-        r = _requests.get(url, verify=True, **kw)
-    except _requests.exceptions.SSLError:
-        r = _requests.get(url, verify=False, **kw)
+    # PASS HARDEN (2026-05-23) : `verify=False` fallback supprimé. Un certificat
+    # invalide d'une source de cam fait remonter SSLError → 502 côté route, pas
+    # de bypass TLS silencieux (anti-MITM).
+    r = _requests.get(url, verify=True, **kw)
     r.raise_for_status()
     data = r.content
     if not data:

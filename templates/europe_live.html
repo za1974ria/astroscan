@@ -2,371 +2,342 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<script>(function(){try{if(/(?:^|[?&])embed=1(?:&|$)/.test(window.location.search||""))document.documentElement.classList.add("embed-portail");}catch(e){}})();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>World Live | AstroScan</title>
-<meta name="description" content="World Live — Tokyo : quatre flux YouTube live intégrés en iframe. Aucune clé API, aucun scraping.">
-<link rel="icon" href="/static/favicon.ico?v=2">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<title>AstroScan — World Live Engine</title>
+
+<!--
+  WORLD LIVE ENGINE — AstroScan Orbital
+  Architecture vidéo HLS native (hls.js) + fallback image.
+
+  Pour activer un flux réel sur une carte :
+    1. Récupérer une URL HLS publique (.m3u8) — ex: webcam de ville, RTSP relayée HLS.
+    2. Renseigner data-hls="https://…/index.m3u8" sur la balise <video data-card>.
+    3. Renseigner data-poster avec une image d'attente cohérente (déjà fourni).
+  Tant que data-hls est vide : badge STANDBY + poster affiché, aucun bruit réseau.
+-->
+
 <style>
-html.embed-portail .wl-actions { display:none!important; }
-
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
-
-:root {
-  --bg:#050a14; --bg-card:rgba(5,15,35,0.92);
-  --cyan:#00d4ff; --green:#00ff88; --gold:#f5c518;
-  --text:#e0e8ff; --text-dim:rgba(224,232,255,0.45);
-  --border:rgba(0,212,255,0.12); --border-hi:rgba(0,212,255,0.35);
-  --glow:0 0 20px rgba(0,212,255,0.15);
-  --font:'Orbitron',monospace; --mono:'Space Mono',monospace;
+:root{
+    --bg:#020b16;
+    --cyan:#00d9ff;
+    --cyan-soft:#7fdfff;
+    --card:#07182a;
+    --border:#0f3d5e;
+    --live:#00ff9d;
+    --standby:#ffb347;
 }
 
-html,body { background:var(--bg); color:var(--text); font-family:var(--mono); min-height:100vh; overflow-x:hidden; }
+*{box-sizing:border-box;}
 
-@keyframes shimmer   { 0%{background-position:0% center;} 100%{background-position:200% center;} }
-@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(0.8);} }
-
-.wl-header {
-  padding:36px 40px 20px; border-bottom:1px solid var(--border);
-  background:linear-gradient(180deg,rgba(0,212,255,0.05) 0%,transparent 100%);
-  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:20px;
-}
-.wl-title {
-  font-family:var(--font); font-size:clamp(1.2rem,3vw,2.1rem); font-weight:900; letter-spacing:4px;
-  background:linear-gradient(135deg,var(--cyan) 0%,#fff 50%,var(--cyan) 100%);
-  background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-  background-clip:text; animation:shimmer 5s linear infinite;
-}
-.wl-subtitle { font-size:0.67rem; color:var(--text-dim); letter-spacing:2.5px; text-transform:uppercase; margin-top:6px; max-width:42em; line-height:1.5; }
-.wl-meta { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
-.wl-clock { font-family:var(--font); font-size:1.3rem; color:var(--cyan); letter-spacing:3px; text-shadow:0 0 12px rgba(0,212,255,0.5); }
-.wl-badge-count {
-  background:rgba(0,212,255,0.07); border:1px solid rgba(0,212,255,0.28);
-  border-radius:20px; padding:5px 14px; font-size:0.72rem; color:var(--cyan);
-  letter-spacing:1px; display:flex; align-items:center; gap:7px;
-}
-.badge-dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse-dot 2s ease-in-out infinite; }
-
-.wl-actions {
-  padding:12px 40px; display:flex; gap:10px; flex-wrap:wrap;
-  border-bottom:1px solid rgba(0,212,255,0.07); background:rgba(0,0,0,0.2);
-}
-.btn-wl {
-  display:inline-flex; align-items:center; gap:7px; background:transparent;
-  border:1px solid var(--border-hi); color:var(--cyan); padding:7px 16px;
-  border-radius:4px; font-family:var(--mono); font-size:0.72rem; letter-spacing:1px;
-  text-transform:uppercase; cursor:pointer; text-decoration:none; transition:background .2s,box-shadow .2s;
-}
-.btn-wl:hover { background:rgba(0,212,255,0.08); box-shadow:0 0 16px rgba(0,212,255,0.2); }
-
-.wl-grid {
-  display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:20px; padding:28px 40px;
+body{
+    margin:0;
+    background:var(--bg);
+    color:var(--cyan);
+    font-family:Arial,Helvetica,sans-serif;
+    min-height:100vh;
 }
 
-.wl-card {
-  background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
-  overflow:hidden; position:relative; transition:border-color .35s,transform .35s,box-shadow .35s;
-}
-.wl-card::before {
-  content:''; position:absolute; inset:0; border-radius:12px;
-  background:linear-gradient(135deg,rgba(0,212,255,0.08) 0%,transparent 45%,transparent 55%,rgba(245,197,24,0.04) 100%);
-  pointer-events:none; z-index:0;
-}
-.wl-card:hover { border-color:var(--border-hi); transform:translateY(-2px); box-shadow:0 16px 48px rgba(0,0,0,0.5),var(--glow); }
-
-.wl-card-head {
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding:14px 18px; border-bottom:1px solid var(--border); position:relative; z-index:1;
-}
-.wl-card-title { font-family:var(--font); font-size:0.88rem; font-weight:700; letter-spacing:2px; color:#fff; }
-.wl-live-badge {
-  font-family:var(--font); font-size:0.52rem; letter-spacing:0.22em; color:var(--green);
-  border:1px solid rgba(0,255,136,0.45); padding:4px 10px; border-radius:4px; background:rgba(0,40,28,0.45);
-  flex-shrink:0;
+.wrap{
+    max-width:1600px;
+    margin:auto;
+    padding:30px;
 }
 
-.wl-embed-wrap {
-  position:relative; z-index:1; background:#020810;
-}
-.wl-embed-wrap iframe {
-  display:block; width:100%; height:300px; border:0; background:#020810;
-}
-
-.wl-fallback {
-  padding:12px 16px; text-align:center; font-size:0.68rem; letter-spacing:0.12em;
-  color:rgba(224,232,255,0.55); border-top:1px solid rgba(0,212,255,0.1);
-  text-transform:uppercase;
-}
-.wl-fallback.is-hidden { display:none !important; }
-
-/* === Paris HD slideshow gallery (v2.6.0) === */
-.paris-gallery-wrap {
-  position: relative;
-  width: 100%;
-  height: 300px;
-  overflow: hidden;
-  background: #000;
-}
-.paris-slide {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 1.2s ease-in-out;
-  pointer-events: none;
-}
-.paris-slide.is-active {
-  opacity: 1;
-}
-.paris-overlay {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 14px 18px 12px;
-  background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0) 100%);
-  color: #fff;
-  font-family: var(--font, 'Orbitron', monospace);
-  pointer-events: none;
-}
-.paris-clock {
-  font-size: 1.45rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-shadow: 0 0 12px rgba(0, 212, 255, 0.55);
-  margin-bottom: 4px;
-}
-.paris-weather {
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-  color: rgba(255,255,255,0.92);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.pw-temp {
-  font-weight: 700;
-  color: #00d4ff;
-}
-.pw-sep {
-  color: rgba(255,255,255,0.4);
-}
-.pw-cond {
-  text-transform: capitalize;
-}
-.pw-wind {
-  color: rgba(255,255,255,0.7);
+.title{
+    font-size:64px;
+    font-weight:800;
+    margin-bottom:8px;
+    letter-spacing:4px;
 }
 
-.wl-foot {
-  padding:18px 40px; border-top:1px solid rgba(0,212,255,0.07); text-align:center;
-  font-size:0.62rem; color:rgba(224,232,255,0.28); letter-spacing:2px; text-transform:uppercase; line-height:1.6;
+.subtitle{
+    color:var(--cyan-soft);
+    font-size:14px;
+    letter-spacing:2px;
+    margin-bottom:30px;
+    opacity:.8;
 }
 
-@media(max-width:860px) {
-  .wl-grid { grid-template-columns:1fr; padding:16px; }
-  .wl-header,.wl-actions { padding-left:16px; padding-right:16px; }
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
 }
 
-.wl-foot, .wl-foot * { color: #8590a0 !important; }
+.card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 0 40px rgba(0,217,255,.08);
+    position:relative;
+}
+
+.head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:18px 22px;
+    border-bottom:1px solid var(--border);
+}
+
+.city{
+    font-size:34px;
+    font-weight:700;
+    letter-spacing:2px;
+}
+
+.badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border:1px solid var(--live);
+    color:var(--live);
+    border-radius:999px;
+    padding:6px 14px;
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:1px;
+}
+
+.badge .dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--live);
+    box-shadow:0 0 8px var(--live);
+    animation:livepulse 1.4s ease-in-out infinite;
+}
+
+.badge[data-state="standby"]{
+    border-color:var(--standby);
+    color:var(--standby);
+}
+
+.badge[data-state="standby"] .dot{
+    background:var(--standby);
+    box-shadow:0 0 8px var(--standby);
+    animation-duration:2.4s;
+}
+
+@keyframes livepulse{
+    0%,100%{opacity:1;transform:scale(1);}
+    50%{opacity:.35;transform:scale(.7);}
+}
+
+.stage{
+    position:relative;
+    width:100%;
+    aspect-ratio:16/9;
+    background:#000;
+    overflow:hidden;
+}
+
+.stage video,
+.stage .poster{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+}
+
+.stage .poster{
+    z-index:1;
+    transition:opacity .4s ease;
+}
+
+.stage video{
+    z-index:2;
+    opacity:0;
+    transition:opacity .4s ease;
+}
+
+.stage.playing video{opacity:1;}
+.stage.playing .poster{opacity:0;}
+
+.stage .scan{
+    position:absolute;
+    inset:0;
+    z-index:3;
+    pointer-events:none;
+    background:
+        linear-gradient(transparent 0%,rgba(0,217,255,.04) 50%,transparent 100%),
+        repeating-linear-gradient(
+            to bottom,
+            rgba(0,217,255,.06) 0,
+            rgba(0,217,255,.06) 1px,
+            transparent 1px,
+            transparent 3px
+        );
+    mix-blend-mode:screen;
+}
+
+.footer{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:16px 22px;
+    color:var(--cyan-soft);
+    font-size:14px;
+    letter-spacing:1px;
+}
+
+.footer .clock{
+    font-variant-numeric:tabular-nums;
+    font-weight:700;
+    color:var(--cyan);
+}
+
+@media(max-width:1000px){
+    .grid{grid-template-columns:1fr;}
+    .title{font-size:42px;}
+    .city{font-size:26px;}
+}
 </style>
 </head>
+
 <body>
-<main role="main" id="main-content">
 
+<div class="wrap">
 
-<header class="wl-header">
-  <div>
-    <div class="wl-title">WORLD LIVE</div>
-    <div class="wl-subtitle">Tokyo — deux flux publics YouTube live intégrés en iframe uniquement. Aucune clé API ni requête métier côté client.</div>
-  </div>
-  <div class="wl-meta">
-    <div class="wl-clock" id="wl-clock">--:--:--</div>
-    <div class="wl-badge-count"><div class="badge-dot"></div>2 FLUX LIVE</div>
-  </div>
-</header>
+    <div class="title">WORLD LIVE ENGINE</div>
+    <div class="subtitle">ASTROSCAN ORBITAL · HLS NATIVE STREAM</div>
 
-<div class="wl-actions">
-  <a href="/portail" class="btn-wl">⌂ Retour Portail</a>
-  <a href="/europe-live" class="btn-wl">⟳ Recharger la page</a>
+    <div class="grid">
+
+        <article class="card">
+            <div class="head">
+                <div class="city">TOKYO</div>
+                <div class="badge" data-badge><span class="dot"></span><span data-badge-label>LIVE</span></div>
+            </div>
+            <div class="stage" data-stage>
+                <img class="poster"
+                     data-poster
+                     src="https://images.unsplash.com/photo-1542051841857-5f90071e7989?q=80&w=1600&auto=format&fit=crop"
+                     alt="Tokyo skyline standby">
+                <!-- TODO: renseigner data-hls avec une URL .m3u8 réelle (webcam Tokyo) -->
+                <video data-card
+                       data-hls=""
+                       autoplay muted loop playsinline
+                       preload="none"
+                       crossorigin="anonymous"></video>
+                <div class="scan"></div>
+            </div>
+            <div class="footer">
+                <span>Tokyo Skyline · JST</span>
+                <span class="clock" data-clock="Asia/Tokyo"></span>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="head">
+                <div class="city">SHIBUYA CROSSING</div>
+                <div class="badge" data-badge><span class="dot"></span><span data-badge-label>LIVE</span></div>
+            </div>
+            <div class="stage" data-stage>
+                <img class="poster"
+                     data-poster
+                     src="https://images.unsplash.com/photo-1503899036084-c55cdd92da26?q=80&w=1600&auto=format&fit=crop"
+                     alt="Shibuya crossing standby">
+                <!-- TODO: renseigner data-hls avec une URL .m3u8 réelle (Shibuya scramble) -->
+                <video data-card
+                       data-hls=""
+                       autoplay muted loop playsinline
+                       preload="none"
+                       crossorigin="anonymous"></video>
+                <div class="scan"></div>
+            </div>
+            <div class="footer">
+                <span>Shibuya Crossing · JST</span>
+                <span class="clock" data-clock="Asia/Tokyo"></span>
+            </div>
+        </article>
+
+    </div>
 </div>
 
-<div class="wl-grid">
-
-  <article class="wl-card">
-    <div class="wl-card-head">
-      <span class="wl-card-title" id="title-cam1">TOKYO — Shibuya Crossing</span>
-      <span class="wl-live-badge">LIVE</span>
-    </div>
-    <div class="wl-embed-wrap">
-      <iframe id="iframe-cam1"
-        data-fallback-index="0"
-        data-fallbacks='[{"id":"dfVK7ld38Ys","title":"TOKYO — Shibuya Crossing"},{"id":"H9BBwaT4Gug","title":"TOKYO — Yamanote Line"},{"id":"_Sof1oNx2mY","title":"NEW YORK — Times Square 4K"}]'
-        title="Tokyo Shibuya Scramble Crossing live (city center)"
-        src="https://www.youtube-nocookie.com/embed/dfVK7ld38Ys?autoplay=1&mute=1"
-        width="100%" height="300" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowfullscreen
-        onload="wlOnIframeLoad('cam1')" onerror="wlSwitchFallback('cam1')"></iframe>
-      <div class="wl-fallback is-hidden" id="wl-fallback-cam1">Flux temporairement indisponible</div>
-    </div>
-  </article>
-
-  <article class="wl-card paris-card">
-    <div class="wl-card-head">
-      <span class="wl-card-title">PARIS — Tour Eiffel</span>
-      <span class="wl-live-badge" id="paris-live-badge" style="background:#0a3d62;color:#7fdbff">HD</span>
-    </div>
-    <div class="paris-gallery-wrap">
-      <img class="paris-slide is-active" src="/static/paris/paris_1.jpg" alt="Tour Eiffel — vue 1" loading="lazy" decoding="async">
-      <img class="paris-slide" src="/static/paris/paris_2.jpg" alt="Tour Eiffel — vue 2" loading="lazy" decoding="async">
-      <img class="paris-slide" src="/static/paris/paris_3.jpg" alt="Tour Eiffel — vue 3" loading="lazy" decoding="async">
-      <img class="paris-slide" src="/static/paris/paris_4.jpg" alt="Tour Eiffel — vue 4" loading="lazy" decoding="async">
-      <img class="paris-slide" src="/static/paris/paris_5.jpg" alt="Tour Eiffel — vue 5" loading="lazy" decoding="async">
-      <div class="paris-overlay">
-        <div class="paris-clock" id="paris-clock">--:--:--</div>
-        <div class="paris-weather" id="paris-weather">
-          <span class="pw-temp" id="pw-temp">—°C</span>
-          <span class="pw-sep">·</span>
-          <span class="pw-cond" id="pw-cond">—</span>
-          <span class="pw-sep">·</span>
-          <span class="pw-wind" id="pw-wind">— km/h</span>
-        </div>
-      </div>
-    </div>
-  </article>
-
-</div>
-
-<footer class="wl-foot">
-  AstroScan · WORLD LIVE · Tokyo YouTube + Paris HD Gallery · auto-fallback YouTube · météo Paris cache 10 min
-</footer>
+<!-- hls.js — chargé en defer, ne bloque pas le rendu -->
+<script defer src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 
 <script>
-'use strict';
+(function(){
+    "use strict";
 
-// Système rotation auto-fallback YouTube (v2.5.9)
-// Si un live YouTube échoue (onerror OU pas de chargement après 12s),
-// bascule automatiquement sur le backup suivant dans la liste data-fallbacks
-var wlLoadTimers = {};
-var wlLoadStatus = {};
-
-function wlOnIframeLoad(camId) {
-  wlLoadStatus[camId] = true;
-  var el = document.getElementById('wl-fallback-' + camId);
-  if (el) el.classList.add('is-hidden');
-  if (wlLoadTimers[camId]) {
-    clearTimeout(wlLoadTimers[camId]);
-    delete wlLoadTimers[camId];
-  }
-}
-
-function wlSwitchFallback(camId) {
-  var iframe = document.getElementById('iframe-' + camId);
-  if (!iframe) return;
-  var titleEl = document.getElementById('title-' + camId);
-  var idx = parseInt(iframe.getAttribute('data-fallback-index') || '0', 10);
-  var fallbacksAttr = iframe.getAttribute('data-fallbacks');
-  if (!fallbacksAttr) return;
-  var fallbacks;
-  try { fallbacks = JSON.parse(fallbacksAttr); } catch(e) { return; }
-  var nextIdx = idx + 1;
-  if (nextIdx >= fallbacks.length) {
-    var el = document.getElementById('wl-fallback-' + camId);
-    if (el) el.classList.remove('is-hidden');
-    return;
-  }
-  var next = fallbacks[nextIdx];
-  iframe.setAttribute('data-fallback-index', String(nextIdx));
-  wlLoadStatus[camId] = false;
-  iframe.src = 'https://www.youtube-nocookie.com/embed/' + next.id + '?autoplay=1&mute=1';
-  if (titleEl) titleEl.textContent = next.title;
-  wlArmTimer(camId);
-}
-
-function wlArmTimer(camId) {
-  if (wlLoadTimers[camId]) clearTimeout(wlLoadTimers[camId]);
-  wlLoadTimers[camId] = setTimeout(function() {
-    if (!wlLoadStatus[camId]) {
-      wlSwitchFallback(camId);
+    function tickClocks(){
+        document.querySelectorAll("[data-clock]").forEach(function(el){
+            var tz = el.getAttribute("data-clock");
+            try{
+                el.textContent = new Date().toLocaleTimeString("fr-FR", {timeZone: tz, hour12: false});
+            }catch(e){
+                el.textContent = "--:--:--";
+            }
+        });
     }
-  }, 12000);
-}
+    tickClocks();
+    setInterval(tickClocks, 1000);
 
-document.addEventListener('DOMContentLoaded', function() {
-  wlArmTimer('cam1');
-  wlArmTimer('cam2');
-});
-
-function wlHideFallback(id) {
-  var el = document.getElementById('wl-fallback-' + id);
-  if (el) el.classList.add('is-hidden');
-}
-function wlShowFallback(id) {
-  var el = document.getElementById('wl-fallback-' + id);
-  if (el) el.classList.remove('is-hidden');
-}
-function wlTickClock() {
-  var el = document.getElementById('wl-clock');
-  if (!el) return;
-  el.textContent = new Date().toLocaleTimeString('fr-FR', { timeZone: 'UTC', hour12: false }) + ' UTC';
-}
-wlTickClock();
-setInterval(wlTickClock, 1000);
-
-// === Paris HD gallery — slideshow + clock + weather (v2.6.0) ===
-(function () {
-  var slides = document.querySelectorAll('.paris-slide');
-  if (!slides.length) return;
-  var idx = 0;
-  function nextSlide() {
-    slides[idx].classList.remove('is-active');
-    idx = (idx + 1) % slides.length;
-    slides[idx].classList.add('is-active');
-  }
-  setInterval(nextSlide, 6000);
-
-  // Heure locale Paris (Europe/Paris IANA)
-  function tickParisClock() {
-    var el = document.getElementById('paris-clock');
-    if (!el) return;
-    try {
-      el.textContent = new Date().toLocaleTimeString('fr-FR', {
-        timeZone: 'Europe/Paris',
-        hour12: false
-      });
-    } catch (e) {
-      el.textContent = new Date().toLocaleTimeString('fr-FR', { hour12: false });
+    function setStandby(card){
+        var wrap = card.closest(".card");
+        var badge = wrap && wrap.querySelector("[data-badge]");
+        var label = badge && badge.querySelector("[data-badge-label]");
+        if(badge) badge.setAttribute("data-state", "standby");
+        if(label) label.textContent = "STANDBY";
     }
-  }
-  tickParisClock();
-  setInterval(tickParisClock, 1000);
 
-  // Météo Paris via backend cache 10 min
-  function fetchParisWeather() {
-    fetch('/api/paris/weather', { credentials: 'same-origin' })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (!d || d.error) return;
-        var t = document.getElementById('pw-temp');
-        var c = document.getElementById('pw-cond');
-        var w = document.getElementById('pw-wind');
-        if (t) t.textContent = d.temp_c + '°C';
-        if (c) c.textContent = (d.conditions || '—');
-        if (w) w.textContent = d.wind_kmh + ' km/h';
-      })
-      .catch(function () { /* silencieux — pas critique */ });
-  }
-  fetchParisWeather();
-  setInterval(fetchParisWeather, 10 * 60 * 1000); // refresh côté client toutes les 10 min
+    function setLive(card){
+        var wrap = card.closest(".card");
+        var badge = wrap && wrap.querySelector("[data-badge]");
+        var label = badge && badge.querySelector("[data-badge-label]");
+        if(badge) badge.removeAttribute("data-state");
+        if(label) label.textContent = "LIVE";
+        var stage = card.closest(".stage");
+        if(stage) stage.classList.add("playing");
+    }
+
+    function bootCard(card){
+        var src = (card.getAttribute("data-hls") || "").trim();
+
+        if(!src){
+            setStandby(card);
+            return;
+        }
+
+        if(card.canPlayType("application/vnd.apple.mpegurl")){
+            card.src = src;
+            card.addEventListener("playing", function(){ setLive(card); }, {once:true});
+            card.addEventListener("error", function(){ setStandby(card); }, {once:true});
+            return;
+        }
+
+        if(window.Hls && window.Hls.isSupported()){
+            var hls = new window.Hls({lowLatencyMode:true, enableWorker:true});
+            hls.loadSource(src);
+            hls.attachMedia(card);
+            hls.on(window.Hls.Events.MANIFEST_PARSED, function(){
+                card.play().then(function(){ setLive(card); }).catch(function(){ setStandby(card); });
+            });
+            hls.on(window.Hls.Events.ERROR, function(_, data){
+                if(data && data.fatal) setStandby(card);
+            });
+            return;
+        }
+
+        setStandby(card);
+    }
+
+    function bootAll(){
+        document.querySelectorAll("video[data-card]").forEach(bootCard);
+    }
+
+    if(document.readyState === "complete"){
+        bootAll();
+    }else{
+        window.addEventListener("load", bootAll);
+    }
 })();
 </script>
-</main>
+
 </body>
 </html>

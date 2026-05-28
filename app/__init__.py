@@ -228,6 +228,20 @@ def _register_blueprints(app: Flask) -> None:
     except Exception as e:  # noqa: BLE001 — boot must never fail on optional bp
         log.warning("[guardian] registration failed (continuing): %s", e)
 
+    # ── Telescope Bridge (TB-2 skeleton, 2026-05-24) ────────────────────
+    # Feature-flagged. When FEATURE_TELESCOPE_BRIDGE is not in the truthy
+    # set, the module is NOT imported and the routes do not exist at all.
+    # No information leakage, no code surface, default 404 from Flask.
+    if os.environ.get("FEATURE_TELESCOPE_BRIDGE", "0").strip() in ("1", "true", "yes", "on"):
+        try:
+            from modules.telescope_bridge.api import bp as telescope_bridge_bp
+            app.register_blueprint(telescope_bridge_bp, url_prefix="/api/telescope-bridge")
+            log.info("[telescope_bridge] blueprint registered (TB-2 skeleton, read-only)")
+        except Exception as e:  # noqa: BLE001 — boot must never fail on optional bp
+            log.warning("[telescope_bridge] registration failed (continuing): %s", e)
+    else:
+        log.info("[telescope_bridge] disabled (FEATURE_TELESCOPE_BRIDGE not set)")
+
 
 def register_all_for_fallback(app: Flask) -> None:
     """Enregistre TOUS les blueprints + hooks sur une instance Flask externe.

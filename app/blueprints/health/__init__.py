@@ -25,7 +25,7 @@ import os
 import sqlite3
 import time
 
-from flask import Blueprint, Response, jsonify, request, stream_with_context
+from flask import Blueprint, Response, current_app, jsonify, request, stream_with_context
 
 from app.services.security import require_admin
 from app.constants.observatory import (
@@ -237,6 +237,7 @@ def health_check():
     except Exception:
         disk_usage = {}
 
+    cb_statuses = []
     try:
         from services.circuit_breaker import all_status as _cb_all_status
         cb_statuses = _cb_all_status()
@@ -250,7 +251,87 @@ def health_check():
     except Exception:
         active_apis = {}
 
+    # CHANTIER 4 — circuit breakers summary (safe counts, no secrets).
+    cb_summary = {"total": 0, "open": 0, "half_open": 0, "closed": 0}
+    try:
+        cb_summary["total"] = len(cb_statuses)
+        for s in cb_statuses:
+            st = (s.get("state") or "").lower().replace("-", "_")
+            if st == "open":
+                cb_summary["open"] += 1
+            elif st == "half_open":
+                cb_summary["half_open"] += 1
+            elif st == "closed":
+                cb_summary["closed"] += 1
+    except Exception:
+        pass
+
+    # CHANTIER 4 — boot mode visibility (set by wsgi.py _build_app).
+    boot_mode = "unknown"
+    boot_failure = None
+    try:
+        boot_mode = current_app.config.get("ASTROSCAN_BOOT_MODE", "unknown")
+        boot_failure = current_app.config.get("ASTROSCAN_BOOT_FAILURE")
+    except Exception:
+        pass
+
+    # CHANTIER 4 — sqlite probe (read + write-lock test, no mutation).
+    sqlite_info = {"ok": False, "db_path": None, "writable": False}
+    try:
+        sqlite_info["db_path"] = _sw.DB_PATH
+        conn = sqlite3.connect(_sw.DB_PATH, timeout=2.0)
+        try:
+            conn.execute("SELECT 1").fetchone()
+            sqlite_info["ok"] = True
+            try:
+                # BEGIN IMMEDIATE acquires write lock; ROLLBACK releases. No data change.
+                conn.execute("BEGIN IMMEDIATE")
+                conn.execute("ROLLBACK")
+                sqlite_info["writable"] = True
+            except Exception:
+                sqlite_info["writable"] = False
+        finally:
+            conn.close()
+    except Exception:
+        sqlite_info["ok"] = False
+
+    # CHANTIER 4 — gunicorn introspect (worker count via master children).
+    gunicorn_info = {"worker_pid": os.getpid(), "master_pid": None, "worker_count": None}
+    try:
+        master_pid = os.getppid()
+        gunicorn_info["master_pid"] = master_pid
+        master_proc = psutil.Process(master_pid)
+        siblings = [
+            c for c in master_proc.children(recursive=False)
+            if c.is_running()
+        ]
+        gunicorn_info["worker_count"] = len(siblings)
+    except Exception:
+        pass
+
+    # CHANTIER 4 — guardian agent compact summary (per-worker view + lockfile leader).
+    guardian_info = {}
+    try:
+        from app.blueprints.guardian import agent as _g_agent
+        gh = _g_agent.health()
+        guardian_info = {
+            "enabled": gh.get("enabled"),
+            "version": gh.get("version"),
+            "started": gh.get("started"),
+            "thread_alive": gh.get("thread_alive"),
+            "is_leader": gh.get("is_leader"),
+            "leader_pid": gh.get("leader_pid"),
+            "ticks_total": gh.get("ticks_total"),
+            "rules_loaded": gh.get("rules_loaded"),
+            "in_restart_grace": gh.get("in_restart_grace"),
+            "restart_grace_s": gh.get("restart_grace_s"),
+            "llm_summaries_today": gh.get("llm_summaries_today"),
+        }
+    except Exception:
+        guardian_info = {"enabled": None, "error": "guardian probe failed"}
+
     return jsonify({
+        # ── champs historiques (back-compat stricte) ─────────────────────────
         "status":         overall_status,
         "service":        "astroscan",
         "uptime":         uptime_seconds,
@@ -263,6 +344,13 @@ def health_check():
         "disk_usage":     disk_usage,
         "active_apis":    active_apis,
         "timestamp":      now_iso,
+        # ── CHANTIER 4 — observability premium ───────────────────────────────
+        "boot_mode":         boot_mode,
+        "boot_failure":      boot_failure,
+        "sqlite":            sqlite_info,
+        "gunicorn":          gunicorn_info,
+        "guardian":          guardian_info,
+        "circuit_breakers":  cb_summary,
     })
 
 
@@ -323,6 +411,26 @@ def api_health():
     # PASS 28 — Replaced individual service enumeration with aggregate count
     # to prevent fingerprinting of configured integrations. Also removed
     # 'ip' and 'director' (info disclosure not needed for monitoring).
+    # CHANTIER 4 — boot mode visible aussi sur /api/health.
+    boot_mode = "unknown"
+    try:
+        boot_mode = current_app.config.get("ASTROSCAN_BOOT_MODE", "unknown")
+    except Exception:
+        pass
+
+    # CHANTIER 4 — disk snapshot léger (shutil.disk_usage, no extra dep).
+    disk_brief = {}
+    try:
+        import shutil as _sh
+        d = _sh.disk_usage("/")
+        disk_brief = {
+            "total_gb": round(d.total / 1e9, 1),
+            "free_gb": round(d.free / 1e9, 1),
+            "pct": round(d.used / d.total * 100, 1),
+        }
+    except Exception:
+        pass
+
     payload = {
         'ok': True, 'station': 'ORBITAL-CHOHRA',
         'location': 'Tlemcen, Algérie',
@@ -338,6 +446,9 @@ def api_health():
         ]),
         'integrations_total': 5,
         'coordinates': _OBS_DICT_HEALTH,
+        # CHANTIER 4 — additions.
+        'boot_mode': boot_mode,
+        'disk': disk_brief,
     }
     try:
         import station_web as _sw
