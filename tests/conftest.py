@@ -33,9 +33,13 @@ _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 sys.path.insert(0, _PROJECT_ROOT)
 
 # Axe 1 — make station_web.py:284 (`for line in open(env_file)`) tolerate a
-# .env that exists but is unreadable (mode 0600 root-owned in production).
-# Production runs as root and is unaffected; only unprivileged CI/dev runners
-# trip this path. Patch is local to the test session.
+# .env that is unreadable (mode 0600 root-owned in production) OR absent
+# (CI runners without secrets-as-file). The patch returns an empty StringIO
+# for /root/astro_scan/.env so the loop iterates over zero lines and
+# station_web continues its boot. Production runs as root with a real .env
+# and is unaffected; only the test session sees this fallback.
+# SECRET_KEY/SENTRY_DSN/TESTING are then posed by the fixtures below before
+# importing the app, so the factory still gets a valid (test-only) secret.
 _ENV_PATH = os.path.join(_PROJECT_ROOT, ".env")
 if not hasattr(builtins, "_axe1_original_open"):
     builtins._axe1_original_open = builtins.open
@@ -43,7 +47,7 @@ if not hasattr(builtins, "_axe1_original_open"):
     def _axe1_open(file, *args, **kwargs):
         try:
             return builtins._axe1_original_open(file, *args, **kwargs)
-        except PermissionError:
+        except (PermissionError, FileNotFoundError):
             try:
                 if os.path.abspath(str(file)) == os.path.abspath(_ENV_PATH):
                     return io.StringIO("")
@@ -66,17 +70,36 @@ if not hasattr(logging.handlers, "_OriginalRotatingFileHandler"):
     logging.handlers.RotatingFileHandler = _safe_rotating_handler
 
 
+def _data_dir_writable() -> bool:
+    """Return True if <PROJECT_ROOT>/data is writable by the current user.
+
+    Importing station_web triggers _init_visits_table() which writes to
+    data/visitors.db. In production data/ is owned by the service user and is
+    writable; on locked-down dev/CI runners it may be read-only. We skip
+    cleanly in that case rather than letting station_web crash mid-import.
+    """
+    data_dir = os.path.join(_PROJECT_ROOT, "data")
+    return os.path.isdir(data_dir) and os.access(data_dir, os.W_OK)
+
+
 @pytest.fixture(scope="session")
 def app():
-    """Legacy monolith app (station_web:app)."""
-    env_path = os.path.join(_PROJECT_ROOT, ".env")
-    # Skip cleanly if .env is missing (CI) or not readable (unprivileged user)
-    if not os.path.exists(env_path) or not os.access(env_path, os.R_OK):
-        pytest.skip(f"app skipped — {env_path} is missing or not readable by the current user.")
+    """Legacy monolith app (station_web:app).
+
+    Boots even when /root/astro_scan/.env is absent or unreadable: the
+    builtin ``open`` patch above turns those errors into an empty StringIO,
+    and the env vars below seed a test-only SECRET_KEY before import.
+    """
+    if not _data_dir_writable():
+        pytest.skip(
+            "app skipped — data/ is not writable by current user "
+            "(station_web initializes visitors.db at import). "
+            "Grant write to data/ to enable these tests."
+        )
 
     os.environ["TESTING"] = "1"
     os.environ.setdefault("SENTRY_DSN", "")
-    os.environ.setdefault("SECRET_KEY", "test-only-secret-key")
+    os.environ.setdefault("SECRET_KEY", "test-only-secret-key-min-32-chars-ok")
     try:
         from station_web import app as flask_app
     except (PermissionError, OSError) as exc:
@@ -97,22 +120,22 @@ def client(app):
 def factory_app():
     """Clean Flask app via ``app.create_app('testing')`` — post-PASS-18 target.
 
-    The factory reads ``<PROJECT_ROOT>/.env`` at boot (mode 0600, root-owned in
-    production). When the test runner does not have read access, the fixture
-    skips cleanly rather than erroring — production runs as root and is
-    unaffected.
+    Boots even when /root/astro_scan/.env is absent or unreadable: the open
+    patch above + the env vars below provide a self-contained test config
+    (SECRET_KEY ≥ 32 chars to satisfy MIN_SECRET_KEY_LEN_PRODUCTION should the
+    config_name resolve to production; in 'testing' mode the factory is
+    additionally lenient).
     """
-    env_path = os.path.join(_PROJECT_ROOT, ".env")
-    if not os.path.exists(env_path) or not os.access(env_path, os.R_OK):
+    if not _data_dir_writable():
         pytest.skip(
-            f"factory_app skipped — {env_path} is missing or not readable by "
-            "the current user (production runs as root). Run the suite as root "
-            "or grant read access to the test runner to enable factory tests."
+            "factory_app skipped — data/ is not writable by current user "
+            "(station_web initializes visitors.db at import, which the factory "
+            "pre-loads for global state). Grant write to data/ to enable these tests."
         )
 
     os.environ["TESTING"] = "1"
     os.environ.setdefault("SENTRY_DSN", "")
-    os.environ.setdefault("SECRET_KEY", "test-only-secret-key")
+    os.environ.setdefault("SECRET_KEY", "test-only-secret-key-min-32-chars-ok")
     # Pre-load station_web so global state (TLE cache, threads) is up before
     # the factory imports the blueprints that lazy-import from it.
     try:
