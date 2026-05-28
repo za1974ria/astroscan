@@ -14,6 +14,7 @@ Caractéristiques :
 
 Critère succès : 0 échec → service sain. Tout échec = signal de rollback.
 """
+
 from __future__ import annotations
 
 import json
@@ -138,9 +139,7 @@ def test_admin_circuit_breakers_rejects_bad_token():
         "/api/admin/circuit-breakers",
         headers={"Authorization": "Bearer obviously-wrong-token-xxx"},
     )
-    assert status in (401, 503), (
-        f"SECURITY REGRESSION: bad token → {status} (expected 401/503)"
-    )
+    assert status in (401, 503), f"SECURITY REGRESSION: bad token → {status} (expected 401/503)"
 
 
 # ─── test guardian (singleton + discipline) ───────────────────────────────────
@@ -168,7 +167,6 @@ def test_guardian_leader_pid_consistent():
     """Sur plusieurs appels (workers distincts gunicorn), le leader_pid annoncé
     doit être stable (cross-worker singleton)."""
     leader_pids = set()
-    seen_leader = False
     for _ in range(8):
         status, _, body = _http_get("/api/guardian/health")
         if status != 200:
@@ -176,8 +174,6 @@ def test_guardian_leader_pid_consistent():
         d = json.loads(body)
         if "leader_pid" in d and d["leader_pid"] is not None:
             leader_pids.add(d["leader_pid"])
-        if d.get("is_leader"):
-            seen_leader = True
     # Si exposé, doit être unique sur l'horizon de test.
     if leader_pids:
         assert len(leader_pids) == 1, (
