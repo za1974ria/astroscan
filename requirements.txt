@@ -38,3 +38,8 @@ sentry-sdk==2.58.0
 # Coexists with the existing Anthropic/Groq stack in app/blueprints/ai/
 openai>=1.50,<2
 tenacity>=8,<10
+
+# === Axe 0 sécurisation (2026-05-28) ===
+# WSGI runtime — invoqué par systemd via `python3 -m gunicorn` (cf. astroscan.service).
+# Version alignée sur l'installation actuelle.
+gunicorn==20.1.0

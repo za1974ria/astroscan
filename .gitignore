@@ -128,3 +128,13 @@ audit/batch_log_*.log
 audit/last_reports_dir.txt
 audit/routes_not_found.txt
 audit/SPRINT*_NGINX_LOG.md
+
+# === Axe 0 sécurisation (2026-05-28) ===
+# Catch-all pour les backups au format .bak-YYYYMMDD-HHMMSS (tiret)
+*.bak-*
+*.bak*
+# Virtualenvs locaux jamais versionnés
+venv/
+.venv/
+# Archives lourdes de rapports (déjà présentes dans audit/reports/ ignoré)
+audit/reports_archive_*.tar.gz
