@@ -8,7 +8,7 @@
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)](https://www.python.org/)
 [![Status](https://img.shields.io/badge/status-live-brightgreen.svg)](https://astroscan.space)
-[![Version](https://img.shields.io/badge/version-v2.8.0-blue.svg)](https://github.com/za1974ria/astroscan/releases/tag/v2.8.0-lighthouse-58pct-ui-clean)
+[![Version](https://img.shields.io/badge/version-v2.7.4-blue.svg)](https://github.com/za1974ria/astroscan/releases/tag/v2.7.4-analytics-cockpit)
 [![Lighthouse](https://img.shields.io/badge/Lighthouse-21%2F50%20PERFECT-success.svg)](https://github.com/za1974ria/astroscan/releases/tag/v2.8.0-lighthouse-58pct-ui-clean)
 [![A11y](https://img.shields.io/badge/Accessibility-100%2F100%20on%2046%20modules-brightgreen.svg)](https://github.com/za1974ria/astroscan/releases/tag/v2.8.0-lighthouse-58pct-ui-clean)
 [![CI](https://github.com/za1974ria/astroscan/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/za1974ria/astroscan/actions/workflows/test.yml)
