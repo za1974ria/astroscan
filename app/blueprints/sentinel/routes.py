@@ -161,7 +161,7 @@ def assetlinks():
 # ─────────────────────────────────────────────────────── APK distribution
 # Serve the Android APKs at /modules/sentinel/<filename>.apk with the proper
 # package-archive mimetype so Chrome/Edge trigger the install flow on Android.
-# Files live in /root/astro_scan/static/downloads/ (no duplication).
+# Files live in /opt/astroscan/static/downloads/ (no duplication).
 
 _APK_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
@@ -457,3 +457,189 @@ def api_health():
     except Exception as e:
         log.exception("[SENTINEL] health failure: %s", e)
         return api_error("health_failure", code=503)
+
+
+# ─────────────────────────── PHASE 4-5-9 (2026-05-23) — Trust layer ────
+# Public read-only metrics for the landing trust block + secure POST
+# feedback. SQL-FIRST: source of truth = sentinel_sessions. Defense in
+# depth: JSON content-type, size cap, origin/referer check, honeypot,
+# rate-limit, sanitize, ip_hash only.
+
+import hashlib as _b5_hashlib
+import time as _b5_time
+from urllib.parse import urlsplit as _b5_urlsplit
+
+_FEEDBACK_MAX_BYTES = 4096
+_FEEDBACK_TRUSTED_ORIGINS = (
+    "https://astroscan.space",
+    "https://www.astroscan.space",
+    "http://127.0.0.1:5003",
+    "http://127.0.0.1:5004",
+    "http://localhost:5003",
+)
+_FEEDBACK_DAILY_HASH_CAP = 10
+_FEEDBACK_DAILY_HITS_LOCK_KEY = "sentinel_feedback_daily_hash"
+
+
+def _client_ip_hash(req) -> str:
+    """SHA256 + truncate (16 hex) — never store raw IP."""
+    from app.services.security import _client_ip_from_request
+    ip = _client_ip_from_request(req) or ""
+    return _b5_hashlib.sha256(ip.encode("utf-8")).hexdigest()[:16]
+
+
+def _origin_referer_ok(req) -> bool:
+    """Check Origin and Referer against trusted list. Returns True if at least
+    one is present AND matches. POST CSRF defense-in-depth."""
+    candidates = []
+    origin = (req.headers.get("Origin") or "").strip()
+    if origin:
+        candidates.append(origin)
+    referer = (req.headers.get("Referer") or "").strip()
+    if referer:
+        parts = _b5_urlsplit(referer)
+        if parts.scheme and parts.netloc:
+            candidates.append(f"{parts.scheme}://{parts.netloc}")
+    if not candidates:
+        # No Origin and no Referer = likely curl/script → reject for POST feedback.
+        return False
+    for c in candidates:
+        if c in _FEEDBACK_TRUSTED_ORIGINS:
+            return True
+    return False
+
+
+# In-memory daily counter per ip_hash (process-local; 4 workers => effective ~4x
+# but combined with /minute rate-limit at the @rate_limit_ip decorator level it
+# remains within the brief envelope; durable cross-worker enforcement is a
+# Redis-level concern outside Phase 4 scope).
+_FB_DAILY: dict[str, list[int]] = {}
+
+
+def _check_daily_hash_cap(ip_hash: str) -> bool:
+    """Returns True if under daily cap (10/day/ip_hash)."""
+    now_ts = int(_b5_time.time())
+    cutoff = now_ts - 86400
+    hits = [t for t in _FB_DAILY.get(ip_hash, []) if t >= cutoff]
+    if len(hits) >= _FEEDBACK_DAILY_HASH_CAP:
+        _FB_DAILY[ip_hash] = hits
+        return False
+    hits.append(now_ts)
+    _FB_DAILY[ip_hash] = hits
+    # Garde-fou mémoire (best-effort cleanup of stale buckets)
+    if len(_FB_DAILY) > 2000:
+        for k in list(_FB_DAILY.keys())[:500]:
+            arr = _FB_DAILY.get(k) or []
+            if not arr or arr[-1] < cutoff:
+                _FB_DAILY.pop(k, None)
+    return True
+
+
+@sentinel_bp.route("/api/sentinel/metrics", methods=["GET"])
+def api_sentinel_metrics():
+    """Public read-only trust metrics for the landing block.
+
+    SQL-FIRST: SELECT COUNT(*) FROM sentinel_sessions / sentinel_feedback.
+    Always returns 200 with a snapshot ; fail-safe defaults if DB unavailable.
+    No auth, no PII, no IP, no tokens exposed. Cacheable 30 s client-side.
+    """
+    try:
+        from app.services.sentinel_metrics import get_metrics_snapshot
+        snap = get_metrics_snapshot()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("[SENTINEL] metrics snapshot failure: %s", exc)
+        snap = {
+            "total_sessions": 0, "completed_sessions": 0, "active_users": 0,
+            "feedback_count": 0, "feedback_avg": 0.0, "ok": True, "cache_ttl_s": 30,
+        }
+    resp = api_ok(**snap)
+    resp.headers["Cache-Control"] = "public, max-age=30"
+    return resp
+
+
+@sentinel_bp.route("/api/sentinel/feedback", methods=["POST"])
+@rate_limit_ip(max_per_minute=2, key_prefix="sentinel_feedback")
+def api_sentinel_feedback():
+    """Submit user feedback (suggestion / bug / ux / idea / security_incident).
+
+    Defense in depth (CHANTIER 9):
+      1. Strict Content-Type application/json
+      2. Payload size cap 4 KB
+      3. Origin + Referer validation against allowlist
+      4. Honeypot 'website' field — must be empty
+      5. Rate limit 2/min/IP via @rate_limit_ip
+      6. Soft daily cap 10/day/ip_hash (process-local)
+      7. Schema validation (rating 1-5, category whitelist, message sanitize)
+      8. ip_hash only (SHA256 truncated 16 hex), never raw IP
+
+    Returns 200 {"ok": true} on success, 4xx with reason code otherwise.
+    """
+    # 1. Strict Content-Type
+    ct = (request.headers.get("Content-Type") or "").lower()
+    if not ct.startswith("application/json"):
+        return api_error("content_type_must_be_json", code=415)
+
+    # 2. Size cap (Content-Length check + body re-read defensively)
+    cl = request.headers.get("Content-Length")
+    if cl is not None:
+        try:
+            if int(cl) > _FEEDBACK_MAX_BYTES:
+                return api_error("payload_too_large", code=413)
+        except ValueError:
+            return api_error("invalid_content_length", code=400)
+    raw = request.get_data(cache=False, as_text=False) or b""
+    if len(raw) > _FEEDBACK_MAX_BYTES:
+        return api_error("payload_too_large", code=413)
+
+    # 3. Origin + Referer check
+    if not _origin_referer_ok(request):
+        return api_error("origin_not_allowed", code=403)
+
+    # 4. Parse JSON safely (force=False — Content-Type checked above)
+    try:
+        payload = json.loads(raw.decode("utf-8")) if raw else {}
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return api_error("invalid_json", code=400)
+
+    # 5. Schema validation (includes honeypot check + sanitization)
+    try:
+        cleaned = schemas.validate_feedback(payload)
+    except schemas.ValidationError as ve:
+        return api_error(str(ve), code=400)
+
+    # 6. ip_hash + daily cap
+    ip_hash = _client_ip_hash(request)
+    if not _check_daily_hash_cap(ip_hash):
+        return api_error("daily_cap_exceeded", code=429)
+
+    # 7. DB insert (fail-safe — UI gets 503 if DB write blocked)
+    ua = (request.headers.get("User-Agent") or "")[:300]
+    status = "priority" if cleaned["is_priority"] else "new"
+    try:
+        with store._connect() as c:
+            c.execute(
+                "INSERT INTO sentinel_feedback "
+                "(created_at, rating, category, message, email, user_agent, ip_hash, status) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    int(_b5_time.time()),
+                    cleaned["rating"],
+                    cleaned["category"],
+                    cleaned["message"] or None,
+                    cleaned["email"],
+                    ua,
+                    ip_hash,
+                    status,
+                ),
+            )
+    except Exception:
+        log.exception("[SENTINEL] feedback insert failure")
+        return api_error("feedback_storage_unavailable", code=503)
+
+    # 8. Log priority feedback at WARNING level for ops visibility (no PII)
+    if status == "priority":
+        log.warning(
+            "[SENTINEL] priority feedback received category=%s rating=%d ip_hash=%s",
+            cleaned["category"], cleaned["rating"], ip_hash,
+        )
+    return api_ok(ok=True)

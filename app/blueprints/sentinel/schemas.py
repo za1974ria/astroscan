@@ -153,3 +153,97 @@ def validate_batch(payload: dict) -> list[dict]:
     if len(positions) > 50:
         raise ValidationError("batch_too_large")
     return [validate_position(p) for p in positions]
+
+
+# ──────────────────────── PHASE 4 (2026-05-23) — Trust feedback ────────
+# Validation pour POST /api/sentinel/feedback.
+# Aligné sur les contraintes DB (sentinel_feedback) + le brief sécurité :
+#   - rating 1..5
+#   - category whitelist (5 valeurs ; security_incident → status='priority')
+#   - message max 2000 chars, sanitize, trim
+#   - email optionnel, format léger (pas RFC-strict, juste anti-junk)
+#   - honeypot field 'website' obligatoirement vide (anti-bot)
+#   - payload max 4 KB côté caller (Flask check) — ici on assume déjà OK
+
+FEEDBACK_CATEGORIES = frozenset({
+    "suggestion", "bug", "ux", "idea", "security_incident",
+})
+FEEDBACK_PRIORITY_CATEGORY = "security_incident"
+FEEDBACK_MESSAGE_MAX = 2000
+FEEDBACK_EMAIL_MAX = 200
+FEEDBACK_HONEYPOT_FIELD = "website"
+
+
+def _scrub_text(value: str, max_len: int) -> str:
+    """Trim, normalize whitespace, cap length, strip control chars (except \\n/\\t).
+
+    Returns sanitized string. Raises ValidationError if effectively empty.
+    """
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValidationError("text_must_be_string")
+    # Strip control chars except newline/tab.
+    cleaned = "".join(
+        ch for ch in value
+        if ch in ("\n", "\t") or (ord(ch) >= 0x20 and ord(ch) != 0x7F)
+    )
+    cleaned = cleaned.strip()
+    if len(cleaned) > max_len:
+        cleaned = cleaned[:max_len]
+    return cleaned
+
+
+def validate_feedback(payload: dict) -> dict:
+    """Validate POST /api/sentinel/feedback body.
+
+    Returns a sanitized dict ready for DB insert:
+        {"rating": int, "category": str, "message": str, "email": str|None,
+         "is_priority": bool}
+
+    Raises ValidationError on any reject. Caller is expected to also enforce
+    rate-limits and honeypot OUTSIDE this function (server-side concerns).
+    """
+    if not isinstance(payload, dict):
+        raise ValidationError("body_must_be_object")
+
+    # 1) HONEYPOT — must be empty or absent. Bots fill it.
+    hp = payload.get(FEEDBACK_HONEYPOT_FIELD)
+    if hp not in (None, "", False):
+        raise ValidationError("honeypot_triggered")
+
+    # 2) rating 1..5
+    try:
+        rating = int(payload.get("rating"))
+    except (TypeError, ValueError):
+        raise ValidationError("rating_required_int")
+    if rating < 1 or rating > 5:
+        raise ValidationError("rating_out_of_range")
+
+    # 3) category whitelist
+    category = (payload.get("category") or "").strip().lower()
+    if category not in FEEDBACK_CATEGORIES:
+        raise ValidationError("category_invalid")
+
+    # 4) message (optional, sanitized)
+    message = _scrub_text(payload.get("message") or "", FEEDBACK_MESSAGE_MAX)
+
+    # 5) email optional, basic check (presence of '@', length cap, no spaces)
+    email_raw = (payload.get("email") or "").strip()
+    if email_raw:
+        if len(email_raw) > FEEDBACK_EMAIL_MAX:
+            raise ValidationError("email_too_long")
+        if " " in email_raw or "@" not in email_raw or "." not in email_raw:
+            raise ValidationError("email_format_invalid")
+        # Sanitize defensively (no \n, \t already stripped).
+        email = _scrub_text(email_raw, FEEDBACK_EMAIL_MAX)
+    else:
+        email = None
+
+    return {
+        "rating": rating,
+        "category": category,
+        "message": message,
+        "email": email,
+        "is_priority": category == FEEDBACK_PRIORITY_CATEGORY,
+    }

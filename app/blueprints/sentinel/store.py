@@ -12,12 +12,41 @@ import sqlite3
 import time
 from typing import Optional
 
-_DEFAULT_DB = "/root/astro_scan/data/archive_stellaire.db"
+# PHASE B.5B + Phase 2-fix (2026-05-23) — DB path resolved via app.services.paths.
+# app.services.paths.DB_PATH already honors, in order:
+#   1. ASTROSCAN_DB_PATH env  (highest priority)
+#   2. DB_PATH env            (legacy compat)
+#   3. <STATION>/data/archive_stellaire.db where STATION = ASTROSCAN_HOME / STATION env
+#      or derived from this file's location (portable, zero hardcode).
+# This module no longer re-checks env vars itself — single source of truth.
 _SCHEMA_INITIALIZED = False
 
 
 def _db_path() -> str:
-    return os.environ.get("DB_PATH", _DEFAULT_DB)
+    """Resolve the SQLite path via app.services.paths (env-driven, portable).
+
+    Re-imported on each call so that monkeypatched env vars in tests are
+    honored (paths.DB_PATH is computed at module load time only).
+    """
+    try:
+        from app.services import paths as _paths
+        # Recompute to honor late env changes (tests / monkeypatch).
+        import importlib as _importlib
+        _importlib.reload(_paths)
+        return _paths.DB_PATH
+    except Exception:
+        # Last-resort fallback if app.services.paths is unavailable.
+        # Derived from this file's location: store.py is at
+        # <STATION>/app/blueprints/sentinel/store.py → 4 dirname up = STATION.
+        import os as _os
+        _station_fallback = _os.path.dirname(_os.path.dirname(_os.path.dirname(
+            _os.path.dirname(_os.path.abspath(__file__))
+        )))
+        return (
+            _os.environ.get("ASTROSCAN_DB_PATH")
+            or _os.environ.get("DB_PATH")
+            or _os.path.join(_station_fallback, "data", "archive_stellaire.db")
+        )
 
 
 def _connect() -> sqlite3.Connection:
@@ -119,6 +148,50 @@ def init_schema() -> None:
                 last_seen_day   TEXT NOT NULL
             )
             """
+        )
+        # ─── PHASE 2 (2026-05-23) — Trust layer additive tables ──────────
+        # Source-of-truth pour sessions reste sentinel_sessions (SQL COUNT).
+        # sentinel_metrics est un cache optionnel (key/value) pour absorber
+        # les pics de trafic ; non-bloquant si vide. Idempotent.
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sentinel_metrics (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                metric_name     TEXT NOT NULL UNIQUE,
+                metric_value    REAL NOT NULL DEFAULT 0,
+                updated_at      INTEGER NOT NULL
+            )
+            """
+        )
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sentinel_metrics_name "
+            "ON sentinel_metrics(metric_name)"
+        )
+        # Feedback utilisateurs : suggestions, bugs, UX, incidents sécurité.
+        # ip_hash = SHA256 truncated (jamais l'IP en clair).
+        # status par défaut 'new' ; security_incident sera marqué 'priority'.
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sentinel_feedback (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at      INTEGER NOT NULL,
+                rating          INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                category        TEXT NOT NULL,
+                message         TEXT,
+                email           TEXT,
+                user_agent      TEXT,
+                ip_hash         TEXT,
+                status          TEXT NOT NULL DEFAULT 'new'
+            )
+            """
+        )
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sentinel_feedback_created "
+            "ON sentinel_feedback(created_at DESC)"
+        )
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sentinel_feedback_status "
+            "ON sentinel_feedback(status, created_at DESC)"
         )
     _SCHEMA_INITIALIZED = True
 
