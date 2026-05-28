@@ -58,9 +58,10 @@ except ImportError:
     import os
     from contextlib import contextmanager
 
-    _BASE = os.environ.get("STATION", "/root/astro_scan")
+    # PHASE B.5B (2026-05-23) — STATION resolved via app.services.paths.
+    from app.services.paths import STATION as _BASE  # noqa: E402
     DB_MAIN      = f"{_BASE}/data/archive_stellaire.db"     # type: ignore[assignment]
-    DB_WEATHER   = f"{_BASE}/weather_bulletins.db"          # type: ignore[assignment]
+    DB_WEATHER   = os.path.join(_BASE, "data", "weather_bulletins.db")          # type: ignore[assignment]
     DB_VISITORS  = f"{_BASE}/data/visitors.db"              # type: ignore[assignment]
     DB_PUSH      = f"{_BASE}/data/push_subscriptions.db"    # type: ignore[assignment]
     DB_ALERTS_SENT = f"{_BASE}/data/alerts_sent.db"         # type: ignore[assignment]

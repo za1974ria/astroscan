@@ -55,16 +55,17 @@ def create_app(config_name: str = "production") -> Flask:
     import time as _t
     _asset_version = str(int(_t.time()))
 
+    # PHASE B.5B (2026-05-23) — paths resolved centrally via app.services.paths.
+    from app.services.paths import STATION as _PATHS_STATION, DB_PATH as _PATHS_DB_PATH
     app.config.update(
         SECRET_KEY=_resolve_secret_key(config_name),
         TESTING=os.environ.get("TESTING", "0") == "1",
-        STATION=os.environ.get("STATION", "/root/astro_scan"),
-        DB_PATH=os.environ.get("DB_PATH",
-            "/root/astro_scan/data/archive_stellaire.db"),
+        STATION=_PATHS_STATION,
+        DB_PATH=_PATHS_DB_PATH,
         SUPPORTED_LANGS={"fr", "en"},
         DEFAULT_LANG="fr",
-        TEMPLATES_AUTO_RELOAD=True,
-        SEND_FILE_MAX_AGE_DEFAULT=0,
+        TEMPLATES_AUTO_RELOAD=False,
+        SEND_FILE_MAX_AGE_DEFAULT=31536000,
         # Bug #3 (KNOWN_ISSUES) : client WS /ws/view-sync désactivé tant que
         # nginx upstream n'est pas configuré. STATION SOLO reste affiché.
         FEATURE_WS_VIEW_SYNC=False,
@@ -175,6 +176,8 @@ def _register_blueprints(app: Flask) -> None:
     from app.blueprints.maintenance import bp as maintenance_bp
     from app.blueprints.api.paris_weather import paris_weather_bp
     from app.blueprints.sentinel import sentinel_bp
+    from app.blueprints.control_tower import control_tower_bp
+    import os
 
     app.register_blueprint(seo_bp)
     app.register_blueprint(apod_bp)
@@ -208,6 +211,7 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(maintenance_bp)
     app.register_blueprint(paris_weather_bp)
     app.register_blueprint(sentinel_bp)
+    app.register_blueprint(control_tower_bp)
     log.info("[Blueprints] 32 blueprints + 8 hooks enregistrés (sync station_web.py + hilal + maintenance + paris_weather + sentinel)")
 
     # ── Axe Astro Brain + Guardian (Session 1, 2026-05-21) ──────────────
@@ -228,19 +232,18 @@ def _register_blueprints(app: Flask) -> None:
     except Exception as e:  # noqa: BLE001 — boot must never fail on optional bp
         log.warning("[guardian] registration failed (continuing): %s", e)
 
-    # ── Telescope Bridge (TB-2 skeleton, 2026-05-24) ────────────────────
-    # Feature-flagged. When FEATURE_TELESCOPE_BRIDGE is not in the truthy
-    # set, the module is NOT imported and the routes do not exist at all.
-    # No information leakage, no code surface, default 404 from Flask.
-    if os.environ.get("FEATURE_TELESCOPE_BRIDGE", "0").strip() in ("1", "true", "yes", "on"):
-        try:
-            from modules.telescope_bridge.api import bp as telescope_bridge_bp
-            app.register_blueprint(telescope_bridge_bp, url_prefix="/api/telescope-bridge")
-            log.info("[telescope_bridge] blueprint registered (TB-2 skeleton, read-only)")
-        except Exception as e:  # noqa: BLE001 — boot must never fail on optional bp
-            log.warning("[telescope_bridge] registration failed (continuing): %s", e)
-    else:
-        log.info("[telescope_bridge] disabled (FEATURE_TELESCOPE_BRIDGE not set)")
+
+    try:
+        if os.getenv("FEATURE_TELESCOPE_BRIDGE", "0") == "1":
+            from modules.telescope_bridge.api.routes import (
+                bp as telescope_bridge_bp,
+                pages_bp as telescope_bridge_pages_bp,
+            )
+            app.register_blueprint(telescope_bridge_bp)
+            app.register_blueprint(telescope_bridge_pages_bp)
+            log.info("[telescope_bridge] blueprint registered (api + pages TB-38)")
+    except Exception as e:
+        log.warning("[telescope_bridge] registration failed (continuing): %s", e)
 
 
 def register_all_for_fallback(app: Flask) -> None:

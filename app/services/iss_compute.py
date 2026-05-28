@@ -175,6 +175,30 @@ def _get_satellite_tle_by_name(target_name):
     return None, None, canonical
 
 
+def _elevation_above_observer(lat, lon, jd, fr, obs_teme, obs_norm, sat_teme):
+    """Élévation (degrés) du satellite vu depuis l'observateur (TEME, km).
+
+    Extrait verbatim depuis station_web.py:1725 lors de Sprint B · Tranche 9
+    (2026-05-28). Pure math TEME ; les paramètres lat/lon sont conservés dans
+    la signature pour rétro-compatibilité legacy, ils ne sont pas utilisés
+    dans le corps.
+
+    NOTE : `app/blueprints/satellites/__init__.py:125` possède sa propre copie
+    locale (utilisée par /api/satellite/passes) qui n'est pas remplacée à ce
+    stade — consigne extraction pure. Sprint A bis pourra consolider.
+    """
+    import math
+    dx = sat_teme[0] - obs_teme[0]
+    dy = sat_teme[1] - obs_teme[1]
+    dz = sat_teme[2] - obs_teme[2]
+    dist = math.sqrt(dx * dx + dy * dy + dz * dz)
+    if dist < 1e-6:
+        return -90.0
+    ux, uy, uz = dx / dist, dy / dist, dz / dist
+    dot = ux * (obs_teme[0] / obs_norm) + uy * (obs_teme[1] / obs_norm) + uz * (obs_teme[2] / obs_norm)
+    return math.degrees(math.asin(max(-1, min(1, dot))))
+
+
 def _az_to_direction(az_deg: float) -> str:
     """Convert azimuth degrees to compass direction (8-point)."""
     dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]

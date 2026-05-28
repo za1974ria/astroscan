@@ -108,7 +108,7 @@ def api_mars_weather():
             return jsonify({"error": "no data"}), 502
         return current_app.response_class(raw, mimetype="application/json")
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/api/feeds/apod_hd")
@@ -149,7 +149,7 @@ def api_space_weather_alerts():
         data = get_cached("swpc_alerts_24h", 1800, fetch_swpc_alerts)
         return jsonify(data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 # ── Aggrégateur "tout en un" (Domaine M) ──────────────────────────────
@@ -237,7 +237,7 @@ def api_neo():
         neos.sort(key=lambda x: x["distance_km"])
         return jsonify({"count": len(neos), "asteroids": neos[:20], "generated_at": today})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 # ── Alertes (Domaine L — modules.space_alerts) ────────────────────────
@@ -358,7 +358,7 @@ def api_sondes():
         return jsonify(get_sondes_payload())
     except Exception as e:
         log.warning("api_sondes: %s", e)
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 # ── PASS 11 — Sondes live + Orbits + Missions overview ─────────────────

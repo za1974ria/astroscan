@@ -13,16 +13,28 @@ endpoints simply return empty results.
 from __future__ import annotations
 
 import logging
+import os
 
 from app.blueprints.scan_signal.routes import scan_signal_bp, get_subscriber
 
 log = logging.getLogger(__name__)
 
-# Start the AISStream subscriber as soon as the blueprint loads.
-try:
-    _sub = get_subscriber()
-    _sub.start()
-except Exception as exc:  # pragma: no cover
-    log.warning("[scan_signal] could not start AISStream subscriber: %s", exc)
+
+def _bg_threads_enabled() -> bool:
+    """Gate aligned with app/bootstrap.py — same env var, same semantics."""
+    raw = (os.environ.get("ENABLE_BACKGROUND_THREADS") or "1").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
+# PHASE B.5D (2026-05-23) — AISStream subscriber gated by ENABLE_BACKGROUND_THREADS.
+# Default=1 preserves prod behavior. Test clone uses 0 to keep boot pure.
+if _bg_threads_enabled():
+    try:
+        _sub = get_subscriber()
+        _sub.start()
+    except Exception as exc:  # pragma: no cover
+        log.warning("[scan_signal] could not start AISStream subscriber: %s", exc)
+else:
+    log.info("[scan_signal] AISStream subscriber SKIPPED (ENABLE_BACKGROUND_THREADS=0)")
 
 __all__ = ["scan_signal_bp"]

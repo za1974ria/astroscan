@@ -41,7 +41,8 @@ except Exception:  # pragma: no cover — defensive only
 
 _log = logging.getLogger("astroscan.sentinel.geoip")
 
-_MMDB_PATH = "/root/astro_scan/data/geoip/GeoLite2-Country.mmdb"
+# PHASE B.5 (2026-05-23) — MMDB path resolved via app.services.paths.
+from app.services.paths import MMDB_PATH as _MMDB_PATH  # noqa: E402
 _UNKNOWN = "XX"
 _PRIVACY_NOTE = (
     "Zero-knowledge analytics. IP addresses are resolved in memory and "

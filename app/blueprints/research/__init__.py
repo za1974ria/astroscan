@@ -40,7 +40,7 @@ def api_research_summary():
         return jsonify(data)
     except Exception as e:
         log.warning("api/research/summary: %s", e)
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/api/research/events", methods=["GET"])

@@ -16,7 +16,6 @@ def robots_txt():
         "\n"
         "Disallow: /api/\n"
         "Disallow: /admin\n"
-        "Disallow: /static/\n"
         # Sprint 2 (2026-05-16) : /analytics, /overlord_live, /visiteurs-live,
         # /dashboard rendues crawlables — pages publiques de l'observatoire.
         "Disallow: /observatory/status\n"
@@ -60,7 +59,6 @@ def sitemap_xml():
         ("https://astroscan.space/space-weather",   "0.8", "hourly"),
         ("https://astroscan.space/orbital-map",     "0.8", "always"),
         ("https://astroscan.space/mission-control", "0.8", "always"),
-        ("https://astroscan.space/apod",            "0.8", "daily"),
         ("https://astroscan.space/nasa-apod",       "0.9", "daily"),
         ("https://astroscan.space/data",            "0.8", "daily"),
         ("https://astroscan.space/telescope",       "0.7", "daily"),
@@ -78,7 +76,6 @@ def sitemap_xml():
         ("https://astroscan.space/lab",             "0.5", "weekly"),
         ("https://astroscan.space/research-center", "0.5", "weekly"),
         ("https://astroscan.space/a-propos",        "0.5", "monthly"),
-        ("https://astroscan.space/about",           "0.5", "monthly"),
         ("https://astroscan.space/research",        "0.4", "monthly"),
     ]
     parts = [

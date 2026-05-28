@@ -42,7 +42,7 @@ def api_archive_reports():
         return jsonify({"reports": reports, "index": index})
     except Exception as e:
         log.warning("api/archive/reports: %s", e)
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/api/archive/objects", methods=["GET", "POST"])
@@ -65,7 +65,7 @@ def api_archive_objects():
         return jsonify({"objects": objects, "index": index})
     except Exception as e:
         log.warning("api/archive/objects: %s", e)
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/api/archive/discoveries", methods=["GET", "POST"])
@@ -86,7 +86,7 @@ def api_archive_discoveries():
         return jsonify({"discoveries": discoveries, "index": index})
     except Exception as e:
         log.warning("api/archive/discoveries: %s", e)
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 # ── MicroObservatory (Domaine F — galerie statique seulement) ─────────

@@ -241,7 +241,7 @@ def api_owner_ips_get():
         env_ips = [x.strip() for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(",") if x.strip()]
         return jsonify({"db_ips": result, "env_ips": env_ips})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 
@@ -267,7 +267,7 @@ def api_satellites():
 @bp.route("/api/accuracy/history")
 def api_accuracy_history():
     """Historique et stats de precision des predictions."""
-    from station_web import get_accuracy_history, get_accuracy_stats
+    from app.services.accuracy_history import get_accuracy_history, get_accuracy_stats
     return jsonify({
         "items": get_accuracy_history(),
         "stats": get_accuracy_stats(),

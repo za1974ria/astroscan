@@ -19,9 +19,8 @@ from app.routes.sdr import api_sdr_passes_impl
 sdr_bp = Blueprint('sdr', __name__)
 log = logging.getLogger(__name__)
 
-# Constante hardcodée — cohérence avec station_web.py L.167
-# TODO B-config futur : centraliser dans app/config.py
-_STATION = '/root/astro_scan'
+# PHASE B.5B (2026-05-23) — _STATION resolved via app.services.paths.
+from app.services.paths import STATION as _STATION  # noqa: E402
 # Doublon documenté avec station_web.py L.429 — à centraliser en B-config
 _SDR_F = os.path.join(_STATION, 'data', 'sdr_status.json')
 

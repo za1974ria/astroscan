@@ -29,15 +29,19 @@ from app.blueprints.scan_signal.services.radio_propagation import (
 
 log = logging.getLogger(__name__)
 
+# PHASE B.5B (2026-05-23) — paths resolved via app.services.paths.
+import os as _b5b_os
+from app.services.paths import STATION as _b5b_STATION, TLE_DIR as _b5b_TLE_DIR  # noqa: E402
+
 # Candidate TLE locations — tried in order, first non-empty wins.
 _TLE_PATHS = (
-    "/root/astro_scan/data/tle/active.tle",
-    "/root/astro_scan/data/tle/active.txt",
-    "/root/astro_scan/data/tle/celestrak.txt",
+    _b5b_os.path.join(_b5b_TLE_DIR, "active.tle"),
+    _b5b_os.path.join(_b5b_TLE_DIR, "active.txt"),
+    _b5b_os.path.join(_b5b_TLE_DIR, "celestrak.txt"),
 )
 
-_OBS_PATH = "/root/astro_scan/app/blueprints/ground_assets/observatories.json"
-_POPULAR_PATH = "/root/astro_scan/app/blueprints/scan_signal/data/popular_satellites.json"
+_OBS_PATH = _b5b_os.path.join(_b5b_STATION, "app", "blueprints", "ground_assets", "observatories.json")
+_POPULAR_PATH = _b5b_os.path.join(_b5b_STATION, "app", "blueprints", "scan_signal", "data", "popular_satellites.json")
 
 # Drop TLEs whose epoch is older than this many days. SGP4 propagation
 # beyond ~2 weeks compounds error; 30 d is a conservative cutoff that

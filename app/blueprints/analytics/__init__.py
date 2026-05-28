@@ -24,7 +24,9 @@ log = logging.getLogger(__name__)
 
 bp = Blueprint("analytics_bp", __name__)
 
-DB_PATH = "/root/astro_scan/data/archive_stellaire.db"
+# PHASE B.5 (2026-05-23) — DB_PATH resolved via app.services.paths (env-driven).
+# Clone picks up its own data dir via ASTROSCAN_HOME / ASTROSCAN_DB_PATH.
+from app.services.paths import DB_PATH  # noqa: E402
 
 
 @bp.route("/api/visits", methods=["GET"])
@@ -268,7 +270,7 @@ def api_analytics_summary():
         })
     except Exception as e:
         log.warning("api_analytics_summary: %s", e)
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 # ── PASS 12 — Visitors globe + stream + log + geo + stats ─────────────

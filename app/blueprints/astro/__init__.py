@@ -61,7 +61,7 @@ def api_ephemerides_tlemcen():
         return jsonify(result)
     except Exception as e:
         log.warning("ephemerides/tlemcen error: %s", e)
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 def _compute_ephemerides_tlemcen_astropy():

@@ -19,11 +19,9 @@ import os
 # Chemins — répertoire racine et bases de données
 # ---------------------------------------------------------------------------
 
-STATION: str = os.environ.get("STATION", "/root/astro_scan")
-
-# Bases SQLite principales
-DB_PATH: str             = f"{STATION}/data/archive_stellaire.db"
-WEATHER_DB_PATH: str     = os.path.join(STATION, "weather_bulletins.db")
+# PHASE B.5B (2026-05-23) — STATION + DB_PATH resolved via app.services.paths.
+from app.services.paths import STATION, DB_PATH  # noqa: E402,F401
+WEATHER_DB_PATH: str     = os.path.join(STATION, "data", "weather_bulletins.db")
 WEATHER_HISTORY_DIR: str = f"{STATION}/data/weather_history"
 WEATHER_ARCHIVE_DIR: str = f"{STATION}/data/weather_archive"
 

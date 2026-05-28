@@ -43,7 +43,7 @@ from datetime import datetime, timedelta, timezone
 from app.services.station_state import STATION
 
 # ── Constantes (déplacées depuis station_web.py:205-207) ─────────────
-WEATHER_DB_PATH: str = os.path.join(STATION, "weather_bulletins.db")
+WEATHER_DB_PATH: str = os.path.join(STATION, "data", "weather_bulletins.db")
 WEATHER_HISTORY_DIR: str = f'{STATION}/data/weather_history'
 WEATHER_ARCHIVE_DIR: str = f'{STATION}/data/weather_archive'
 

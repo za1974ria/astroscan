@@ -201,7 +201,9 @@ def telescope_stream():
     """Stream MJPEG depuis fichier live ou APOD fallback."""
     import requests
 
-    LIVE_PATH = "/root/astro_scan/telescope_live/current_live.jpg"
+    # PHASE B.5B (2026-05-23) — path resolved via app.services.paths.
+    from app.services.paths import STATION as _B5B_STATION  # noqa: E402
+    LIVE_PATH = os.path.join(_B5B_STATION, "telescope_live", "current_live.jpg")
 
     def frames():
         while True:
@@ -235,7 +237,9 @@ def telescope_stream():
 @bp.route("/api/telescope/status")
 def telescope_status():
     """Statut réel du feed télescope."""
-    LIVE_PATH = "/root/astro_scan/telescope_live/current_live.jpg"
+    # PHASE B.5B (2026-05-23) — path resolved via app.services.paths.
+    from app.services.paths import STATION as _B5B_STATION  # noqa: E402
+    LIVE_PATH = os.path.join(_B5B_STATION, "telescope_live", "current_live.jpg")
     if os.path.exists(LIVE_PATH):
         age = time.time() - os.path.getmtime(LIVE_PATH)
         mode = "LIVE" if age < 300 else "STALE"
@@ -354,7 +358,7 @@ def api_hubble_images():
     try:
         return jsonify(fetch_hubble_images())
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 # ── PASS 16 — /api/telescope/trigger-nightly POST (différé PASS 9 levé) ──
@@ -363,7 +367,7 @@ def api_hubble_images():
 def api_telescope_trigger_nightly():
     """Déclenche manuellement le pipeline nocturne Harvard MO (thread daemon)."""
     import threading
-    from station_web import _telescope_nightly_tlemcen
+    from app.services.telescope_helpers import _telescope_nightly_tlemcen
     t = threading.Thread(target=_telescope_nightly_tlemcen, daemon=True)
     t.start()
     return jsonify({"ok": True, "message": "Pipeline nocturne démarré en arrière-plan"})

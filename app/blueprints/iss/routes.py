@@ -102,7 +102,7 @@ def api_iss_crew():
 
     # 1) Compteur live cohérent avec /api/iss (open-notify avec détection stale).
     try:
-        from station_web import _get_iss_crew as _get_count
+        from app.services.iss_live import _get_iss_crew as _get_count
         count = int(_get_count() or ISS_CREW_COUNT_FALLBACK)
         if count <= 0 or count > 20:
             count = ISS_CREW_COUNT_FALLBACK

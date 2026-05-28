@@ -37,7 +37,7 @@ log = logging.getLogger(__name__)
 # ─── @context_processor ───────────────────────────────────────────────────────
 def _inject_seo_site_description():
     """Expose la meta description globale (une seule source : SEO_HOME_DESCRIPTION)."""
-    from station_web import SEO_HOME_DESCRIPTION
+    from app.services.seo_constants import SEO_HOME_DESCRIPTION
     return {'seo_site_description': SEO_HOME_DESCRIPTION}
 
 
@@ -137,7 +137,7 @@ def _maybe_increment_visits():
     S'exécute APRÈS _astroscan_visitor_session_before (g._astroscan_sid déjà défini).
     """
     from app.services.db_visitors import _register_unique_visit_from_request
-    from station_web import PAGE_PATHS
+    from app.services.seo_constants import PAGE_PATHS
     try:
         g._astroscan_req_start = time.time()
     except Exception:
@@ -258,7 +258,7 @@ def _astroscan_struct_log_response(response):
 # ─── @after_request — session cookie + page-time script injection ────────────
 def _astroscan_session_cookie_and_time_script(response):
     """Pose le cookie astroscan_sid + injecte le script de durée de page (HTML uniquement)."""
-    from station_web import _SESSION_TIME_SNIPPET
+    from app.services.seo_constants import _SESSION_TIME_SNIPPET
     try:
         p = request.path or ""
         if p.startswith("/static"):

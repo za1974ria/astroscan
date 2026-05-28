@@ -22,7 +22,8 @@ def _resolve_build_info():
     global _BUILD_INFO
     if _BUILD_INFO is not None:
         return _BUILD_INFO
-    station_path = os.environ.get("STATION", "/root/astro_scan")
+    # PHASE B.5B (2026-05-23) — STATION resolved via app.services.paths.
+    from app.services.paths import STATION as station_path  # noqa: E402
     try:
         commit = subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"],

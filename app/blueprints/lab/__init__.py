@@ -46,48 +46,6 @@ def digital_lab():
 
 
 # ── Upload simple (multipart) ──────────────────────────────────────────
-@bp.route("/lab/upload", methods=["POST"])
-def lab_upload():
-    from station_web import SPACE_IMAGE_DB, METADATA_DB, MAX_LAB_IMAGE_BYTES
-
-    if "image" not in request.files:
-        return jsonify({"error": "no image"}), 400
-    file = request.files["image"]
-    if not file.filename:
-        return jsonify({"error": "no image"}), 400
-    allowed = (".jpg", ".jpeg", ".png", ".fits", ".fit")
-    filename = secure_filename(file.filename)
-    req_len = request.content_length or 0
-    if req_len and req_len > MAX_LAB_IMAGE_BYTES:
-        return jsonify({"error": "image too large"}), 413
-    if not filename.lower().endswith(allowed):
-        return jsonify({"error": "invalid format"}), 400
-    path = os.path.join(SPACE_IMAGE_DB, filename)
-    if os.path.exists(path):
-        filename = str(int(time.time())) + "_" + filename
-        path = os.path.join(SPACE_IMAGE_DB, filename)
-    try:
-        file.save(path)
-        meta = {
-            "source": "UPLOAD",
-            "filename": filename,
-            "date": datetime.now(timezone.utc).isoformat() + "Z",
-            "telescope": "unknown",
-            "object_name": "unknown",
-            "instrument": "unknown",
-        }
-        meta_path = os.path.join(METADATA_DB, filename + ".json")
-        try:
-            with open(meta_path, "w", encoding="utf-8") as f:
-                json.dump(meta, f, indent=2)
-        except Exception as e:
-            log.warning("lab/upload metadata: %s", e)
-        return jsonify({"status": "saved", "file": filename, "path": path})
-    except Exception as e:
-        log.warning("lab/upload: %s", e)
-        return jsonify({"error": str(e)}), 500
-
-
 @bp.route("/lab/images")
 def lab_images():
     from station_web import SPACE_IMAGE_DB
@@ -293,14 +251,25 @@ def api_lab_upload():
         req_len = request.content_length or 0
         if req_len and req_len > MAX_LAB_IMAGE_BYTES:
             return jsonify({"error": "Image trop volumineuse (max 25 MB)"}), 413
-        ext = os.path.splitext(f.filename)[1] or ".png"
+        allowed_ext = {".png", ".jpg", ".jpeg", ".fits", ".fit"}
+        allowed_mime = {"image/png", "image/jpeg", "application/fits", "image/fits"}
+
+        ext = (os.path.splitext(f.filename)[1] or "").lower()
+
+        if ext not in allowed_ext:
+            return jsonify({"error": "Format non autorisé"}), 400
+
+        mime = (f.mimetype or "").lower()
+        if mime not in allowed_mime:
+            return jsonify({"error": "Type MIME non autorisé"}), 400
+
         name = str(uuid.uuid4()) + ext
         path = os.path.join(LAB_UPLOADS, name)
         f.save(path)
         return jsonify({"id": name, "path": name, "uploaded": True})
     except Exception as e:
         log.warning("api/lab/upload: %s", e)
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/api/lab/analyze", methods=["POST"])
@@ -388,7 +357,7 @@ def api_analysis_run():
         return jsonify(result)
     except Exception as e:
         log.warning("api/analysis/run: %s", e)
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/api/analysis/compare", methods=["POST"])
@@ -411,7 +380,7 @@ def api_analysis_compare():
         return jsonify(out)
     except Exception as e:
         log.warning("api/analysis/compare: %s", e)
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/api/analysis/discoveries", methods=["GET"])

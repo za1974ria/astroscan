@@ -26,7 +26,8 @@ from services.utils import _is_bot_user_agent
 
 log = logging.getLogger(__name__)
 
-DB_PATH = "/root/astro_scan/data/archive_stellaire.db"
+# PHASE B.5 (2026-05-23) — DB_PATH resolved via app.services.paths (env-driven).
+from app.services.paths import DB_PATH  # noqa: E402  (placement after logger)
 
 
 def _get_db_visitors():
@@ -138,9 +139,9 @@ def _register_unique_visit_from_request(path_override=None):
     - Détecte is_owner, calcule human_score initial
     - ISP + lat/lon stockés depuis ip-api.com
     - INSERT OR IGNORE + UNIQUE INDEX = résistance totale race condition multi-workers."""
-    # Lazy import : `get_geo_from_ip` reste dans station_web (deps requests +
-    # cache_service). Sera extrait dans une session future.
-    from station_web import get_geo_from_ip
+    # Lazy import depuis le service (Sprint B · Tranche 8, 2026-05-28) :
+    # get_geo_from_ip vit dans app/services/visitors_helpers.py.
+    from app.services.visitors_helpers import get_geo_from_ip
     try:
         ip = _client_ip_from_request(request)
         if ip in ("", "0.0.0.0", "127.0.0.1", "::1"):

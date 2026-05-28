@@ -54,7 +54,10 @@ log = logging.getLogger(__name__)
 # ══════════════════════════════════════════════════════════════
 
 TLE_SOURCE_URL = "https://db.satnogs.org/api/tle/?format=json&satellite__status=alive"
-TLE_LOCAL_FALLBACK = "/root/astro_scan/data/tle/active.tle"
+# PHASE B.5B (2026-05-23) — fallback path resolved via app.services.paths.
+import os as _b5b_os
+from app.services.paths import TLE_DIR as _b5b_TLE_DIR  # noqa: E402
+TLE_LOCAL_FALLBACK = _b5b_os.path.join(_b5b_TLE_DIR, "active.tle")
 TLE_REFRESH_SECONDS = 900  # legacy constant (15 minutes)
 TLE_DEFAULT_REFRESH_SECONDS = 900
 TLE_BACKOFF_REFRESH_SECONDS = 6 * 3600  # legacy (non utilisé : backoff mono + _tle_next_sleep_seconds)

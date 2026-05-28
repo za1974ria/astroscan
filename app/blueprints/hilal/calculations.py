@@ -15,7 +15,8 @@ from datetime import date, datetime, timedelta, timezone as _tz
 
 log = logging.getLogger(__name__)
 
-EPHEMERIS_PATH = "/root/astro_scan/de421.bsp"
+# PHASE B.5B (2026-05-23) — path resolved via app.services.paths.
+from app.services.paths import EPHEMERIS_BSP as EPHEMERIS_PATH  # noqa: E402
 
 _TS = None
 _EPH = None

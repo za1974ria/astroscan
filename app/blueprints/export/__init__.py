@@ -74,7 +74,7 @@ def visitors_csv():
             },
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/visitors.json")
@@ -123,7 +123,7 @@ def visitors_json():
             headers={"Access-Control-Allow-Origin": "*"},
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/observations.json")
@@ -157,7 +157,7 @@ def observations_json():
             headers={"Access-Control-Allow-Origin": "*"},
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/ephemerides.json")
@@ -184,7 +184,7 @@ def ephemerides_json():
             headers={"Access-Control-Allow-Origin": "*"},
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 @bp.route("/apod-history.json")
@@ -208,7 +208,7 @@ def apod_history_json():
             headers={"Access-Control-Allow-Origin": "*"},
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.exception("internal error"); return jsonify({"error": "internal server error"}), 500
 
 
 # ─── Routes export hors-préfixe (déplacées depuis system_bp PASS 4 2C) ──────

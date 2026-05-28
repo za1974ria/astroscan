@@ -79,19 +79,6 @@ def portail():
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-    # Phase O-E (2026-05-07) : CSP préventif pour bloquer toute injection DOM
-    # par extension de navigateur tierce (cause possible de sidebar fantôme).
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self' https: data: blob:; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; "
-        "style-src 'self' 'unsafe-inline' https:; "
-        "img-src 'self' data: blob: https:; "
-        "font-src 'self' data: https:; "
-        "connect-src 'self' https: wss:; "
-        "frame-ancestors 'self'; "
-        "base-uri 'self'"
-    )
-    response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
 

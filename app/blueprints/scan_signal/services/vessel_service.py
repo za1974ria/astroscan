@@ -44,7 +44,10 @@ _AIS_TX_DBM = 36.0
 # Coastal AIS reception cutoff (km).
 _AIS_RANGE_KM = 80.0
 
-_OBSERVATORIES_PATH = "/root/astro_scan/app/blueprints/ground_assets/observatories.json"
+# PHASE B.5B (2026-05-23) — path resolved via app.services.paths.
+import os as _b5b_os
+from app.services.paths import STATION as _b5b_STATION  # noqa: E402
+_OBSERVATORIES_PATH = _b5b_os.path.join(_b5b_STATION, "app", "blueprints", "ground_assets", "observatories.json")
 
 _REDIS_KEY_VESSELS = "as:scan:vessels"
 _REDIS_KEY_BY_NAME = "as:scan:vessels_by_name"

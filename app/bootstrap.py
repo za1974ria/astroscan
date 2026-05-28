@@ -1,17 +1,38 @@
 """Module bootstrap — démarre les threads de fond app-level.
 Migré depuis station_web.py top-level lors de PASS 25.1.
 Garde-fou anti-double-start : _BOOTSTRAP_DONE assure 1 run par processus.
+
+PHASE B.5 (2026-05-23) — Gate explicit via ENABLE_BACKGROUND_THREADS env var.
+Permet aux gunicorn parallèles (test 5004, futurs workers secondaires) de
+booter SANS démarrer 4 copies des 5 threads de fond. Défaut prod : 1
+(comportement existant inchangé), test : 0.
 """
 import logging
+import os
 
 log = logging.getLogger(__name__)
 _BOOTSTRAP_DONE = False
+
+
+def _threads_enabled() -> bool:
+    """True si ENABLE_BACKGROUND_THREADS est truthy (défaut 1 pour compat prod)."""
+    raw = (os.environ.get("ENABLE_BACKGROUND_THREADS") or "1").strip().lower()
+    return raw in ("1", "true", "yes", "on")
 
 
 def start_background_threads():
     global _BOOTSTRAP_DONE
     if _BOOTSTRAP_DONE:
         log.info("[Bootstrap] threads already started, skipping")
+        return
+    # PHASE B.5 — opt-out explicit pour les clones (test 5004, futurs workers).
+    if not _threads_enabled():
+        log.info(
+            "[Bootstrap] background threads DISABLED via "
+            "ENABLE_BACKGROUND_THREADS=0 — skipping 5 threads (tle_refresh, "
+            "lab_image, skyview, translate_worker, tle_collector)"
+        )
+        _BOOTSTRAP_DONE = True
         return
     _BOOTSTRAP_DONE = True
 
