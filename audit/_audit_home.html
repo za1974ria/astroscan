@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="fr" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="google" content="notranslate">
+  <meta name="robots" content="notranslate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="google-site-verification" content="HRmcoe6EC6sH5EQwwkt2ktVyiQToMgMC8AFtz7n6-38" />
+  
+  <title>ASTRO-SCAN — Observatoire spatial en temps réel</title>
+  <meta name="description" content="Plateforme observatoire astronomique : ISS en temps réel, météo spatiale NOAA, APOD, scanning radio NASA. Open data scientifique depuis Tlemcen, Algérie.">
+  <meta name="keywords" content="astronomie, observatoire, ISS, météo spatiale, APOD, Tlemcen, Algérie, espace, satellites, éphémérides">
+  <meta property="og:title" content="ASTRO-SCAN — Observatoire spatial en temps réel">
+  <meta property="og:description" content="Plateforme observatoire astronomique : ISS en temps réel, météo spatiale NOAA, APOD, scanning radio NASA. Open data scientifique.">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:title" content="ASTRO-SCAN — Observatoire spatial en temps réel">
+  <meta name="twitter:description" content="Observatoire astronomique : ISS temps réel, météo spatiale NOAA, APOD, scanning radio NASA.">
+  
+  <meta name="robots" content="index, follow">
+  <meta property="og:image" content="https://astroscan.space/static/preview.png">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://astroscan.space/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://astroscan.space/static/preview.png">
+  <link rel="canonical" href="https://astroscan.space/">
+  <link rel="alternate" hreflang="fr" href="https://astroscan.space/">
+  <link rel="alternate" hreflang="en" href="https://astroscan.space/?lang=en">
+  <link rel="alternate" hreflang="x-default" href="https://astroscan.space/">
+  <style>
+    :root {
+      --bg: #030508;
+      --cyan: #00e8ff;
+      --cyan-glow: rgba(0, 232, 255, 0.45);
+      --text: #c8e4ee;
+      --muted: #5f8294;
+      --card: rgba(8, 18, 28, 0.85);
+      --border: rgba(0, 232, 255, 0.18);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+    #stars-canvas { display: none; }
+    .layer-vignette { display: none; }
+    main { position: relative; z-index: 2; }
+
+    .hero {
+      text-align: center;
+      padding-top: 72px;
+      padding-bottom: 48px;
+      margin-top: 56px;
+      margin-bottom: 56px;
+    }
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+    .hero h1.logo {
+      font-size: clamp(34px, 5vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #fff;
+      text-shadow: 0 0 18px rgba(0, 200, 255, 0.18);
+      line-height: 1.2;
+      margin-bottom: 1.2rem;
+      animation: none;
+    }
+    .hero h2 {
+      font-size: clamp(1rem, 2.4vw, 1.25rem);
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 12px;
+      color: #aaa;
+      animation: none;
+    }
+    .hero-points, .bullet-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      width: min(760px, 92vw);
+      text-align: left;
+    }
+    .hero-points li, .bullet-list li {
+      color: var(--text);
+      font-size: 1rem;
+      padding: 0.28rem 0;
+      line-height: 1.6;
+    }
+    .bullet-list { margin-top: 12px; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .cta, .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 232, 255, 0.55);
+      background: rgba(0, 232, 255, 0.08);
+      color: var(--cyan);
+      font-weight: 650;
+      font-size: clamp(0.8rem, 1.5vw, 0.92rem);
+      letter-spacing: 0.06em;
+      text-decoration: none;
+      box-shadow: 0 0 28px rgba(0, 232, 255, 0.2);
+      animation: none;
+      transition: all 0.2s ease;
+    }
+    .cta:hover, .btn:hover {
+      transform: translateY(-1px);
+      opacity: 0.95;
+      box-shadow: 0 0 40px rgba(0, 232, 255, 0.35);
+    }
+    .section {
+      max-width: 980px;
+      margin: 56px auto;
+      padding: 0 16px;
+    }
+    .section + .section {
+      border-top: 1px solid #111;
+      padding-top: 32px;
+    }
+    .section h2 {
+      text-align: left;
+      font-size: 1.2rem;
+      letter-spacing: 0.01em;
+      text-transform: none;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .section p {
+      color: #aaa;
+      margin-bottom: 0.9rem;
+      max-width: 640px;
+    }
+    .info-block {
+      padding: 1.1rem 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+    }
+    .trust-line {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #777;
+    }
+    .live-box {
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 16px;
+      max-width: 640px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+      background: rgba(8, 18, 28, 0.45);
+    }
+    .live-box p { margin: 0; }
+    .live-box p + p { margin-top: 6px; color: #aaa; }
+    .final-cta {
+      display: flex;
+      justify-content: center;
+      margin-top: 1.1rem;
+    }
+
+    .astro-mini-dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 15px;
+    }
+
+    .mini-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 10px;
+      text-align: center;
+      color: var(--text);
+      transition: 0.2s;
+    }
+
+    .mini-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 12px var(--cyan-glow);
+    }
+
+    .mini-card strong {
+      color: var(--cyan);
+      font-size: 18px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2.5rem 1.25rem 3rem;
+      font-size: 0.88rem;
+      color: var(--muted);
+      border-top: 1px solid rgba(0, 232, 255, 0.1);
+    }
+    footer .creator { margin-bottom: 1rem; letter-spacing: 0.04em; }
+    footer .links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem 1.5rem;
+    }
+    footer a {
+      color: var(--cyan);
+      text-decoration: none;
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      margin-right: 16px;
+    }
+    footer a:last-child { margin-right: 0; }
+    footer a:hover { text-decoration: underline; opacity: 0.8; }
+
+    /* ═══ DAY 1.19 — Killer phrase + hero CTA (v2.3.4-killer-phrase) ═══ */
+    .hero-killer {
+      text-align: center;
+      padding: 6rem 1.5rem 4rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .killer-phrase-en {
+      font-size: clamp(1.8rem, 4.5vw, 2.5rem);
+      font-weight: 600;
+      line-height: 1.3;
+      color: var(--cyan);
+      margin: 0 0 12px 0;
+      letter-spacing: -0.01em;
+    }
+    .killer-phrase-fr {
+      font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+      font-weight: 400;
+      font-style: italic;
+      opacity: 0.75;
+      margin: 0 0 2.5rem 0;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .hero-cta {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .hero-cta .btn-primary,
+    .hero-cta .btn-secondary {
+      display: inline-block;
+      padding: 0.85rem 1.8rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+    }
+    .hero-cta .btn-primary {
+      background: var(--cyan);
+      color: #000;
+      border: 1px solid var(--cyan);
+    }
+    .hero-cta .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 220, 255, 0.35);
+    }
+    .hero-cta .btn-secondary {
+      background: transparent;
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+    }
+    .hero-cta .btn-secondary:hover {
+      background: rgba(0, 220, 255, 0.1);
+    }
+    .obs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .obs-card {
+      display: block;
+      padding: 18px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      text-decoration: none;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .obs-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(0, 232, 255, 0.45);
+      box-shadow: 0 6px 24px rgba(0, 232, 255, 0.12);
+    }
+    .obs-card h3 {
+      font-size: 1rem;
+      color: var(--cyan);
+      margin: 0 0 6px 0;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .obs-card p {
+      margin: 0;
+      color: var(--text);
+      font-size: 0.92rem;
+      line-height: 1.5;
+      opacity: 0.85;
+    }
+    .inline-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .inline-link:hover { text-decoration: underline; }
+    .sources-list {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 14px;
+    }
+    .sources-list li {
+      font-size: 0.85rem;
+      color: var(--muted);
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(8, 18, 28, 0.5);
+    }
+    @media (max-width: 768px) {
+      .hero-killer { padding: 4rem 1rem 3rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hero-cta .btn-primary,
+      .hero-cta .btn-secondary,
+      .obs-card {
+        transition: none !important;
+      }
+      .hero-cta .btn-primary:hover,
+      .obs-card:hover {
+        transform: none !important;
+      }
+    }
+    /* ═══ END Day 1.19 ═══ */
+  </style>
+<style>
+.fab-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999;}
+.fab-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(1,4,8,0.95);border:1px solid rgba(0,212,255,0.3);color:#00d4ff;font-family:'Orbitron',monospace;font-size:0.45rem;letter-spacing:0.15em;text-decoration:none;cursor:pointer;transition:all 0.2s;border-radius:3px;white-space:nowrap;}
+.fab-btn:hover{background:rgba(0,212,255,0.1);border-color:rgba(0,212,255,0.6);box-shadow:0 0 14px rgba(0,212,255,0.2);}
+@media(max-width:600px){.fab-btn{font-size:0.38rem;padding:6px 10px;}}
+</style>
+<style>
+#astro-dashboard-wrapper {
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.astro-dashboard {
+  display: block;
+  padding: 20px;
+  background: #02060a;
+  color: #00ffcc;
+}
+
+.astro-dashboard * {
+  box-sizing: border-box;
+}
+
+.astro-topbar {
+  display: flex;
+  gap: 10px;
+}
+
+.stat {
+  flex: 1;
+  background: rgba(0,255,200,0.05);
+  border: 1px solid rgba(0,255,200,0.2);
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  transition: 0.3s;
+}
+
+.stat:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 10px #00ffcc;
+}
+
+.stat span {
+  font-size: 18px;
+}
+
+.astro-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.astro-map,
+.astro-iss,
+.astro-logs,
+.astro-visitors,
+.astro-status {
+  background: rgba(0,255,200,0.05);
+  border: 1px solid rgba(0,255,200,0.2);
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.astro-iss img {
+  width: 100%;
+  border-radius: 8px;
+}
+@media(max-width: 900px){
+  .astro-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body class="notranslate">
+
+
+
+<!-- Lang switcher -->
+<div style="position:fixed;top:12px;right:12px;z-index:9998;display:flex;gap:6px;background:rgba(3,5,8,0.85);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-family:system-ui,sans-serif;font-size:12px;">
+  <a href="?lang=fr" style="color:#00e8ff;text-decoration:none;font-weight:700">FR</a>
+  <span style="color:#5f8294">|</span>
+  <a href="?lang=en" style="color:#5f8294;text-decoration:none;font-weight:400">EN</a>
+</div>
+  <canvas id="stars-canvas" aria-hidden="true"></canvas>
+  <div class="layer-vignette" aria-hidden="true"></div>
+
+  <main>
+    
+    <section class="hero-killer">
+      <h1 class="killer-phrase-en" lang="en">
+        Astronomical observations from Tlemcen, Algeria — in real time, open to all.
+      </h1>
+      <p class="killer-phrase-fr" lang="fr">
+        Observations astronomiques depuis Tlemcen, Algérie — en temps réel, ouvertes à tous.
+      </p>
+      <div class="hero-cta">
+        <a href="/portail" class="btn-primary">Entrer dans l'observatoire</a>
+        <a href="/data" class="btn-secondary">Portail open data</a>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Ce que vous pouvez observer</h2>
+      <div class="obs-grid">
+        <a href="/observatoire" class="obs-card">
+          <h3>ISS et satellites</h3>
+          <p>Positions en direct calculées avec SGP4 à partir des TLE NORAD.</p>
+        </a>
+        <a href="/aurores" class="obs-card">
+          <h3>Météo spatiale</h3>
+          <p>Vent solaire, indice Kp et activité géomagnétique depuis NOAA SWPC.</p>
+        </a>
+        <a href="/ce_soir" class="obs-card">
+          <h3>Le ciel ce soir</h3>
+          <p>Visibilité des planètes et de l'ISS depuis Tlemcen ce soir.</p>
+        </a>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Open data</h2>
+      <p>Toutes les données proviennent de sources scientifiques publiques : NORAD/CelesTrak (TLE), NOAA SWPC (météo spatiale), NASA APOD, Skyfield (calcul orbital).</p>
+      <ul class="sources-list">
+        <li>NORAD / CelesTrak</li>
+        <li>NOAA SWPC</li>
+        <li>NASA APOD</li>
+        <li>Skyfield (SGP4)</li>
+      </ul>
+      <p style="margin-top: 1.2rem;"><a href="/data" class="inline-link">Parcourir le portail open data &rarr;</a></p>
+    </section>
+
+    
+
+    <footer>
+      <p class="creator">Plateforme d'observation spatiale depuis Tlemcen, Algérie.</p>
+      <div class="links">
+        <a href="/portail">Portail</a>
+        <a href="/data">Open data</a>
+        <a href="/observatoire">Observatoire</a>
+      </div>
+    </footer>
+    
+  </main>
+
+  <script>
+(function () {
+  var c = document.getElementById('stars-canvas');
+  if (!c) return;
+  var ctx = c.getContext('2d');
+  var stars = [];
+  var n = 180;
+  function resize() {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  for (var i = 0; i < n; i++) {
+    stars.push({
+      x: Math.random() * c.width,
+      y: Math.random() * c.height,
+      r: Math.random() * 1.3 + 0.2,
+      v: Math.random() * 0.12 + 0.02,
+      tw: Math.random() * 6.28
+    });
+  }
+  function loop() {
+    ctx.fillStyle = '#030508';
+    ctx.fillRect(0, 0, c.width, c.height);
+    for (var j = 0; j < stars.length; j++) {
+      var s = stars[j];
+      s.y += s.v;
+      s.tw += 0.015;
+      if (s.y > c.height) { s.y = 0; s.x = Math.random() * c.width; }
+      var a = 0.3 + Math.sin(s.tw) * 0.35;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(180, 230, 255, ' + a + ')';
+      ctx.fill();
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+
+document.addEventListener('DOMContentLoaded', function () {});
+  </script>
+<div class="fab-wrap">
+  <a class="fab-btn" href="/portail">&#8962; Portail</a>
+  <button class="fab-btn" onclick="location.reload()">&#8635; Actualiser</button>
+</div>
+<!-- astroscan-session-time --><script>(function(){var t0=Date.now(),sent=!1;function getSid(){var c=document.cookie.split(';');for(var i=0;i<c.length;i++){var p=c[i].trim();if(p.indexOf('astroscan_sid=')===0)return decodeURIComponent(p.slice(14));}return '';}function send(){if(sent)return;sent=!0;var d=Math.max(0,Math.round((Date.now()-t0)/1000)),body=JSON.stringify({session_id:getSid(),path:window.location.pathname||'/',duration:d});try{if(navigator.sendBeacon){var b=new Blob([body],{type:'application/json'});if(navigator.sendBeacon('/track-time',b))return;}}catch(e){}try{fetch('/track-time',{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:!0});}catch(e){}}window.addEventListener('pagehide',send);window.addEventListener('beforeunload',send);})();</script>
+</body>
+</html>

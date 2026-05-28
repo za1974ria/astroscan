@@ -1,0 +1,166 @@
+# AstroScan Control Tower — Declarative target registry
+# Schema version: 1
+# Loaded by app.services.control_tower.registry.load_registry().
+# Adding a target here does NOT register a route. It only declares intent.
+# Adapters (http_edge, http_internal, process_systemd, frontend_smoke, tcp,
+# file_freshness) are introduced in subsequent patches; this file already
+# references them so the schema stabilizes from V1.a onward.
+
+schema_version: 1
+
+defaults:
+  timeout_ms: 5000
+  slo_ms: 800
+  severity: medium
+  enabled: true
+
+targets:
+
+  # ── CORE INFRASTRUCTURE ─────────────────────────────────────────────
+  - key: core.nginx
+    category: core
+    name: Nginx
+    probe: process_systemd
+    target: nginx.service
+    slo_ms: 200
+    severity: critical
+    description: Reverse proxy front (HTTPS, edge rate-limit).
+
+  - key: core.gunicorn
+    category: core
+    name: Gunicorn
+    probe: process_systemd
+    target: astroscan.service
+    slo_ms: 200
+    severity: critical
+    description: WSGI server hosting Flask app (4 workers x 4 threads).
+
+  - key: core.flask
+    category: core
+    name: Flask
+    probe: http_internal
+    target: /health
+    slo_ms: 100
+    severity: critical
+    expect:
+      status: 200
+      json_keys: [status, boot_mode]
+    description: Application factory (create_app) boot mode + DB writable.
+
+  - key: core.frontend
+    category: core
+    name: Frontend (edge HTML)
+    probe: frontend_smoke
+    target: https://astroscan.space/
+    slo_ms: 800
+    severity: critical
+    expect:
+      status: 200
+      content_type_prefix: text/html
+      min_bytes: 4000
+      contains_any: ["ASTRO-SCAN", "ORBITAL-CHOHRA"]
+    description: Public landing reachable via DNS + nginx + Flask end-to-end.
+
+  # ── API ENDPOINTS (edge-probed through real nginx) ──────────────────
+  - key: api.health
+    category: api
+    name: /health
+    probe: http_edge
+    target: https://astroscan.space/health
+    slo_ms: 200
+    severity: critical
+    expect:
+      status: 200
+      json_keys: [status, boot_mode, sqlite]
+
+  - key: api.system.status
+    category: api
+    name: /api/system/status
+    probe: http_edge
+    target: https://astroscan.space/api/system/status
+    slo_ms: 400
+    severity: high
+    expect:
+      status: 200
+
+  - key: api.system.diagnostics
+    category: api
+    name: /api/system/diagnostics
+    probe: http_edge
+    target: https://astroscan.space/api/system/diagnostics
+    slo_ms: 1000
+    severity: medium
+    expect:
+      status: 200
+
+  - key: api.aegis.status
+    category: api
+    name: /api/aegis/status
+    probe: http_edge
+    target: https://astroscan.space/api/aegis/status
+    slo_ms: 400
+    severity: high
+    expect:
+      status: 200
+
+  - key: api.sentinel.health
+    category: api
+    name: /api/sentinel/health
+    probe: http_edge
+    target: https://astroscan.space/api/sentinel/health
+    slo_ms: 400
+    severity: high
+    expect:
+      status: 200
+
+  - key: api.sentinel.metrics
+    category: api
+    name: /api/sentinel/metrics
+    probe: http_edge
+    target: https://astroscan.space/api/sentinel/metrics
+    slo_ms: 600
+    severity: medium
+    expect:
+      status: 200
+
+  - key: api.sdr.status
+    category: api
+    name: /api/sdr/status
+    probe: http_edge
+    target: https://astroscan.space/api/sdr/status
+    slo_ms: 400
+    severity: medium
+    expect:
+      status: 200
+
+  - key: api.tle.status
+    category: api
+    name: /api/tle/status
+    probe: http_edge
+    target: https://astroscan.space/api/tle/status
+    slo_ms: 400
+    severity: high
+    expect:
+      status: 200
+
+  - key: api.visitors.stats
+    category: api
+    name: /api/visitors/stats
+    probe: http_edge
+    target: https://astroscan.space/api/visitors/stats
+    slo_ms: 600
+    severity: low
+    expect:
+      status: 200
+
+  - key: api.iss
+    category: api
+    name: /api/iss
+    probe: http_edge
+    target: https://astroscan.space/api/iss
+    slo_ms: 800
+    timeout_ms: 3000
+    severity: high
+    expect:
+      status: 200
+    description: Known-degraded at registry-creation time (incident witness).

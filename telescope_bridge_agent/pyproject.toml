@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astroscan-bridge"
+version = "0.3.5-tb35-cloud-agent"
+description = "AstroScan Telescope Bridge Agent — read-only telemetry (mock + Alpaca) + TB-35 autonomous cloud client."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "AstroScan" }]
+requires-python = ">=3.10"
+keywords = ["astronomy", "telescope", "telemetry", "ascom", "alpaca"]
+
+# Runtime deps. TB-3.2 adds `requests` for the Alpaca adapter's HTTP
+# transport (wrapped by safety.http_guard.ReadOnlyHttpSession which
+# refuses every non-GET method). No pywin32 yet (that lands TB-3.3).
+dependencies = [
+    "requests>=2.31,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+astroscan-bridge = "astroscan_bridge.__main__:main"
+
+[tool.setuptools]
+packages = [
+    "astroscan_bridge",
+    "astroscan_bridge.adapters",
+    "astroscan_bridge.cloud",
+    "astroscan_bridge.safety",
+    "astroscan_bridge.service",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

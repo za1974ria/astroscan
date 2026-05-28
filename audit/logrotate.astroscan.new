@@ -1,0 +1,50 @@
+# /etc/logrotate.d/astroscan — corrigé 2026-05-23
+# Rotation des logs vivants dans /root/astro_scan/logs/.
+# astroscan_structured.log est géré par Python RotatingFileHandler (exclu).
+
+/root/astro_scan/logs/web.log
+/root/astro_scan/logs/orbital_shield.log
+/root/astro_scan/logs/voyager.log
+{
+    su root zakaria
+    daily
+    rotate 7
+    size 50M
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    create 0664 root zakaria
+}
+
+/root/astro_scan/logs/orbital_system.log
+{
+    su root root
+    daily
+    rotate 7
+    size 50M
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    create 0644 root root
+}
+
+# Legacy /var/log/astroscan-* — conserve la rotation existante pour les
+# vieux fichiers vides (peuvent encore servir si scripts externes y écrivent).
+/var/log/astroscan.log
+/var/log/astroscan-watchdog.log
+/var/log/shield.log
+/var/log/feeds.log
+/var/log/apod_translator.log
+{
+    su root adm
+    daily
+    rotate 7
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
