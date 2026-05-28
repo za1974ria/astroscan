@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AstroScan — Bridge Control Tower (TB-40C)</title>
+  <meta name="description" content="AstroScan Telescope Bridge — Control Tower read-only cockpit">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-0: #02060c;
+      --bg-1: #050b14;
+      --panel: rgba(8, 18, 28, 0.78);
+      --panel-2: rgba(10, 22, 34, 0.92);
+      --border: rgba(0, 212, 255, 0.22);
+      --border-strong: rgba(0, 212, 255, 0.55);
+      --grid: rgba(0, 212, 255, 0.06);
+      --accent: #00d4ff;
+      --accent-dim: rgba(0, 212, 255, 0.55);
+      --accent-glow: rgba(0, 212, 255, 0.35);
+      --text: #d5ecff;
+      --text-dim: #93b3c9;
+      --muted: #5d7d92;
+      --ok: #34e89e;
+      --ok-glow: rgba(52, 232, 158, 0.45);
+      --warn: #ffb454;
+      --bad: #ff4d6d;
+      --bad-glow: rgba(255, 77, 109, 0.45);
+      --chip: rgba(0, 212, 255, 0.08);
+      --orb: 'Orbitron', sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0; padding: 0;
+      min-height: 100vh;
+      background: var(--bg-0);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body {
+      background:
+        radial-gradient(900px 600px at 12% 8%,  rgba(0,212,255,0.10) 0%, transparent 60%),
+        radial-gradient(900px 700px at 92% 96%, rgba(0,212,255,0.07) 0%, transparent 60%),
+        radial-gradient(600px 400px at 50% 50%, rgba(52,232,158,0.04) 0%, transparent 70%),
+        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 100%);
+      background-attachment: fixed;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%);
+      opacity: 0.55;
+      z-index: 0;
+    }
+
+    header.topbar {
+      position: relative;
+      z-index: 1;
+      padding: 22px 28px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(0,212,255,0.05), transparent);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand .logo {
+      width: 36px; height: 36px;
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      display: grid; place-items: center;
+      background: radial-gradient(circle at 30% 30%, rgba(0,212,255,0.35), transparent 70%);
+      box-shadow: 0 0 18px var(--accent-glow), inset 0 0 12px rgba(0,212,255,0.18);
+      position: relative;
+    }
+    .brand .logo::after {
+      content: "";
+      position: absolute; inset: -4px;
+      border: 1px solid rgba(0,212,255,0.15);
+      border-radius: 8px;
+      animation: pulse-ring 3.4s ease-out infinite;
+    }
+    .brand .logo svg { width: 20px; height: 20px; fill: none; stroke: var(--accent); stroke-width: 1.6; }
+
+    .titles h1 {
+      margin: 0;
+      font-family: var(--orb);
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-shadow: 0 0 14px var(--accent-glow);
+    }
+    .titles .sub {
+      margin-top: 3px;
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .topstats {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: var(--chip);
+      white-space: nowrap;
+    }
+    .chip.ok   { color: var(--ok);  border-color: rgba(52,232,158,0.45); box-shadow: 0 0 12px rgba(52,232,158,0.18); }
+    .chip.bad  { color: var(--bad); border-color: rgba(255,77,109,0.45); box-shadow: 0 0 12px rgba(255,77,109,0.18); }
+    .chip.warn { color: var(--warn); border-color: rgba(255,180,84,0.45); }
+    .chip.accent { color: var(--accent); border-color: var(--border-strong); }
+
+    main {
+      position: relative;
+      z-index: 1;
+      padding: 22px 28px 60px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* ── KPI strip ──────────────────────────────────────────────── */
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+    .kpi {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      overflow: hidden;
+      transition: border-color .25s, transform .25s;
+    }
+    .kpi::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(0,212,255,0.08), transparent 55%);
+      pointer-events: none;
+    }
+    .kpi:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+    .kpi .k {
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .kpi .v {
+      font-family: var(--orb);
+      font-weight: 700;
+      font-size: 28px;
+      color: var(--accent);
+      margin-top: 6px;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 0 12px var(--accent-glow);
+    }
+    .kpi.ok .v   { color: var(--ok);  text-shadow: 0 0 12px var(--ok-glow); }
+    .kpi.bad .v  { color: var(--bad); text-shadow: 0 0 12px var(--bad-glow); }
+
+    /* ── Filters bar ────────────────────────────────────────────── */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding: 10px 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .filters {
+      display: inline-flex;
+      gap: 0;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px;
+    }
+    .filters button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--text-dim);
+      font-family: var(--orb);
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      padding: 7px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: color .2s, background .2s, box-shadow .2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filters button:hover { color: var(--accent); }
+    .filters button.active {
+      color: #021018;
+      background: linear-gradient(180deg, var(--accent), #00a8cc);
+      box-shadow: 0 0 14px var(--accent-glow), inset 0 0 8px rgba(255,255,255,0.25);
+    }
+    .filters button .count {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0;
+      background: rgba(0,0,0,0.25);
+      padding: 1px 6px;
+      border-radius: 999px;
+    }
+    .filters button.active .count { background: rgba(2,16,24,0.35); color: #021018; }
+
+    .toolbar .right {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    }
+
+    /* ── Cards grid ─────────────────────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      position: relative;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px 14px;
+      overflow: hidden;
+      transition: border-color .25s, transform .25s, box-shadow .25s;
+      animation: fade-in .35s ease both;
+    }
+    .card:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(0,212,255,0.10);
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.4;
+    }
+    .card.online::before { background: linear-gradient(90deg, transparent, var(--ok), transparent); opacity: 0.7; }
+    .card.offline::before { background: linear-gradient(90deg, transparent, var(--bad), transparent); opacity: 0.55; }
+
+    .card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .card-id {
+      font-family: var(--orb);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      word-break: break-all;
+      line-height: 1.25;
+    }
+    .card-label {
+      margin-top: 3px;
+      color: var(--text-dim);
+      font-size: 11px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-family: var(--orb);
+      font-size: 9.5px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      border: 1px solid currentColor;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .status.online  { color: var(--ok);  background: rgba(52,232,158,0.08); box-shadow: 0 0 12px rgba(52,232,158,0.18); }
+    .status.offline { color: var(--bad); background: rgba(255,77,109,0.06); }
+
+    .status .pulse {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+      position: relative;
+    }
+    .status.online .pulse::after {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1px solid currentColor;
+      animation: pulse-ring 1.6s ease-out infinite;
+    }
+
+    .meta-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 14px;
+      margin: 8px 0 12px;
+      padding: 10px 0;
+      border-top: 1px dashed rgba(0,212,255,0.12);
+      border-bottom: 1px dashed rgba(0,212,255,0.12);
+    }
+    .meta-row .cell .k {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .meta-row .cell .v {
+      margin-top: 2px;
+      font-family: var(--orb);
+      font-weight: 500;
+      font-size: 14px;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+    .meta-row .cell .v.muted { color: var(--muted); font-weight: 400; font-family: var(--mono); font-size: 12px; }
+    .meta-row .cell .v.live { color: var(--ok); }
+
+    .kinds {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .kind {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: var(--chip);
+    }
+    .kind .glyph { font-family: var(--mono); color: var(--accent); }
+    .kind.none { color: var(--muted); border-style: dashed; }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: rgba(0,0,0,0.25);
+      font-size: 10.5px;
+      color: var(--text-dim);
+    }
+    .badge .lbl {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .badge .num {
+      font-family: var(--orb);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      font-size: 12px;
+    }
+    .badge.samples .num { color: var(--ok); }
+    .badge.samples.zero .num { color: var(--muted); }
+
+    .card-foot {
+      margin-top: 12px;
+      font-size: 10.5px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .card-foot code { color: var(--accent-dim); font-family: var(--mono); }
+
+    /* ── States ─────────────────────────────────────────────────── */
+    .empty, .err {
+      grid-column: 1 / -1;
+      padding: 38px 18px;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+    }
+    .empty .ttl { font-family: var(--orb); letter-spacing: 0.22em; color: var(--accent); font-size: 13px; }
+    .empty .txt { margin-top: 6px; color: var(--text-dim); font-size: 12px; }
+    .err {
+      border-color: rgba(255,77,109,0.4);
+      color: var(--bad);
+      background: rgba(255,77,109,0.05);
+    }
+
+    .meta-foot {
+      margin-top: 22px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .meta-foot code { color: var(--accent-dim); font-family: var(--mono); letter-spacing: 0; text-transform: none; }
+
+    /* ── Animations ─────────────────────────────────────────────── */
+    @keyframes pulse-ring {
+      0%   { transform: scale(0.8); opacity: 0.9; }
+      80%  { transform: scale(1.8); opacity: 0; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.35; }
+    }
+    .live-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--ok);
+      box-shadow: 0 0 8px var(--ok-glow);
+      animation: blink 1.4s ease-in-out infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    .live-dot.bad { background: var(--bad); box-shadow: 0 0 8px var(--bad-glow); }
+
+    @media (max-width: 720px) {
+      header.topbar { padding: 16px 18px; }
+      main { padding: 16px 14px 60px; }
+      .grid { grid-template-columns: 1fr; }
+      .kpi .v { font-size: 22px; }
+      .filters button { padding: 6px 12px; font-size: 9px; }
+      .titles h1 { font-size: 13px; letter-spacing: 0.24em; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .status.online .pulse::after,
+      .brand .logo::after,
+      .live-dot { animation: none; }
+      .card { animation: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" role="img"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    </div>
+    <div class="titles">
+      <h1>Bridge Control Tower</h1>
+      <div class="sub">TB-40C UX POLISH · cockpit · read-only</div>
+    </div>
+  </div>
+  <div class="topstats">
+    <span class="chip accent" id="status-badge"><span class="live-dot" id="live-dot"></span><span id="status-text">connecting…</span></span>
+    <span class="chip" id="updated-badge">—</span>
+    <span class="chip">refresh · 5s</span>
+  </div>
+</header>
+
+<main>
+  <section class="kpis" aria-label="résumé">
+    <div class="kpi"><div class="k">Bridges paired</div><div class="v" id="kpi-count">—</div></div>
+    <div class="kpi ok"><div class="k">Online ≤ 60s</div><div class="v" id="kpi-online">—</div></div>
+    <div class="kpi bad"><div class="k">Offline</div><div class="v" id="kpi-offline">—</div></div>
+    <div class="kpi"><div class="k">Total devices</div><div class="v" id="kpi-devices">—</div></div>
+  </section>
+
+  <div class="toolbar" role="toolbar" aria-label="filtres">
+    <div class="filters" role="tablist" aria-label="filtre statut">
+      <button type="button" data-filter="all"     class="active" role="tab" aria-selected="true">All <span class="count" id="fc-all">0</span></button>
+      <button type="button" data-filter="online"  role="tab" aria-selected="false">Online <span class="count" id="fc-online">0</span></button>
+      <button type="button" data-filter="offline" role="tab" aria-selected="false">Offline <span class="count" id="fc-offline">0</span></button>
+    </div>
+    <div class="right">
+      <span class="chip" id="visible-badge">— visible</span>
+    </div>
+  </div>
+
+  <div id="err-slot"></div>
+  <section class="grid" id="grid"
+           aria-live="polite" aria-busy="true">
+    <div class="empty"><div class="ttl">INITIALISATION</div><div class="txt">Chargement des bridges…</div></div>
+  </section>
+
+  <div class="meta-foot">
+    <span>API · <code>/api/telescope-bridge/bridges</code></span>
+    <span>Source · <code>telescope_bridge_state.json</code></span>
+    <span>Mode · <code>read-only · no commands · no motion</code></span>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const REFRESH_MS = 5000;
+
+function humanAge(sec){
+  sec = Number(sec || 0);
+  if (sec < 60) return sec + " sec ago";
+  if (sec < 3600) return Math.floor(sec/60) + " min ago";
+  return Math.floor(sec/3600) + " hr ago";
+}
+
+  const API = "/api/telescope-bridge/bridges";
+
+  const KIND_GLYPH = {
+    mount:       "⟴",
+    camera:      "◉",
+    focuser:     "◐",
+    filterwheel: "◍",
+    rotator:     "↻",
+    dome:        "⌂",
+    weather:     "❅",
+    guider:      "✦",
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  const state = {
+    filter: "all",
+    lastData: null,
+  };
+
+  // ── helpers ──────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  function fmtTs(ts) {
+    if (!ts) return "—";
+    try {
+      const d = new Date(ts * 1000);
+      const pad = (n) => String(n).padStart(2, "0");
+      return d.getUTCFullYear() + "-" + pad(d.getUTCMonth() + 1) + "-" + pad(d.getUTCDate())
+        + " " + pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()) + ":" + pad(d.getUTCSeconds()) + "Z";
+    } catch (e) { return String(ts); }
+  }
+
+  function fmtAge(s) {
+    if (s == null) return "—";
+    s = Math.max(0, Math.floor(s));
+    if (s < 5)    return "just now";
+    if (s < 60)   return s + "s ago";
+    if (s < 3600) {
+      const m = Math.floor(s / 60), r = s % 60;
+      return r ? (m + "m " + r + "s ago") : (m + "m ago");
+    }
+    if (s < 86400) {
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+      return m ? (h + "h " + m + "m ago") : (h + "h ago");
+    }
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600);
+    return h ? (d + "d " + h + "h ago") : (d + "d ago");
+  }
+
+  function ageClass(s, isOnline) {
+    if (isOnline) return "live";
+    if (s == null) return "muted";
+    if (s > 600) return "muted";
+    return "";
+  }
+
+  // ── rendering ────────────────────────────────────────────────────
+  function renderKinds(kinds) {
+    if (!Array.isArray(kinds) || !kinds.length) {
+      return '<span class="kind none">no device</span>';
+    }
+    return kinds.map(k => {
+      const key = String(k).toLowerCase();
+      const g = KIND_GLYPH[key] || "•";
+      return '<span class="kind"><span class="glyph">' + esc(g) + '</span>' + esc(k) + '</span>';
+    }).join("");
+  }
+
+  function renderCard(b) {
+    const online = !!b.is_online;
+    const stateCls = online ? "online" : "offline";
+    const statusLbl = online ? "online" : "offline";
+
+    const ageText = fmtAge(b.seconds_since_seen);
+    const ageCls  = ageClass(b.seconds_since_seen, online);
+
+    const iter = (b.telemetry_iteration == null) ? "—" : b.telemetry_iteration;
+    const samples = (b.samples_count == null) ? 0 : b.samples_count;
+    const samplesZero = samples === 0 ? " zero" : "";
+
+    return (
+      '<article class="card ' + stateCls + '" data-online="' + (online ? "1" : "0") + '">' +
+        '<div class="card-head">' +
+          '<div>' +
+            '<div class="card-id">' + esc(b.agent_id) + '</div>' +
+            '<div class="card-label">' + esc(b.label || "—") + '</div>' +
+          '</div>' +
+          '<span class="status ' + stateCls + '"><span class="pulse"></span>' + statusLbl + '</span>' +
+        '</div>' +
+
+        '<div class="meta-row">' +
+          '<div class="cell"><div class="k">Heartbeat</div><div class="v ' + ageCls + '">' + esc(ageText) + '</div></div>' +
+          '<div class="cell"><div class="k">Devices</div><div class="v">' + esc(b.devices_count == null ? "—" : b.devices_count) + '</div></div>' +
+        '</div>' +
+
+        '<div class="kinds">' + renderKinds(b.device_kinds) + '</div>' +
+
+        '<div class="badges">' +
+          '<span class="badge iter"><span class="lbl">iter</span><span class="num">' + esc(iter) + '</span></span>' +
+          '<span class="badge samples' + samplesZero + '"><span class="lbl">samples</span><span class="num">' + esc(samples) + '</span></span>' +
+        '</div>' +
+
+        '<div class="card-foot">' +
+          '<span>last seen · <code>' + esc(fmtTs(b.last_seen_at)) + '</code></span>' +
+          '<span>paired · <code>' + esc(fmtTs(b.paired_at)) + '</code></span>' +
+        '</div>' +
+      '</article>'
+    );
+  }
+
+  function applyFilter(list, filter) {
+    if (filter === "online")  return list.filter(b => !!b.is_online);
+    if (filter === "offline") return list.filter(b => !b.is_online);
+    return list;
+  }
+
+  function render(data) {
+    const grid = $("grid");
+    grid.setAttribute("aria-busy", "false");
+
+    const list = (data && Array.isArray(data.bridges)) ? data.bridges : [];
+    const total = list.length;
+    const online = (data && data.online_count != null)
+      ? data.online_count
+      : list.filter(b => b.is_online).length;
+    const offline = Math.max(0, total - online);
+
+    const totalDevices = list.reduce(
+      (acc, b) => acc + (Number(b.devices_count) || 0), 0
+    );
+
+    $("kpi-count").textContent   = total;
+    $("kpi-online").textContent  = online;
+    $("kpi-offline").textContent = offline;
+    $("kpi-devices").textContent = totalDevices;
+
+    $("fc-all").textContent     = total;
+    $("fc-online").textContent  = online;
+    $("fc-offline").textContent = offline;
+
+    const filtered = applyFilter(list, state.filter);
+    $("visible-badge").textContent = filtered.length + " visible · " + state.filter;
+
+    if (!total) {
+      grid.innerHTML =
+        '<div class="empty"><div class="ttl">NO BRIDGE PAIRED</div>' +
+        '<div class="txt">Run <code>python3 -m astroscan_bridge … cloud-pair</code> on an agent to register one.</div></div>';
+      return;
+    }
+    if (!filtered.length) {
+      grid.innerHTML =
+        '<div class="empty"><div class="ttl">NO MATCH</div>' +
+        '<div class="txt">No bridge matches the “' + esc(state.filter) + '” filter.</div></div>';
+      return;
+    }
+
+    grid.innerHTML = filtered.map(renderCard).join("");
+  }
+
+  function setError(msg) {
+    $("err-slot").innerHTML = '<div class="err">Fetch failed · ' + esc(msg) + '</div>';
+    $("status-text").textContent = "error";
+    $("status-badge").classList.remove("ok"); $("status-badge").classList.add("bad");
+    const dot = $("live-dot");
+    dot.classList.add("bad");
+  }
+  function clearError() {
+    $("err-slot").innerHTML = "";
+    $("status-text").textContent = "live";
+    $("status-badge").classList.remove("bad"); $("status-badge").classList.add("ok");
+    const dot = $("live-dot");
+    dot.classList.remove("bad");
+  }
+
+  async function tick() {
+    try {
+      const res = await fetch(API, { headers: { "Accept": "application/json" }, cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      state.lastData = data;
+      clearError();
+      $("updated-badge").textContent = "updated · " + fmtTs(Math.floor(Date.now() / 1000));
+      render(data);
+    } catch (e) {
+      setError(e.message || String(e));
+    }
+  }
+
+  // ── filter wiring ────────────────────────────────────────────────
+  document.querySelectorAll(".filters button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const f = btn.getAttribute("data-filter");
+      if (!f || f === state.filter) return;
+      state.filter = f;
+      document.querySelectorAll(".filters button").forEach(b => {
+        const active = b === btn;
+        b.classList.toggle("active", active);
+        b.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      if (state.lastData) render(state.lastData);
+    });
+  });
+
+  // ── boot ─────────────────────────────────────────────────────────
+  tick();
+  setInterval(tick, REFRESH_MS);
+})();
+</script>
+</body>
+</html>
