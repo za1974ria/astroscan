@@ -175,9 +175,13 @@ def load_analytics_readonly():
         if "visitor_log" in tables:
             r = cur.execute("SELECT COUNT(*) AS c FROM visitor_log").fetchone()
             out["total_visits"] = int(r["c"] if r else 0)
+            # Apply the canonical owner/bot filter so unique_ips here matches
+            # what the cockpit and the GEO-IP tracker report — no more drift
+            # between three different "unique visitors" numbers.
+            _where_owner, _params_owner = owner_ip_sql_filter()
             r = cur.execute(
-                "SELECT COUNT(DISTINCT ip) AS c FROM visitor_log "
-                "WHERE ip NOT IN ('127.0.0.1', '::1')"
+                f"SELECT COUNT(DISTINCT ip) AS c FROM visitor_log WHERE {_where_owner}",
+                _params_owner,
             ).fetchone()
             out["unique_ips"] = int(r["c"] if r else 0)
             m = cur.execute("SELECT MAX(visited_at) AS m FROM visitor_log").fetchone()
@@ -215,6 +219,7 @@ def load_cockpit_payload(window_days: int = 30, owner_ips: set | None = None) ->
     """
     payload = {
         "total_unique_visitors": 0,
+        "human_sessions": 0,
         "visits_counter": 0,
         "unique_ips_count": 0,
         "countries_count": 0,
@@ -246,19 +251,29 @@ def load_cockpit_payload(window_days: int = 30, owner_ips: set | None = None) ->
         row = cur.execute("SELECT count FROM visits WHERE id=1").fetchone()
         payload["visits_counter"] = int(row["count"]) if row else 0
 
-        # ── Total uniques (sessions humaines hors owner)
+        # ── Sessions humaines (DISTINCT session_id, owner/bot exclus)
+        # Conservé pour information mais NE doit PAS être labellisé
+        # "visiteurs" dans l'UI — une session est une visite, pas un
+        # visiteur distinct (une même IP peut générer plusieurs sessions).
         row = cur.execute(
             f"SELECT COUNT(DISTINCT session_id) AS c FROM visitor_log WHERE {where_owner}",
             params_owner,
         ).fetchone()
         sessions_count = int(row["c"] or 0) if row else 0
-        payload["total_unique_visitors"] = payload["visits_counter"] or sessions_count
+        payload["human_sessions"] = sessions_count
 
+        # ── Visiteurs uniques = COUNT(DISTINCT ip) avec filtre owner/bot.
+        # Source unique de vérité, alignée sur le GEO-IP tracker
+        # (/api/visitors/stats). total_unique_visitors et unique_ips_count
+        # partagent désormais la MÊME valeur, ce qui supprime l'aberration
+        # historique "visiteurs (3966) > IPs uniques (3033)".
         row = cur.execute(
             f"SELECT COUNT(DISTINCT ip) AS c FROM visitor_log WHERE {where_owner}",
             params_owner,
         ).fetchone()
-        payload["unique_ips_count"] = int(row["c"] or 0) if row else 0
+        unique_ips = int(row["c"] or 0) if row else 0
+        payload["unique_ips_count"] = unique_ips
+        payload["total_unique_visitors"] = unique_ips
 
         row = cur.execute(
             f"SELECT COUNT(DISTINCT country_code) AS c FROM visitor_log "

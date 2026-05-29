@@ -288,12 +288,12 @@
     <div class="kpi" role="group" aria-labelledby="kpi-vis-label">
       <div class="kpi-label" id="kpi-vis-label">Visiteurs uniques</div>
       <div class="kpi-value" data-countup="{{ total_unique_visitors }}" aria-label="{{ total_unique_visitors }} visiteurs uniques">0</div>
-      <div class="kpi-sub">sessions humaines · hors owner</div>
+      <div class="kpi-sub">adresses IP distinctes · humains · hors owner</div>
     </div>
-    <div class="kpi" role="group" aria-labelledby="kpi-ip-label">
-      <div class="kpi-label" id="kpi-ip-label">IPs uniques</div>
-      <div class="kpi-value" data-countup="{{ unique_ips_count }}" aria-label="{{ unique_ips_count }} IPs uniques">0</div>
-      <div class="kpi-sub">adresses distinctes filtrées</div>
+    <div class="kpi" role="group" aria-labelledby="kpi-sess-label">
+      <div class="kpi-label" id="kpi-sess-label">Sessions humaines</div>
+      <div class="kpi-value" data-countup="{{ human_sessions }}" aria-label="{{ human_sessions }} sessions humaines">0</div>
+      <div class="kpi-sub">visites distinctes · hors owner</div>
     </div>
     <div class="kpi" role="group" aria-labelledby="kpi-co-label">
       <div class="kpi-label" id="kpi-co-label">Pays</div>
