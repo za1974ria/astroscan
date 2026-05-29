@@ -99,6 +99,53 @@ def _compute_meta(last_updated_iso, source, tle_epoch_iso, datetime_cls, timezon
     return meta
 
 
+def _position_is_invalid(lat, lon):
+    """Return True when the ground-track position must NOT be presented as live.
+
+    Triggered by:
+      - lat/lon non-numeric or None;
+      - Null Island sentinel (lat == 0 AND lon == 0) — the fallback dict
+        seeds these zeros when ``_fetch_iss_live`` returns nothing, so a
+        (0,0) ground point is treated as "data absent" rather than a real
+        equatorial fix. ISS does cross the equator near (0,0) twice per
+        orbit, but at 7.66 km/s the probability of catching it exactly on
+        the prime meridian with both coords at zero to floating-point
+        precision is effectively nil — the (0,0) signature is a sentinel,
+        not a measurement.
+    """
+    if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+        return True
+    try:
+        if lat != lat or lon != lon:  # NaN
+            return True
+    except Exception:
+        return True
+    if lat == 0 and lon == 0:
+        return True
+    return False
+
+
+def _force_unavailable_meta(meta, source_hint=None):
+    """Stamp the meta dict so a (0,0) / missing ground-track can never be
+    presented as live or even partly-trusted. Preserves age_seconds for
+    observability but caps status/confidence at unavailable/none.
+
+    Used both on cache-miss recompute and on cache-hit re-derivation, so a
+    payload that was once invalid cannot resurrect as ``live`` on the next
+    request by virtue of a fresh ``last_updated``.
+    """
+    meta = dict(meta or {})
+    if source_hint:
+        meta.setdefault("source", source_hint)
+    meta["status"] = "unavailable"
+    meta["confidence"] = "none"
+    meta["warning"] = (
+        "ISS position unavailable — live fetch and SGP4 ground-track both "
+        "missing (lat/lon are sentinel zeros or non-numeric)"
+    )
+    return meta
+
+
 def api_iss_impl(
     cache_cleanup,
     system_log,
@@ -145,12 +192,17 @@ def api_iss_impl(
             # _CACHE_TTL_S old, so the SGP4 propagation underneath is always
             # within the "live" window — but we recompute honestly anyway.
             prev_meta = cached.get("meta") or {}
-            cached["meta"] = _compute_meta(
+            new_meta = _compute_meta(
                 prev_meta.get("last_updated"),
                 prev_meta.get("source", "SGP4"),
                 prev_meta.get("tle_epoch_iso"),
                 datetime_cls, timezone_cls,
             )
+            # Anti-mensonge Null-Island : si lat/lon stockés sont (0,0) ou
+            # non numériques, refuser de re-marquer "live" même sur cache hit.
+            if _position_is_invalid(cached.get("lat"), cached.get("lon")):
+                new_meta = _force_unavailable_meta(new_meta, source_hint=prev_meta.get("source"))
+            cached["meta"] = new_meta
             return jsonify(cached)
 
     # ── Cache miss → fetch live + propagate SGP4 ─────────────────────────
@@ -222,6 +274,25 @@ def api_iss_impl(
             {
                 "event": "iss_sgp4_failed",
                 "reason": sgp4_reason,
+            }
+        )
+
+    # ── Anti-mensonge Null-Island ────────────────────────────────────────
+    # Si la position de surface est invalide ((0,0) sentinelle, None, NaN,
+    # non-numérique), le meta NE PEUT PAS rester en "live"/"high" même si
+    # SGP4 a réussi : c'est la position de surface qui est consommée par
+    # les clients (carte, dashboard) et un point Null-Island dégradé en
+    # "live" est un mensonge cosmétique. Le champ `_position_invalid` est
+    # ajouté pour traçabilité.
+    if _position_is_invalid(iss.get("lat"), iss.get("lon")):
+        iss["meta"] = _force_unavailable_meta(iss["meta"], source_hint=iss["meta"].get("source"))
+        iss["_position_invalid"] = True
+        _emit_diag_json(
+            {
+                "event": "iss_position_invalid",
+                "lat": iss.get("lat"),
+                "lon": iss.get("lon"),
+                "sgp4_success": bool(sgp4_data),
             }
         )
 
