@@ -32,6 +32,25 @@ import pytest
 _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 sys.path.insert(0, _PROJECT_ROOT)
 
+# Axe 1 (2026-05-29) — if the repo's data/ is not writable by the current user
+# (typical on the Hetzner box where data/ is root:root 755 but the runner is
+# zakaria), bootstrap a writable shadow root under /tmp and redirect STATION
+# there. Code/templates are symlinked back to the real repo so behavior is
+# identical; only data/ + logs/ live in tmp. The shadow is built ahead of any
+# import of station_web / app so paths.py picks up ASTROSCAN_HOME on first read.
+_DATA_DIR_REPO = os.path.join(_PROJECT_ROOT, "data")
+if not os.access(_DATA_DIR_REPO, os.W_OK):
+    _SHADOW_ROOT = "/tmp/astroscan_test_root"
+    _SHADOW_DATA = os.path.join(_SHADOW_ROOT, "data")
+    if os.path.isdir(_SHADOW_DATA) and os.access(_SHADOW_DATA, os.W_OK):
+        os.environ.setdefault("ASTROSCAN_HOME", _SHADOW_ROOT)
+        os.environ.setdefault("STATION", _SHADOW_ROOT)
+        os.environ.setdefault("ASTROSCAN_DATA_DIR", _SHADOW_DATA)
+        os.environ.setdefault("ASTROSCAN_LOG_DIR", os.path.join(_SHADOW_ROOT, "logs"))
+        # Make subsequent imports resolve files from the shadow root first;
+        # symlinks point back to the real repo so identity is preserved.
+        sys.path.insert(0, _SHADOW_ROOT)
+
 # Axe 1 — make station_web.py:284 (`for line in open(env_file)`) tolerate a
 # .env that is unreadable (mode 0600 root-owned in production) OR absent
 # (CI runners without secrets-as-file). The patch returns an empty StringIO
@@ -40,7 +59,10 @@ sys.path.insert(0, _PROJECT_ROOT)
 # and is unaffected; only the test session sees this fallback.
 # SECRET_KEY/SENTRY_DSN/TESTING are then posed by the fixtures below before
 # importing the app, so the factory still gets a valid (test-only) secret.
-_ENV_PATH = os.path.join(_PROJECT_ROOT, ".env")
+_ENV_PATHS = {os.path.realpath(os.path.join(_PROJECT_ROOT, ".env"))}
+_shadow_root_env = os.environ.get("ASTROSCAN_HOME")
+if _shadow_root_env:
+    _ENV_PATHS.add(os.path.realpath(os.path.join(_shadow_root_env, ".env")))
 if not hasattr(builtins, "_axe1_original_open"):
     builtins._axe1_original_open = builtins.open
 
@@ -49,7 +71,13 @@ if not hasattr(builtins, "_axe1_original_open"):
             return builtins._axe1_original_open(file, *args, **kwargs)
         except (PermissionError, FileNotFoundError):
             try:
-                if os.path.abspath(str(file)) == os.path.abspath(_ENV_PATH):
+                # Match by realpath so symlinks from a shadow root resolve back
+                # to the real .env, and abspath fallback covers the un-resolved
+                # original argument passed by callers like station_web.
+                fpath = str(file)
+                if os.path.realpath(fpath) in _ENV_PATHS or os.path.abspath(fpath) in _ENV_PATHS:
+                    return io.StringIO("")
+                if os.path.basename(fpath) == ".env":
                     return io.StringIO("")
             except Exception:
                 pass
@@ -71,15 +99,19 @@ if not hasattr(logging.handlers, "_OriginalRotatingFileHandler"):
 
 
 def _data_dir_writable() -> bool:
-    """Return True if <PROJECT_ROOT>/data is writable by the current user.
+    """Return True if a usable, writable data dir is available.
 
     Importing station_web triggers _init_visits_table() which writes to
-    data/visitors.db. In production data/ is owned by the service user and is
-    writable; on locked-down dev/CI runners it may be read-only. We skip
-    cleanly in that case rather than letting station_web crash mid-import.
+    data/visitors.db. We accept either the repo-local data/ or, when that
+    is not writable (e.g. data/ root-owned on the production host while
+    tests run as zakaria), the shadow data dir under ASTROSCAN_DATA_DIR
+    bootstrapped at conftest load time.
     """
-    data_dir = os.path.join(_PROJECT_ROOT, "data")
-    return os.path.isdir(data_dir) and os.access(data_dir, os.W_OK)
+    candidates = [os.path.join(_PROJECT_ROOT, "data")]
+    env_data = os.environ.get("ASTROSCAN_DATA_DIR")
+    if env_data:
+        candidates.insert(0, env_data)
+    return any(os.path.isdir(d) and os.access(d, os.W_OK) for d in candidates)
 
 
 @pytest.fixture(scope="session")
