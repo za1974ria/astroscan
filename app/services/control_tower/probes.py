@@ -173,12 +173,14 @@ def probe_tls(target: dict) -> dict:
 
 # ── System metrics ───────────────────────────────────────────────────
 def _read_cpu_pct() -> float | None:
+    # 1.0 s window smooths the self-induced spike caused by the 53
+    # probes running in parallel; a 150 ms window was small enough to
+    # capture the burst and reported ~98 % even on an idle box.
     if _HAS_PSUTIL:
         try:
-            return float(psutil.cpu_percent(interval=0.15))
+            return float(psutil.cpu_percent(interval=1.0))
         except Exception:
             return None
-    # /proc/stat fallback: two snapshots ~150 ms apart.
     def _snap():
         with open("/proc/stat", "r") as f:
             line = f.readline()
@@ -188,7 +190,7 @@ def _read_cpu_pct() -> float | None:
         return idle, total
     try:
         i1, t1 = _snap()
-        time.sleep(0.15)
+        time.sleep(1.0)
         i2, t2 = _snap()
         dt = t2 - t1
         di = i2 - i1
@@ -309,6 +311,17 @@ def probe_system_metric(target: dict) -> dict:
 
 # ── Process alive (no subprocess; /proc scan only) ───────────────────
 def probe_process(target: dict) -> dict:
+    """Detect a process via /proc.
+
+    A target matches if either:
+      - /proc/{pid}/comm equals process_name (exact, original behaviour), OR
+      - process_name appears as a whole token in /proc/{pid}/cmdline
+        (split on NUL). This catches processes launched as
+        "python3 -m gunicorn …" where comm is "python3" but cmdline
+        contains "gunicorn" as a distinct token. Substring matching is
+        deliberately avoided so probes can't false-match on unrelated
+        commands that merely embed the name in a longer string.
+    """
     res = _new_result(target)
     started = time.time()
     name = target.get("process_name", "")
@@ -317,13 +330,30 @@ def probe_process(target: dict) -> dict:
         for entry in os.listdir("/proc"):
             if not entry.isdigit():
                 continue
+            matched = False
             try:
                 with open(f"/proc/{entry}/comm", "r") as f:
                     comm = f.read().strip()
                 if comm == name:
-                    count += 1
+                    matched = True
             except (OSError, IOError):
-                continue
+                pass
+            if not matched:
+                try:
+                    with open(f"/proc/{entry}/cmdline", "rb") as f:
+                        raw = f.read()
+                    if raw:
+                        tokens = [
+                            t.decode("utf-8", "replace")
+                            for t in raw.split(b"\x00")
+                            if t
+                        ]
+                        if name and name in tokens:
+                            matched = True
+                except (OSError, IOError):
+                    pass
+            if matched:
+                count += 1
         res["meta"]["count"] = count
         res["meta"]["name"] = name
         res["ok"] = count > 0

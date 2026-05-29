@@ -151,7 +151,7 @@ TARGETS = [
 
     # ── SYSTEM READ-ONLY (25–32) ─────────────────────────────────────
     {"id": "sys_cpu", "label": "CPU usage", "type": "system_metric",
-     "metric": "cpu", "warn_pct": 75, "crit_pct": 90, "timeout": 2,
+     "metric": "cpu", "warn_pct": 85, "crit_pct": 96, "timeout": 2,
      "category": "system", "critical": True},
 
     {"id": "sys_ram", "label": "RAM usage", "type": "system_metric",
