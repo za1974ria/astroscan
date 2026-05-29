@@ -421,42 +421,85 @@ def api_visitors_geo():
 
 @bp.route("/api/visitors/stats")
 def api_visitors_stats():
-    """Statistiques visiteurs par pays."""
+    """Honest visitor statistics.
+
+    ``total`` is now COUNT(DISTINCT ip) — unique visitors — and the
+    query filters out bots (``is_bot=0``) and owner traffic
+    (``is_owner=0``). The previous behaviour returned COUNT(*) (i.e.
+    raw page visits) while the frontend labelled it "visiteurs", which
+    over-stated the audience by a factor of ~2 and counted crawler /
+    owner hits as real users.
+
+    Returned JSON:
+      total              — unique visitors (COUNT DISTINCT ip)
+      total_visits       — raw visits (COUNT *), kept for historical context
+      today              — unique visitors today
+      distinct_countries — distinct valid ISO country codes
+      exclude_my_ip      — whether owner IPs were excluded
+      by_country         — top 50 countries by unique-visitor count
+    """
     from app.services.db_visitors import _get_db_visitors
     try:
-        my_ip = "105.235.139.99"
+        # Owner IPs no longer hardcoded. Source: ASTROSCAN_OWNER_IPS env
+        # (comma-separated). is_owner=0 is the primary defence; the IP
+        # exclusion is kept as a secondary safety net so newly-logged
+        # rows that haven't been tagged yet are still filtered.
+        owner_ips = [
+            x.strip()
+            for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(",")
+            if x.strip()
+        ]
         exclude_my_ip = (request.args.get("exclude_my_ip", "0") or "0").strip() in (
             "1", "true", "yes", "on",
         )
         excluded = {"127.0.0.1", "::1"}
         if exclude_my_ip:
-            excluded.add(my_ip)
+            excluded.update(owner_ips)
         placeholders = ",".join(["?"] * len(excluded))
         params = tuple(excluded)
+        # Reused everywhere — bot / owner filter + IP exclusion.
+        where_clean = (
+            f"is_bot=0 AND is_owner=0 AND ip NOT IN ({placeholders})"
+        )
         conn = _get_db_visitors()
-        # PASS 27 — Normalize NL duplicate at query time.
+
+        # PASS 27 — Normalize NL duplicate at query time. Count DISTINCT ip
+        # per country so heavy refreshers don't dominate the ranking.
         by_country = conn.execute(
             "SELECT CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country, "
-            "country_code, COUNT(*) as cnt "
+            "country_code, COUNT(DISTINCT ip) as cnt "
             "FROM visitor_log "
-            f"WHERE ip NOT IN ({placeholders}) AND country != 'Unknown' "
+            f"WHERE {where_clean} AND country != 'Unknown' "
             "GROUP BY CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END, country_code "
             "ORDER BY cnt DESC LIMIT 50",
             params,
         ).fetchall()
         total = conn.execute(
-            f"SELECT COUNT(*) FROM visitor_log WHERE ip NOT IN ({placeholders})",
+            f"SELECT COUNT(DISTINCT ip) FROM visitor_log WHERE {where_clean}",
+            params,
+        ).fetchone()[0]
+        total_visits = conn.execute(
+            f"SELECT COUNT(*) FROM visitor_log WHERE {where_clean}",
             params,
         ).fetchone()[0]
         today = conn.execute(
-            "SELECT COUNT(*) FROM visitor_log "
-            f"WHERE ip NOT IN ({placeholders}) AND date(visited_at)=date('now')",
+            "SELECT COUNT(DISTINCT ip) FROM visitor_log "
+            f"WHERE {where_clean} AND date(visited_at)=date('now')",
+            params,
+        ).fetchone()[0]
+        distinct_countries = conn.execute(
+            "SELECT COUNT(DISTINCT country_code) FROM visitor_log "
+            f"WHERE {where_clean} "
+            "AND country_code IS NOT NULL AND country_code != '' "
+            "AND country_code != 'XX' AND country != 'Unknown'",
             params,
         ).fetchone()[0]
         conn.close()
         return jsonify({
             "total": total,
+            "total_visits": total_visits,
             "today": today,
+            "distinct_countries": distinct_countries,
             "exclude_my_ip": exclude_my_ip,
             "by_country": [
                 {"country": r[0], "code": r[1] or "XX", "count": r[2]}

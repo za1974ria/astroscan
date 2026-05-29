@@ -393,8 +393,8 @@ section.geo .row, section.geo .geo-grid { contain: layout; min-height: 40px; }
   <section class="geo">
     <h2 style="color:var(--cyan);font-size:.9rem;letter-spacing:2px;margin-bottom:4px">GEO-IP TRACKER</h2>
     <div class="geo-grid">
-      <div class="mini"><div class="n" id="geoTotal">-</div><div class="small">Total visiteurs</div></div>
-      <div class="mini"><div class="n" id="geoToday">-</div><div class="small">Aujourd'hui</div></div>
+      <div class="mini"><div class="n" id="geoTotal">-</div><div class="small">Visiteurs uniques</div></div>
+      <div class="mini"><div class="n" id="geoToday">-</div><div class="small">Uniques aujourd'hui</div></div>
       <div class="mini"><div class="n" id="geoCountries">-</div><div class="small">Pays distincts</div></div>
     </div>
 
@@ -555,7 +555,12 @@ section.geo .row, section.geo .geo-grid { contain: layout; min-height: 40px; }
       const stats = await statsRes.json();
       $("geoTotal").textContent = Number(stats.total || 0).toLocaleString("fr-FR");
       $("geoToday").textContent = Number(stats.today || 0).toLocaleString("fr-FR");
-      $("geoCountries").textContent = (stats.by_country || []).length;
+      // Prefer the API-side distinct count (filters bots/owners and XX
+      // codes); fall back to by_country length only if the backend is
+      // older and didn't yet expose distinct_countries.
+      $("geoCountries").textContent = Number(
+        stats.distinct_countries != null ? stats.distinct_countries : (stats.by_country || []).length
+      );
 
       const chips = $("geoTopCountries");
       const top = (stats.by_country || []).slice(0, 12);
