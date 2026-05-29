@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="{{ lang | default('fr') }}" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="robots" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if lang == 'en' %}Sentinel · Family Safety Dashboard{% else %}Sentinel · Tableau de bord Sécurité Famille{% endif %} — ORBITAL-CHOHRA</title>
+<meta name="description" content="Sentinel public honesty dashboard — real metrics from /api/sentinel/metrics. Zero personal data collected.">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cyan: #00d4ff;
+  --green: #00ff88;
+  --amber: #ff8c00;
+  --red: #ff3355;
+  --grey: #6b7a8a;
+  --bg: #02050a;
+  --panel: rgba(8, 15, 28, 0.85);
+  --panel-hi: rgba(14, 22, 38, 0.92);
+  --border: rgba(0, 212, 255, 0.18);
+  --border-hi: rgba(0, 212, 255, 0.42);
+  --text: #cbd6e4;
+  --text-hi: #ffffff;
+  --text-lo: #9aa9bb;
+  --font: 'Orbitron', monospace;
+  --font-mono: 'Share Tech Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+body { padding: 20px; overflow-x: hidden; }
+
+#starfield-bg { position: fixed; inset: 0; z-index: -1; background: radial-gradient(ellipse at center, #050a14 0%, #000 100%); }
+
+.sd-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 18px; backdrop-filter: blur(8px); gap: 16px; flex-wrap: wrap; }
+.sd-brand { font-size: 18px; font-weight: 900; letter-spacing: 0.18em; color: var(--cyan); text-shadow: 0 0 12px rgba(0, 212, 255, 0.4); }
+.sd-brand .divider { color: var(--text-lo); margin: 0 12px; }
+.sd-brand .subtitle { font-size: 11px; color: var(--text-lo); letter-spacing: 0.15em; margin-top: 4px; font-weight: 400; }
+.sd-back { color: var(--cyan); text-decoration: none; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; padding: 8px 16px; border: 1px solid var(--border); border-radius: 4px; transition: all 0.2s; }
+.sd-back:hover { background: rgba(0, 212, 255, 0.1); border-color: var(--cyan); }
+
+.sd-status-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
+.sd-pill { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 4px; font-weight: 700; letter-spacing: 0.15em; font-size: 12px; }
+.sd-pill.green { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.4); color: var(--green); }
+.sd-pill.amber { background: rgba(255, 140, 0, 0.1); border: 1px solid rgba(255, 140, 0, 0.4); color: var(--amber); }
+.sd-pill.red   { background: rgba(255, 51, 85, 0.1);  border: 1px solid rgba(255, 51, 85, 0.4);  color: var(--red); }
+.sd-pill .dot { width: 9px; height: 9px; border-radius: 50%; }
+.sd-pill.green .dot { background: var(--green); box-shadow: 0 0 8px var(--green); animation: sd-pulse 2s infinite; }
+.sd-pill.amber .dot { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.sd-pill.red   .dot { background: var(--red);   box-shadow: 0 0 8px var(--red); }
+@keyframes sd-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.sd-status-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-lo); letter-spacing: 0.1em; }
+.sd-beta { font-family: var(--font-mono); font-size: 10px; color: var(--amber); letter-spacing: 0.18em; padding: 4px 10px; border: 1px solid rgba(255, 140, 0, 0.4); border-radius: 3px; background: rgba(255, 140, 0, 0.06); }
+
+.sd-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.sd-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; backdrop-filter: blur(8px); position: relative; transition: all 0.3s; min-height: 160px; display: flex; flex-direction: column; }
+.sd-card.cyan { border-color: rgba(0, 212, 255, 0.32); }
+.sd-card.green { border-color: rgba(0, 255, 136, 0.32); }
+.sd-card:hover { border-color: var(--border-hi); transform: translateY(-2px); box-shadow: 0 0 22px rgba(0, 212, 255, 0.14); }
+.sd-card-title { font-size: 10px; letter-spacing: 0.25em; color: var(--text-lo); margin-bottom: 10px; font-weight: 700; }
+.sd-card.cyan  .sd-card-title { color: var(--cyan); }
+.sd-card.green .sd-card-title { color: var(--green); }
+.sd-card-value { font-size: 38px; font-weight: 900; color: var(--text-hi); letter-spacing: 0.02em; line-height: 1; margin-bottom: 8px; font-family: var(--font); }
+.sd-card-value.na { color: var(--text-lo); font-size: 28px; letter-spacing: 0.1em; }
+.sd-card-value.cyan  { color: var(--cyan); }
+.sd-card-value.green { color: var(--green); }
+.sd-card-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-lo); line-height: 1.5; letter-spacing: 0.04em; margin-top: auto; }
+.sd-card-sub.empty { color: var(--text-lo); font-style: italic; }
+.sd-card-breakdown { font-family: var(--font-mono); font-size: 11px; color: var(--text); margin-top: 10px; display: grid; gap: 4px; }
+.sd-card-breakdown .row { display: flex; justify-content: space-between; gap: 12px; }
+.sd-card-breakdown .row .lbl { color: var(--text-lo); letter-spacing: 0.05em; }
+.sd-card-breakdown .row .val { color: var(--text-hi); font-weight: 700; }
+.sd-card-breakdown .row .val.green { color: var(--green); }
+.sd-card-breakdown .row .val.cyan  { color: var(--cyan); }
+.sd-card-breakdown .row .val.amber { color: var(--amber); }
+.sd-card-breakdown .row .val.red   { color: var(--red); }
+
+.sd-section { margin-bottom: 18px; }
+.sd-section-title { font-size: 11px; letter-spacing: 0.25em; color: var(--cyan); font-weight: 700; margin-bottom: 12px; padding-left: 12px; border-left: 3px solid var(--cyan); text-shadow: 0 0 8px rgba(0, 212, 255, 0.3); }
+
+.sd-grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .sd-grid-2 { grid-template-columns: 1fr; } }
+
+.sd-globe-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; backdrop-filter: blur(8px); position: relative; overflow: hidden; min-height: 280px; }
+.sd-globe-panel .sd-card-title { color: var(--cyan); margin-bottom: 14px; }
+.sd-globe { position: absolute; right: -50px; top: 40px; width: 220px; height: 220px; border-radius: 50%; border: 1px solid rgba(0, 212, 255, 0.18); background: radial-gradient(circle at 30% 30%, rgba(0, 212, 255, 0.18), rgba(0, 100, 140, 0.05) 60%, transparent 80%); opacity: 0.7; }
+.sd-globe::before { content: ''; position: absolute; inset: 14px; border-radius: 50%; border: 1px dashed rgba(0, 212, 255, 0.14); }
+.sd-globe::after  { content: ''; position: absolute; inset: 0; border-radius: 50%; border-top: 1px solid rgba(0, 212, 255, 0.12); border-bottom: 1px solid rgba(0, 212, 255, 0.12); transform: rotateX(60deg); }
+.sd-country-list { position: relative; z-index: 2; max-width: 60%; }
+.sd-country-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(0, 212, 255, 0.08); font-family: var(--font-mono); font-size: 12px; gap: 10px; }
+.sd-country-row:last-child { border-bottom: none; }
+.sd-country-row .flag { font-size: 20px; line-height: 1; }
+.sd-country-row .name { color: var(--text-hi); flex: 1; letter-spacing: 0.05em; }
+.sd-country-row .cnt  { color: var(--cyan); font-weight: 700; }
+.sd-empty { font-family: var(--font-mono); font-size: 12px; color: var(--text-lo); font-style: italic; padding: 22px 0; letter-spacing: 0.05em; }
+
+.sd-latest { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.sd-flag-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; background: rgba(0, 212, 255, 0.04); font-family: var(--font-mono); font-size: 11px; color: var(--text); letter-spacing: 0.08em; }
+.sd-flag-chip .flag { font-size: 16px; }
+
+.sd-action { display: flex; gap: 12px; flex-wrap: wrap; }
+.sd-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 4px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.12em; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+.sd-btn.primary { background: rgba(0, 212, 255, 0.1); color: var(--cyan); border: 1px solid var(--cyan); }
+.sd-btn.primary:hover { background: rgba(0, 212, 255, 0.2); }
+.sd-btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.sd-btn.ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+
+.sd-privacy { background: linear-gradient(135deg, rgba(0, 255, 136, 0.06), rgba(0, 212, 255, 0.04)); border: 1px solid rgba(0, 255, 136, 0.22); border-radius: 6px; padding: 14px 20px; margin-top: 18px; font-family: var(--font-mono); font-size: 11px; color: var(--text); letter-spacing: 0.05em; line-height: 1.6; }
+.sd-privacy strong { color: var(--green); letter-spacing: 0.1em; }
+.sd-privacy .items { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 6px; }
+.sd-privacy .items span::before { content: '✓ '; color: var(--green); font-weight: 700; }
+
+.sd-footer { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; margin-top: 18px; font-family: var(--font-mono); font-size: 11px; color: var(--text-lo); flex-wrap: wrap; gap: 12px; }
+.sd-refresh-btn { background: transparent; color: var(--cyan); border: 1px solid var(--cyan); padding: 6px 14px; border-radius: 3px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; }
+.sd-refresh-btn:hover { background: rgba(0, 212, 255, 0.1); }
+.sd-countdown { color: var(--cyan); font-weight: 700; }
+
+@media (max-width: 720px) {
+  body { padding: 10px; }
+  .sd-header { flex-direction: column; align-items: flex-start; }
+  .sd-card-value { font-size: 30px; }
+  .sd-country-list { max-width: 100%; }
+  .sd-globe { display: none; }
+}
+</style>
+</head>
+<body class="notranslate">
+<main role="main" id="main-content">
+
+{% if not request.args.get('embed') %}
+<canvas id="starfield-bg" aria-hidden="true"></canvas>
+{% endif %}
+
+{% if not request.args.get('embed') %}
+<div class="sd-header">
+  <div class="sd-brand">
+    ◈ ASTRO·SCAN <span class="divider">//</span> SENTINEL <span class="divider">·</span> {% if lang == 'en' %}FAMILY SAFETY{% else %}SÉCURITÉ FAMILLE{% endif %}
+    <div class="subtitle">{% if lang == 'en' %}Public honesty dashboard · Real metrics only · No personal data{% else %}Tableau de bord public · Chiffres réels uniquement · Zéro donnée perso{% endif %}</div>
+  </div>
+  <a href="/sentinel" class="sd-back">← {% if lang == 'en' %}Sentinel home{% else %}Accueil Sentinel{% endif %}</a>
+</div>
+{% endif %}
+
+<div class="sd-status-bar">
+  <div class="sd-pill green" id="sd-status-pill">
+    <span class="dot"></span>
+    <span id="sd-status-label">{% if lang == 'en' %}LOADING…{% else %}CHARGEMENT…{% endif %}</span>
+  </div>
+  <div class="sd-status-meta" id="sd-status-meta">—</div>
+  <div class="sd-beta">{% if lang == 'en' %}BETA · LIVE METRICS{% else %}BETA · CHIFFRES RÉELS{% endif %}</div>
+</div>
+
+<div class="sd-section">
+  <div class="sd-section-title">{% if lang == 'en' %}TRUST METRICS · LIVE{% else %}MÉTRIQUES DE CONFIANCE · LIVE{% endif %}</div>
+  <div class="sd-grid">
+    <div class="sd-card cyan">
+      <div class="sd-card-title">{% if lang == 'en' %}SESSIONS{% else %}SESSIONS{% endif %}</div>
+      <div class="sd-card-value cyan" id="sd-total">—</div>
+      <div class="sd-card-breakdown">
+        <div class="row"><span class="lbl">{% if lang == 'en' %}Completed{% else %}Menées à terme{% endif %}</span><span class="val green" id="sd-completed">—</span></div>
+        <div class="row"><span class="lbl">{% if lang == 'en' %}Pending acceptance{% else %}En attente conducteur{% endif %}</span><span class="val amber" id="sd-pending">—</span></div>
+        <div class="row"><span class="lbl">{% if lang == 'en' %}Interrupted{% else %}Interrompues{% endif %}</span><span class="val red" id="sd-interrupted">—</span></div>
+        <div class="row"><span class="lbl">{% if lang == 'en' %}Live now{% else %}Live maintenant{% endif %}</span><span class="val cyan" id="sd-active-inline">—</span></div>
+      </div>
+    </div>
+
+    <div class="sd-card green">
+      <div class="sd-card-title">{% if lang == 'en' %}SUCCESS RATE{% else %}TAUX DE RÉUSSITE{% endif %}</div>
+      <div class="sd-card-value" id="sd-success">—</div>
+      <div class="sd-card-sub" id="sd-success-sub">—</div>
+    </div>
+
+    <div class="sd-card cyan">
+      <div class="sd-card-title">{% if lang == 'en' %}SATISFACTION{% else %}SATISFACTION{% endif %}</div>
+      <div class="sd-card-value" id="sd-satisfaction">—</div>
+      <div class="sd-card-sub" id="sd-satisfaction-sub">—</div>
+    </div>
+
+    <div class="sd-card cyan">
+      <div class="sd-card-title">{% if lang == 'en' %}USER REVIEWS{% else %}AVIS UTILISATEURS{% endif %}</div>
+      <div class="sd-card-value cyan" id="sd-feedback">—</div>
+      <div class="sd-card-sub" id="sd-feedback-sub">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="sd-section">
+  <div class="sd-section-title">{% if lang == 'en' %}REACH · ZERO-KNOWLEDGE GEOGRAPHY{% else %}PORTÉE · GÉOGRAPHIE ZERO-KNOWLEDGE{% endif %}</div>
+  <div class="sd-grid-2">
+    <div class="sd-globe-panel">
+      <div class="sd-card-title">{% if lang == 'en' %}USERS BY COUNTRY{% else %}UTILISATEURS PAR PAYS{% endif %} · <span id="sd-country-count">—</span></div>
+      <div class="sd-globe" aria-hidden="true"></div>
+      <div class="sd-country-list" id="sd-country-list">
+        <div class="sd-empty">{% if lang == 'en' %}Loading…{% else %}Chargement…{% endif %}</div>
+      </div>
+    </div>
+    <div class="sd-card cyan">
+      <div class="sd-card-title">{% if lang == 'en' %}MOST RECENT COUNTRIES{% else %}DERNIERS PAYS{% endif %}</div>
+      <div class="sd-latest" id="sd-latest-countries">
+        <div class="sd-empty">{% if lang == 'en' %}Loading…{% else %}Chargement…{% endif %}</div>
+      </div>
+      <div class="sd-card-sub" style="margin-top: 14px;">{% if lang == 'en' %}Day-level granularity only. No IP stored.{% else %}Granularité au jour. Aucune IP stockée.{% endif %}</div>
+    </div>
+  </div>
+</div>
+
+<div class="sd-section">
+  <div class="sd-section-title">{% if lang == 'en' %}YOUR VOICE{% else %}VOTRE VOIX{% endif %}</div>
+  <div class="sd-card cyan" style="min-height: 0;">
+    <div class="sd-card-title">{% if lang == 'en' %}SAFETY FEEDBACK{% else %}AVIS SÉCURITÉ{% endif %}</div>
+    <div class="sd-card-sub" style="margin-bottom: 14px;">
+      {% if lang == 'en' %}Share what worked, what didn't, what would make you safer. Anonymous (ip_hash only) — your feedback shapes the next release.{% else %}Dites ce qui a marché, ce qui n'a pas marché, ce qui vous aiderait à vous sentir plus en sécurité. Anonyme (ip_hash uniquement) — votre retour façonne la prochaine version.{% endif %}
+    </div>
+    <div class="sd-action">
+      <a href="/sentinel#feedback" class="sd-btn primary">✎ {% if lang == 'en' %}Send feedback{% else %}Envoyer un avis{% endif %}</a>
+      <a href="/sentinel" class="sd-btn ghost">🛡 {% if lang == 'en' %}Try Sentinel{% else %}Essayer Sentinel{% endif %}</a>
+    </div>
+  </div>
+</div>
+
+<div class="sd-privacy">
+  <div><strong>{% if lang == 'en' %}Zero personal data collected.{% else %}Zéro donnée personnelle collectée.{% endif %}</strong></div>
+  <div class="items">
+    <span>{% if lang == 'en' %}No IP stored (sha256 hash only){% else %}Aucune IP stockée (hash sha256 uniquement){% endif %}</span>
+    <span>{% if lang == 'en' %}No tracker, no third-party cookie{% else %}Aucun tracker, aucun cookie tiers{% endif %}</span>
+    <span>{% if lang == 'en' %}Country-level + day-level granularity only{% else %}Granularité pays + jour uniquement{% endif %}</span>
+    <span>{% if lang == 'en' %}Source: SELECT COUNT(*) FROM sentinel_sessions{% else %}Source : SELECT COUNT(*) FROM sentinel_sessions{% endif %}</span>
+  </div>
+</div>
+
+{% if not request.args.get('embed') %}
+<div class="sd-footer">
+  <span>{% if lang == 'en' %}Auto-refresh every 30 seconds · Source: /api/sentinel/metrics{% else %}Actualisation auto toutes les 30 secondes · Source : /api/sentinel/metrics{% endif %} · <span class="sd-countdown" id="sd-countdown">30s</span></span>
+  <button class="sd-refresh-btn" id="sd-refresh-btn">⟳ {% if lang == 'en' %}REFRESH NOW{% else %}ACTUALISER{% endif %}</button>
+</div>
+{% endif %}
+
+{% if not request.args.get('embed') %}
+<script src="/static/js/starfield.js" defer></script>
+{% endif %}
+<script>
+(function () {
+  'use strict';
+  var LANG = '{{ lang | default("fr") }}';
+  var REFRESH_MS = 30000;
+  var countdownTimer = null;
+  var countdownVal = 30;
+
+  var I18N = {
+    fr: {
+      ok_live: 'SYSTÈME OPÉRATIONNEL',
+      degraded: 'MÉTRIQUES INDISPONIBLES',
+      no_feedback: 'Aucun avis pour le moment',
+      no_feedback_sub: 'Soyez le premier à partager votre retour.',
+      no_success: 'aucune session menée à terme',
+      no_success_long: 'Module en beta — aucune session complète à ce jour.',
+      reviews_zero: '0 retour',
+      reviews_one: '1 retour utilisateur',
+      reviews_many: 'retours utilisateurs',
+      no_countries: 'Aucun pays détecté pour le moment.',
+      no_recent: 'Aucun pays récent.',
+      sessions_total: 'sessions enregistrées au total.',
+      last_update: 'Dernière mise à jour',
+      no_session_live: 'Aucune session live actuellement.',
+      one_session_live: '1 session live actuellement.',
+      n_sessions_live: 'sessions live actuellement.',
+      out_of: 'sur',
+      sessions_completed_short: 'menées à terme'
+    },
+    en: {
+      ok_live: 'SYSTEM OPERATIONAL',
+      degraded: 'METRICS UNAVAILABLE',
+      no_feedback: 'No reviews yet',
+      no_feedback_sub: 'Be the first to share your feedback.',
+      no_success: 'no session run to term',
+      no_success_long: 'Module in beta — no completed session yet.',
+      reviews_zero: '0 reviews',
+      reviews_one: '1 user review',
+      reviews_many: 'user reviews',
+      no_countries: 'No country detected yet.',
+      no_recent: 'No recent country.',
+      sessions_total: 'sessions recorded total.',
+      last_update: 'Last update',
+      no_session_live: 'No live session right now.',
+      one_session_live: '1 live session right now.',
+      n_sessions_live: 'live sessions right now.',
+      out_of: 'out of',
+      sessions_completed_short: 'completed'
+    }
+  };
+  var T = I18N[LANG] || I18N.fr;
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function setText(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+  function setHtml(id, html) {
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  }
+
+  function fmtTime(iso) {
+    try {
+      var d = iso ? new Date(iso) : new Date();
+      return d.toLocaleTimeString(LANG === 'en' ? 'en-US' : 'fr-FR') + ' UTC';
+    } catch (e) { return '—'; }
+  }
+
+  function renderSuccessRate(snap) {
+    var rate = snap.success_rate;
+    var sub = '';
+    if (rate == null) {
+      var el = document.getElementById('sd-success');
+      el.textContent = 'n/a';
+      el.classList.add('na');
+      el.classList.remove('green');
+      sub = T.no_success_long;
+    } else {
+      var el2 = document.getElementById('sd-success');
+      el2.textContent = rate + '%';
+      el2.classList.remove('na');
+      el2.classList.add('green');
+      sub = (snap.completed_sessions || 0) + ' ' + T.sessions_completed_short +
+            ' ' + T.out_of + ' ' + (snap.total_sessions || 0);
+    }
+    setText('sd-success-sub', sub);
+  }
+
+  function renderSatisfaction(snap) {
+    var n = snap.feedback_count || 0;
+    var avg = snap.feedback_average != null ? snap.feedback_average : snap.feedback_avg;
+    var elVal = document.getElementById('sd-satisfaction');
+    if (!n || !avg || avg <= 0) {
+      elVal.textContent = '—';
+      elVal.classList.add('na');
+      elVal.classList.remove('cyan');
+      setText('sd-satisfaction-sub', T.no_feedback);
+      var fbSub = document.getElementById('sd-satisfaction-sub');
+      if (fbSub) fbSub.classList.add('empty');
+    } else {
+      elVal.textContent = avg.toFixed(1) + '/5';
+      elVal.classList.remove('na');
+      elVal.classList.add('cyan');
+      var label = n + ' ' + (n === 1 ? T.reviews_one : T.reviews_many);
+      setText('sd-satisfaction-sub', label);
+      var fbSub2 = document.getElementById('sd-satisfaction-sub');
+      if (fbSub2) fbSub2.classList.remove('empty');
+    }
+  }
+
+  function renderFeedback(snap) {
+    var n = snap.feedback_count || 0;
+    var elVal = document.getElementById('sd-feedback');
+    elVal.textContent = n;
+    elVal.classList.remove('na');
+    elVal.classList.add('cyan');
+    var sub = (n === 0) ? T.no_feedback_sub
+             : (n === 1) ? T.reviews_one
+             : (n + ' ' + T.reviews_many);
+    setText('sd-feedback-sub', sub);
+    var subEl = document.getElementById('sd-feedback-sub');
+    if (subEl) subEl.classList.toggle('empty', n === 0);
+  }
+
+  function renderActive(snap) {
+    var a = snap.active_sessions != null ? snap.active_sessions : (snap.active_users || 0);
+    setText('sd-active-inline', a);
+  }
+
+  function renderSessions(snap) {
+    setText('sd-total', snap.total_sessions != null ? snap.total_sessions : '—');
+    setText('sd-completed', snap.completed_sessions != null ? snap.completed_sessions : '—');
+    setText('sd-pending', snap.pending_sessions != null ? snap.pending_sessions : '—');
+    setText('sd-interrupted', snap.interrupted_sessions != null ? snap.interrupted_sessions : '—');
+  }
+
+  function renderCountries(snap) {
+    setText('sd-country-count', snap.country_count != null ? snap.country_count : 0);
+    var list = (snap.countries && snap.countries.length) ? snap.countries : [];
+    var html;
+    if (!list.length) {
+      html = '<div class="sd-empty">' + escapeHtml(T.no_countries) + '</div>';
+    } else {
+      html = list.map(function (c) {
+        return '<div class="sd-country-row">' +
+                  '<span class="flag">' + escapeHtml(c.flag || '🌐') + '</span>' +
+                  '<span class="name">' + escapeHtml(c.name || c.code || '—') + '</span>' +
+                  '<span class="cnt">' + (c.count != null ? c.count : '—') + '</span>' +
+               '</div>';
+      }).join('');
+    }
+    setHtml('sd-country-list', html);
+
+    var latest = (snap.latest_countries && snap.latest_countries.length) ? snap.latest_countries : [];
+    var latestHtml;
+    if (!latest.length) {
+      latestHtml = '<div class="sd-empty">' + escapeHtml(T.no_recent) + '</div>';
+    } else {
+      latestHtml = latest.map(function (c) {
+        return '<span class="sd-flag-chip"><span class="flag">' + escapeHtml(c.flag || '🌐') + '</span>' +
+                  escapeHtml(c.code || '—') + '</span>';
+      }).join('');
+    }
+    setHtml('sd-latest-countries', latestHtml);
+  }
+
+  function renderStatus(ok, snap) {
+    var pill  = document.getElementById('sd-status-pill');
+    var label = document.getElementById('sd-status-label');
+    if (ok) {
+      pill.className = 'sd-pill green';
+      label.textContent = T.ok_live;
+    } else {
+      pill.className = 'sd-pill red';
+      label.textContent = T.degraded;
+    }
+    setText('sd-status-meta', T.last_update + ' : ' + fmtTime(snap && snap.now));
+  }
+
+  function renderAll(snap) {
+    if (!snap || snap.ok === false) {
+      renderStatus(false, snap || {});
+      return;
+    }
+    renderStatus(true, snap);
+    renderSessions(snap);
+    renderActive(snap);
+    renderSuccessRate(snap);
+    renderSatisfaction(snap);
+    renderFeedback(snap);
+    renderCountries(snap);
+  }
+
+  function fetchAndRender() {
+    fetch('/api/sentinel/metrics', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(renderAll)
+      .catch(function (e) {
+        console.error('sentinel metrics fetch failed', e);
+        renderStatus(false, {});
+      });
+  }
+
+  function resetCountdown() {
+    countdownVal = REFRESH_MS / 1000;
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(function () {
+      countdownVal--;
+      if (countdownVal <= 0) {
+        countdownVal = REFRESH_MS / 1000;
+        fetchAndRender();
+      }
+      var el = document.getElementById('sd-countdown');
+      if (el) el.textContent = countdownVal + 's';
+    }, 1000);
+  }
+
+  var btn = document.getElementById('sd-refresh-btn');
+  if (btn) btn.addEventListener('click', function () { fetchAndRender(); resetCountdown(); });
+
+  fetchAndRender();
+  resetCountdown();
+})();
+</script>
+</main>
+</body>
+</html>

@@ -94,6 +94,18 @@ def landing():
     )
 
 
+@sentinel_bp.route("/sentinel/dashboard", methods=["GET"])
+def public_dashboard():
+    """Public Sentinel honesty dashboard.
+
+    Read-only view that consumes the same /api/sentinel/metrics JSON the
+    landing trust block already uses. Every value rendered on the page
+    is fetched client-side; no metric is hard-coded in the template.
+    Supports ?embed=1 for the portail iframe (sidebar integration).
+    """
+    return render_template("sentinel/dashboard.html")
+
+
 @sentinel_bp.route("/sentinel/driver/<token>", methods=["GET"])
 def driver_page(token: str):
     try:
