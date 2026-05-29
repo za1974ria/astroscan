@@ -109,16 +109,22 @@ def test_incidents_external_returns_403(factory_client):
 
 
 def test_incidents_returned_after_writing(factory_client):
+    # Le ts doit être relatif à "maintenant" : audit_log.recent() filtre par
+    # fenêtre temporelle (since=24h → cutoff = now - 24h). Un timestamp absolu
+    # hardcodé (la version précédente utilisait "2026-05-21T20:00:00+00:00")
+    # devient invisible dès que le test dépasse 24h après sa date d'écriture.
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
     audit_log.write_incident(
         {
-            "ts": "2026-05-21T20:00:00+00:00",
+            "ts": now.isoformat(),
             "rule": "test_rule",
             "severity": "warn",
             "metric": "x.y",
             "operator": ">",
             "threshold": 1,
             "actual": 99,
-            "cooldown_until": "2026-05-21T20:30:00+00:00",
+            "cooldown_until": (now + timedelta(minutes=30)).isoformat(),
         }
     )
     resp = factory_client.get("/api/guardian/incidents?since=24h", environ_overrides=_local_env())
