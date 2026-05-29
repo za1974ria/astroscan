@@ -11,7 +11,14 @@ import json
 import time
 from datetime import datetime, timezone
 import requests
-import anthropic
+
+# anthropic est importé paresseusement dans les fonctions qui en ont besoin :
+# le module doit rester importable même si `anthropic` n'est pas installé,
+# pour que la cascade cache (S1→S4) du /api/apod réponde 200 sans Claude.
+try:
+    import anthropic  # noqa: F401
+except ImportError:  # pragma: no cover — environnement sans Claude SDK
+    anthropic = None  # type: ignore[assignment]
 
 NASA_API_KEY = os.getenv("NASA_API_KEY", "DEMO_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")

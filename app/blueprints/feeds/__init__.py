@@ -170,16 +170,10 @@ def api_feeds_all():
 
 
 # ── NASA APIs propres (Domaine W — services.nasa_service) ─────────────
-@bp.route("/api/nasa/apod")
-def api_nasa_apod():
-    """Image du jour NASA (APOD)."""
-    from services.nasa_service import _fetch_nasa_apod
-    try:
-        payload = get_cached("nasa_apod_v1", 1800, _fetch_nasa_apod)
-        code = 200 if payload.get("ok") else 502
-        return jsonify(payload), code
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+# Note : /api/nasa/apod est servi exclusivement par `nasa_proxy_bp`
+# (app/blueprints/nasa_proxy/__init__.py, url_prefix=/api/nasa, route /apod).
+# Le doublon historique de feeds_bp est supprimé pour éliminer la collision
+# détectée par tests/smoke/test_factory.py::test_create_app_no_url_collisions.
 
 
 @bp.route("/api/nasa/neo")
@@ -538,17 +532,12 @@ def api_missions_overview():
     })
 
 
-# ── PASS 14 — APOD alias + Survol ISS + Flights OpenSky/AirLabs ────────
-@bp.route("/api/apod")
-def api_apod_alias():
-    """Alias /api/apod → fetch direct via services.nasa_service."""
-    try:
-        from services.nasa_service import _fetch_nasa_apod
-        payload = get_cached("nasa_apod_v1", 1800, _fetch_nasa_apod)
-        code = 200 if payload.get("ok") else 502
-        return jsonify(payload), code
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+# ── PASS 14 — Survol ISS + Flights OpenSky/AirLabs ────────────────────
+# Note : /api/apod est servi exclusivement par `apod_bp`
+# (app/blueprints/apod/routes.py) avec la cascade S1→S4 (cache disque jour,
+# cache négatif, fetch NASA timeout 4s, stale fallback). L'alias historique
+# de feeds_bp est supprimé pour éliminer la collision détectée par
+# tests/smoke/test_factory.py::test_create_app_no_url_collisions.
 
 
 @bp.route("/api/survol")

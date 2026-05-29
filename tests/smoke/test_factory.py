@@ -26,10 +26,15 @@ def test_create_app_registers_blueprints(factory_app):
 
 
 def test_create_app_route_count_within_expected_range(factory_app):
-    """Route count should be near the production target of 262."""
+    """Route count should be near the current production target of ~330.
+
+    Recalibré post-axe1 (2026-05-29) après :
+      - ajouts control_tower / hilal / sentinel / guardian / astrobrain
+      - suppression des doublons /api/apod et /api/nasa/apod dans feeds_bp
+    Fourchette ±10 % autour du décompte réel pour absorber les évolutions.
+    """
     n = sum(1 for _ in factory_app.url_map.iter_rules())
-    # We accept ±10 % drift to absorb minor route additions/removals
-    assert 230 <= n <= 290, f"Got {n} routes — outside expected band [230, 290]"
+    assert 300 <= n <= 360, f"Got {n} routes — outside expected band [300, 360]"
 
 
 def test_create_app_health_endpoint_responds(factory_client):
