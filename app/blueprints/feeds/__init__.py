@@ -434,48 +434,119 @@ def api_sondes_live():
     return jsonify(payload)
 
 
+def _orbits_sat_position_now(tle1: str, tle2: str):
+    """Sub-satellite point (lat, lon, alt_km) right now via SGP4 + local TLE.
+
+    All computation is local — no network calls. Returns None if SGP4 fails
+    or any TLE line is missing/invalid. The caller is responsible for
+    skipping the satellite rather than substituting a placeholder.
+    """
+    import math
+    from datetime import datetime, timezone
+    try:
+        from sgp4.api import Satrec, jday
+    except Exception:
+        return None
+    line1 = str(tle1 or "").strip()
+    line2 = str(tle2 or "").strip()
+    if not line1 or not line2:
+        return None
+    try:
+        now = datetime.now(timezone.utc)
+        jd, fr = jday(
+            now.year, now.month, now.day,
+            now.hour, now.minute,
+            now.second + (now.microsecond / 1_000_000.0),
+        )
+        rec = Satrec.twoline2rv(line1, line2)
+        e, r, _v = rec.sgp4(jd, fr)
+        if e != 0:
+            return None
+
+        # TEME → ECEF: rotate around Z by GMST.
+        t = (jd - 2451545.0) + fr
+        gmst_deg = (280.46061837 + 360.98564736629 * t) % 360.0
+        g = math.radians(gmst_deg)
+        cg, sg = math.cos(g), math.sin(g)
+        x = r[0] * cg + r[1] * sg
+        y = -r[0] * sg + r[1] * cg
+        z = r[2]
+
+        # ECEF → geodetic lat/lon/alt (WGS-84, Bowring closed-form).
+        a = 6378.137              # km
+        f = 1.0 / 298.257223563
+        b = a * (1.0 - f)
+        e2  = (a * a - b * b) / (a * a)
+        ep2 = (a * a - b * b) / (b * b)
+        p = math.sqrt(x * x + y * y)
+        th = math.atan2(z * a, p * b)
+        sth, cth = math.sin(th), math.cos(th)
+        lat = math.atan2(z + ep2 * b * sth ** 3, p - e2 * a * cth ** 3)
+        lon = math.atan2(y, x)
+        sin_lat = math.sin(lat)
+        n = a / math.sqrt(1.0 - e2 * sin_lat * sin_lat)
+        alt = p / math.cos(lat) - n
+        return (math.degrees(lat), math.degrees(lon), alt)
+    except Exception:
+        return None
+
+
 @bp.route("/api/orbits/live")
 def api_orbits_live():
-    """Positions satellites pour la carte orbitale : ISS + NOAA. Cache 30 s."""
+    """ISS + NOAA positions, computed locally via SGP4. Cache 30 s.
+
+    Drops the previous open-notify.org HTTP call (consistently timed out
+    from the Hetzner host) and the hardcoded NOAA placeholder coords
+    (45.0/-122.0 …). Every position is now a real SGP4 sub-satellite
+    point derived from the local TLE cache. Satellites whose TLE is
+    not available are skipped rather than faked.
+    """
     import time
+    from datetime import datetime, timezone
     from app.utils.cache import cache_cleanup
+    from app.services.iss_compute import _get_satellite_tle_by_name
 
     cache_cleanup()
     cached = cache_get("orbits_live", 30)
     if cached is not None:
         return jsonify(cached)
 
-    satellites = []
-    try:
-        from app.services.iss_live import _fetch_iss_live
-        iss = get_cached("iss_live", 5, _fetch_iss_live)
-        if iss:
-            lat = iss.get("latitude") if "latitude" in iss else iss.get("lat", 0)
-            lon = iss.get("longitude") if "longitude" in iss else iss.get("lon", 0)
-            satellites.append({
-                "id": "iss",
-                "name": "ISS",
-                "lat": float(lat),
-                "lon": float(lon),
-                "type": "iss",
-                "alt": iss.get("alt", iss.get("altitude", 408)),
-            })
-    except Exception:
-        pass
+    targets = [
+        ("ISS",    "iss",     "iss",  "ISS"),
+        ("NOAA15", "noaa_15", "noaa", "NOAA-15"),
+        ("NOAA18", "noaa_18", "noaa", "NOAA-18"),
+        ("NOAA19", "noaa_19", "noaa", "NOAA-19"),
+    ]
 
-    for name, lat, lon in [
-        ("NOAA-19", 45.0, -122.0),
-        ("NOAA-18", -30.0, 10.0),
-        ("NOAA-15", 20.0, 80.0),
-    ]:
+    satellites = []
+    for lookup, sat_id, sat_type, display_name in targets:
+        try:
+            tle1, tle2, _resolved = _get_satellite_tle_by_name(lookup)
+        except Exception:
+            tle1 = tle2 = None
+        if not tle1 or not tle2:
+            continue
+        pos = _orbits_sat_position_now(tle1, tle2)
+        if not pos:
+            continue
+        lat, lon, alt = pos
         satellites.append({
-            "id": name.lower().replace("-", "_"),
-            "name": name,
-            "lat": lat,
-            "lon": lon,
-            "type": "noaa",
+            "id": sat_id,
+            "name": display_name,
+            "lat": round(lat, 4),
+            "lon": round(lon, 4),
+            "alt": round(alt, 1),
+            "type": sat_type,
         })
-    payload = {"satellites": satellites, "timestamp": int(time.time())}
+
+    payload = {
+        "satellites": satellites,
+        "source": "sgp4_local_tle",
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "timestamp": int(time.time()),
+    }
+    if not satellites:
+        payload["note"] = "no TLE in cache"
     cache_set("orbits_live", payload)
     return jsonify(payload)
 
