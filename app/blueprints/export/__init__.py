@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, Response, current_app, jsonify
 
 from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M
+from app.services.paths import DB_PATH as _PATHS_DB_PATH
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +28,12 @@ bp_global = Blueprint("export_global", __name__)
 
 
 def _db():
-    return sqlite3.connect(current_app.config["DB_PATH"])
+    # Le blueprint export est aussi monté sur l'app monolith via
+    # register_all_for_fallback() — celle-ci ne peuple pas
+    # `app.config["DB_PATH"]` (peuplé uniquement par create_app). Repli sur
+    # la source canonique env-driven (`app.services.paths.DB_PATH`).
+    db_path = current_app.config.get("DB_PATH") or _PATHS_DB_PATH
+    return sqlite3.connect(db_path)
 
 
 def _meta(description: str, **kwargs) -> dict:
