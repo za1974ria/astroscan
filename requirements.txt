@@ -43,3 +43,4 @@ tenacity>=8,<10
 # WSGI runtime — invoqué par systemd via `python3 -m gunicorn` (cf. astroscan.service).
 # Version alignée sur l'installation actuelle.
 gunicorn==20.1.0
+ephem>=4.2,<5
