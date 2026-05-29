@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 
 from app.blueprints.guardian import agent, audit_log
@@ -113,8 +115,9 @@ def test_incidents_returned_after_writing(factory_client):
     # fenêtre temporelle (since=24h → cutoff = now - 24h). Un timestamp absolu
     # hardcodé (la version précédente utilisait "2026-05-21T20:00:00+00:00")
     # devient invisible dès que le test dépasse 24h après sa date d'écriture.
-    from datetime import datetime, timedelta, timezone
-    now = datetime.now(timezone.utc)
+    from datetime import datetime, timedelta
+
+    now = datetime.now(UTC)
     audit_log.write_incident(
         {
             "ts": now.isoformat(),

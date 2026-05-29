@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -19,9 +19,13 @@ def _iso(dt):
 
 
 def test_compute_meta_fresh_sgp4_is_live_high():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     meta = iss_module._compute_meta(
-        _iso(now), "SGP4", "2026-05-28T18:00:00Z", datetime, timezone,
+        _iso(now),
+        "SGP4",
+        "2026-05-28T18:00:00Z",
+        datetime,
+        timezone,
     )
     assert meta["status"] == "live"
     assert meta["confidence"] == "high"
@@ -30,9 +34,13 @@ def test_compute_meta_fresh_sgp4_is_live_high():
 
 
 def test_compute_meta_60s_old_is_stale_medium():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     meta = iss_module._compute_meta(
-        _iso(now - timedelta(seconds=60)), "SGP4", None, datetime, timezone,
+        _iso(now - timedelta(seconds=60)),
+        "SGP4",
+        None,
+        datetime,
+        timezone,
     )
     assert meta["status"] == "stale"
     assert meta["confidence"] == "medium"
@@ -41,9 +49,13 @@ def test_compute_meta_60s_old_is_stale_medium():
 
 
 def test_compute_meta_47min_old_is_stale_low():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     meta = iss_module._compute_meta(
-        _iso(now - timedelta(minutes=47)), "SGP4", None, datetime, timezone,
+        _iso(now - timedelta(minutes=47)),
+        "SGP4",
+        None,
+        datetime,
+        timezone,
     )
     assert meta["status"] == "stale"
     assert meta["confidence"] == "low"
@@ -51,9 +63,13 @@ def test_compute_meta_47min_old_is_stale_low():
 
 
 def test_compute_meta_fallback_never_high_even_when_fresh():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     meta = iss_module._compute_meta(
-        _iso(now), "fallback", None, datetime, timezone,
+        _iso(now),
+        "fallback",
+        None,
+        datetime,
+        timezone,
     )
     assert meta["status"] == "fallback"
     assert meta["confidence"] in ("medium", "low")
@@ -92,8 +108,8 @@ def test_position_invalid_detected(lat, lon):
         (51.0, 13.0),
         (-12.5, 144.2),
         (0.0001, 0.0001),  # NEAR Null Island but not exactly zero
-        (1.0, 0.0),        # On the equator, NOT at the prime meridian
-        (0.0, 1.0),        # On the prime meridian, NOT at the equator
+        (1.0, 0.0),  # On the equator, NOT at the prime meridian
+        (0.0, 1.0),  # On the prime meridian, NOT at the equator
     ],
 )
 def test_position_valid_passes(lat, lon):
@@ -115,7 +131,7 @@ def test_force_unavailable_overrides_live_high():
         "confidence": "high",
         "age_seconds": 0,
         "source": "SGP4",
-        "last_updated": _iso(datetime.now(timezone.utc)),
+        "last_updated": _iso(datetime.now(UTC)),
     }
     forced = iss_module._force_unavailable_meta(fresh_meta)
     assert forced["status"] == "unavailable"
@@ -149,10 +165,11 @@ def test_invalid_position_meta_never_live_or_trusted(lat, lon):
     assert iss_module._position_is_invalid(lat, lon) is True
     # Even a perfectly fresh SGP4 meta must be capped:
     fresh_meta = iss_module._compute_meta(
-        _iso(datetime.now(timezone.utc)),
+        _iso(datetime.now(UTC)),
         "SGP4",
         "2026-05-28T18:00:00Z",
-        datetime, timezone,
+        datetime,
+        timezone,
     )
     assert fresh_meta["status"] == "live"
     assert fresh_meta["confidence"] == "high"
