@@ -198,6 +198,128 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+# ---------------------------------------------------------------------------
+# NOAA SWPC parsers — robust to schema migrations (fix_kp 2026-05-29)
+# ---------------------------------------------------------------------------
+
+
+def _iso_age_seconds(time_tag: Optional[str]) -> Optional[int]:
+    """Return ``now_utc - time_tag`` in seconds, or None if unparseable.
+
+    NOAA time_tags come as ISO-8601 strings without explicit timezone (e.g.
+    "2026-05-29T06:00:00") but document them as UTC. We assume UTC when the
+    suffix is missing.
+    """
+    if not time_tag:
+        return None
+    try:
+        s = str(time_tag).strip().replace("Z", "+00:00")
+        # Naïve ISO without offset → treat as UTC per NOAA convention.
+        if "+" not in s and "T" in s and len(s) >= 10:
+            try:
+                dt = datetime.fromisoformat(s)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+            except ValueError:
+                return None
+        else:
+            dt = datetime.fromisoformat(s)
+        return int((datetime.now(timezone.utc) - dt).total_seconds())
+    except Exception:
+        return None
+
+
+def _parse_latest_kp(payload: Any) -> tuple[Optional[float], Optional[str]]:
+    """Return ``(latest_kp, time_tag)`` from the NOAA Kp endpoint.
+
+    Handles BOTH historical schemas robustly:
+
+    * **Current (≥ 2025)** — list of dicts::
+
+        [{"time_tag": "...", "Kp": 2.33, "a_running": ..., "station_count": ...}, ...]
+
+    * **Legacy** — list of lists with header row::
+
+        [["time_tag", "Kp", "a_running", "station_count"],
+         ["2024-...",  1.33, 5,           7], ...]
+
+    Returns ``(None, None)`` if no valid row is found. Never substitutes a
+    hardcoded fallback — the caller is responsible for marking the payload
+    `live=false` in that case.
+    """
+    if not isinstance(payload, list) or not payload:
+        return (None, None)
+
+    first = payload[0]
+
+    # ── Dict schema (current) ────────────────────────────────────────────
+    if isinstance(first, dict):
+        for row in reversed(payload):
+            if not isinstance(row, dict):
+                continue
+            kp = row.get("Kp")
+            if kp is None:
+                kp = row.get("kp")
+            try:
+                kp_val = float(kp)
+            except (TypeError, ValueError):
+                continue
+            time_tag = row.get("time_tag") or row.get("timeTag")
+            return (kp_val, time_tag if isinstance(time_tag, str) else None)
+        return (None, None)
+
+    # ── List-of-lists with header (legacy) ───────────────────────────────
+    if isinstance(first, list):
+        rows = [r for r in payload if isinstance(r, list) and len(r) >= 2]
+        # Skip header rows whose Kp cell is the literal "Kp".
+        rows = [r for r in rows if str(r[1]).strip().lower() != "kp"]
+        for row in reversed(rows):
+            try:
+                kp_val = float(row[1])
+            except (TypeError, ValueError):
+                continue
+            time_tag = row[0] if isinstance(row[0], str) else None
+            return (kp_val, time_tag)
+        return (None, None)
+
+    return (None, None)
+
+
+def _parse_latest_f107(payload: Any) -> tuple[Optional[float], Optional[str]]:
+    """Return ``(latest_flux, time_tag)`` from the F10.7 endpoint, or
+    ``(None, None)`` on empty/invalid input. No hardcoded fallback."""
+    if not isinstance(payload, list) or not payload:
+        return (None, None)
+    for row in reversed(payload):
+        if not isinstance(row, dict):
+            continue
+        flux = row.get("flux")
+        try:
+            flux_val = float(flux)
+        except (TypeError, ValueError):
+            continue
+        time_tag = row.get("time_tag") or row.get("timeTag")
+        return (flux_val, time_tag if isinstance(time_tag, str) else None)
+    return (None, None)
+
+
+def _parse_latest_xray(payload: Any) -> tuple[Optional[float], Optional[str]]:
+    """Return ``(latest_long_band_flux, time_tag)`` for the GOES X-ray
+    long-band (0.1-0.8 nm) reading, or ``(None, None)`` if absent."""
+    if not isinstance(payload, list) or not payload:
+        return (None, None)
+    long_band = [r for r in payload if isinstance(r, dict) and r.get("energy") == "0.1-0.8nm"]
+    for row in reversed(long_band):
+        flux = row.get("flux")
+        try:
+            flux_val = float(flux)
+        except (TypeError, ValueError):
+            continue
+        time_tag = row.get("time_tag") or row.get("timeTag")
+        return (flux_val, time_tag if isinstance(time_tag, str) else None)
+    return (None, None)
+
+
 def _parse_iss_tle(text: str) -> Optional[Dict[str, Any]]:
     """Extract ISS (NORAD 25544) TLE from any CelesTrak response format.
 
@@ -342,7 +464,20 @@ def create_app() -> FastAPI:
 
     @app.get("/api/space-weather")
     async def space_weather() -> JSONResponse:
-        """Latest Kp, F10.7 flux, and GOES X-ray long-band — NOAA SWPC."""
+        """Latest Kp, F10.7 flux, and GOES X-ray long-band — NOAA SWPC.
+
+        Anti-mensonge (fix_kp 2026-05-29) :
+          - Le parseur Kp gère ROBUSTEMENT les deux formats publiés
+            historiquement par NOAA (liste de dicts depuis ~2025, liste
+            de listes avec ligne d'en-tête avant). Cf. _parse_latest_kp.
+          - INTERDIT : émettre `live=true` avec une valeur Kp hardcodée
+            quand le parsing ne donne aucune ligne valide. Dans ce cas
+            `kp` vaut `null`, `kp_time_tag` vaut `null`, `live` passe à
+            False et `source` à `"unavailable"` (ou `"NOAA SWPC (partial)"`
+            si xray/f107 ont quand même réussi).
+          - Chaque sous-champ expose son `time_tag` + `age_seconds` pour
+            que le client puisse trier vrai-live / périmé / absent.
+        """
         now = time.time()
         if _SWX_CACHE["data"] and (now - _SWX_CACHE["ts"]) < _SWX_TTL_S:
             return JSONResponse(_SWX_CACHE["data"])
@@ -365,34 +500,52 @@ def create_app() -> FastAPI:
             flux_arr = json.loads(flux_text)
             xray_arr = json.loads(xray_text)
 
-            # Kp: header row then [time_tag, Kp, a_running, station_count] rows.
-            kp_rows = [r for r in kp_arr if isinstance(r, list) and len(r) >= 2 and r[1] != "Kp"]
-            latest_kp = float(kp_rows[-1][1]) if kp_rows else 2.5
+            latest_kp, kp_time_tag = _parse_latest_kp(kp_arr)
+            latest_flux, flux_time_tag = _parse_latest_f107(flux_arr)
+            latest_xray, xray_time_tag = _parse_latest_xray(xray_arr)
 
-            # F10.7: list of {time_tag, flux}.
-            latest_flux = float(flux_arr[-1].get("flux", 140.0)) if flux_arr else 140.0
-
-            # X-ray flux: filter for 0.1-0.8 nm (long-band, the standard class indicator).
-            long_band = [r for r in xray_arr if r.get("energy") == "0.1-0.8nm"]
-            latest_xray = float(long_band[-1].get("flux", 1e-7)) if long_band else 1e-7
-
+            kp_live = latest_kp is not None
             data = {
                 "kp": latest_kp,
+                "kp_time_tag": kp_time_tag,
+                "kp_age_seconds": _iso_age_seconds(kp_time_tag),
+                "kp_live": kp_live,
                 "f107": latest_flux,
+                "f107_time_tag": flux_time_tag,
+                "f107_age_seconds": _iso_age_seconds(flux_time_tag),
                 "xray_long_wm2": latest_xray,
-                "source": "NOAA SWPC",
-                "live": True,
+                "xray_time_tag": xray_time_tag,
+                "xray_age_seconds": _iso_age_seconds(xray_time_tag),
+                "live": kp_live,  # top-level live ↔ Kp live (consumer du Threat Index)
+                "source": "NOAA SWPC" if kp_live else "NOAA SWPC (partial)",
                 "fetched": _now_iso(),
             }
+            if not kp_live:
+                data["warning"] = (
+                    "Kp parsing failed (NOAA returned no recognizable rows). "
+                    "kp=null until next refresh; xray/f107 may still be valid."
+                )
+                # Ne pas cacher un payload partiel pour éviter de figer un kp=null
+                # pendant tout le TTL ; on retentera au prochain hit.
+                return JSONResponse(data)
+
             _SWX_CACHE["data"] = data
             _SWX_CACHE["ts"] = now
             return JSONResponse(data)
         except Exception as e:
+            # Total fetch/parse failure → unavailable, jamais de valeur hardcodée.
             return JSONResponse({
-                "kp": 2.7,
-                "f107": 142.0,
-                "xray_long_wm2": 1.6e-7,
-                "source": "fallback",
+                "kp": None,
+                "kp_time_tag": None,
+                "kp_age_seconds": None,
+                "kp_live": False,
+                "f107": None,
+                "f107_time_tag": None,
+                "f107_age_seconds": None,
+                "xray_long_wm2": None,
+                "xray_time_tag": None,
+                "xray_age_seconds": None,
+                "source": "unavailable",
                 "live": False,
                 "error": str(e)[:200],
                 "fetched": _now_iso(),
