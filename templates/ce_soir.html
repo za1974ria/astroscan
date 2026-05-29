@@ -338,7 +338,7 @@ html.embed-portail .topbar { grid-column:1 / -1 !important; }
       <span class="brand-sub">ORBITAL-CHOHRA</span>
     </a>
     <div class="topbar-center">
-      <div class="tbar-visits"><span>👁</span><span id="tbar-visits-val">— —</span></div>
+      <div class="tbar-visits" title="Visiteurs uniques (humains, hors owner)"><span>👁</span><span id="tbar-visits-val">— —</span></div>
       <div class="tbar-chip"><div class="tbar-dot green"></div>AEGIS ACTIF</div>
       <div class="tbar-chip"><div class="tbar-dot green"></div>TLE <span id="top-tle-count" style="color:var(--cyan);margin-left:3px">—</span></div>
       <div class="tbar-chip"><div class="tbar-dot amber"></div>NASA SYNC</div>
@@ -694,8 +694,9 @@ document.getElementById('sidebar-overlay').addEventListener('click',function(){
 });
 
 /* ── TOPBAR: visits + TLE + IP ── */
-fetch('/api/visits').then(r=>r.ok?r.json():null).then(d=>{
-  if(d){const v=d.count||0; document.getElementById('tbar-visits-val').textContent=v.toLocaleString('fr-FR');}
+// Bandeau canonique : visiteurs uniques (source unique de vérité).
+fetch('/api/visitors/stats').then(r=>r.ok?r.json():null).then(d=>{
+  if(d){const v=Number(d.total||0); document.getElementById('tbar-visits-val').textContent=v.toLocaleString('fr-FR');}
 }).catch(()=>{});
 
 fetch('/api/tle/status').then(r=>r.ok?r.json():null).then(d=>{

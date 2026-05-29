@@ -1471,7 +1471,7 @@ hr{
     </div>
 
     <div class="topbar-center">
-      <div class="tbar-visits" id="tbar-visits" title="Visites">
+      <div class="tbar-visits" id="tbar-visits" title="Visiteurs uniques (humains, hors owner)">
         <span style="margin-right:4px">👁️</span>
         <span id="tbar-visits-val">{% set _vc_raw = visitor_count|default(none) %}{% if _vc_raw is not none and _vc_raw is number and _vc_raw > 0 %}{% set _vc = '%06d' % (_vc_raw|int) %}{{ _vc[:3] }} {{ _vc[3:] }}{% else %}<span style="opacity:0.55">•••</span>{% endif %}</span>
       </div>
@@ -2463,7 +2463,8 @@ hr{
 
   // Compteur visites (format "000 123")
   function fmtVisits(n){var s=String(Math.max(0,n));var p=('000000'+s).slice(-6);return p.slice(0,3)+' '+p.slice(3);}
-  function loadVisitsPortail(){fetch('/api/visits').then(function(r){return r.ok?r.json():null;}).then(function(d){var el=document.getElementById('tbar-visits-val');if(!el||!d)return;var n=Number(d.count||0);if(n<=0){return;/* PHASE B1: pas d'overwrite SSR si count<=0 */}var newVal=fmtVisits(n);if(el.textContent!==newVal){el.textContent=newVal;el.classList.remove('header-counter-pulse');void el.offsetWidth;el.classList.add('header-counter-pulse');setTimeout(function(){el.classList.remove('header-counter-pulse');},450);}}).catch(function(){});}
+  // Banner = unique visitors (canonical truth). Source: /api/visitors/stats.total.
+  function loadVisitsPortail(){fetch('/api/visitors/stats').then(function(r){return r.ok?r.json():null;}).then(function(d){var el=document.getElementById('tbar-visits-val');if(!el||!d)return;var n=Number(d.total||0);if(n<=0){return;/* PHASE B1: pas d'overwrite SSR si total<=0 */}var newVal=fmtVisits(n);if(el.textContent!==newVal){el.textContent=newVal;el.classList.remove('header-counter-pulse');void el.offsetWidth;el.classList.add('header-counter-pulse');setTimeout(function(){el.classList.remove('header-counter-pulse');},450);}}).catch(function(){});}
   loadVisitsPortail();
   setInterval(loadVisitsPortail, API_INTERVALS.visits);
 

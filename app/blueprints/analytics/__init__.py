@@ -196,18 +196,18 @@ def api_visitor_score_update():
 def api_analytics_summary():
     """JSON summary pour dashboard : visiteurs, pages vues, human%, top pages, owner."""
     from app.services.db_visitors import _get_db_visitors
+    from app.services.analytics_dashboard import get_visitor_truth
     try:
+        # Canonical visitor figures — single source of truth (no local re-COUNT).
+        truth = get_visitor_truth()
+        unique_ips = truth["unique_visitors"]
+        total_sessions = truth["total_visits"]
+
         conn = _get_db_visitors()
         conn.row_factory = sqlite3.Row
 
-        total_sessions = conn.execute(
-            "SELECT COUNT(*) FROM visitor_log WHERE is_bot=0 AND is_owner=0"
-        ).fetchone()[0]
         total_page_views = conn.execute(
             "SELECT COUNT(*) FROM page_views"
-        ).fetchone()[0]
-        unique_ips = conn.execute(
-            "SELECT COUNT(DISTINCT ip) FROM visitor_log WHERE is_bot=0 AND is_owner=0"
         ).fetchone()[0]
         bot_count = conn.execute(
             "SELECT COUNT(*) FROM visitor_log WHERE is_bot=1"
@@ -438,74 +438,30 @@ def api_visitors_stats():
       exclude_my_ip      — whether owner IPs were excluded
       by_country         — top 50 countries by unique-visitor count
     """
-    from app.services.db_visitors import _get_db_visitors
     try:
-        # Owner IPs no longer hardcoded. Source: ASTROSCAN_OWNER_IPS env
-        # (comma-separated). is_owner=0 is the primary defence; the IP
-        # exclusion is kept as a secondary safety net so newly-logged
-        # rows that haven't been tagged yet are still filtered.
-        owner_ips = [
+        # Single source of truth — no local COUNT queries allowed.
+        from app.services.analytics_dashboard import get_visitor_truth
+        owner_ips = {
             x.strip()
             for x in (os.environ.get("ASTROSCAN_OWNER_IPS") or "").split(",")
             if x.strip()
-        ]
+        }
         exclude_my_ip = (request.args.get("exclude_my_ip", "0") or "0").strip() in (
             "1", "true", "yes", "on",
         )
-        excluded = {"127.0.0.1", "::1"}
-        if exclude_my_ip:
-            excluded.update(owner_ips)
-        placeholders = ",".join(["?"] * len(excluded))
-        params = tuple(excluded)
-        # Reused everywhere — bot / owner filter + IP exclusion.
-        where_clean = (
-            f"is_bot=0 AND is_owner=0 AND ip NOT IN ({placeholders})"
-        )
-        conn = _get_db_visitors()
-
-        # PASS 27 — Normalize NL duplicate at query time. Count DISTINCT ip
-        # per country so heavy refreshers don't dominate the ranking.
-        by_country = conn.execute(
-            "SELECT CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country, "
-            "country_code, COUNT(DISTINCT ip) as cnt "
-            "FROM visitor_log "
-            f"WHERE {where_clean} AND country != 'Unknown' "
-            "GROUP BY CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END, country_code "
-            "ORDER BY cnt DESC LIMIT 50",
-            params,
-        ).fetchall()
-        total = conn.execute(
-            f"SELECT COUNT(DISTINCT ip) FROM visitor_log WHERE {where_clean}",
-            params,
-        ).fetchone()[0]
-        total_visits = conn.execute(
-            f"SELECT COUNT(*) FROM visitor_log WHERE {where_clean}",
-            params,
-        ).fetchone()[0]
-        today = conn.execute(
-            "SELECT COUNT(DISTINCT ip) FROM visitor_log "
-            f"WHERE {where_clean} AND date(visited_at)=date('now')",
-            params,
-        ).fetchone()[0]
-        distinct_countries = conn.execute(
-            "SELECT COUNT(DISTINCT country_code) FROM visitor_log "
-            f"WHERE {where_clean} "
-            "AND country_code IS NOT NULL AND country_code != '' "
-            "AND country_code != 'XX' AND country != 'Unknown'",
-            params,
-        ).fetchone()[0]
-        conn.close()
+        # `exclude_my_ip` is now a no-op on the count itself (truth always
+        # excludes owners via is_owner=0 + env IP set). Echoed back so the
+        # frontend contract stays stable.
+        truth = get_visitor_truth(owner_ips if exclude_my_ip else None)
         return jsonify({
-            "total": total,
-            "total_visits": total_visits,
-            "today": today,
-            "distinct_countries": distinct_countries,
+            "total": truth["unique_visitors"],
+            "total_visits": truth["total_visits"],
+            "today": truth["today_unique"],
+            "distinct_countries": truth["distinct_countries"],
             "exclude_my_ip": exclude_my_ip,
             "by_country": [
-                {"country": r[0], "code": r[1] or "XX", "count": r[2]}
-                for r in by_country
-                if (r[1] or "XX").upper() != "XX"
-                and "inconnu" not in (r[0] or "").lower()
+                {"country": r["country"], "code": r["code"], "count": r["count"]}
+                for r in truth["by_country"]
             ],
         })
     except Exception as e:

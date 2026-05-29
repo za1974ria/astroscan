@@ -213,11 +213,31 @@ def get_global_stats(exclude_my_ip=True):
             "country": cname or cc, "code": cc,
         })
 
+    # Canonical visitor truth (single source). total / distinct_countries
+    # / top_countries are overridden so /api/visitors/snapshot agrees with
+    # /api/visitors/stats and the cockpit. The rest of the payload
+    # (online_now, last_connections, heatmap, humans_today, points)
+    # keeps the snapshot-specific shape the live widgets rely on.
+    try:
+        from app.services.analytics_dashboard import get_visitor_truth
+        owner_ips = excluded if exclude_my_ip else None
+        truth = get_visitor_truth(owner_ips)
+        canonical_total = truth["unique_visitors"]
+        canonical_distinct_countries = truth["distinct_countries"]
+        canonical_top_countries = truth["by_country"][:10]
+        canonical_total_visits = truth["total_visits"]
+    except Exception:
+        canonical_total = total_all
+        canonical_distinct_countries = len(gcc)
+        canonical_top_countries = top_countries
+        canonical_total_visits = total_all
+
     return {
-        "total": total_all,
+        "total": canonical_total,
+        "total_visits": canonical_total_visits,
         "online_now": online_now,
-        "top_countries": top_countries,
-        "distinct_countries": len(gcc),
+        "top_countries": canonical_top_countries,
+        "distinct_countries": canonical_distinct_countries,
         "last_connections": last_connections,
         "heatmap": heatmap,
         "humans_total": humans,

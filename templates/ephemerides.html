@@ -328,7 +328,7 @@ main, .content, .grid { contain: layout; }
       <span class="brand-sub">ORBITAL-CHOHRA</span>
     </a>
     <div class="topbar-center">
-      <div class="tbar-visits"><span>👁</span><span id="tbar-visits-val">— —</span></div>
+      <div class="tbar-visits" title="Visiteurs uniques (humains, hors owner)"><span>👁</span><span id="tbar-visits-val">— —</span></div>
       <div class="tbar-chip"><div class="tbar-dot green"></div>ASTROPY 7.2</div>
       <div class="tbar-chip"><div class="tbar-dot green"></div>ÉPHÉMÉRIDES</div>
       <div class="tbar-chip"><div class="tbar-dot amber"></div>DE432</div>
@@ -497,10 +497,10 @@ function tickClock() {
 setInterval(tickClock, 1000);
 tickClock();
 
-// ── Compteur visites ──
-fetch('/api/visits').then(r=>r.json()).then(d=>{
+// ── Compteur bandeau : visiteurs uniques (source canonique unique) ──
+fetch('/api/visitors/stats').then(r=>r.json()).then(d=>{
   const el=document.getElementById('tbar-visits-val');
-  if(el && d && d.count !== undefined) el.textContent = d.count.toLocaleString('fr-FR');
+  if(el && d && d.total !== undefined) el.textContent = Number(d.total).toLocaleString('fr-FR');
 }).catch(()=>{});
 
 // ── Phase lunaire → emoji ──

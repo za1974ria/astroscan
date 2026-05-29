@@ -155,6 +155,119 @@ def owner_ip_sql_filter(owner_ips: set | None = None) -> tuple[str, list]:
     return " AND ".join(fragments), params
 
 
+# ─────────────────────────────────────────────────────────────────────
+# CANONICAL VISITOR TRUTH (2026-05-29)
+# Every visitor counter rendered anywhere in the app — banner, cockpit,
+# /api/visitors/stats, /api/visitors/snapshot, a_propos block, research
+# dashboard — must derive from this function. No endpoint is allowed to
+# redefine "unique visitors" with its own COUNT query. The canonical
+# filter is owner_ip_sql_filter() (is_bot=0 AND is_owner=0 + IP ranges
+# + env-loaded owner IPs).
+# ─────────────────────────────────────────────────────────────────────
+def get_visitor_truth(owner_ips: set | None = None) -> dict:
+    """Single source of truth for visitor metrics. Fail-safe defaults to 0.
+
+    Returns a dict with exactly the keys below. One DB connection,
+    read-only queries, global try/except — never raises. Callers are
+    expected to map these canonical values onto their existing JSON
+    shapes rather than reissue COUNT queries.
+
+    Keys:
+      unique_visitors      — COUNT(DISTINCT ip), filtered
+      human_sessions       — COUNT(DISTINCT session_id), filtered
+      total_visits         — COUNT(*), filtered (= raw human visits)
+      visits_counter       — visits.count (historical passage counter)
+      today_unique         — COUNT(DISTINCT ip) today, filtered
+      distinct_countries   — COUNT(DISTINCT country_code) with valid ISO
+      by_country           — top 50, COUNT(DISTINCT ip), NL normalised
+      generated_at         — UTC isoformat (Z)
+    """
+    from datetime import datetime, timezone
+
+    payload = {
+        "unique_visitors": 0,
+        "human_sessions": 0,
+        "total_visits": 0,
+        "visits_counter": 0,
+        "today_unique": 0,
+        "distinct_countries": 0,
+        "by_country": [],
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
+
+    where_owner, params_owner = owner_ip_sql_filter(owner_ips)
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        row = cur.execute(
+            f"SELECT COUNT(DISTINCT ip) AS c FROM visitor_log WHERE {where_owner}",
+            params_owner,
+        ).fetchone()
+        payload["unique_visitors"] = int(row["c"] or 0) if row else 0
+
+        row = cur.execute(
+            f"SELECT COUNT(DISTINCT session_id) AS c FROM visitor_log WHERE {where_owner}",
+            params_owner,
+        ).fetchone()
+        payload["human_sessions"] = int(row["c"] or 0) if row else 0
+
+        row = cur.execute(
+            f"SELECT COUNT(*) AS c FROM visitor_log WHERE {where_owner}",
+            params_owner,
+        ).fetchone()
+        payload["total_visits"] = int(row["c"] or 0) if row else 0
+
+        try:
+            row = cur.execute("SELECT count FROM visits WHERE id=1").fetchone()
+            payload["visits_counter"] = int(row["count"] or 0) if row else 0
+        except Exception:
+            payload["visits_counter"] = 0
+
+        row = cur.execute(
+            f"SELECT COUNT(DISTINCT ip) AS c FROM visitor_log "
+            f"WHERE {where_owner} AND date(visited_at)=date('now')",
+            params_owner,
+        ).fetchone()
+        payload["today_unique"] = int(row["c"] or 0) if row else 0
+
+        row = cur.execute(
+            f"SELECT COUNT(DISTINCT country_code) AS c FROM visitor_log "
+            f"WHERE {where_owner} "
+            f"AND country_code IS NOT NULL AND country_code != '' "
+            f"AND country_code != 'XX' AND country != 'Unknown'",
+            params_owner,
+        ).fetchone()
+        payload["distinct_countries"] = int(row["c"] or 0) if row else 0
+
+        rows = cur.execute(
+            "SELECT CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END AS country, "
+            "country_code, COUNT(DISTINCT ip) AS cnt "
+            "FROM visitor_log "
+            f"WHERE {where_owner} AND country != 'Unknown' "
+            "GROUP BY CASE WHEN country_code = 'NL' THEN 'Netherlands' ELSE country END, country_code "
+            "ORDER BY cnt DESC LIMIT 50",
+            params_owner,
+        ).fetchall()
+        payload["by_country"] = [
+            {
+                "country": r["country"],
+                "code": (r["country_code"] or "XX"),
+                "count": int(r["cnt"] or 0),
+            }
+            for r in rows
+            if (r["country_code"] or "XX").upper() != "XX"
+            and "inconnu" not in (r["country"] or "").lower()
+        ]
+
+        conn.close()
+    except Exception:
+        return payload
+    return payload
+
+
 def load_analytics_readonly():
     """Lecture seule SQLite (visitor_log, session_time). Conservée pour compat
     avec d'éventuels callers legacy ; le dashboard cockpit utilise désormais
@@ -242,46 +355,19 @@ def load_cockpit_payload(window_days: int = 30, owner_ips: set | None = None) ->
     owner_ips = owner_ips or set()
     where_owner, params_owner = owner_ip_sql_filter(owner_ips)
 
+    # All visitor KPIs derive from the canonical truth function so the
+    # cockpit can never drift from the GEO-IP tracker or /api/visitors/stats.
+    truth = get_visitor_truth(owner_ips)
+    payload["visits_counter"] = truth["visits_counter"]
+    payload["human_sessions"] = truth["human_sessions"]
+    payload["unique_ips_count"] = truth["unique_visitors"]
+    payload["total_unique_visitors"] = truth["unique_visitors"]
+    payload["countries_count"] = truth["distinct_countries"]
+
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
-
-        # ── Compteur prod (source de vérité)
-        row = cur.execute("SELECT count FROM visits WHERE id=1").fetchone()
-        payload["visits_counter"] = int(row["count"]) if row else 0
-
-        # ── Sessions humaines (DISTINCT session_id, owner/bot exclus)
-        # Conservé pour information mais NE doit PAS être labellisé
-        # "visiteurs" dans l'UI — une session est une visite, pas un
-        # visiteur distinct (une même IP peut générer plusieurs sessions).
-        row = cur.execute(
-            f"SELECT COUNT(DISTINCT session_id) AS c FROM visitor_log WHERE {where_owner}",
-            params_owner,
-        ).fetchone()
-        sessions_count = int(row["c"] or 0) if row else 0
-        payload["human_sessions"] = sessions_count
-
-        # ── Visiteurs uniques = COUNT(DISTINCT ip) avec filtre owner/bot.
-        # Source unique de vérité, alignée sur le GEO-IP tracker
-        # (/api/visitors/stats). total_unique_visitors et unique_ips_count
-        # partagent désormais la MÊME valeur, ce qui supprime l'aberration
-        # historique "visiteurs (3966) > IPs uniques (3033)".
-        row = cur.execute(
-            f"SELECT COUNT(DISTINCT ip) AS c FROM visitor_log WHERE {where_owner}",
-            params_owner,
-        ).fetchone()
-        unique_ips = int(row["c"] or 0) if row else 0
-        payload["unique_ips_count"] = unique_ips
-        payload["total_unique_visitors"] = unique_ips
-
-        row = cur.execute(
-            f"SELECT COUNT(DISTINCT country_code) AS c FROM visitor_log "
-            f"WHERE {where_owner} AND country_code != '' AND country_code != 'XX' "
-            f"AND country != 'Unknown'",
-            params_owner,
-        ).fetchone()
-        payload["countries_count"] = int(row["c"] or 0) if row else 0
 
         row = cur.execute(
             "SELECT COUNT(*) AS c FROM visitor_log WHERE is_bot=1"
@@ -308,8 +394,8 @@ def load_cockpit_payload(window_days: int = 30, owner_ips: set | None = None) ->
             params_owner,
         ).fetchone()
         total_pv = int(row["pv"] or 0) if row else 0
-        if sessions_count > 0:
-            payload["pages_per_session"] = round(total_pv / sessions_count, 2)
+        if payload["human_sessions"] > 0:
+            payload["pages_per_session"] = round(total_pv / payload["human_sessions"], 2)
 
         # ── Top countries (window_days)
         rows = cur.execute(

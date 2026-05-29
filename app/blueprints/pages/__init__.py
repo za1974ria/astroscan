@@ -59,15 +59,22 @@ def index():
 
 @bp.route("/portail")
 def portail():
-    # PASS UI A FIX 4 (2026-05-07) : SSR du compteur visiteurs pour éviter
+    # PASS UI A FIX 4 (2026-05-07) : SSR du compteur du bandeau pour éviter
     # le flash "000 000" à l'arrivée. Le JS continue de rafraîchir la valeur
     # côté client après chargement.
+    # 2026-05-29 — le bandeau affiche désormais les VISITEURS UNIQUES
+    # (source unique de vérité get_visitor_truth). Fallback sur
+    # _get_visits_count uniquement si la fonction canonique échoue.
     visitor_count = None
     try:
-        from app.services.db_visitors import _get_visits_count
-        visitor_count = _get_visits_count()
+        from app.services.analytics_dashboard import get_visitor_truth
+        visitor_count = get_visitor_truth().get("unique_visitors")
     except Exception:
-        visitor_count = None
+        try:
+            from app.services.db_visitors import _get_visits_count
+            visitor_count = _get_visits_count()
+        except Exception:
+            visitor_count = None
     response = make_response(render_template(
         "portail.html",
         lang=get_lang(),
