@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 
 import pytest
@@ -12,13 +13,43 @@ pytestmark = pytest.mark.unit
 
 
 @pytest.fixture(autouse=True)
-def _cleanup_agent_state():
-    """Each test starts with a stopped agent + empty incident buffer."""
+def _cleanup_agent_state(tmp_path, monkeypatch):
+    """Each test starts with a stopped agent + empty incident buffer + isolated singleton lock.
+
+    The agent enforces a cross-worker singleton via an fcntl lock on
+    ``/tmp/astroscan_guardian.lock`` (CHANTIER 5B). On any host where a real
+    AstroScan process — production gunicorn worker, dev server, or even a
+    previous test process whose fd lingered — already holds that file,
+    ``_acquire_singleton_lock()`` returns False, ``start_agent()`` returns
+    False, no thread spawns, and downstream assertions (idempotence,
+    tick_count >= 1) fail spuriously.
+
+    The agent code is correct: only one leader per lock file is the whole
+    point. The unit suite therefore needs its own private lock file so that
+    each test acquires cleanly. We also clear any module-level fd inherited
+    from earlier tests in the same pytest process.
+    """
+    monkeypatch.setenv("GUARDIAN_LOCK_PATH", str(tmp_path / "guardian.lock"))
+    _release_singleton_lock_fd()
     agent.stop_agent(timeout=2.0)
     audit_log.reset_for_tests()
     yield
     agent.stop_agent(timeout=2.0)
+    _release_singleton_lock_fd()
     audit_log.reset_for_tests()
+
+
+def _release_singleton_lock_fd():
+    """Close the module-level singleton lock fd (if held) so the next
+    ``start_agent()`` call acquires the freshly-configured lock path."""
+    fd = getattr(agent, "_SINGLETON_LOCK_FD", None)
+    if fd is not None:
+        try:
+            fd.close()
+        except OSError:
+            pass
+        agent._SINGLETON_LOCK_FD = None
+        agent._SINGLETON_LEADER_PID = None
 
 
 def test_health_when_not_started():

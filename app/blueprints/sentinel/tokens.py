@@ -13,13 +13,31 @@ _SALT = "sentinel-v1"
 
 
 def _serializer() -> URLSafeTimedSerializer:
-    """Return signer. Uses SENTINEL_SECRET_KEY if set in env,
-    else falls back to Flask SECRET_KEY (compat).
-    Isolation hardening: 2026-05-15 (audit P1-4)."""
+    """Return signer.
+
+    Effective signing key combines BOTH SENTINEL_SECRET_KEY (env, if set) and
+    the per-app Flask SECRET_KEY, so signature validation isolates tokens at
+    two levels:
+
+      - SENTINEL_SECRET_KEY isolates Sentinel from Flask SECRET_KEY leaks
+        (audit P1-4, 2026-05-15): even if SECRET_KEY surfaces via a debug
+        toolbar / unhandled traceback / Sentry payload, the attacker cannot
+        forge Sentinel tokens without the env-only sentinel secret.
+      - The Flask SECRET_KEY component prevents tokens from crossing Flask
+        application instances that share SENTINEL_SECRET_KEY but have
+        distinct SECRET_KEYs (different deployments, multi-tenant, test
+        isolation). Without this component, two Flask apps with different
+        SECRET_KEYs would accept each other's tokens when SENTINEL_SECRET_KEY
+        is set — a real bypass of per-app signature isolation.
+
+    When SENTINEL_SECRET_KEY is unset, the signer reduces to Flask SECRET_KEY
+    alone (legacy / dev behaviour, zero migration cost).
+    """
     import os
     sentinel_key = os.environ.get("SENTINEL_SECRET_KEY", "").strip()
-    key = sentinel_key if sentinel_key else current_app.config["SECRET_KEY"]
-    return URLSafeTimedSerializer(key, salt=_SALT)
+    flask_key = str(current_app.config["SECRET_KEY"])
+    effective = (sentinel_key + "::" + flask_key) if sentinel_key else flask_key
+    return URLSafeTimedSerializer(effective, salt=_SALT)
 
 
 def make_tokens(session_id: str) -> tuple[str, str]:
