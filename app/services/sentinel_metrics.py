@@ -19,7 +19,9 @@ DESIGN DECISIONS (validated 2026-05-23):
 
 Public API:
     get_total_sessions()       -> int
-    get_completed_sessions()   -> int
+    get_completed_sessions()   -> int   (ENDED only — honest semantics)
+    get_pending_sessions()     -> int   (PENDING_DRIVER | PENDING_PARENT)
+    get_interrupted_sessions() -> int
     get_active_sessions()      -> int
     get_feedback_average()     -> float (0.0–5.0)
     get_feedback_count()       -> int
@@ -119,18 +121,26 @@ def get_total_sessions() -> int:
 
 
 # ─────────────────────────────────────────────────────────────────────
-# PRODUCT KPI REDESIGN (2026-05-23) — Sentinel is a SAFETY product.
-# Metrics reflect PROTECTION (the user is currently / has been kept safe),
-# not workflow completion. An active or pending session is a protected
-# session: someone is being watched over. Only one-sided / failed states
-# are interruptions.
+# HONEST METRICS (2026-05-29) — reverts the 2026-05-23 "PROTECTED"
+# semantic which collapsed PENDING into completed_sessions and reported
+# success_rate=100% even when every session was PENDING_DRIVER and had
+# never been accepted by a driver. The states below mean exactly what
+# they say:
+#   COMPLETED   = sessions that actually ran to term (driver accepted,
+#                 parent confirmed, ride finished cleanly) — ENDED only.
+#   PENDING     = sessions waiting on a counter-party (driver or parent)
+#                 to accept. They are NOT protected and NOT completed.
+#   ACTIVE      = live, in-progress sessions (computed elsewhere, with
+#                 expires_at filter — see get_active_sessions).
+#   INTERRUPTED = sessions that died before completion (expired TTL,
+#                 one-sided STOP confirmations, explicit failures).
 # ─────────────────────────────────────────────────────────────────────
 
-PROTECTED_STATES = (
-    "ACTIVE",
+COMPLETED_STATES = ("ENDED",)
+
+PENDING_STATES = (
     "PENDING_DRIVER",
     "PENDING_PARENT",
-    "ENDED",
 )
 
 INTERRUPTED_STATES = (
@@ -147,19 +157,37 @@ def _states_placeholder(states: tuple[str, ...]) -> str:
 
 
 def get_completed_sessions() -> int:
-    """Sessions under or completed-in protection (PRODUCT KPI semantics).
+    """Sessions actually run to term — state == 'ENDED' only.
 
-    KPI REDESIGN (2026-05-23) — the JSON key stays `completed_sessions`
-    for back-compat, but the BUSINESS MEANING is now "protected sessions":
-    every session whose state is in `PROTECTED_STATES`. This includes
-    sessions still in progress (ACTIVE/PENDING_*) — they ARE protected
-    right now — plus those that completed normally (ENDED).
+    HONEST REDESIGN (2026-05-29): PENDING/ACTIVE are NOT counted as
+    completed. A session that no driver ever accepted (started_at=0,
+    driver_consent_at=0) is not a completed safety session — it never
+    happened.
     """
     val = _safe_scalar(
         "SELECT COUNT(*) FROM sentinel_sessions "
-        "WHERE state IN (" + _states_placeholder(PROTECTED_STATES) + ")",
+        "WHERE state IN (" + _states_placeholder(COMPLETED_STATES) + ")",
         0,
-        PROTECTED_STATES,
+        COMPLETED_STATES,
+    )
+    try:
+        return int(val)
+    except Exception:
+        return 0
+
+
+def get_pending_sessions() -> int:
+    """Sessions waiting on driver or parent acceptance — not yet protected.
+
+    state ∈ {PENDING_DRIVER, PENDING_PARENT}. These are explicitly NOT
+    completed and NOT active; surfaced as a distinct KPI so the trust
+    block can show them honestly instead of inflating success_rate.
+    """
+    val = _safe_scalar(
+        "SELECT COUNT(*) FROM sentinel_sessions "
+        "WHERE state IN (" + _states_placeholder(PENDING_STATES) + ")",
+        0,
+        PENDING_STATES,
     )
     try:
         return int(val)
@@ -168,18 +196,19 @@ def get_completed_sessions() -> int:
 
 
 def get_protected_sessions() -> int:
-    """Explicit alias for `get_completed_sessions` — same product KPI.
+    """Back-compat alias — now equal to completed (ENDED only).
 
-    Provided so future code can call the function by its real meaning
-    without coupling to the legacy JSON key name.
+    Kept so older callers do not break. The previous semantics
+    (ACTIVE+PENDING+ENDED) were dropped because they hid the fact
+    that no driver had ever accepted a single session.
     """
     return get_completed_sessions()
 
 
 def get_interrupted_sessions() -> int:
-    """Sessions that were interrupted (PRODUCT KPI semantics).
+    """Sessions that died before completion.
 
-    KPI REDESIGN (2026-05-23) — state ∈ `INTERRUPTED_STATES`:
+    state ∈ INTERRUPTED_STATES:
         EXPIRED             : TTL auto-kill
         STOP_PENDING_PARENT : driver requested stop, parent never confirmed
         STOP_PENDING_DRIVER : parent requested stop, driver never confirmed
@@ -417,15 +446,18 @@ def get_metrics_snapshot() -> dict[str, Any]:
     Single function = single DB round-trip path. UI never has to call
     multiple endpoints. Fail-safe: every field defaults to 0 / 0.0 / False / [].
 
-    PRODUCT KPI REDESIGN (2026-05-23) — Sentinel is a SAFETY product;
-    metrics reflect PROTECTION, not workflow completion:
+    HONEST REDESIGN (2026-05-29):
       * total_sessions       = COUNT(*) FROM sentinel_sessions
-      * completed_sessions   = state IN PROTECTED_STATES
-                               (ACTIVE | PENDING_DRIVER | PENDING_PARENT | ENDED)
-                               — key name kept for back-compat ; SEMANTIC IS PROTECTED
+      * completed_sessions   = state == 'ENDED' only
+      * pending_sessions     = state IN PENDING_STATES (NEW key)
+                               (PENDING_DRIVER | PENDING_PARENT)
       * interrupted_sessions = state IN INTERRUPTED_STATES
                                (EXPIRED | STOP_PENDING_PARENT | STOP_PENDING_DRIVER | FAILED)
-      * success_rate         = round(protected/total*100) — integer %
+      * active_sessions      = ACTIVE / STOP_PENDING_* AND not expired
+      * success_rate         = round(completed/total*100) only IF
+                               completed >= 1; otherwise None so the UI
+                               can display "n/a — no session run to term"
+                               instead of a misleading 0 % or 100 %.
       * countries            = top 10 by count, valid ISO codes only (XX excluded)
       * country_count        = distinct VALID ISO2 codes
       * latest_countries     = max 3 recent DISTINCT valid ISO codes
@@ -436,14 +468,18 @@ def get_metrics_snapshot() -> dict[str, Any]:
     """
     total = get_total_sessions()
     completed = get_completed_sessions()
+    pending = get_pending_sessions()
     interrupted = get_interrupted_sessions()
     active = get_active_sessions()
     fb_count = get_feedback_count()
     fb_avg = get_feedback_average()
 
-    # success_rate as integer percent (round, not floor). None when total=0.
+    # success_rate: only meaningful once at least one session has actually
+    # been run to term. Reporting 0 % or 100 % when zero sessions ENDED
+    # is misleading — either it overclaims (100 %) or it implies failure
+    # where there has been no completed attempt at all (0 %).
     success_rate: int | None
-    if total > 0:
+    if completed > 0 and total > 0:
         success_rate = int(round(100.0 * completed / total))
     else:
         success_rate = None
@@ -455,6 +491,7 @@ def get_metrics_snapshot() -> dict[str, Any]:
     return {
         "total_sessions": total,
         "completed_sessions": completed,
+        "pending_sessions": pending,
         "interrupted_sessions": interrupted,
         "success_rate": success_rate,
         # Both naming conventions exposed — back-compat with existing JS that
@@ -494,6 +531,9 @@ def increment_completed_sessions() -> None:
 __all__ = [
     "get_active_sessions",
     "get_completed_sessions",
+    "get_pending_sessions",
+    "get_interrupted_sessions",
+    "get_protected_sessions",
     "get_countries_breakdown",
     "get_country_count",
     "get_latest_countries",
