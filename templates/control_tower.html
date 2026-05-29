@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="{{ lang | default('fr') }}" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="robots" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if lang == 'en' %}Control Tower · ORBITAL-CHOHRA{% else %}Tour de Contrôle · ORBITAL-CHOHRA{% endif %}</title>
+<meta name="description" content="ASTRO-SCAN Control Tower — 53 real health probes, 7 categories, 4 honest states.">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cyan: #00d4ff;
+  --green: #00ff88;
+  --amber: #ff8c00;
+  --red: #ff3355;
+  --grey: #6b7a8a;
+  --bg: #02050a;
+  --panel: rgba(8, 15, 28, 0.85);
+  --border: rgba(0, 212, 255, 0.18);
+  --text: #cbd6e4;
+  --text-hi: #ffffff;
+  --text-lo: #9aa9bb;
+  --font: 'Orbitron', monospace;
+  --font-mono: 'Share Tech Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+body { padding: 20px; overflow-x: hidden; }
+
+#starfield-bg { position: fixed; inset: 0; z-index: -1; background: radial-gradient(ellipse at center, #050a14 0%, #000 100%); }
+
+.ct-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 20px; backdrop-filter: blur(8px); }
+.ct-brand { font-size: 18px; font-weight: 900; letter-spacing: 0.18em; color: var(--cyan); text-shadow: 0 0 12px rgba(0, 212, 255, 0.4); }
+.ct-brand .divider { color: var(--text-lo); margin: 0 12px; }
+.ct-brand .subtitle { font-size: 11px; color: var(--text-lo); letter-spacing: 0.15em; margin-top: 4px; font-weight: 400; }
+.ct-back { color: var(--cyan); text-decoration: none; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; padding: 8px 16px; border: 1px solid var(--border); border-radius: 4px; transition: all 0.2s; }
+.ct-back:hover { background: rgba(0, 212, 255, 0.1); border-color: var(--cyan); }
+
+.ct-summary { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 20px 24px; margin-bottom: 18px; backdrop-filter: blur(8px); }
+.ct-summary-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 24px; flex-wrap: wrap; }
+.ct-status-pill { display: inline-flex; align-items: center; gap: 12px; padding: 10px 20px; border-radius: 4px; font-weight: 700; letter-spacing: 0.15em; font-size: 14px; }
+.ct-status-pill.ok { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.4); color: var(--green); }
+.ct-status-pill.warn { background: rgba(255, 140, 0, 0.1); border: 1px solid rgba(255, 140, 0, 0.4); color: var(--amber); }
+.ct-status-pill.down { background: rgba(255, 51, 85, 0.1); border: 1px solid rgba(255, 51, 85, 0.4); color: var(--red); }
+.ct-summary-stats { display: flex; gap: 22px; font-family: var(--font-mono); font-size: 13px; flex-wrap: wrap; }
+.ct-summary-stat { display: flex; flex-direction: column; }
+.ct-summary-stat-val { font-size: 22px; font-weight: 700; color: var(--text-hi); }
+.ct-summary-stat-val.ok { color: var(--green); }
+.ct-summary-stat-val.warn { color: var(--amber); }
+.ct-summary-stat-val.down { color: var(--red); }
+.ct-summary-stat-val.grey { color: var(--grey); }
+.ct-summary-stat-lbl { font-size: 9px; letter-spacing: 0.15em; color: var(--text-lo); margin-top: 2px; }
+.ct-summary-bar { display: flex; height: 4px; background: rgba(255, 255, 255, 0.04); border-radius: 2px; overflow: hidden; margin-top: 12px; }
+.ct-summary-bar > div { height: 100%; transition: width 0.5s ease; }
+.ct-summary-bar .ok-bar { background: var(--green); }
+.ct-summary-bar .warn-bar { background: var(--amber); }
+.ct-summary-bar .down-bar { background: var(--red); }
+.ct-summary-bar .grey-bar { background: var(--grey); }
+.ct-summary-meta { display: flex; justify-content: space-between; margin-top: 14px; font-family: var(--font-mono); font-size: 11px; color: var(--text-lo); letter-spacing: 0.1em; flex-wrap: wrap; gap: 12px; }
+.ct-countdown { color: var(--cyan); font-weight: 700; }
+
+.ct-legend { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 20px; margin-bottom: 22px; backdrop-filter: blur(8px); font-family: var(--font-mono); font-size: 11px; }
+.ct-legend-row { display: flex; gap: 22px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+.ct-legend-row:last-child { margin-bottom: 0; }
+.ct-legend-item { display: inline-flex; align-items: center; gap: 8px; color: var(--text); letter-spacing: 0.08em; }
+.ct-legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.ct-legend-dot.green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.ct-legend-dot.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.ct-legend-dot.red   { background: var(--red);   box-shadow: 0 0 8px var(--red); }
+.ct-legend-dot.grey  { background: var(--grey);  box-shadow: 0 0 6px var(--grey); }
+.ct-legend-note { color: var(--text-lo); font-style: italic; font-size: 10.5px; letter-spacing: 0.05em; line-height: 1.45; }
+
+.ct-section { margin-bottom: 26px; }
+.ct-section-title { font-size: 11px; letter-spacing: 0.25em; color: var(--cyan); font-weight: 700; margin-bottom: 12px; padding-left: 12px; border-left: 3px solid var(--cyan); text-shadow: 0 0 8px rgba(0, 212, 255, 0.3); display: flex; justify-content: space-between; align-items: center; }
+.ct-section-count { font-family: var(--font-mono); font-size: 10px; color: var(--text-lo); letter-spacing: 0.15em; font-weight: 400; }
+
+.ct-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.ct-card { background: var(--panel); border: 1px solid var(--border); border-radius: 5px; padding: 14px; position: relative; transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); backdrop-filter: blur(8px); overflow: hidden; }
+.ct-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; transition: all 0.3s; }
+.ct-card.state-green::before  { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.ct-card.state-orange::before { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.ct-card.state-red::before    { background: var(--red);   box-shadow: 0 0 12px var(--red); }
+.ct-card.state-grey::before   { background: var(--grey); }
+.ct-card:hover { transform: translateY(-2px); border-color: rgba(0, 212, 255, 0.5); box-shadow: 0 0 20px rgba(0, 212, 255, 0.15); }
+
+.ct-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
+.ct-card-name { font-size: 11.5px; font-weight: 700; color: var(--text-hi); letter-spacing: 0.04em; line-height: 1.25; flex: 1; word-break: break-word; }
+.ct-led { width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0; }
+.ct-led.green  { background: var(--green); box-shadow: 0 0 10px var(--green); animation: led-ok 2s infinite; }
+.ct-led.orange { background: var(--amber); box-shadow: 0 0 10px var(--amber); animation: led-warn 1s infinite; }
+.ct-led.red    { background: var(--red);   box-shadow: 0 0 14px var(--red);   animation: led-down 0.6s infinite; }
+.ct-led.grey   { background: var(--grey); }
+@keyframes led-ok   { 0%, 100% { box-shadow: 0 0 10px var(--green), 0 0 0 0 rgba(0,255,136,0.5); } 50% { box-shadow: 0 0 14px var(--green), 0 0 0 5px rgba(0,255,136,0); } }
+@keyframes led-warn { 0%, 100% { box-shadow: 0 0 10px var(--amber); transform: scale(1); } 50% { box-shadow: 0 0 16px var(--amber); transform: scale(1.1); } }
+@keyframes led-down { 0%, 100% { box-shadow: 0 0 14px var(--red);   opacity: 1; } 50% { box-shadow: 0 0 22px var(--red);   opacity: 0.6; } }
+
+.ct-card-state { font-size: 9.5px; letter-spacing: 0.18em; font-weight: 700; margin-bottom: 6px; }
+.ct-card-state.green  { color: var(--green); }
+.ct-card-state.orange { color: var(--amber); }
+.ct-card-state.red    { color: var(--red); }
+.ct-card-state.grey   { color: var(--grey); }
+.ct-card-detail { font-family: var(--font-mono); font-size: 10.5px; color: var(--text); line-height: 1.45; min-height: 28px; word-break: break-word; }
+.ct-card-detail.muted { color: var(--text-lo); font-style: italic; }
+.ct-card-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-family: var(--font-mono); font-size: 9px; color: var(--text-lo); letter-spacing: 0.1em; }
+.ct-card-latency { color: var(--cyan); font-weight: 700; font-size: 11px; }
+
+.ct-footer { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; margin-top: 24px; font-family: var(--font-mono); font-size: 11px; color: var(--text-lo); flex-wrap: wrap; gap: 12px; }
+.ct-refresh-btn { background: transparent; color: var(--cyan); border: 1px solid var(--cyan); padding: 6px 14px; border-radius: 3px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; }
+.ct-refresh-btn:hover { background: rgba(0, 212, 255, 0.1); }
+.ct-loading { padding: 60px; text-align: center; color: var(--text-lo); font-family: var(--font-mono); }
+
+@media (max-width: 720px) {
+  body { padding: 10px; }
+  .ct-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+  .ct-summary-top { flex-direction: column; gap: 14px; align-items: flex-start; }
+  .ct-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body class="notranslate">
+<main role="main" id="main-content">
+
+{% if not request.args.get('embed') %}
+<canvas id="starfield-bg" aria-hidden="true"></canvas>
+{% endif %}
+
+{% if not request.args.get('embed') %}
+<div class="ct-header">
+  <div class="ct-brand">
+    ◈ ASTRO·SCAN <span class="divider">//</span> {% if lang == 'en' %}CONTROL TOWER{% else %}TOUR DE CONTRÔLE{% endif %}
+    <div class="subtitle">{% if lang == 'en' %}53 real probes · 7 categories · 4 honest states · LIVE{% else %}53 sondes réelles · 7 catégories · 4 états honnêtes · EN DIRECT{% endif %}</div>
+  </div>
+  <a href="/portail" class="ct-back">← {% if lang == 'en' %}Portal{% else %}Portail{% endif %}</a>
+</div>
+{% endif %}
+
+<div class="ct-summary" id="ct-summary">
+  <div class="ct-summary-top">
+    <div class="ct-status-pill ok" id="ct-status-pill">
+      <span id="ct-status-icon">●</span>
+      <span id="ct-status-label">{% if lang == 'en' %}LOADING...{% else %}CHARGEMENT...{% endif %}</span>
+    </div>
+    <div class="ct-summary-stats">
+      <div class="ct-summary-stat"><div class="ct-summary-stat-val" id="ct-total-count">—</div><div class="ct-summary-stat-lbl">{% if lang == 'en' %}TOTAL PROBES{% else %}SONDES TOTAL{% endif %}</div></div>
+      <div class="ct-summary-stat"><div class="ct-summary-stat-val ok"   id="ct-ok-count">—</div><div class="ct-summary-stat-lbl">{% if lang == 'en' %}OPERATIONAL{% else %}OPÉRATIONNELS{% endif %}</div></div>
+      <div class="ct-summary-stat"><div class="ct-summary-stat-val warn" id="ct-warn-count">—</div><div class="ct-summary-stat-lbl">{% if lang == 'en' %}WARNINGS{% else %}AVERTISSEMENTS{% endif %}</div></div>
+      <div class="ct-summary-stat"><div class="ct-summary-stat-val down" id="ct-down-count">—</div><div class="ct-summary-stat-lbl">{% if lang == 'en' %}OFFLINE{% else %}HORS LIGNE{% endif %}</div></div>
+      <div class="ct-summary-stat"><div class="ct-summary-stat-val grey" id="ct-grey-count">—</div><div class="ct-summary-stat-lbl">{% if lang == 'en' %}UNPROBED{% else %}NON SONDÉS{% endif %}</div></div>
+    </div>
+  </div>
+  <div class="ct-summary-bar">
+    <div class="ok-bar"   id="ct-ok-bar"   style="width: 0%"></div>
+    <div class="warn-bar" id="ct-warn-bar" style="width: 0%"></div>
+    <div class="down-bar" id="ct-down-bar" style="width: 0%"></div>
+    <div class="grey-bar" id="ct-grey-bar" style="width: 0%"></div>
+  </div>
+  <div class="ct-summary-meta">
+    <span><span id="ct-last-check">—</span></span>
+    <span>{% if lang == 'en' %}Next refresh in{% else %}Prochaine actu dans{% endif %} <span class="ct-countdown" id="ct-countdown">10s</span></span>
+  </div>
+</div>
+
+<div class="ct-legend">
+  <div class="ct-legend-row">
+    <span class="ct-legend-item"><span class="ct-legend-dot green"></span>{% if lang == 'en' %}GREEN — Operational{% else %}VERT — Opérationnel{% endif %}</span>
+    <span class="ct-legend-item"><span class="ct-legend-dot amber"></span>{% if lang == 'en' %}ORANGE — Degraded{% else %}ORANGE — Dégradé{% endif %}</span>
+    <span class="ct-legend-item"><span class="ct-legend-dot red"></span>{% if lang == 'en' %}RED — Down{% else %}ROUGE — Hors service{% endif %}</span>
+    <span class="ct-legend-item"><span class="ct-legend-dot grey"></span>{% if lang == 'en' %}GREY — Unprobed / Optional{% else %}GRIS — Non sondé / Optionnel{% endif %}</span>
+  </div>
+  <div class="ct-legend-row">
+    <div class="ct-legend-note">
+      {% if lang == 'en' %}
+        GREY = optional or restricted endpoint not deployed in this environment — NOT a failure. Sensitive operational details (IPs, PIDs, internal paths) are masked on this public view.
+      {% else %}
+        GRIS = endpoint optionnel ou restreint non déployé dans cet environnement — PAS une panne. Les détails opérationnels sensibles (IP, PID, chemins internes) sont masqués sur cette vue publique.
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div id="ct-sections" style="min-height: 600px;">
+  <div class="ct-loading">{% if lang == 'en' %}Loading control tower probes...{% else %}Chargement des sondes de la tour de contrôle...{% endif %}</div>
+</div>
+
+{% if not request.args.get('embed') %}
+<div class="ct-footer">
+  <span>{% if lang == 'en' %}Auto-refresh every 10 seconds · Source: /api/control-tower/snapshot{% else %}Actualisation auto toutes les 10 secondes · Source : /api/control-tower/snapshot{% endif %}</span>
+  <button class="ct-refresh-btn" id="ct-refresh-btn">⟳ {% if lang == 'en' %}REFRESH NOW{% else %}ACTUALISER{% endif %}</button>
+</div>
+{% endif %}
+
+{% if not request.args.get('embed') %}
+<script src="/static/js/starfield.js" defer></script>
+{% endif %}
+<script>
+(function () {
+  'use strict';
+  var LANG = '{{ lang | default("fr") }}';
+  var REFRESH_MS = 10000;
+  var countdownTimer = null;
+  var countdownVal = 10;
+
+  var I18N = {
+    fr: {
+      operational: 'OPÉRATIONNEL',
+      warning: 'AVERTISSEMENT',
+      offline: 'HORS LIGNE',
+      cat_edge: 'EDGE · RÉSEAU',
+      cat_core_api: 'APIs CŒUR',
+      cat_module_page: 'PAGES MODULES',
+      cat_system: 'SYSTÈME',
+      cat_data: 'DONNÉES',
+      cat_freshness: 'FRAÎCHEUR DES DONNÉES',
+      cat_worker: 'WORKERS',
+      last_check: 'Dernière vérification',
+      state_green: 'OPÉRATIONNEL',
+      state_orange: 'DÉGRADÉ',
+      state_red: 'HORS SERVICE',
+      state_grey: 'NON SONDÉ',
+      no_detail: 'aucun détail',
+      masked: 'voir tableau de bord interne',
+      fetch_failed: 'Échec récupération données. Nouvelle tentative…'
+    },
+    en: {
+      operational: 'OPERATIONAL',
+      warning: 'WARNING',
+      offline: 'OFFLINE',
+      cat_edge: 'EDGE · NETWORK',
+      cat_core_api: 'CORE APIs',
+      cat_module_page: 'MODULE PAGES',
+      cat_system: 'SYSTEM',
+      cat_data: 'DATA',
+      cat_freshness: 'DATA FRESHNESS',
+      cat_worker: 'WORKERS',
+      last_check: 'Last check',
+      state_green: 'OPERATIONAL',
+      state_orange: 'DEGRADED',
+      state_red: 'DOWN',
+      state_grey: 'UNPROBED',
+      no_detail: 'no detail',
+      masked: 'see internal dashboard',
+      fetch_failed: 'Failed to fetch data. Retrying…'
+    }
+  };
+  var T = I18N[LANG] || I18N.fr;
+
+  // 7 categories shown in this fixed order.
+  var CAT_ORDER = ['edge','core_api','module_page','system','data','freshness','worker'];
+
+  // Confidentiality filter — anything matching this on a public view
+  // is replaced by a generic label.
+  var SENSITIVE_RE = /(\/(opt|root|home|etc|var)\/|\b\d{1,3}(\.\d{1,3}){3}\b|pid|process .* not running)/i;
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function maskDetail(detail) {
+    if (!detail) return { text: T.no_detail, muted: true };
+    var s = String(detail);
+    if (SENSITIVE_RE.test(s)) return { text: T.masked, muted: true };
+    return { text: s, muted: false };
+  }
+
+  function stateLabel(raw) {
+    if (raw === 'green')  return T.state_green;
+    if (raw === 'orange') return T.state_orange;
+    if (raw === 'red')    return T.state_red;
+    if (raw === 'grey')   return T.state_grey;
+    return '—';
+  }
+
+  function statusLabel(status) {
+    if (status === 'ok')   return T.operational;
+    if (status === 'warn') return T.warning;
+    if (status === 'down') return T.offline;
+    return '—';
+  }
+
+  function flattenServices(data) {
+    var out = [];
+    if (!data || !data.categories) return out;
+    Object.keys(data.categories).forEach(function (bucket) {
+      (data.categories[bucket] || []).forEach(function (s) { out.push(s); });
+    });
+    return out;
+  }
+
+  function groupBy7(services) {
+    var groups = {};
+    CAT_ORDER.forEach(function (c) { groups[c] = []; });
+    services.forEach(function (s) {
+      var c = s.category || 'edge';
+      if (!groups[c]) groups[c] = [];
+      groups[c].push(s);
+    });
+    return groups;
+  }
+
+  function renderCard(svc) {
+    var raw = svc.raw_state || 'grey';
+    var masked = maskDetail(svc.detail);
+    var latencyHtml = (svc.latency != null && raw !== 'grey')
+      ? '<span class="ct-card-latency">' + escapeHtml(String(svc.latency)) + ' ms</span>'
+      : '<span></span>';
+    return (
+      '<div class="ct-card state-' + raw + '">' +
+        '<div class="ct-card-head">' +
+          '<div class="ct-card-name">' + escapeHtml(svc.name) + '</div>' +
+          '<div class="ct-led ' + raw + '"></div>' +
+        '</div>' +
+        '<div class="ct-card-state ' + raw + '">' + stateLabel(raw) + '</div>' +
+        '<div class="ct-card-detail' + (masked.muted ? ' muted' : '') + '">' + escapeHtml(masked.text) + '</div>' +
+        '<div class="ct-card-foot">' +
+          latencyHtml +
+          '<span>' + escapeHtml(svc.category || '') + '</span>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderSection(catKey, services) {
+    if (!services || !services.length) return '';
+    var title = T['cat_' + catKey] || catKey.toUpperCase();
+    var cards = services.map(renderCard).join('');
+    return (
+      '<div class="ct-section">' +
+        '<div class="ct-section-title">' +
+          '<span>' + title + '</span>' +
+          '<span class="ct-section-count">' + services.length + (LANG === 'en' ? ' probes' : ' sondes') + '</span>' +
+        '</div>' +
+        '<div class="ct-grid">' + cards + '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderAll(data) {
+    if (!data || !data.global) return;
+
+    var pill  = document.getElementById('ct-status-pill');
+    var label = document.getElementById('ct-status-label');
+    pill.className = 'ct-status-pill ' + data.global.status;
+    label.textContent = statusLabel(data.global.status);
+
+    var services = flattenServices(data);
+    var greenN  = services.filter(function (s) { return s.raw_state === 'green'; }).length;
+    var orangeN = services.filter(function (s) { return s.raw_state === 'orange'; }).length;
+    var redN    = services.filter(function (s) { return s.raw_state === 'red'; }).length;
+    var greyN   = services.filter(function (s) { return s.raw_state === 'grey'; }).length;
+    var total   = data.global.total || services.length || 53;
+
+    document.getElementById('ct-total-count').textContent = total;
+    document.getElementById('ct-ok-count').textContent   = greenN;
+    document.getElementById('ct-warn-count').textContent = orangeN;
+    document.getElementById('ct-down-count').textContent = redN;
+    document.getElementById('ct-grey-count').textContent = greyN;
+
+    document.getElementById('ct-ok-bar').style.width   = (greenN  / total * 100) + '%';
+    document.getElementById('ct-warn-bar').style.width = (orangeN / total * 100) + '%';
+    document.getElementById('ct-down-bar').style.width = (redN    / total * 100) + '%';
+    document.getElementById('ct-grey-bar').style.width = (greyN   / total * 100) + '%';
+
+    var lc = new Date(data.timestamp);
+    document.getElementById('ct-last-check').textContent =
+      (LANG === 'en' ? 'Last check: ' : 'Dernière vérif : ') +
+      lc.toLocaleTimeString(LANG === 'en' ? 'en-US' : 'fr-FR') + ' UTC';
+
+    var groups = groupBy7(services);
+    var html = '';
+    CAT_ORDER.forEach(function (c) { html += renderSection(c, groups[c]); });
+    document.getElementById('ct-sections').innerHTML = html ||
+      '<div class="ct-loading">' + T.no_detail + '</div>';
+  }
+
+  function fetchAndRender() {
+    fetch('/api/control-tower/snapshot', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(renderAll)
+      .catch(function (e) {
+        console.error('control-tower snapshot fetch failed', e);
+        document.getElementById('ct-sections').innerHTML =
+          '<div class="ct-loading">' + T.fetch_failed + '</div>';
+      });
+  }
+
+  function resetCountdown() {
+    countdownVal = REFRESH_MS / 1000;
+    if (countdownTimer) clearInterval(countdownTimer);
+    countdownTimer = setInterval(function () {
+      countdownVal--;
+      if (countdownVal <= 0) {
+        countdownVal = REFRESH_MS / 1000;
+        fetchAndRender();
+      }
+      var el = document.getElementById('ct-countdown');
+      if (el) el.textContent = countdownVal + 's';
+    }, 1000);
+  }
+
+  var _refreshBtn = document.getElementById('ct-refresh-btn');
+  if (_refreshBtn) _refreshBtn.addEventListener('click', function () {
+    fetchAndRender();
+    resetCountdown();
+  });
+
+  fetchAndRender();
+  resetCountdown();
+})();
+</script>
+</main>
+</body>
+</html>

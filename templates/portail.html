@@ -1704,6 +1704,10 @@ hr{
             <span class="nav-label" data-i18n="nav_maintenance">Contrôle Maintenance</span>
             <span class="nav-badge new" style="background: rgba(0, 255, 136, 0.15); color: var(--green); border-color: rgba(0, 255, 136, 0.4);">LIVE</span>
           </div>
+          <div class="nav-item nav-sub" id="nav-control-tower" onclick="navigate('control-tower')" data-page="control-tower">
+            <span class="nav-label" data-i18n="nav_control_tower">Tour de Contrôle</span>
+            <span class="nav-badge new" style="background: rgba(0,212,255,0.15); color: var(--cyan,#00d4ff); border-color: rgba(0,212,255,0.4);">53</span>
+          </div>
         </div>
       </div>
 
@@ -2000,6 +2004,11 @@ hr{
           <div class="card-desc">{% if lang == 'en' %}Real-time service health · LED indicators · 20 services monitored{% else %}Santé services temps réel · Voyants LED · 20 services surveillés{% endif %}</div>
           <span class="card-link">→ /maintenance</span>
         </a>
+        <a href="/control-tower" class="portal-card card aurora-card-hover aurora-fade-cascade" style="border-color: rgba(0, 212, 255, 0.3);">
+          <div class="card-title" style="color: var(--cyan, #00d4ff);">{% if lang == 'en' %}CONTROL TOWER · 53 PROBES{% else %}TOUR DE CONTRÔLE · 53 SONDES{% endif %} <span style="font-size: 9px; background: rgba(0,212,255,0.15); color: var(--cyan, #00d4ff); padding: 2px 6px; border-radius: 3px; vertical-align: middle; margin-left: 6px;">53</span></div>
+          <div class="card-desc">{% if lang == 'en' %}53 real health probes · 7 categories · 4 honest states · public view{% else %}53 sondes santé réelles · 7 catégories · 4 états honnêtes · vue publique{% endif %}</div>
+          <span class="card-link">→ /control-tower</span>
+        </a>
       </div>
 
       <div class="loading-bar" style="width:100%"></div>
@@ -2011,6 +2020,7 @@ hr{
       <iframe id="frame-overlord" class="page-frame" data-src="/overlord_live"></iframe>
       <iframe id="frame-galerie" class="page-frame" data-src="/galerie"></iframe>
       <iframe id="frame-maintenance" class="page-frame" data-src="/maintenance?embed=1"></iframe>
+      <iframe id="frame-control-tower" class="page-frame" data-src="/control-tower?embed=1"></iframe>
       <iframe id="frame-observatoire" class="page-frame" data-src="/observatoire?embed=1"></iframe>
       <iframe id="frame-ce_soir" class="page-frame" data-src="/ce_soir?embed=1"></iframe>
       <iframe id="frame-orbital_radio" class="page-frame" data-src="/orbital-radio"></iframe>
@@ -2073,6 +2083,7 @@ hr{
       nav_overlord: 'Overlord Contrôle',
       nav_galerie: 'Archive Stellaire',
       nav_maintenance: 'Contrôle Maintenance',
+      nav_control_tower: 'Tour de Contrôle',
       nav_observatoire: 'Observatoire',
       nav_ce_soir: 'Ce soir',
       badge_direct: 'DIRECT',
@@ -2135,6 +2146,7 @@ hr{
       nav_overlord: 'Overlord Live',
       nav_galerie: 'Stellar Archive',
       nav_maintenance: 'Maintenance Control',
+      nav_control_tower: 'Control Tower',
       nav_observatoire: 'Observatory',
       nav_ce_soir: 'Tonight',
       badge_direct: 'LIVE',
@@ -2544,6 +2556,7 @@ hr{
     overlord:     { frame: 'frame-overlord',     label: 'Overlord Contrôle' },
     galerie:      { frame: 'frame-galerie',      label: 'Archive Stellaire' },
     maintenance:  { frame: 'frame-maintenance',  label: 'Contrôle Maintenance' },
+    'control-tower': { frame: 'frame-control-tower', label: 'Tour de Contrôle' },
     observatoire: { frame: 'frame-observatoire', label: 'Observatoire Mondial' },
     ce_soir:      { frame: 'frame-ce_soir',      label: 'Ce soir' },
     orbital_radio: { frame: 'frame-orbital_radio', label: 'ORBITAL-RADIO' },
