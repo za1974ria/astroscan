@@ -67,7 +67,7 @@ def _detect_lang(text: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Gemini — rotation de clés + curl
+# Gemini — rotation de clés + header x-goog-api-key (jamais dans l'URL)
 # ---------------------------------------------------------------------------
 def _get_best_key() -> Optional[str]:
     """Retourne la clé Gemini la moins récemment utilisée (rotation)."""
@@ -83,7 +83,11 @@ def _get_best_key() -> Optional[str]:
 
 
 def _call_gemini(prompt: str, model: str = "gemini-2.0-flash") -> Tuple[Optional[str], Optional[str]]:
-    """Appel Gemini avec rotation de clés + curl (contourne blocage urllib) + délai 4s."""
+    """Appel Gemini avec rotation de clés + délai 4s.
+
+    Clé passée via header `x-goog-api-key` — JAMAIS dans l'URL ni dans
+    argv (sinon visible par tout user via /proc/<pid>/cmdline, ps, systemctl).
+    """
     api_key = _get_best_key()
     if not api_key:
         return None, "Clé API Gemini non configurée."
@@ -94,20 +98,19 @@ def _call_gemini(prompt: str, model: str = "gemini-2.0-flash") -> Tuple[Optional
         time.sleep(wait)
 
     _key_usage[api_key] = time.time()
-    payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}]})
+    body = {"contents": [{"parts": [{"text": prompt}]}]}
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/{model}"
-        f":generateContent?key={api_key}"
+        f":generateContent"
     )
+    headers = {
+        "x-goog-api-key": api_key,
+        "Content-Type": "application/json",
+    }
 
     try:
-        proc = subprocess.run(
-            ["curl", "-s", "-X", "POST", url,
-             "-H", "Content-Type: application/json",
-             "-d", payload],
-            capture_output=True, text=True, timeout=25,
-        )
-        result = json.loads(proc.stdout)
+        r = requests.post(url, headers=headers, json=body, timeout=25)
+        result = r.json()
         if "error" in result:
             code = result["error"].get("code", 0)
             msg_err = (result["error"].get("message") or "").strip()
@@ -129,7 +132,7 @@ def _call_gemini(prompt: str, model: str = "gemini-2.0-flash") -> Tuple[Optional
             return None, msg_err if msg_err else f"Erreur API ({code})."
         text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
         return text, None
-    except subprocess.TimeoutExpired:
+    except requests.Timeout:
         return None, "Délai dépassé. Réessayez."
     except Exception as e:
         return None, f"Erreur connexion : {e}"
@@ -162,10 +165,15 @@ def _gemini_translate(text: str, obs_id: Optional[int] = None) -> str:
             "Réponds UNIQUEMENT avec la traduction, sans guillemets ni commentaires.\n\n"
             + text[:1500]
         }]}]}).encode()
+        # Clé en header x-goog-api-key (jamais dans l'URL, logs serveur / proxies).
         req = urllib.request.Request(
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"gemini-2.0-flash:generateContent?key={api_key}",
-            data=payload, headers={"Content-Type": "application/json"},
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            "gemini-2.0-flash:generateContent",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key,
+            },
         )
         TRANSLATE_LAST_REQUEST_TS = time.time()
         with urllib.request.urlopen(req, timeout=12) as r:
@@ -274,10 +282,15 @@ def _gemini_translate_no_throttle(text: str) -> str:
     if api_key:
         try:
             payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode()
+            # Clé en header x-goog-api-key (jamais dans l'URL).
             req = urllib.request.Request(
-                f"https://generativelanguage.googleapis.com/v1beta/models/"
-                f"gemini-2.0-flash:generateContent?key={api_key}",
-                data=payload, headers={"Content-Type": "application/json"},
+                "https://generativelanguage.googleapis.com/v1beta/models/"
+                "gemini-2.0-flash:generateContent",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": api_key,
+                },
             )
             with urllib.request.urlopen(req, timeout=15) as r:
                 result = json.loads(r.read())
@@ -293,10 +306,15 @@ def _gemini_translate_no_throttle(text: str) -> str:
     if api_key_backup:
         try:
             payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode()
+            # Clé en header x-goog-api-key (jamais dans l'URL).
             req = urllib.request.Request(
-                f"https://generativelanguage.googleapis.com/v1beta/models/"
-                f"gemini-2.0-flash:generateContent?key={api_key_backup}",
-                data=payload, headers={"Content-Type": "application/json"},
+                "https://generativelanguage.googleapis.com/v1beta/models/"
+                "gemini-2.0-flash:generateContent",
+                data=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": api_key_backup,
+                },
             )
             with urllib.request.urlopen(req, timeout=15) as r:
                 result = json.loads(r.read())
