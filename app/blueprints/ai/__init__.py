@@ -261,11 +261,13 @@ def api_aegis_status():
     """Statut AEGIS + métriques légères (lecture seule, sans appel API externe)."""
     try:
         groq_configured = bool(os.environ.get("GROQ_API_KEY", "").strip())
+        gemini_configured = bool(os.environ.get("GEMINI_API_KEY", "").strip())
+        grok_configured = bool(os.environ.get("XAI_API_KEY", "").strip())
         ai_counters = get_ai_counters()
         return jsonify({
             "ok": True,
-            "gemini_configured": False,
-            "grok_configured": False,
+            "gemini_configured": gemini_configured,
+            "grok_configured": grok_configured,
             "grok_ok": False,
             "grok_error": None,
             "groq_configured": groq_configured,
@@ -282,8 +284,8 @@ def api_aegis_status():
         ai_counters = get_ai_counters()
         return jsonify({
             "ok": False,
-            "gemini_configured": False,
-            "grok_configured": False,
+            "gemini_configured": bool(os.environ.get("GEMINI_API_KEY", "").strip()),
+            "grok_configured": bool(os.environ.get("XAI_API_KEY", "").strip()),
             "grok_ok": False,
             "grok_error": None,
             "groq_configured": bool(os.environ.get("GROQ_API_KEY", "").strip()),
