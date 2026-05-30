@@ -149,11 +149,13 @@ EXCLUDES=(
   --exclude="logs/"
   --exclude="astroscan_watchdog_log.txt"
   # backups manuels et snapshots historiques
-  --exclude="*.bak"
-  --exclude="*.bak_*"
+  # *.bak* couvre : .bak, .bak_*, .bak-*, .bak.TIMESTAMP, etc.
+  --exclude="*.bak*"
   --exclude="*.AVANT_*"
   --exclude="*.pre_restore_*"
   --exclude="*.REPETE_ERREUR"
+  --exclude="*.old"
+  --exclude="*.verrou"
   --exclude=".snapshots*/"
   --exclude=".archive/"
   --exclude=".deprecated/"

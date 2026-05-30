@@ -52,7 +52,7 @@ Tout fichier de **code** est synchronisé. Tout fichier d'**état / runtime / se
 | Caches Python    | `__pycache__/` `*.pyc` `*.pyo` `.pytest_cache/` `.ruff_cache/` `.coverage` `coverage.xml` |
 | Caches service   | `.astropy/` `.cache/` `.config/`                                        |
 | Logs             | `*.log` `logs/` `astroscan_watchdog_log.txt`                            |
-| Backups manuels  | `*.bak` `*.bak_*` `*.AVANT_*` `*.pre_restore_*` `*.REPETE_ERREUR`        |
+| Backups manuels  | `*.bak*` (couvre `.bak`, `.bak_*`, `.bak-*`, `.bak.TIMESTAMP`) `*.AVANT_*` `*.pre_restore_*` `*.REPETE_ERREUR` `*.old` `*.verrou` |
 | Snapshots        | `.snapshots*/` `.archive/` `.deprecated/` `recovery/`                   |
 | Venvs            | `venv/` `.venv/` (le venv command_v2 est **critique** à préserver)      |
 | État runtime     | `data/` `data_core/` `backups/` `backup/` `exports/` `images_espace/`   |
