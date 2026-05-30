@@ -23,7 +23,6 @@ import logging
 import os
 import re
 import sqlite3
-import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -387,7 +386,7 @@ def _call_claude(prompt: str) -> Tuple[Optional[str], Optional[str]]:
 
 
 # ---------------------------------------------------------------------------
-# Groq (llama-3.3-70b) — fallback rapide via curl
+# Groq (llama-3.3-70b) — fallback rapide via requests + header Authorization
 # ---------------------------------------------------------------------------
 def _call_groq(prompt: str) -> Tuple[Optional[str], Optional[str]]:
     """Fallback Groq API — llama-3.3-70b — gratuit, zéro quota."""
@@ -407,12 +406,12 @@ def _call_groq(prompt: str) -> Tuple[Optional[str], Optional[str]]:
         "Always prioritize clarity, relevance, and usefulness over verbosity.\n"
     )
     final_prompt = system_message + "\n\nUser: " + prompt
-    payload = json.dumps({
+    body = {
         "model": "llama-3.3-70b-versatile",
         "messages": [{"role": "user", "content": final_prompt}],
         "max_tokens": 1024,
         "temperature": 0.7,
-    })
+    }
 
     try:
         from services.circuit_breaker import CB_GROQ
@@ -420,15 +419,18 @@ def _call_groq(prompt: str) -> Tuple[Optional[str], Optional[str]]:
         CB_GROQ = None
 
     def _do_groq():
-        proc = subprocess.run(
-            ["curl", "-s", "-X", "POST",
-             "https://api.groq.com/openai/v1/chat/completions",
-             "-H", f"Authorization: Bearer {api_key}",
-             "-H", "Content-Type: application/json",
-             "-d", payload],
-            capture_output=True, text=True, timeout=20,
+        # Cle en header Authorization — JAMAIS en argv (sinon /proc/<pid>/cmdline,
+        # ps -ef, systemctl status l'exposent a tout user du systeme).
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json=body,
+            timeout=20,
         )
-        result = json.loads(proc.stdout)
+        result = r.json()
         if "error" in result:
             msg = (result["error"].get("message") or "Erreur Groq").strip()
             if "invalid" in msg.lower() or "api key" in msg.lower() or "apikey" in msg.lower():
@@ -459,22 +461,25 @@ def _call_xai_grok(prompt: str) -> Tuple[Optional[str], Optional[str]]:
     if not api_key:
         return None, "XAI_API_KEY non configurée"
     model = (os.environ.get("XAI_MODEL") or "grok-3").strip() or "grok-3"
-    payload = json.dumps({
+    body = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 1024,
         "temperature": 0.7,
-    })
+    }
     url = (os.environ.get("XAI_CHAT_COMPLETIONS_URL") or "").strip() or "https://api.x.ai/v1/chat/completions"
     try:
-        proc = subprocess.run(
-            ["curl", "-s", "-X", "POST", url,
-             "-H", f"Authorization: Bearer {api_key}",
-             "-H", "Content-Type: application/json",
-             "-d", payload],
-            capture_output=True, text=True, timeout=45,
+        # Cle en header Authorization — jamais dans argv.
+        r = requests.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json=body,
+            timeout=45,
         )
-        result = json.loads(proc.stdout)
+        result = r.json()
         if "error" in result:
             msg = (result["error"].get("message") or "Erreur xAI Grok").strip()
             low = msg.lower()
