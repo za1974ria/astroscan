@@ -428,7 +428,7 @@ html.embed-portail .topbar { grid-column:1 / -1 !important; }
     <div class="s-bottom">
       <div class="s-bottom-info">
         <div>Station <span class="sv">Tlemcen, Algérie</span></div>
-        <div>Lat <span class="sv">34.87°N · 1.32°E</span></div>
+        <div>Lat <span class="sv">34.87°N · 1.32°O</span></div>
         <div>Alt <span class="sv">~816 m</span></div>
         <div style="margin-top:4px;color:var(--text-dim)">AstroScan-Chohra · v2.0</div>
       </div>
@@ -735,7 +735,7 @@ loadSidebarISS(); setInterval(loadSidebarISS,15000);
 /* ── SOLAR TIMES (OpenMeteo) ── */
 async function loadSun(){
   try{
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.87&longitude=1.32&daily=sunrise,sunset&timezone=Africa%2FAlgiers&forecast_days=1');
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.87&longitude=-1.32&daily=sunrise,sunset&timezone=Africa%2FAlgiers&forecast_days=1');
     const d=await r.json();
     if(d.daily){
       const sr=new Date(d.daily.sunrise[0]), ss=new Date(d.daily.sunset[0]), dk=new Date(ss.getTime()+90*60000);
@@ -780,7 +780,7 @@ async function loadMoon(){
 /* ── METEO CONDITIONS (OpenMeteo) ── */
 async function loadConditions(){
   try{
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.87&longitude=1.32&current=temperature_2m,cloud_cover,wind_speed_10m,relative_humidity_2m&timezone=Africa%2FAlgiers');
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=34.87&longitude=-1.32&current=temperature_2m,cloud_cover,wind_speed_10m,relative_humidity_2m&timezone=Africa%2FAlgiers');
     const c=(await r.json()).current;
     const see=c.cloud_cover<20?'⭐⭐⭐⭐⭐ Excellent':c.cloud_cover<40?'⭐⭐⭐⭐ Bon':c.cloud_cover<70?'⭐⭐⭐ Moyen':'⭐ Mauvais';
     document.getElementById('conditions').innerHTML=`
