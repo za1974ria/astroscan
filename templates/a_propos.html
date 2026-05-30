@@ -385,9 +385,9 @@ html.embed-portail .topbar { grid-column:1/-1 !important; }
 
     <!-- Page header -->
     <div class="page-header">
-      <div class="page-eyebrow">ORBITAL-CHOHRA · TLEMCEN · ALGÉRIE · 34.8731°N 1.3154°E · 800m</div>
+      <div class="page-eyebrow">ORBITAL-CHOHRA · TLEMCEN · ALGÉRIE · {{ "%.4f"|format(observer_lat) }}°N {{ "%.4f"|format(observer_lon|abs) }}°O · 800m</div>
       <div class="page-title">Station Astronomique Chohra — Tlemcen, Algérie</div>
-      <div class="page-sub">34.8731°N · 1.3154°E · Altitude 800 m. Produire des données astronomiques open source depuis l'Algérie pour la communauté scientifique internationale.</div>
+      <div class="page-sub">{{ "%.4f"|format(observer_lat) }}°N · {{ "%.4f"|format(observer_lon|abs) }}°O · Altitude 800 m. Produire des données astronomiques open source depuis l'Algérie pour la communauté scientifique internationale.</div>
       <div class="badge-row">
         <span class="badge">🌍 OPEN DATA</span>
         <span class="badge">🛸 ISS TEMPS RÉEL</span>
@@ -555,7 +555,7 @@ html.embed-portail .topbar { grid-column:1/-1 !important; }
                           </line>
                           <text x="250" y="252" text-anchor="middle"
                             font-family="monospace" font-size="7" fill="rgba(0,212,255,.35)"
-                            letter-spacing="2">SIGNAL MONDIAL · 34.87°N 1.32°E · ALGÉRIE</text>
+                            letter-spacing="2">SIGNAL MONDIAL · {{ "%.2f"|format(observer_lat) }}°N {{ "%.2f"|format(observer_lon|abs) }}°O · ALGÉRIE</text>
                         </svg>
                         <div style="position:absolute;top:8px;left:10px;
                           font-family:monospace;font-size:.4rem;letter-spacing:.18em;
@@ -582,7 +582,7 @@ html.embed-portail .topbar { grid-column:1/-1 !important; }
                   <li>Créer un pont entre les données scientifiques internationales (NASA, ESA, NOAA) et les communautés scientifiques du Maghreb</li>
                   <li>Offrir une API ouverte aux chercheurs et développeurs pour intégrer des données spatiales dans leurs projets</li>
                   <li>Contribuer à la vulgarisation scientifique spatiale via l'intelligence artificielle (AEGIS, Oracle Cosmique, Guide Stellaire)</li>
-                  <li>Documenter et archiver les phénomènes célestes observables depuis Tlemcen (34.8731°N, 1.3154°E, alt. 800m)</li>
+                  <li>Documenter et archiver les phénomènes célestes observables depuis Tlemcen ({{ "%.4f"|format(observer_lat) }}°N, {{ "%.4f"|format(observer_lon|abs) }}°O, alt. 800m)</li>
                 </ul>
               </div>
             </div>
@@ -713,7 +713,7 @@ html.embed-portail .topbar { grid-column:1/-1 !important; }
             </div>
             <div class="collab-item">
               <div class="collab-label">Localisation</div>
-              <div class="collab-value">Tlemcen, Algérie<br>34.8731°N · 1.3154°E · Alt. 800m</div>
+              <div class="collab-value">Tlemcen, Algérie<br>{{ "%.4f"|format(observer_lat) }}°N · {{ "%.4f"|format(observer_lon|abs) }}°O · Alt. 800m</div>
             </div>
             <div class="collab-item">
               <div class="collab-label">Email</div>

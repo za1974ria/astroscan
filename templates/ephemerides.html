@@ -334,7 +334,7 @@ main, .content, .grid { contain: layout; }
       <div class="tbar-chip"><div class="tbar-dot amber"></div>DE432</div>
     </div>
     <div class="topbar-right">
-      <div id="top-ip" style="font-size:.42rem;letter-spacing:.1em;color:var(--text-dim)">📍 Tlemcen · 34.87°N 1.32°E</div>
+      <div id="top-ip" style="font-size:.42rem;letter-spacing:.1em;color:var(--text-dim)">📍 Tlemcen · {{ "%.2f"|format(observer_lat) }}°N {{ "%.2f"|format(observer_lon|abs) }}°O</div>
       <div id="top-clock">--:--:-- UTC+1</div>
     </div>
   </div>
@@ -355,8 +355,8 @@ main, .content, .grid { contain: layout; }
       </div>
       <div class="page-sub">Calcul astronomique en temps réel · astropy 7.2 + Éphémérides JPL DE432 · UTC+1 (Algérie)</div>
       <div class="page-meta">
-        <div class="pm">Latitude <span>34.8731°N</span></div>
-        <div class="pm">Longitude <span>1.3154°E</span></div>
+        <div class="pm">Latitude <span>{{ "%.4f"|format(observer_lat) }}°N</span></div>
+        <div class="pm">Longitude <span>{{ "%.4f"|format(observer_lon|abs) }}°O</span></div>
         <div class="pm">Altitude <span>800 m</span></div>
         <div class="pm">Fuseau <span>Africa/Algiers (UTC+1)</span></div>
         <div class="pm">Date <span id="hdr-date">—</span></div>

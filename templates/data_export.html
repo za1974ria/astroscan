@@ -134,7 +134,7 @@
     <div class="dataset-card">
       <div class="ds-icon">🌅</div>
       <div class="ds-title">TLEMCEN EPHEMERIDES</div>
-      <div class="ds-desc">Real-time astronomical data for Tlemcen, Algeria (34.88°N, 1.32°E, 800m): sun rise/set times, moon phase & illumination, visible planets, astronomical night window. Computed with astropy 7.2.</div>
+      <div class="ds-desc">Real-time astronomical data for Tlemcen, Algeria ({{ "%.2f"|format(observer_lat) }}°N, {{ "%.2f"|format(observer_lon|abs) }}°W, 800m): sun rise/set times, moon phase & illumination, visible planets, astronomical night window. Computed with astropy 7.2.</div>
       <div class="ds-meta"><span class="ds-tag">REAL-TIME</span><span class="ds-tag">ASTROPY 7.2</span><span class="ds-tag">NORTH AFRICA</span></div>
       <div class="ds-actions">
         <a href="/api/export/ephemerides.json" class="btn-dl btn-json">⬇ JSON</a>
@@ -202,7 +202,7 @@ Tlemcen, Algeria. Retrieved from https://astroscan.space/data</pre>
   year      = {2026},
   publisher = {AstroScan},
   url       = {https://astroscan.space/data},
-  note      = {Tlemcen, Algeria (34.88°N, 1.32°E, 800m). CC BY 4.0.}
+  note      = {Tlemcen, Algeria ({{ "%.2f"|format(observer_lat) }}°N, {{ "%.2f"|format(observer_lon|abs) }}°W, 800m). CC BY 4.0.}
 }</pre>
   </div>
 

@@ -174,7 +174,7 @@ html,body{background:var(--void);color:var(--text);font-family:var(--mono);min-h
 
   <div class="page-hdr">
     <div class="page-title">◈ À propos d'ASTRO-SCAN</div>
-    <div class="page-sub">Observatoire Astronomique Algérien · Tlemcen · 34.87°N 1.32°E · 816m</div>
+    <div class="page-sub">Observatoire Astronomique Algérien · Tlemcen · {{ "%.2f"|format(observer_lat) }}°N {{ "%.2f"|format(observer_lon|abs) }}°O · 816m</div>
   </div>
 
   <!-- Section 1 — Le projet -->
@@ -186,8 +186,8 @@ html,body{background:var(--void);color:var(--text);font-family:var(--mono);min-h
         Les calculs d'éphémérides sont réalisés avec les bibliothèques Python <strong>Skyfield</strong> et <strong>astropy</strong>, en utilisant les éphémérides JPL (DE430/DE432). La plateforme tourne sur un serveur <strong>Hetzner</strong> en production continue (Flask + Gunicorn + Nginx) et est accessible à l'adresse <a href="https://astroscan.space" target="_blank">astroscan.space</a>.
       </div>
       <div class="coords-strip">
-        <div class="coord-pill"><span class="coord-label">Latitude</span><span class="coord-val">34.87° N</span></div>
-        <div class="coord-pill"><span class="coord-label">Longitude</span><span class="coord-val">1.32° E</span></div>
+        <div class="coord-pill"><span class="coord-label">Latitude</span><span class="coord-val">{{ "%.2f"|format(observer_lat) }}° N</span></div>
+        <div class="coord-pill"><span class="coord-label">Longitude</span><span class="coord-val">{{ "%.2f"|format(observer_lon|abs) }}° O</span></div>
         <div class="coord-pill"><span class="coord-label">Altitude</span><span class="coord-val">816 m</span></div>
         <div class="coord-pill"><span class="coord-label">Fuseau</span><span class="coord-val">UTC+1 (Algérie)</span></div>
         <div class="coord-pill"><span class="coord-label">Domaine</span><span class="coord-val">astroscan.space</span></div>
@@ -306,7 +306,7 @@ html,body{background:var(--void);color:var(--text);font-family:var(--mono);min-h
         <div class="team-name">Zakaria Chohra</div>
         <div class="team-detail">
           <strong>Ville :</strong> Tlemcen, Algérie<br>
-          <strong>Station :</strong> ORBITAL-CHOHRA · 34.87°N 1.32°E · 816m<br>
+          <strong>Station :</strong> ORBITAL-CHOHRA · {{ "%.2f"|format(observer_lat) }}°N {{ "%.2f"|format(observer_lon|abs) }}°O · 816m<br>
           <strong>Stack :</strong> Python, Flask, astropy, Skyfield, ephem<br>
           <strong>Contact :</strong> <a href="https://astroscan.space" style="color:var(--cyan);text-decoration:none">astroscan.space</a>
         </div>

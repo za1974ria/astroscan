@@ -117,7 +117,7 @@ body { background:var(--bg); color:var(--bright); font-family:var(--font); min-h
     <div class="vis-icon" id="vis-icon">🔭</div>
     <div class="vis-title" id="vis-title">Calcul en cours...</div>
     <div class="vis-desc" id="vis-desc">Récupération des données NOAA en cours.</div>
-    <div class="vis-location">📍 TLEMCEN, ALGÉRIE · 34.87°N · 1.32°E</div>
+    <div class="vis-location">📍 TLEMCEN, ALGÉRIE · {{ "%.2f"|format(observer_lat) }}°N · {{ "%.2f"|format(observer_lon|abs) }}°O</div>
   </div>
 
   <div class="stats-row">

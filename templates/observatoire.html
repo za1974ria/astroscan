@@ -1156,7 +1156,7 @@ nav, body > nav { contain: layout; min-height: 48px; }
        4 cards en temps réel : ISS, Lune, Kp index, Conditions Tlemcen. -->
   <div class="cosmic-dashboard" id="cosmic-dashboard">
     <div class="cosmic-dashboard-header">
-      <span class="cd-title">{% if lang == 'en' %}LIVE COSMIC STATE — TLEMCEN 34.87°N · 1.32°E{% else %}ÉTAT COSMIQUE LIVE — TLEMCEN 34.87°N · 1.32°E{% endif %}</span>
+      <span class="cd-title">{% if lang == 'en' %}LIVE COSMIC STATE — TLEMCEN {{ "%.2f"|format(observer_lat) }}°N · {{ "%.2f"|format(observer_lon|abs) }}°W{% else %}ÉTAT COSMIQUE LIVE — TLEMCEN {{ "%.2f"|format(observer_lat) }}°N · {{ "%.2f"|format(observer_lon|abs) }}°O{% endif %}</span>
       <span class="cd-pulse"></span>
     </div>
     <div class="cosmic-dashboard-grid">
@@ -1323,7 +1323,7 @@ nav, body > nav { contain: layout; min-height: 48px; }
   <div class="card" style="margin-top:12px;margin-bottom:14px;border:1px solid rgba(0,212,255,0.26);background:rgba(3,16,26,0.72);box-shadow:0 12px 36px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.06);border-radius:10px">
     <div class="card-tag" style="color:var(--cyan)">🛸 PASSAGES ISS — PRÉVISIONS TLEMCEN</div>
     <div style="display:flex;align-items:center;gap:10px;padding:6px 14px 0">
-      <span style="font-size:10px;color:#7a8fa3">34.87°N · 1.32°E · Skyfield/SGP4</span>
+      <span style="font-size:10px;color:#7a8fa3">{{ "%.2f"|format(observer_lat) }}°N · {{ "%.2f"|format(observer_lon|abs) }}°{% if lang == 'en' %}W{% else %}O{% endif %} · Skyfield/SGP4</span>
       <span style="margin-left:auto;font-size:9px;color:#7a8a9a" id="iss-passes-updated"></span>
     </div>
     <!-- Next pass countdown -->
@@ -1412,7 +1412,7 @@ text-decoration:none;font-weight:bold;letter-spacing:2px">
 
 <div id="panel-ephemerides" class="panel">
   <div class="section-title">🌅 ÉPHÉMÉRIDES — TLEMCEN</div>
-  <div style="font-size:9px;letter-spacing:3px;color:var(--blue);margin-bottom:14px">34.88°N · 1.32°E · 800m — UTC+1 ALGÉRIE</div>
+  <div style="font-size:9px;letter-spacing:3px;color:var(--blue);margin-bottom:14px">{{ "%.2f"|format(observer_lat) }}°N · {{ "%.2f"|format(observer_lon|abs) }}°{% if lang == 'en' %}W{% else %}O{% endif %} · 800m — UTC+1 ALGÉRIE</div>
   <div id="eph-container" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
     <div style="color:#8899aa;font-size:11px;letter-spacing:2px">Chargement...</div>
   </div>
