@@ -27,6 +27,10 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+# Single source of truth for the Global Threat Index (cf. /methodology §4).
+# JAMAIS de sinusoide ici : data reelle OU etat honnete.
+from .services.threat_index import compute_threat_index, WEIGHTS_NOMINAL
+
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -59,12 +63,10 @@ class TelemetryEmitter:
         return base + math.sin((t / period) + phase) * scale
 
     def next_frame(self) -> Dict[str, Any]:
-        threat_index = _clamp(
-            self._drift(period=18.0, phase=0.0, scale=14.0, base=32.0)
-            + random.gauss(0, 1.6),
-            0.0,
-            100.0,
-        )
+        # Threat Index NEVER computed here — populated by the WS broadcaster
+        # from services.threat_index.compute_threat_index() (single source of
+        # truth, formula in /methodology). Placeholder None is overwritten
+        # before the frame is sent.
 
         orbital_integrity = _clamp(
             self._drift(period=22.0, phase=1.4, scale=3.5, base=97.0)
@@ -79,7 +81,7 @@ class TelemetryEmitter:
         return {
             "system": self.SYSTEM_TAG,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "threat_index": round(threat_index, 2),
+            "threat_index": None,
             "orbital_status": {
                 "integrity": round(orbital_integrity, 2),
                 "iss_velocity_km_s": round(iss_velocity, 4),
@@ -396,6 +398,250 @@ def _ensure_tle_refresh_started() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Cache-aware live collectors — module-level, shared by HTTP endpoints AND
+# the WebSocket Threat Index broadcaster. Single cache, single TTL, no
+# upstream hammering (NOAA/USGS/OpenSky).
+# ---------------------------------------------------------------------------
+
+
+async def _fetch_space_weather_data() -> Dict[str, Any]:
+    """Return cached or freshly-fetched NOAA SWPC space weather payload.
+
+    Honors _SWX_TTL_S. On total failure: returns an unavailable payload
+    (live=false, kp/xray/f107=None). NEVER substitutes a hardcoded value.
+    """
+    now = time.time()
+    if _SWX_CACHE["data"] and (now - _SWX_CACHE["ts"]) < _SWX_TTL_S:
+        return _SWX_CACHE["data"]
+    try:
+        kp_text, flux_text, xray_text = await asyncio.gather(
+            _http_get(
+                "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
+                timeout=8.0,
+            ),
+            _http_get(
+                "https://services.swpc.noaa.gov/json/f107_cm_flux.json",
+                timeout=8.0,
+            ),
+            _http_get(
+                "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",
+                timeout=8.0,
+            ),
+        )
+        kp_arr = json.loads(kp_text)
+        flux_arr = json.loads(flux_text)
+        xray_arr = json.loads(xray_text)
+        latest_kp, kp_time_tag = _parse_latest_kp(kp_arr)
+        latest_flux, flux_time_tag = _parse_latest_f107(flux_arr)
+        latest_xray, xray_time_tag = _parse_latest_xray(xray_arr)
+        kp_live = latest_kp is not None
+        data = {
+            "kp": latest_kp,
+            "kp_time_tag": kp_time_tag,
+            "kp_age_seconds": _iso_age_seconds(kp_time_tag),
+            "kp_live": kp_live,
+            "f107": latest_flux,
+            "f107_time_tag": flux_time_tag,
+            "f107_age_seconds": _iso_age_seconds(flux_time_tag),
+            "xray_long_wm2": latest_xray,
+            "xray_time_tag": xray_time_tag,
+            "xray_age_seconds": _iso_age_seconds(xray_time_tag),
+            "live": kp_live,
+            "source": "NOAA SWPC" if kp_live else "NOAA SWPC (partial)",
+            "fetched": _now_iso(),
+        }
+        if not kp_live:
+            data["warning"] = (
+                "Kp parsing failed (NOAA returned no recognizable rows). "
+                "kp=null until next refresh; xray/f107 may still be valid."
+            )
+            # Don't cache a partial payload — retry on next hit.
+            return data
+        _SWX_CACHE["data"] = data
+        _SWX_CACHE["ts"] = now
+        return data
+    except Exception as e:
+        return {
+            "kp": None, "kp_time_tag": None, "kp_age_seconds": None, "kp_live": False,
+            "f107": None, "f107_time_tag": None, "f107_age_seconds": None,
+            "xray_long_wm2": None, "xray_time_tag": None, "xray_age_seconds": None,
+            "source": "unavailable", "live": False, "error": str(e)[:200],
+            "fetched": _now_iso(),
+        }
+
+
+async def _fetch_seismic_data() -> Dict[str, Any]:
+    """Return cached or freshly-fetched USGS seismic payload. Honors _SEISMIC_TTL_S."""
+    now = time.time()
+    if _SEISMIC_CACHE["data"] and (now - _SEISMIC_CACHE["ts"]) < _SEISMIC_TTL_S:
+        return _SEISMIC_CACHE["data"]
+    try:
+        raw = await _http_get(_SEISMIC_UPSTREAM, timeout=8.0)
+        payload = json.loads(raw)
+        features = payload.get("features", [])
+        score = 0.0
+        counts = {"4-5": 0, "5-6": 0, "6-7": 0, "7+": 0}
+        top_events = []
+        tsunami_flagged = 0
+        for f in features:
+            props = f.get("properties", {})
+            mag = props.get("mag") or 0
+            if mag < 4.0:
+                continue
+            if mag < 5.0:
+                score += 1; counts["4-5"] += 1
+            elif mag < 6.0:
+                score += 5; counts["5-6"] += 1
+            elif mag < 7.0:
+                score += 20; counts["6-7"] += 1
+            else:
+                score += 100; counts["7+"] += 1
+            if props.get("tsunami") == 1:
+                tsunami_flagged += 1
+            geom = f.get("geometry", {}).get("coordinates", [0, 0, 0])
+            top_events.append({
+                "mag": round(mag, 1),
+                "place": props.get("place", "Unknown"),
+                "time": props.get("time"),
+                "tsunami": props.get("tsunami") == 1,
+                "alert": props.get("alert"),
+                "lon": geom[0] if len(geom) > 0 else None,
+                "lat": geom[1] if len(geom) > 1 else None,
+                "depth_km": geom[2] if len(geom) > 2 else None,
+            })
+        if tsunami_flagged > 0:
+            score *= 2
+        score = _clamp(score, 0.0, 100.0)
+        top_events.sort(key=lambda e: e["mag"], reverse=True)
+        top_events = top_events[:5]
+        data = {
+            "score": round(score, 2),
+            "total_events_24h": len(features),
+            "significant_events_24h": sum(counts.values()),
+            "magnitude_distribution": counts,
+            "tsunami_warnings": tsunami_flagged,
+            "top_events": top_events,
+            "source": "USGS Earthquake Hazards Program",
+            "live": True,
+            "fetched": _now_iso(),
+        }
+        _SEISMIC_CACHE["data"] = data
+        _SEISMIC_CACHE["ts"] = now
+        return data
+    except Exception as e:
+        return {
+            "score": None,
+            "total_events_24h": 0,
+            "significant_events_24h": 0,
+            "magnitude_distribution": {"4-5": 0, "5-6": 0, "6-7": 0, "7+": 0},
+            "tsunami_warnings": 0,
+            "top_events": [],
+            "source": "unavailable",
+            "live": False,
+            "error": str(e)[:200],
+            "fetched": _now_iso(),
+        }
+
+
+async def _fetch_air_traffic_data() -> Dict[str, Any]:
+    """Return cached or freshly-fetched OpenSky aircraft density. Honors _AIR_TTL_S."""
+    now = time.time()
+    if _AIR_CACHE["data"] and (now - _AIR_CACHE["ts"]) < _AIR_TTL_S:
+        return _AIR_CACHE["data"]
+    try:
+        raw = await _http_get(_AIR_TRAFFIC_UPSTREAM, timeout=8.0)
+        payload = json.loads(raw)
+        aircraft = payload.get("aircraft", [])
+        total_cached = int(payload.get("total", len(aircraft)))
+        in_flight = sum(1 for a in aircraft if not a.get("on_ground", False))
+        on_ground = sum(1 for a in aircraft if a.get("on_ground", False))
+        density = _clamp(
+            (total_cached / _AIR_WORLD_BASELINE) * 50.0,
+            0.0, 100.0,
+        )
+        data = {
+            "total_aircraft": total_cached,
+            "in_flight": in_flight,
+            "on_ground": on_ground,
+            "rendered": int(payload.get("rendered", 0)),
+            "density_pct": round(density, 2),
+            "world_baseline": _AIR_WORLD_BASELINE,
+            "source": "OpenSky Network (via ASTRO-SCAN flight_radar)",
+            "upstream_source": payload.get("source", "unknown"),
+            "live": True,
+            "fetched": _now_iso(),
+            "upstream_ts": payload.get("ts"),
+        }
+        _AIR_CACHE["data"] = data
+        _AIR_CACHE["ts"] = now
+        return data
+    except Exception as e:
+        return {
+            "total_aircraft": 0,
+            "in_flight": 0,
+            "on_ground": 0,
+            "rendered": 0,
+            "density_pct": None,
+            "world_baseline": _AIR_WORLD_BASELINE,
+            "source": "unavailable",
+            "upstream_source": "unreachable",
+            "live": False,
+            "error": str(e)[:200],
+            "fetched": _now_iso(),
+        }
+
+
+def _compute_tle_age_hours() -> Optional[float]:
+    """Parse the current ISS TLE line1 epoch and return its age in hours.
+
+    Returns None when no live TLE is in cache (fallback/synthetic TLE is
+    intentionally not used — staleness would be a lie).
+    """
+    data = _TLE_CACHE.get("data")
+    if not data or not data.get("live"):
+        return None
+    line1 = data.get("line1")
+    if not isinstance(line1, str) or len(line1) < 32:
+        return None
+    try:
+        # TLE line1 columns 19-32 (1-indexed): epoch year (YY) + day-of-year (DDD.dddddd)
+        year_str = line1[18:20]
+        day_str = line1[20:32]
+        year_two = int(year_str)
+        # NORAD convention: 00-56 -> 2000-2056, 57-99 -> 1957-1999
+        year = (2000 + year_two) if year_two < 57 else (1900 + year_two)
+        day = float(day_str)
+        from datetime import timedelta
+        epoch = datetime(year, 1, 1, tzinfo=timezone.utc) + timedelta(days=day - 1)
+        age_seconds = (datetime.now(timezone.utc) - epoch).total_seconds()
+        return max(0.0, age_seconds / 3600.0)
+    except Exception:
+        return None
+
+
+async def _collect_threat_components() -> Dict[str, Any]:
+    """Gather the raw values fed to compute_threat_index().
+
+    Hits the three cache-aware fetchers in parallel + reads the TLE cache.
+    Anywhere a collector is down or returns an unavailable payload, the
+    corresponding raw value is None — compute_threat_index() will then
+    drop the component and renormalize the remaining weights.
+    """
+    swx, seismic, air = await asyncio.gather(
+        _fetch_space_weather_data(),
+        _fetch_seismic_data(),
+        _fetch_air_traffic_data(),
+    )
+    return {
+        "kp": swx.get("kp") if swx.get("kp_live") else None,
+        "xray_wm2": swx.get("xray_long_wm2"),
+        "seismic_score": seismic.get("score") if seismic.get("live") else None,
+        "air_density_pct": air.get("density_pct") if air.get("live") else None,
+        "tle_age_hours": _compute_tle_age_hours(),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Application factory
 # ---------------------------------------------------------------------------
 
@@ -466,232 +712,41 @@ def create_app() -> FastAPI:
     async def space_weather() -> JSONResponse:
         """Latest Kp, F10.7 flux, and GOES X-ray long-band — NOAA SWPC.
 
-        Anti-mensonge (fix_kp 2026-05-29) :
-          - Le parseur Kp gère ROBUSTEMENT les deux formats publiés
-            historiquement par NOAA (liste de dicts depuis ~2025, liste
-            de listes avec ligne d'en-tête avant). Cf. _parse_latest_kp.
-          - INTERDIT : émettre `live=true` avec une valeur Kp hardcodée
-            quand le parsing ne donne aucune ligne valide. Dans ce cas
-            `kp` vaut `null`, `kp_time_tag` vaut `null`, `live` passe à
-            False et `source` à `"unavailable"` (ou `"NOAA SWPC (partial)"`
-            si xray/f107 ont quand même réussi).
-          - Chaque sous-champ expose son `time_tag` + `age_seconds` pour
-            que le client puisse trier vrai-live / périmé / absent.
+        Thin wrapper around _fetch_space_weather_data() so the cache is
+        shared with the WebSocket Threat Index broadcaster — single TTL,
+        no double-tap on NOAA endpoints. Anti-mensonge :
+          - Parser Kp robuste aux deux schemas historiques NOAA.
+          - INTERDIT d'emettre live=true avec un Kp hardcode quand le
+            parsing echoue. live=false + kp=null dans ce cas.
         """
-        now = time.time()
-        if _SWX_CACHE["data"] and (now - _SWX_CACHE["ts"]) < _SWX_TTL_S:
-            return JSONResponse(_SWX_CACHE["data"])
-        try:
-            kp_text, flux_text, xray_text = await asyncio.gather(
-                _http_get(
-                    "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json",
-                    timeout=8.0,
-                ),
-                _http_get(
-                    "https://services.swpc.noaa.gov/json/f107_cm_flux.json",
-                    timeout=8.0,
-                ),
-                _http_get(
-                    "https://services.swpc.noaa.gov/json/goes/primary/xrays-1-day.json",
-                    timeout=8.0,
-                ),
-            )
-            kp_arr = json.loads(kp_text)
-            flux_arr = json.loads(flux_text)
-            xray_arr = json.loads(xray_text)
-
-            latest_kp, kp_time_tag = _parse_latest_kp(kp_arr)
-            latest_flux, flux_time_tag = _parse_latest_f107(flux_arr)
-            latest_xray, xray_time_tag = _parse_latest_xray(xray_arr)
-
-            kp_live = latest_kp is not None
-            data = {
-                "kp": latest_kp,
-                "kp_time_tag": kp_time_tag,
-                "kp_age_seconds": _iso_age_seconds(kp_time_tag),
-                "kp_live": kp_live,
-                "f107": latest_flux,
-                "f107_time_tag": flux_time_tag,
-                "f107_age_seconds": _iso_age_seconds(flux_time_tag),
-                "xray_long_wm2": latest_xray,
-                "xray_time_tag": xray_time_tag,
-                "xray_age_seconds": _iso_age_seconds(xray_time_tag),
-                "live": kp_live,  # top-level live ↔ Kp live (consumer du Threat Index)
-                "source": "NOAA SWPC" if kp_live else "NOAA SWPC (partial)",
-                "fetched": _now_iso(),
-            }
-            if not kp_live:
-                data["warning"] = (
-                    "Kp parsing failed (NOAA returned no recognizable rows). "
-                    "kp=null until next refresh; xray/f107 may still be valid."
-                )
-                # Ne pas cacher un payload partiel pour éviter de figer un kp=null
-                # pendant tout le TTL ; on retentera au prochain hit.
-                return JSONResponse(data)
-
-            _SWX_CACHE["data"] = data
-            _SWX_CACHE["ts"] = now
-            return JSONResponse(data)
-        except Exception as e:
-            # Total fetch/parse failure → unavailable, jamais de valeur hardcodée.
-            return JSONResponse({
-                "kp": None,
-                "kp_time_tag": None,
-                "kp_age_seconds": None,
-                "kp_live": False,
-                "f107": None,
-                "f107_time_tag": None,
-                "f107_age_seconds": None,
-                "xray_long_wm2": None,
-                "xray_time_tag": None,
-                "xray_age_seconds": None,
-                "source": "unavailable",
-                "live": False,
-                "error": str(e)[:200],
-                "fetched": _now_iso(),
-            })
+        return JSONResponse(await _fetch_space_weather_data())
 
     @app.get("/api/air-traffic")
     async def air_traffic() -> JSONResponse:
         """Live global air traffic density — proxies ASTRO-SCAN /api/flight-radar/aircraft.
 
-        Returns a normalized density [0..100] computed from the worldwide
-        aircraft count served by the flight_radar blueprint (OpenSky OAUTH2 +
-        ADS-B.lol fallback). Cached 60s; upstream itself caches ~30s.
-        On upstream failure, returns last-known-good or a clearly-marked
-        fallback. Live data is identified by `live: true` and `source` field.
+        Thin wrapper around _fetch_air_traffic_data() — single cache, single
+        TTL, shared with the Threat Index broadcaster. Density [0..100] is
+        a linear map [0, baseline*2] -> [0, 100]. live=false on upstream
+        failure (no fake density).
         """
-        now = time.time()
-        if _AIR_CACHE["data"] and (now - _AIR_CACHE["ts"]) < _AIR_TTL_S:
-            return JSONResponse(_AIR_CACHE["data"])
-        try:
-            raw = await _http_get(_AIR_TRAFFIC_UPSTREAM, timeout=8.0)
-            payload = json.loads(raw)
-            aircraft = payload.get("aircraft", [])
-            total_cached = int(payload.get("total", len(aircraft)))
-            in_flight = sum(1 for a in aircraft if not a.get("on_ground", False))
-            on_ground = sum(1 for a in aircraft if a.get("on_ground", False))
-            # Density: linear map [0, baseline*2] → [0, 100]
-            density = _clamp(
-                (total_cached / _AIR_WORLD_BASELINE) * 50.0,
-                0.0, 100.0
-            )
-            data = {
-                "total_aircraft": total_cached,
-                "in_flight": in_flight,
-                "on_ground": on_ground,
-                "rendered": int(payload.get("rendered", 0)),
-                "density_pct": round(density, 2),
-                "world_baseline": _AIR_WORLD_BASELINE,
-                "source": "OpenSky Network (via ASTRO-SCAN flight_radar)",
-                "upstream_source": payload.get("source", "unknown"),
-                "live": True,
-                "fetched": _now_iso(),
-                "upstream_ts": payload.get("ts"),
-            }
-            _AIR_CACHE["data"] = data
-            _AIR_CACHE["ts"] = now
-            return JSONResponse(data)
-        except Exception as e:
-            return JSONResponse({
-                "total_aircraft": 0,
-                "in_flight": 0,
-                "on_ground": 0,
-                "rendered": 0,
-                "density_pct": 0.0,
-                "world_baseline": _AIR_WORLD_BASELINE,
-                "source": "fallback",
-                "upstream_source": "unreachable",
-                "live": False,
-                "error": str(e)[:200],
-                "fetched": _now_iso(),
-            })
+        return JSONResponse(await _fetch_air_traffic_data())
 
     @app.get("/api/seismic")
     async def seismic() -> JSONResponse:
         """Live global seismic activity — USGS Earthquake Hazards Program.
 
-        Aggregates last-24h earthquakes worldwide and computes a weighted
-        activity score [0..100] where:
-          - M < 4.0  : ignored (background noise, hundreds/day worldwide)
+        Thin wrapper around _fetch_seismic_data() — single cache, single TTL,
+        shared with the Threat Index broadcaster. Score weighting:
+          - M < 4.0  : ignored (background noise)
           - M 4.0-5.0: weight 1
           - M 5.0-6.0: weight 5  (significant)
           - M 6.0-7.0: weight 20 (major)
           - M 7.0+   : weight 100 (catastrophic)
-          - Tsunami warning: ×2 multiplier on total
-
-        Cached 120s. On upstream failure, returns last-known-good or fallback
-        marked live=false. Source: US Geological Survey public domain.
+          - Tsunami warning: x2 multiplier on total
+        On upstream failure: score=null, live=false (no fake zero).
         """
-        now = time.time()
-        if _SEISMIC_CACHE["data"] and (now - _SEISMIC_CACHE["ts"]) < _SEISMIC_TTL_S:
-            return JSONResponse(_SEISMIC_CACHE["data"])
-        try:
-            raw = await _http_get(_SEISMIC_UPSTREAM, timeout=8.0)
-            payload = json.loads(raw)
-            features = payload.get("features", [])
-            score = 0.0
-            counts = {"4-5": 0, "5-6": 0, "6-7": 0, "7+": 0}
-            top_events = []
-            tsunami_flagged = 0
-            for f in features:
-                props = f.get("properties", {})
-                mag = props.get("mag") or 0
-                if mag < 4.0:
-                    continue
-                if mag < 5.0:
-                    score += 1; counts["4-5"] += 1
-                elif mag < 6.0:
-                    score += 5; counts["5-6"] += 1
-                elif mag < 7.0:
-                    score += 20; counts["6-7"] += 1
-                else:
-                    score += 100; counts["7+"] += 1
-                if props.get("tsunami") == 1:
-                    tsunami_flagged += 1
-                geom = f.get("geometry", {}).get("coordinates", [0, 0, 0])
-                top_events.append({
-                    "mag": round(mag, 1),
-                    "place": props.get("place", "Unknown"),
-                    "time": props.get("time"),
-                    "tsunami": props.get("tsunami") == 1,
-                    "alert": props.get("alert"),
-                    "lon": geom[0] if len(geom) > 0 else None,
-                    "lat": geom[1] if len(geom) > 1 else None,
-                    "depth_km": geom[2] if len(geom) > 2 else None,
-                })
-            if tsunami_flagged > 0:
-                score *= 2
-            score = _clamp(score, 0.0, 100.0)
-            top_events.sort(key=lambda e: e["mag"], reverse=True)
-            top_events = top_events[:5]
-            data = {
-                "score": round(score, 2),
-                "total_events_24h": len(features),
-                "significant_events_24h": sum(counts.values()),
-                "magnitude_distribution": counts,
-                "tsunami_warnings": tsunami_flagged,
-                "top_events": top_events,
-                "source": "USGS Earthquake Hazards Program",
-                "live": True,
-                "fetched": _now_iso(),
-            }
-            _SEISMIC_CACHE["data"] = data
-            _SEISMIC_CACHE["ts"] = now
-            return JSONResponse(data)
-        except Exception as e:
-            return JSONResponse({
-                "score": 0.0,
-                "total_events_24h": 0,
-                "significant_events_24h": 0,
-                "magnitude_distribution": {"4-5": 0, "5-6": 0, "6-7": 0, "7+": 0},
-                "tsunami_warnings": 0,
-                "top_events": [],
-                "source": "fallback",
-                "live": False,
-                "error": str(e)[:200],
-                "fetched": _now_iso(),
-            })
+        return JSONResponse(await _fetch_seismic_data())
 
     @app.get("/api/space-alerts")
     async def space_alerts() -> JSONResponse:
@@ -827,11 +882,44 @@ def create_app() -> FastAPI:
 
     @app.websocket("/ws")
     async def telemetry_socket(websocket: WebSocket) -> None:
+        """Mission Control telemetry stream.
+
+        Each 2s frame carries the Threat Index computed from REAL live
+        sources via services.threat_index.compute_threat_index() — the
+        same formula documented on /methodology. NEVER a sinusoid. If
+        all collectors are down, threat_index=null and threat_breakdown
+        state="unavailable" (honest, no fake number).
+        """
         await websocket.accept()
         emitter = TelemetryEmitter()
+        # Ensure TLE refresh background task is running so tle_age_hours
+        # has a chance to populate (otherwise TLE component stays missing).
+        _ensure_tle_refresh_started()
         try:
             while True:
                 frame = emitter.next_frame()
+                try:
+                    components = await _collect_threat_components()
+                    threat = compute_threat_index(components)
+                    frame["threat_index"] = threat["index"]
+                    frame["threat_breakdown"] = {
+                        "state": threat["state"],
+                        "missing": threat["missing"],
+                        "components": threat["components"],
+                        "weights_sum_effective": threat["weights_sum_effective"],
+                        "weights_nominal": WEIGHTS_NOMINAL,
+                    }
+                except Exception as e:
+                    # Honest failure — never a sinusoid fallback.
+                    frame["threat_index"] = None
+                    frame["threat_breakdown"] = {
+                        "state": "unavailable",
+                        "missing": list(WEIGHTS_NOMINAL.keys()),
+                        "components": {},
+                        "weights_sum_effective": 0.0,
+                        "weights_nominal": WEIGHTS_NOMINAL,
+                        "error": str(e)[:200],
+                    }
                 await websocket.send_text(json.dumps(frame))
                 await asyncio.sleep(2.0)
         except WebSocketDisconnect:
