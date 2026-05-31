@@ -38,6 +38,95 @@ height:100%;
 margin:0;
 background:black;
 }
+
+/* ── Panneau télémétrie deep space (glassmorphism léger) ───────────── */
+#mc-telemetry {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 50;
+  width: 320px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  padding: 14px 16px;
+  background: rgba(8, 14, 24, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 255, 0.18);
+  border-radius: 8px;
+  color: #d8f4ff;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.6);
+}
+#mc-telemetry h2 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  letter-spacing: 1.2px;
+  color: #0ff;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+#mc-telemetry .mc-block {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.08);
+}
+#mc-telemetry .mc-block:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+#mc-telemetry .mc-block-title {
+  font-size: 11px;
+  color: #6cf;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+#mc-telemetry .mc-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 2px 0;
+}
+#mc-telemetry .mc-row .k { color: #8ab; }
+#mc-telemetry .mc-row .v { color: #e6f8ff; text-align: right; }
+#mc-telemetry .mc-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  letter-spacing: 0.4px;
+  margin-left: 4px;
+}
+#mc-telemetry .mc-badge.live { background: rgba(0, 180, 80, 0.25); color: #6f6; border: 1px solid rgba(0, 180, 80, 0.5); }
+#mc-telemetry .mc-badge.approx { background: rgba(255, 160, 0, 0.18); color: #fb0; border: 1px solid rgba(255, 160, 0, 0.45); }
+#mc-telemetry .mc-badge.unavail { background: rgba(120, 120, 120, 0.18); color: #aaa; border: 1px solid rgba(120, 120, 120, 0.45); }
+#mc-telemetry .mc-muted { color: #789; font-size: 11px; }
+#mc-telemetry-toggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 51;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: rgba(8, 14, 24, 0.78);
+  border: 1px solid rgba(0, 255, 255, 0.4);
+  color: #0ff;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 14px;
+  display: none;
+}
+@media (max-width: 720px) {
+  #mc-telemetry { display: none; width: calc(100vw - 24px); max-width: 360px; }
+  #mc-telemetry.open { display: block; }
+  #mc-telemetry-toggle { display: block; }
+  #mc-telemetry.open + #mc-telemetry-toggle { left: auto; right: 12px; }
+}
 </style>
 </head>
 
@@ -46,6 +135,35 @@ background:black;
 
 
 <div id="cesiumContainer"></div>
+
+<aside id="mc-telemetry" aria-label="Télémétrie deep space">
+  <h2>Télémétrie deep space</h2>
+
+  <div class="mc-block" id="mc-voyager">
+    <div class="mc-block-title">Voyager <span id="mc-voyager-src" class="mc-badge unavail">…</span></div>
+    <div id="mc-voyager-body" class="mc-muted">Connexion JPL Horizons…</div>
+  </div>
+
+  <div class="mc-block" id="mc-dsn">
+    <div class="mc-block-title">Deep Space Network <span id="mc-dsn-src" class="mc-badge unavail">…</span></div>
+    <div id="mc-dsn-body" class="mc-muted">Connexion NASA DSN Now…</div>
+  </div>
+
+  <div class="mc-block" id="mc-mars">
+    <div class="mc-block-title">Mars Rovers <span id="mc-mars-src" class="mc-badge unavail">…</span></div>
+    <div id="mc-mars-body" class="mc-muted">Connexion NASA Mars Photos…</div>
+  </div>
+
+  <div class="mc-block" id="mc-jwst">
+    <div class="mc-block-title">JWST <span class="mc-badge unavail">L2 statique</span></div>
+    <div id="mc-jwst-body">
+      <div class="mc-row"><span class="k">Position</span><span class="v">Point de Lagrange L2</span></div>
+      <div class="mc-row"><span class="k">Distance Terre</span><span class="v">~1.5 M km</span></div>
+      <div class="mc-muted" style="margin-top:4px">Télémétrie position temps réel non publique (NASA STScI).</div>
+    </div>
+  </div>
+</aside>
+<button id="mc-telemetry-toggle" type="button" aria-label="Afficher la télémétrie">≡</button>
 
 <script>
 
@@ -248,6 +366,154 @@ background:black;
 })();
 
 })(); // close async initCesium wrapper
+</script>
+
+
+<script>
+// ── Panneau télémétrie deep space (Voyager / DSN / Mars / JWST) ──────
+(function () {
+  'use strict';
+
+  function fmtNum(n, digits) {
+    if (n === null || n === undefined || isNaN(n)) return '—';
+    return Number(n).toLocaleString('fr-FR', {
+      minimumFractionDigits: digits || 0,
+      maximumFractionDigits: digits || 0,
+    });
+  }
+  function setBadge(el, text, cls) {
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'mc-badge ' + cls;
+  }
+
+  async function loadVoyager() {
+    const body = document.getElementById('mc-voyager-body');
+    const badge = document.getElementById('mc-voyager-src');
+    try {
+      const r = await fetch('/api/feeds/voyager', { cache: 'no-store' });
+      const j = await r.json();
+      const data = (j && j.data) || {};
+      const probes = [['VOYAGER_1', 'Voyager 1'], ['VOYAGER_2', 'Voyager 2']];
+      let html = '';
+      let liveCount = 0, approxCount = 0;
+      probes.forEach(function (p) {
+        const d = data[p[0]];
+        if (!d) {
+          html += '<div class="mc-row"><span class="k">' + p[1] + '</span><span class="v mc-muted">indisponible</span></div>';
+          return;
+        }
+        if (d.source === 'NASA JPL Horizons') liveCount++; else approxCount++;
+        html += '<div class="mc-row"><span class="k">' + p[1] + ' · distance</span>'
+              + '<span class="v">' + fmtNum(d.dist_au, 2) + ' UA</span></div>'
+              + '<div class="mc-row"><span class="k">&nbsp;&nbsp;en km</span>'
+              + '<span class="v">' + fmtNum(d.dist_km) + ' km</span></div>'
+              + '<div class="mc-row"><span class="k">&nbsp;&nbsp;vitesse</span>'
+              + '<span class="v">' + fmtNum(d.speed_km_s, 2) + ' km/s</span></div>';
+        if (d.latency_hours !== undefined && d.latency_hours !== null) {
+          html += '<div class="mc-row"><span class="k">&nbsp;&nbsp;latence signal</span>'
+                + '<span class="v">' + fmtNum(d.latency_hours, 2) + ' h</span></div>';
+        }
+      });
+      body.innerHTML = html || '<div class="mc-muted">Aucune donnée.</div>';
+      if (liveCount > 0 && approxCount === 0) setBadge(badge, 'JPL Horizons', 'live');
+      else if (liveCount > 0) setBadge(badge, 'JPL · partiel', 'live');
+      else setBadge(badge, 'Calcul approx.', 'approx');
+    } catch (e) {
+      body.innerHTML = '<div class="mc-muted">Indisponible.</div>';
+      setBadge(badge, 'hors-ligne', 'unavail');
+    }
+  }
+
+  async function loadDSN() {
+    const body = document.getElementById('mc-dsn-body');
+    const badge = document.getElementById('mc-dsn-src');
+    try {
+      const r = await fetch('/api/dsn', { cache: 'no-store' });
+      const j = await r.json();
+      const stations = j.stations || [];
+      let activeDishes = 0, totalDishes = 0;
+      const spacecraft = new Set();
+      stations.forEach(function (st) {
+        (st.dishes || []).forEach(function (di) {
+          totalDishes++;
+          const hasSignal = ((di.downSignals || []).length + (di.upSignals || []).length) > 0;
+          if (hasSignal) activeDishes++;
+          (di.targets || []).forEach(function (t) {
+            if (t.name && t.name !== 'DSN') spacecraft.add(t.name);
+          });
+        });
+      });
+      let html = '<div class="mc-row"><span class="k">Antennes actives</span>'
+               + '<span class="v">' + activeDishes + ' / ' + totalDishes + '</span></div>'
+               + '<div class="mc-row"><span class="k">Vaisseaux suivis</span>'
+               + '<span class="v">' + spacecraft.size + '</span></div>';
+      if (spacecraft.size > 0) {
+        const list = Array.from(spacecraft).slice(0, 6).join(', ');
+        html += '<div class="mc-muted" style="margin-top:4px">' + list
+              + (spacecraft.size > 6 ? ' …' : '') + '</div>';
+      }
+      body.innerHTML = html;
+      setBadge(badge, j.stale ? 'DSN · cache' : 'DSN Now · live', j.stale ? 'approx' : 'live');
+    } catch (e) {
+      body.innerHTML = '<div class="mc-muted">Indisponible.</div>';
+      setBadge(badge, 'hors-ligne', 'unavail');
+    }
+  }
+
+  async function loadMars() {
+    const body = document.getElementById('mc-mars-body');
+    const badge = document.getElementById('mc-mars-src');
+    try {
+      const r = await fetch('/api/feeds/mars', { cache: 'no-store' });
+      const j = await r.json();
+      const photos = (j && j.photos) || [];
+      if (!photos.length) {
+        body.innerHTML = '<div class="mc-muted">Aucune photo récente.</div>';
+        setBadge(badge, 'indisponible', 'unavail');
+        return;
+      }
+      const byRover = {};
+      photos.forEach(function (p) {
+        const k = p.rover || '—';
+        if (!byRover[k] || (p.sol || 0) > (byRover[k].sol || 0)) byRover[k] = p;
+      });
+      let html = '';
+      Object.keys(byRover).forEach(function (rover) {
+        const p = byRover[rover];
+        html += '<div class="mc-row"><span class="k">' + rover + ' · sol</span>'
+              + '<span class="v">' + (p.sol !== undefined ? p.sol : '—') + '</span></div>'
+              + '<div class="mc-row"><span class="k">&nbsp;&nbsp;date Terre</span>'
+              + '<span class="v">' + (p.date || '—') + '</span></div>';
+      });
+      body.innerHTML = html;
+      setBadge(badge, 'NASA Mars Photos', 'live');
+    } catch (e) {
+      body.innerHTML = '<div class="mc-muted">Indisponible.</div>';
+      setBadge(badge, 'hors-ligne', 'unavail');
+    }
+  }
+
+  function init() {
+    loadVoyager();
+    loadDSN();
+    loadMars();
+    // refresh DSN seul (live), pas Voyager (cache 1h serveur)
+    setInterval(loadDSN, 60000);
+    const tg = document.getElementById('mc-telemetry-toggle');
+    const panel = document.getElementById('mc-telemetry');
+    if (tg && panel) {
+      tg.addEventListener('click', function () {
+        panel.classList.toggle('open');
+      });
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
 </script>
 
 

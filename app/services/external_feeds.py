@@ -24,39 +24,90 @@ log = logging.getLogger(__name__)
 
 
 # ── JPL Horizons : Voyager 1 & 2 ──────────────────────────────────────
+# Bornes physiques attendues (anti-parsing parasite). Voyager s'éloigne du Soleil
+# de ~3.5 UA/an ; les marges couvrent plusieurs années sans nécessiter d'update.
+_VOYAGER_BOUNDS = {
+    "VOYAGER_1": {"au_min": 160.0, "au_max": 200.0, "kms_min": 15.0, "kms_max": 18.0},
+    "VOYAGER_2": {"au_min": 130.0, "au_max": 170.0, "kms_min": 14.0, "kms_max": 17.0},
+}
+_AU_KM = 149597870.7
+_C_KM_S = 299792.458
+_HORIZONS_NUM = r"[-+]?\d+\.?\d*(?:[Ee][-+]?\d+)?"
+
+
+def _parse_horizons_vectors(raw: str):
+    """Extrait (X,Y,Z,VX,VY,VZ) en km / km/s du bloc $$SOE..$$EOE.
+
+    Retourne None si bloc absent ou parsing partiel. Lit la PREMIÈRE entrée
+    du bloc uniquement — STEP_SIZE='1d' avec START=STOP=today garantit 1 ligne.
+    """
+    if not raw or "$$SOE" not in raw or "$$EOE" not in raw:
+        return None
+    block = raw[raw.index("$$SOE") + 5 : raw.index("$$EOE")]
+    n = _HORIZONS_NUM
+    m_pos = re.search(
+        rf"X\s*=\s*({n})\s+Y\s*=\s*({n})\s+Z\s*=\s*({n})", block
+    )
+    m_vel = re.search(
+        rf"VX\s*=\s*({n})\s+VY\s*=\s*({n})\s+VZ\s*=\s*({n})", block
+    )
+    if not (m_pos and m_vel):
+        return None
+    try:
+        return (
+            float(m_pos.group(1)), float(m_pos.group(2)), float(m_pos.group(3)),
+            float(m_vel.group(1)), float(m_vel.group(2)), float(m_vel.group(3)),
+        )
+    except ValueError:
+        return None
+
+
 def fetch_voyager():
-    """Position Voyager 1 & 2 via NASA JPL Horizons."""
+    """Position Voyager 1 & 2 via NASA JPL Horizons (VECTORS, héliocentrique).
+
+    Renvoie un dict par sonde présente. Si une sonde est hors bornes physiques
+    (parsing parasité ou réponse aberrante) → elle est OMISE plutôt que renvoyée
+    avec un chiffre faux.
+    """
     try:
         now = _dt.datetime.now(_dt.timezone.utc)
-        y, mo, d = now.year, now.month, now.day
+        tomorrow = now + _dt.timedelta(days=1)
+        d1 = f"{now.year}-{now.month:02d}-{now.day:02d}"
+        d2 = f"{tomorrow.year}-{tomorrow.month:02d}-{tomorrow.day:02d}"
         results = {}
         for name, target in [("VOYAGER_1", "-31"), ("VOYAGER_2", "-32")]:
             url = (
                 f"https://ssd.jpl.nasa.gov/api/horizons.api?"
-                f"format=text&COMMAND='{target}'&OBJ_DATA=YES&MAKE_EPHEM=YES"
-                f"&EPHEM_TYPE=VECTORS&CENTER='500@10'"
-                f"&START_TIME='{y}-{mo:02d}-{d:02d}'&STOP_TIME='{y}-{mo:02d}-{d:02d}T23:59'"
-                f"&STEP_SIZE='1d'&QUANTITIES='20'"
+                f"format=text&COMMAND='{target}'&OBJ_DATA=NO&MAKE_EPHEM=YES"
+                f"&EPHEM_TYPE=VECTORS&CENTER='500@10'&VEC_TABLE='2'"
+                f"&OUT_UNITS='KM-S'"
+                f"&START_TIME='{d1}'&STOP_TIME='{d2}'&STEP_SIZE='1d'"
             )
-            raw = _curl_get(url, timeout=20)
-            if not raw:
+            raw = _curl_get(url, timeout=25)
+            parsed = _parse_horizons_vectors(raw) if raw else None
+            if not parsed:
+                log.warning("voyager %s: parsing $$SOE/$$EOE échoué", name)
                 continue
-            dist_au = None
-            speed_km_s = None
-            rg_match = re.search(r"RG=\s*([\d.]+)", raw)
-            if rg_match:
-                dist_au = float(rg_match.group(1))
-            rr_match = re.search(r"RR=\s*([-\d.]+)", raw)
-            if rr_match:
-                speed_au_d = float(rr_match.group(1))
-                speed_km_s = abs(speed_au_d * 1731.46)
-            if dist_au is not None:
-                results[name] = {
-                    "dist_au": round(dist_au, 4),
-                    "dist_km": round(dist_au * 149597870.7),
-                    "speed_km_s": round(speed_km_s, 2) if speed_km_s else None,
-                    "source": "NASA JPL Horizons",
-                }
+            x, y, z, vx, vy, vz = parsed
+            dist_km = (x * x + y * y + z * z) ** 0.5
+            speed_km_s = (vx * vx + vy * vy + vz * vz) ** 0.5
+            dist_au = dist_km / _AU_KM
+            b = _VOYAGER_BOUNDS[name]
+            if not (b["au_min"] <= dist_au <= b["au_max"] and
+                    b["kms_min"] <= speed_km_s <= b["kms_max"]):
+                log.warning(
+                    "voyager %s: valeur hors bornes (%.2f UA, %.2f km/s) — omise",
+                    name, dist_au, speed_km_s,
+                )
+                continue
+            latency_hours = (dist_km / _C_KM_S) / 3600.0
+            results[name] = {
+                "dist_au": round(dist_au, 3),
+                "dist_km": round(dist_km),
+                "speed_km_s": round(speed_km_s, 2),
+                "latency_hours": round(latency_hours, 2),
+                "source": "NASA JPL Horizons",
+            }
         return results if results else None
     except Exception as e:
         log.warning("voyager: %s", e)
