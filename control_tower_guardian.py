@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 HEALTH_URL = "http://127.0.0.1:5003/health"
-LOG_FILE = Path("/opt/astroscan/logs/guardian_watchdog.log")
-KILL_SWITCH = Path("/opt/astroscan/runtime/remediation.disabled")
-COOLDOWN_FILE = Path("/opt/astroscan/runtime/guardian_last_restart.txt")
+LOG_FILE = Path("/root/astro_scan/logs/guardian_watchdog.log")
+KILL_SWITCH = Path("/root/astro_scan/runtime/remediation.disabled")
+COOLDOWN_FILE = Path("/root/astro_scan/runtime/guardian_last_restart.txt")
 COOLDOWN_SECONDS = 600
 
 def log(msg):
