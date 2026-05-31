@@ -239,8 +239,8 @@ def _register_blueprints(app: Flask) -> None:
                 bp as telescope_bridge_bp,
                 pages_bp as telescope_bridge_pages_bp,
             )
-            app.register_blueprint(telescope_bridge_bp)
-            app.register_blueprint(telescope_bridge_pages_bp)
+            app.register_blueprint(telescope_bridge_bp, url_prefix="/api/telescope-bridge")
+            app.register_blueprint(telescope_bridge_pages_bp, url_prefix="/api/telescope-bridge")
             log.info("[telescope_bridge] blueprint registered (api + pages TB-38)")
     except Exception as e:
         log.warning("[telescope_bridge] registration failed (continuing): %s", e)
