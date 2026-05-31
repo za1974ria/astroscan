@@ -127,6 +127,80 @@ background:black;
   #mc-telemetry-toggle { display: block; }
   #mc-telemetry.open + #mc-telemetry-toggle { left: auto; right: 12px; }
 }
+
+/* ── Chrome Mission Control : bandeau retour + branding ───────────── */
+.mc-header {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 49;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: rgba(8, 14, 24, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 255, 0.18);
+  border-radius: 8px;
+  color: #d8f4ff;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+}
+.mc-header-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 255, 0.35);
+  background: rgba(0, 255, 255, 0.05);
+  color: #0ff;
+  text-decoration: none;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.mc-header-back:hover,
+.mc-header-back:focus-visible {
+  background: rgba(0, 255, 255, 0.14);
+  border-color: rgba(0, 255, 255, 0.6);
+  outline: none;
+}
+.mc-header-back svg { display: block; }
+.mc-header-sep {
+  width: 1px;
+  height: 18px;
+  background: rgba(0, 255, 255, 0.18);
+}
+.mc-header-brand {
+  font-size: 12px;
+  letter-spacing: 1.4px;
+  color: #0ff;
+  text-transform: uppercase;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mc-header-brand .mc-header-dot {
+  color: rgba(0, 255, 255, 0.4);
+  margin: 0 6px;
+}
+@media (max-width: 720px) {
+  .mc-header {
+    top: 12px;
+    left: 50px;          /* laisse 38px pour le toggle ≡ du panneau MC-2 */
+    right: 12px;
+    transform: none;
+    padding: 6px 10px;
+    gap: 8px;
+  }
+  .mc-header-brand { font-size: 11px; letter-spacing: 1px; }
+  .mc-header-back { padding: 3px 8px; font-size: 10px; }
+}
 </style>
 </head>
 
@@ -135,6 +209,18 @@ background:black;
 
 
 <div id="cesiumContainer"></div>
+
+<header class="mc-header" role="banner">
+  <a href="/portail" target="_top" class="mc-header-back" title="Retour au portail" aria-label="Retour au portail">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+    <span>Portail</span>
+  </a>
+  <span class="mc-header-sep" aria-hidden="true"></span>
+  <span class="mc-header-brand">ASTROSCAN<span class="mc-header-dot">·</span>CONTRÔLE MISSION</span>
+</header>
 
 <aside id="mc-telemetry" aria-label="Télémétrie deep space">
   <h2>Télémétrie deep space</h2>
