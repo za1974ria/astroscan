@@ -1,0 +1,5 @@
+cesium 1.118.2
+shasum 7ff62444f5af5180dbee64528b8df86ff5c8e4df
+installe le 2026-05-31
+source npm registry (npm pack cesium@1.118.2 -> package/Build/Cesium/)
+motif self-host : CSP worker-src 'self' blob: bloque les workers depuis CDN

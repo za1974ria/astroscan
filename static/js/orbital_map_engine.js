@@ -114,19 +114,36 @@
     infoBox: true,
     shouldAnimate: true,
     terrainProvider: new Cesium.EllipsoidTerrainProvider(),
-    imageryProvider: new Cesium.OpenStreetMapImageryProvider({
-      url: "https://tile.openstreetmap.org/"
+    imageryProvider: new Cesium.UrlTemplateImageryProvider({
+      url: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/2004-08-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
+      maximumLevel: 8,
+      credit: "NASA Blue Marble · GIBS"
     })
   });
 
   viewer.scene.globe.enableLighting = true;
+
+  // Source unique de vérité : window.ORBITAL_OBSERVER (injecté par le template
+  // depuis app/constants/observatory.py). Fallback aligné sur la même source
+  // (Tlemcen, OUEST de Greenwich -> longitude NÉGATIVE) au cas où l'injection
+  // manquerait. Ne JAMAIS écrire +1.32 ici — placerait la station à Tiaret.
+  var __ORB_OBS = (typeof window !== "undefined"
+                   && window.ORBITAL_OBSERVER
+                   && isFinite(window.ORBITAL_OBSERVER.lat)
+                   && isFinite(window.ORBITAL_OBSERVER.lon))
+    ? {
+        lat: window.ORBITAL_OBSERVER.lat,
+        lon: window.ORBITAL_OBSERVER.lon,
+        height: isFinite(window.ORBITAL_OBSERVER.height) ? window.ORBITAL_OBSERVER.height : 816
+      }
+    : { lat: 34.8753, lon: -1.3167, height: 816 };
 
   /** Marqueur test : observatoire / Tlemcen (visible même sans satellites). */
   try {
     viewer.entities.add({
       id: "astroscan-observer-tlemcen",
       name: "Tlemcen (réf. AstroScan-Chohra)",
-      position: Cesium.Cartesian3.fromDegrees(-1.3167, 34.8753, 816),
+      position: Cesium.Cartesian3.fromDegrees(__ORB_OBS.lon, __ORB_OBS.lat, __ORB_OBS.height),
       point: {
         pixelSize: 15,
         color: Cesium.Color.RED,
@@ -138,7 +155,7 @@
 
   try {
     viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(1.32, 34.87, 2000000)
+      destination: Cesium.Cartesian3.fromDegrees(__ORB_OBS.lon, __ORB_OBS.lat, 2000000)
     });
   } catch (e) {
     console.warn("Orbital map: camera flyTo failed", e);
@@ -274,9 +291,9 @@
 
   /** Aligné sur Tlemcen (même référence que observerCoords) pour angles locaux. */
   var OBSERVER = {
-    lat: 34.87,
-    lon: 1.32,
-    height: 800
+    lat: __ORB_OBS.lat,
+    lon: __ORB_OBS.lon,
+    height: __ORB_OBS.height
   };
 
   function classifySatellite(name) {
@@ -302,11 +319,11 @@
     return true;
   }
 
-  // Tlemcen default
-  var observerCoords = (typeof window !== "undefined" && window.ORBITAL_OBSERVER) || {
-    lat: 34.87,
-    lon: 1.32,
-    height: 800
+  // Tlemcen — vient de window.ORBITAL_OBSERVER via __ORB_OBS (source unique).
+  var observerCoords = {
+    lat: __ORB_OBS.lat,
+    lon: __ORB_OBS.lon,
+    height: __ORB_OBS.height
   };
 
   function buildObserverGd() {
@@ -1226,10 +1243,10 @@
     } catch (eWin) {
       passWindowMin = 1440;
     }
-    // Force observer reference for pass computation (Tlemcen).
-    var obsLat = 34.87;
-    var obsLon = 1.32;
-    var obsAlt = 800;
+    // Force observer reference for pass computation (Tlemcen — via __ORB_OBS).
+    var obsLat = __ORB_OBS.lat;
+    var obsLon = __ORB_OBS.lon;
+    var obsAlt = __ORB_OBS.height;
     var obsLatRad = Cesium.Math.toRadians(obsLat);
     var obsLonRad = Cesium.Math.toRadians(obsLon);
     if (Math.abs(obsLatRad) > Math.PI || Math.abs(obsLonRad) > (Math.PI * 2)) {

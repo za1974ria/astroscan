@@ -16,6 +16,8 @@ import os
 import logging
 from flask import Blueprint, jsonify, render_template
 
+from app.constants.observatory import OBSERVER_LAT, OBSERVER_LON, OBSERVER_ALT_M
+
 iss_bp = Blueprint('iss', __name__)
 log = logging.getLogger(__name__)
 
@@ -36,7 +38,13 @@ def orbital_dashboard():
 
 @iss_bp.route('/orbital-map')
 def orbital_map_page():
-    return render_template('orbital_map.html', cesium_token=_cesium_token())
+    return render_template(
+        'orbital_map.html',
+        cesium_token=_cesium_token(),
+        observer_lat=OBSERVER_LAT,
+        observer_lon=OBSERVER_LON,
+        observer_alt=OBSERVER_ALT_M,
+    )
 
 
 @iss_bp.route("/api/tle/sample")

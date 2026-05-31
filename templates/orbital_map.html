@@ -4,14 +4,22 @@
 <meta charset="utf-8">
 <title>AstroScan-Chohra - Carte orbitale 3D</title>
 <meta name="description" content="ASTRO-SCAN — Carte orbitale 3D temps réel : ISS, satellites, débris spatiaux, sondes interplanétaires">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-<link href="https://cdn.jsdelivr.net/npm/cesium@1.118/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+<link href="/static/lib/cesium/1.118/Widgets/widgets.css" rel="stylesheet">
 <link href="/static/css/orbital_command.css" rel="stylesheet">
-<!-- Sprint 3 perf: Cesium reste sync (init inline plus bas exige Cesium dispo).
-     satellite.min.js en defer (utilisé tardivement via engine) -->
-<script src="https://cdn.jsdelivr.net/npm/cesium@1.118/Build/Cesium/Cesium.js"></script>
-<script src="/static/js/satellite.min.js" defer></script>
+<script>
+  // Source unique de vérité : coordonnées injectées depuis app/constants/observatory.py
+  // via app/blueprints/iss/routes.py. Lu par orbital_map_engine.js et hilal_mode.js.
+  window.ORBITAL_OBSERVER = {
+    lat: {{ observer_lat }},
+    lon: {{ observer_lon }},
+    height: {{ observer_alt }}
+  };
+  // Cesium self-host : workers/assets servis depuis 'self' (CSP worker-src 'self' blob:).
+  window.CESIUM_BASE_URL = "/static/lib/cesium/1.118/";
+</script>
+<!-- Sprint 3 perf: Cesium reste sync (init inline plus bas exige Cesium dispo). -->
+<script src="/static/lib/cesium/1.118/Cesium.js"></script>
+<script src="/static/js/satellite.min.js"></script>
 <style>
 html, body {
   width: 100%;
@@ -1555,15 +1563,17 @@ if (!viewer) {
   viewer.scene.globe.enableLighting = true;
 }
 
-// If Cesium token is missing/invalid, fallback to free OSM imagery.
+// If Cesium token is missing/invalid, fallback to free NASA Blue Marble imagery.
 (function ensureCesiumBaseLayer() {
   try {
     if (!Cesium.Ion.defaultAccessToken && viewer && viewer.imageryLayers) {
       // [Day 1.8] Pattern safe : ajouter NOUVELLE couche en premier,
       // attendre frame Cesium suivant, retirer les anciennes en différé.
       try {
-        var newLayer = viewer.imageryLayers.addImageryProvider(new Cesium.OpenStreetMapImageryProvider({
-          url: "https://tile.openstreetmap.org/"
+        var newLayer = viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+          url: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/2004-08-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
+          maximumLevel: 8,
+          credit: "NASA Blue Marble · GIBS"
         }));
 
         // Différer le retrait des anciennes couches à 1 sec
@@ -3002,8 +3012,11 @@ handler.setInputAction(function (movement) {
       <button type="button" class="om-modal-close" data-close="om-modal-layers" aria-label="Fermer">✕</button>
     </div>
     <div class="om-modal-body">
-      <button type="button" class="om-layer-option active" data-layer="osm">
-        🌍 OpenStreetMap <small>(default)</small>
+      <button type="button" class="om-layer-option active" data-layer="nasa-bluemarble">
+        🌌 NASA Blue Marble <small>(default — Terre depuis l'espace)</small>
+      </button>
+      <button type="button" class="om-layer-option" data-layer="osm">
+        🌍 OpenStreetMap <small>(carte communautaire)</small>
       </button>
       <button type="button" class="om-layer-option" data-layer="usgs-imagery">
         🛰️ USGS Imagery <small>(satellite USA+monde gratuit)</small>
@@ -3013,9 +3026,6 @@ handler.setInputAction(function (movement) {
       </button>
       <button type="button" class="om-layer-option" data-layer="cartodb-positron">
         ☁️ CartoDB Positron <small>(carte claire propre)</small>
-      </button>
-      <button type="button" class="om-layer-option" data-layer="nasa-bluemarble">
-        🌌 NASA Blue Marble <small>(Terre depuis l'espace)</small>
       </button>
       <button type="button" class="om-layer-option" data-layer="nasa-modis">
         🛰️ NASA MODIS Today <small>(satellite temps réel J-1)</small>

@@ -1,1 +1,1 @@
-# Package modules — sky_tonight, mission_control, astro_ai, sondes_module
+# Package modules — sky_tonight, astro_ai, sondes_module

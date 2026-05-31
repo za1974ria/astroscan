@@ -2,7 +2,7 @@
 
 PASS 9 (2026-05-03) — Création :
   /api/telescope-hub, /api/telescope/nightly,
-  /mission-control, /api/mission-control,
+  /mission-control,
   /telescopes (page),
   /telescope (page Skyview), /api/telescope/{image,catalogue,proxy-image},
   /api/telescope/{stream,status},
@@ -80,19 +80,6 @@ def telescope():
 def mission_control():
     cesium_token = os.getenv("CESIUM_ION_TOKEN") or os.getenv("CESIUM_TOKEN", "")
     return render_template("mission_control.html", cesium_token=cesium_token)
-
-
-@bp.route("/api/mission-control")
-def api_mission_control():
-    try:
-        from modules.mission_control import get_global_mission_status
-        return jsonify(get_global_mission_status())
-    except Exception as e:
-        log.warning("api/mission-control: %s", e)
-        return jsonify({
-            "error": str(e),
-            "iss": {}, "mars": {}, "neo": {}, "voyager": {},
-        }), 500
 
 
 # ── Telescope hub + nightly (Domaine H) ───────────────────────────────
